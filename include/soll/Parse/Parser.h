@@ -5,7 +5,7 @@ namespace soll {
 
 class Parser {
 public:
-    Parser() {}
+  Parser() {}
 };
 
 } // namespace soll

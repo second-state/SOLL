@@ -2,9 +2,6 @@
 
 namespace soll {
 
-CodeGenModule::CodeGenModule(llvm::Module& module)
-    : module{module}
-{
-}
+CodeGenModule::CodeGenModule(llvm::Module &module) : module{module} {}
 
 } // namespace soll
