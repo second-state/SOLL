@@ -5,6 +5,7 @@
 #include "soll/AST/Stmt.h"
 #include "soll/AST/Type.h"
 #include "soll/Lex/Lexer.h"
+#include <iostream>
 
 using namespace std;
 
@@ -155,15 +156,14 @@ unique_ptr<PragmaDirective> Parser::parsePragmaDirective() {
   TheLexer.CachedLex();
   do {
     tok::TokenKind Kind = TheLexer.LookAhead(0)->getKind();
-    if (Kind == tok::unknown)
+    if (Kind == tok::unknown) {
       assert(false && "Solidity Error: Token incompatible with Solidity parser "
                       "as part of pragma directive.");
-    else if (Kind == tok::caret) {
-      // [TODO] Fix tok::caret no literal, but not sure what means
-      // Pattern not match Solidity : Solidity | ^ | 0.5 | .0 |
-      //                   Soll     : Solidity | 0.5.0
+    } else if (tok::getPunctuatorSpelling(Kind) != nullptr) {
       TheLexer.CachedLex();
     } else {
+      assert((Kind == tok::identifier || tok::isLiteral(Kind)) &&
+             "except literal");
       string literal = getLiteralAndAdvance(TheLexer.LookAhead(0)).str();
       Literals.push_back(literal);
       Tokens.push_back(TheLexer.LookAhead(0));
@@ -568,8 +568,8 @@ unique_ptr<Stmt> Parser::parseSimpleStatement() {
       return parseVariableDeclarationStatement(
           typeNameFromIndexAccessStructure(Iap));
     case LookAheadInfo::Expression:
-      return std::move(parseExpression(
-          std::move(expressionFromIndexAccessStructure(Iap))));
+      return std::move(
+          parseExpression(std::move(expressionFromIndexAccessStructure(Iap))));
     default:
       assert(false && "Unhandle statement.");
     }
@@ -603,9 +603,9 @@ unique_ptr<DeclStmt> Parser::parseVariableDeclarationStatement(
   }
 
   // [TEMP] Need fix.
-  //return std::move(std::make_unique<DeclStmt>());
+  // return std::move(std::make_unique<DeclStmt>());
   return std::move(
-    std::make_unique<DeclStmt>(std::move(Variables), std::move(Value)));
+      std::make_unique<DeclStmt>(std::move(Variables), std::move(Value)));
 }
 
 pair<Parser::LookAheadInfo, Parser::IndexAccessedPath>
@@ -950,8 +950,8 @@ llvm::StringRef Parser::getLiteralAndAdvance(llvm::Optional<Token> Tok) {
   TheLexer.CachedLex();
   if (Tok->is(tok::identifier))
     return Tok->getIdentifierInfo()->getName();
-  else
-    return llvm::StringRef(Tok->getLiteralData(), Tok->getLength());
+  assert(Tok->isLiteral() && "except tok::literal");
+  return llvm::StringRef(Tok->getLiteralData(), Tok->getLength());
 }
 
 } // namespace soll

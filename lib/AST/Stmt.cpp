@@ -59,4 +59,4 @@ std::vector<const Expr *> CallExpr::getArguments() const {
     Args.emplace_back(Arg.get());
   return Args;
 }
-}
+} // namespace soll

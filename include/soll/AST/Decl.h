@@ -31,10 +31,9 @@ protected:
       : Name(Name.str()), Vis(vis) {}
 
 public:
-  const std::string &getName() const { return Name; }
-
   virtual void accept(DeclVisitor &visitor) = 0;
   virtual void accept(ConstDeclVisitor &visitor) const = 0;
+  llvm::StringRef getName() const { return Name; }
 };
 
 class SourceUnit : public Decl {
@@ -180,6 +179,9 @@ public:
 
   void accept(DeclVisitor &visitor) override;
   void accept(ConstDeclVisitor &visitor) const override;
+
+  Type *GetType() { return TypeName.get(); }
+  const Type *GetType() const { return TypeName.get(); }
 };
 
 class ModifierInvocation {

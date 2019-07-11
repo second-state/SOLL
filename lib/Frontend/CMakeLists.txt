@@ -3,6 +3,8 @@ add_library(sollFrontend
   CompilerInstance.cpp
   CompilerInvocation.cpp
   DiagnosticRenderer.cpp
+  FrontendAction.cpp
+  FrontendActions.cpp
   TextDiagnostic.cpp
   TextDiagnosticPrinter.cpp
   )
@@ -12,4 +14,5 @@ target_link_libraries(sollFrontend
   sollLex
   sollParse
   sollSema
+  sollCodeGen
   )

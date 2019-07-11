@@ -196,6 +196,9 @@ private:
 
 protected:
   bool EmitCurrentDiagnostic(bool Force = false);
+
+public:
+  bool hasErrorOccurred() const { return NumErrors > 0; }
 };
 
 class DiagnosticBuilder {
@@ -544,7 +547,9 @@ protected:
 public:
   DiagnosticConsumer() = default;
   virtual ~DiagnosticConsumer() = default;
-  virtual void clear() {}
+  unsigned getNumErrors() const { return NumErrors; }
+  unsigned getNumWarnings() const { return NumWarnings; }
+  virtual void clear() { NumWarnings = NumErrors = 0; }
   virtual void BeginSourceFile() {}
   virtual void EndSourceFile() {}
   virtual void finish() {}

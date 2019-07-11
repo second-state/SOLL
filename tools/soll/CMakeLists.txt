@@ -10,4 +10,5 @@ target_link_libraries(soll
   PRIVATE
   sollBasic
   sollFrontend
+  sollCodeGen
   )

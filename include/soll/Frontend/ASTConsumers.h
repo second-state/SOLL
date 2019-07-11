@@ -8,7 +8,6 @@ namespace soll {
 
 class ASTConsumer;
 std::unique_ptr<ASTConsumer>
-CreateASTPrinter(std::unique_ptr<llvm::raw_ostream> OS,
-                 llvm::StringRef FilterString);
+CreateASTPrinter(llvm::raw_ostream &Out = llvm::outs());
 
 } // namespace soll

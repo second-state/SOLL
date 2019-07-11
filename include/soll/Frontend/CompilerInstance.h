@@ -7,6 +7,7 @@
 #include "soll/Lex/Lexer.h"
 #include "soll/Sema/Sema.h"
 #include <algorithm>
+#include <list>
 #include <llvm/ADT/IntrusiveRefCntPtr.h>
 #include <llvm/ADT/StringRef.h>
 #include <llvm/Support/VirtualFileSystem.h>
@@ -15,6 +16,8 @@
 namespace soll {
 
 class FileManager;
+class FrontendAction;
+class FrontendInputFile;
 class SourceManager;
 
 class CompilerInstance {
@@ -27,6 +30,18 @@ class CompilerInstance {
   llvm::IntrusiveRefCntPtr<ASTContext> Context;
   std::unique_ptr<ASTConsumer> Consumer;
   std::unique_ptr<Sema> TheSema;
+
+  struct OutputFile {
+    std::string Filename;
+    std::string TempFilename;
+
+    OutputFile(std::string filename, std::string tempFilename)
+        : Filename(std::move(filename)), TempFilename(std::move(tempFilename)) {
+    }
+  };
+
+  std::unique_ptr<llvm::raw_fd_ostream> NonSeekStream;
+  std::list<OutputFile> OutputFiles;
 
   CompilerInstance(const CompilerInstance &) = delete;
   CompilerInstance &operator=(const CompilerInstance &) = delete;
@@ -48,6 +63,11 @@ public:
     return *Diagnostics;
   }
   void setDiagnostics(DiagnosticsEngine *Value);
+  DiagnosticConsumer &getDiagnosticClient() const {
+    assert(Diagnostics && Diagnostics->getClient() &&
+           "Compiler instance has no diagnostic client!");
+    return *Diagnostics->getClient();
+  }
 
   bool hasVirtualFileSystem() const { return VirtualFileSystem != nullptr; }
   llvm::vfs::FileSystem &getVirtualFileSystem() const {
@@ -79,7 +99,7 @@ public:
     assert(TheLexer && "Compiler instance has no lexer!");
     return *TheLexer;
   }
-  void setLexer(std::unique_ptr<Lexer> Value);
+  void setLexer(std::unique_ptr<Lexer> &&Value);
 
   bool hasASTContext() const { return Context != nullptr; }
   ASTContext &getASTContext() const {
@@ -93,14 +113,17 @@ public:
     assert(Consumer && "Compiler instance has no AST consumer!");
     return *Consumer;
   }
-  void setASTConsumer(std::unique_ptr<ASTConsumer> Value);
+  void setASTConsumer(std::unique_ptr<ASTConsumer> &&Value);
 
   bool hasSema() const { return static_cast<bool>(TheSema); }
   Sema &getSema() const {
     assert(TheSema && "Compiler instance has no Sema object!");
     return *TheSema;
   }
-  void setSema(Sema *S);
+  void setSema(std::unique_ptr<Sema> &&S);
+
+  void addOutputFile(OutputFile &&OutFile);
+  void clearOutputFiles(bool EraseFiles);
 
   void createDiagnostics(DiagnosticConsumer *Client = nullptr,
                          bool ShouldOwnClient = true);
@@ -110,11 +133,31 @@ public:
                     bool ShouldOwnClient = true);
   FileManager *createFileManager();
   void createSourceManager(FileManager &FileMgr);
-  void createLexer(FileID FID);
+  void createLexer();
+  void createASTContext();
   void createSema();
 
+  std::unique_ptr<llvm::raw_pwrite_stream>
+  createDefaultOutputFile(bool Binary = true, llvm::StringRef BaseInput = "",
+                          llvm::StringRef Extension = "");
+
+  std::unique_ptr<llvm::raw_pwrite_stream>
+  createOutputFile(llvm::StringRef OutputPath, bool Binary,
+                   bool RemoveFileOnSignal, llvm::StringRef BaseInput,
+                   llvm::StringRef Extension, bool UseTemporary,
+                   bool CreateMissingDirectories = false);
+
+  std::unique_ptr<llvm::raw_pwrite_stream>
+  createOutputFile(llvm::StringRef OutputPath, std::error_code &Error,
+                   bool Binary, bool RemoveFileOnSignal, llvm::StringRef InFile,
+                   llvm::StringRef Extension, bool UseTemporary,
+                   bool CreateMissingDirectories, std::string *ResultPathName,
+                   std::string *TempPathName);
+
+  bool InitializeSourceManager(const FrontendInputFile &Input);
+
   bool Execute();
-  bool Execute(llvm::StringRef filename);
+  bool ExecuteAction(FrontendAction &action, llvm::StringRef filename);
 };
 
 } // namespace soll

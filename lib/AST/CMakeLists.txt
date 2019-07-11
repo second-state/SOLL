@@ -1,7 +1,5 @@
 add_library(sollAST
-  ASTConsumer.cpp
   ASTContext.cpp
-  ASTPrinter.cpp
   Decl.cpp
   DeclAccept.cpp
   DeclVisitor.cpp

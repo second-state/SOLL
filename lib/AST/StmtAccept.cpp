@@ -1,6 +1,6 @@
+#include "soll/AST/Decl.h"
 #include "soll/AST/Expr.h"
 #include "soll/AST/StmtVisitor.h"
-#include "soll/AST/Decl.h"
 
 namespace soll {
 
@@ -50,12 +50,18 @@ void Identifier::accept(ConstStmtVisitor &visitor) const {
 }
 
 void BooleanLiteral::accept(StmtVisitor &visitor) { visitor.visit(*this); }
-void BooleanLiteral::accept(ConstStmtVisitor &visitor) const { visitor.visit(*this); }
+void BooleanLiteral::accept(ConstStmtVisitor &visitor) const {
+  visitor.visit(*this);
+}
 
 void StringLiteral::accept(StmtVisitor &visitor) { visitor.visit(*this); }
-void StringLiteral::accept(ConstStmtVisitor &visitor) const { visitor.visit(*this); }
+void StringLiteral::accept(ConstStmtVisitor &visitor) const {
+  visitor.visit(*this);
+}
 
 void NumberLiteral::accept(StmtVisitor &visitor) { visitor.visit(*this); }
-void NumberLiteral::accept(ConstStmtVisitor &visitor) const { visitor.visit(*this); }
+void NumberLiteral::accept(ConstStmtVisitor &visitor) const {
+  visitor.visit(*this);
+}
 
 } // namespace soll

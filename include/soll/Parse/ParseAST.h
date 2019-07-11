@@ -2,8 +2,10 @@
 
 namespace soll {
 
+class ASTConsumer;
+class ASTContext;
 class Sema;
 
-void ParseAST(Sema &S, bool PrintStats = false);
+void ParseAST(Sema &S, ASTConsumer &C, ASTContext &Ctx, bool PrintStats = false);
 
 } // namespace soll

@@ -117,6 +117,8 @@ getActualFileUID(const FileEntry *File) {
 FileID SourceManager::createFileID(const FileEntry *SourceFile,
                                    SourceLocation IncludePos, int LoadedID,
                                    unsigned LoadedOffset) {
+  assert(SourceFile && "Null source file!");
+
   if (LoadedID < 0) {
     assert(LoadedID != -1 && "Loading sentinel FileID");
     unsigned Index = unsigned(-LoadedID) - 2;
@@ -136,7 +138,8 @@ FileID SourceManager::createFileID(const FileEntry *SourceFile,
   NextLocalOffset += FileSize + 1;
 
   FileID FID = FileID::get(LocalSLocEntryTable.size() - 1);
-  return LastFileIDLookup = FID;
+  LastFileIDLookup = FID;
+  return FID;
 }
 
 FileID SourceManager::translateFile(const FileEntry *SourceFile) const {

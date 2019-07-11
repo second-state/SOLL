@@ -1,5 +1,7 @@
 #include "soll/Frontend/CompilerInvocation.h"
+#include "soll/CodeGen/CodeGenAction.h"
 #include "soll/Frontend/CompilerInstance.h"
+#include "soll/Frontend/FrontendActions.h"
 #include "soll/Frontend/TextDiagnostic.h"
 #include <llvm/Support/CommandLine.h>
 
@@ -23,9 +25,12 @@ void CompilerInvocation::ParseCommandLineOptions(int argc, const char **argv) {
 }
 
 bool CompilerInvocation::Execute(CompilerInstance &CI) {
-  return std::all_of(
-      std::begin(InputFilenames), std::end(InputFilenames),
-      [&CI](const auto &filename) { return CI.Execute(filename); });
+  llvm::LLVMContext Ctx;
+  EmitLLVMAction Action(&Ctx);
+  return std::all_of(std::begin(InputFilenames), std::end(InputFilenames),
+                     [&Action, &CI](const auto &filename) {
+                       return CI.ExecuteAction(Action, filename);
+                     });
 }
 
 DiagnosticOptions &CompilerInvocation::GetDiagnosticOptions() {
