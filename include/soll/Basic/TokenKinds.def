@@ -1,0 +1,302 @@
+#ifndef TOK
+#define TOK(X)
+#endif
+#ifndef PUNCTUATOR
+#define PUNCTUATOR(X,Y) TOK(X)
+#endif
+#ifndef KEYWORD
+#define KEYWORD(X,Y) TOK(kw_ ## X)
+#endif
+
+TOK(unknown)             // Not a token.
+TOK(eof)                 // End of file.
+TOK(eod)                 // End of preprocessing directive (end of line inside a
+                         // directive).
+TOK(code_completion)     // Code completion marker
+
+TOK(comment)             // Comment (only in -E -C[C] mode)
+
+TOK(identifier)          // abcde123
+TOK(raw_identifier)      // Used only in raw lexing mode.
+
+TOK(numeric_constant)    // 0x123
+
+TOK(char_constant)       // 'a'
+
+TOK(string_literal)      // "foo"
+
+PUNCTUATOR(l_square,            "[")
+PUNCTUATOR(r_square,            "]")
+PUNCTUATOR(l_paren,             "(")
+PUNCTUATOR(r_paren,             ")")
+PUNCTUATOR(l_brace,             "{")
+PUNCTUATOR(r_brace,             "}")
+PUNCTUATOR(period,              ".")
+PUNCTUATOR(amp,                 "&")
+PUNCTUATOR(ampamp,              "&&")
+PUNCTUATOR(ampequal,            "&=")
+PUNCTUATOR(star,                "*")
+PUNCTUATOR(starequal,           "*=")
+PUNCTUATOR(plus,                "+")
+PUNCTUATOR(plusplus,            "++")
+PUNCTUATOR(plusequal,           "+=")
+PUNCTUATOR(minus,               "-")
+PUNCTUATOR(arrow,               "->")
+PUNCTUATOR(minusminus,          "--")
+PUNCTUATOR(minusequal,          "-=")
+PUNCTUATOR(tilde,               "~")
+PUNCTUATOR(exclaim,             "!")
+PUNCTUATOR(exclaimequal,        "!=")
+PUNCTUATOR(slash,               "/")
+PUNCTUATOR(slashequal,          "/=")
+PUNCTUATOR(percent,             "%")
+PUNCTUATOR(percentequal,        "%=")
+PUNCTUATOR(less,                "<")
+PUNCTUATOR(lessless,            "<<")
+PUNCTUATOR(lessequal,           "<=")
+PUNCTUATOR(lesslessequal,       "<<=")
+PUNCTUATOR(greater,             ">")
+PUNCTUATOR(greatergreater,      ">>")
+PUNCTUATOR(greaterequal,        ">=")
+PUNCTUATOR(greatergreaterequal, ">>=")
+PUNCTUATOR(caret,               "^")
+PUNCTUATOR(caretequal,          "^=")
+PUNCTUATOR(pipe,                "|")
+PUNCTUATOR(pipepipe,            "||")
+PUNCTUATOR(pipeequal,           "|=")
+PUNCTUATOR(question,            "?")
+PUNCTUATOR(colon,               ":")
+PUNCTUATOR(colonequal,          ":=")
+PUNCTUATOR(semi,                ";")
+PUNCTUATOR(equal,               "=")
+PUNCTUATOR(equalequal,          "==")
+PUNCTUATOR(comma,               ",")
+
+// Flags allowed:
+//   KEYALL   - This is a keyword in all variants of solidity
+
+KEYWORD(address                 , KEYALL)
+KEYWORD(anonymous               , KEYALL)
+KEYWORD(as                      , KEYALL)
+KEYWORD(assembly                , KEYALL)
+KEYWORD(bool                    , KEYALL)
+KEYWORD(break                   , KEYALL)
+KEYWORD(byte                    , KEYALL)
+KEYWORD(bytes                   , KEYALL)
+KEYWORD(calldata                , KEYALL)
+KEYWORD(constant                , KEYALL)
+KEYWORD(continue                , KEYALL)
+KEYWORD(contract                , KEYALL)
+KEYWORD(do                      , KEYALL)
+KEYWORD(else                    , KEYALL)
+KEYWORD(emit                    , KEYALL)
+KEYWORD(enum                    , KEYALL)
+KEYWORD(event                   , KEYALL)
+KEYWORD(fixed                   , KEYALL)
+KEYWORD(for                     , KEYALL)
+KEYWORD(from                    , KEYALL)
+KEYWORD(function                , KEYALL)
+KEYWORD(if                      , KEYALL)
+KEYWORD(import                  , KEYALL)
+KEYWORD(indexed                 , KEYALL)
+KEYWORD(int                     , KEYALL)
+KEYWORD(interface               , KEYALL)
+KEYWORD(internal                , KEYALL)
+KEYWORD(is                      , KEYALL)
+KEYWORD(library                 , KEYALL)
+KEYWORD(mapping                 , KEYALL)
+KEYWORD(memory                  , KEYALL)
+KEYWORD(modifier                , KEYALL)
+KEYWORD(payable                 , KEYALL)
+KEYWORD(pragma                  , KEYALL)
+KEYWORD(private                 , KEYALL)
+KEYWORD(public                  , KEYALL)
+KEYWORD(return                  , KEYALL)
+KEYWORD(returns                 , KEYALL)
+KEYWORD(storage                 , KEYALL)
+KEYWORD(string                  , KEYALL)
+KEYWORD(struct                  , KEYALL)
+KEYWORD(throw                   , KEYALL)
+KEYWORD(ufixed                  , KEYALL)
+KEYWORD(uint                    , KEYALL)
+KEYWORD(using                   , KEYALL)
+KEYWORD(while                   , KEYALL)
+
+#ifndef KEYWORD_N
+#define KEYWORD_N(N,X,Y) KEYWORD(X ## N, Y)
+#endif
+#ifndef KEYWORD_MxN
+#define KEYWORD_MxN(M,N,X,Y) KEYWORD(X ## M ## x ## N, Y)
+#endif
+
+#define APPLY_1_32(F, ...)      \
+    F(1 , __VA_ARGS__)          \
+    F(2 , __VA_ARGS__)          \
+    F(3 , __VA_ARGS__)          \
+    F(4 , __VA_ARGS__)          \
+    F(5 , __VA_ARGS__)          \
+    F(6 , __VA_ARGS__)          \
+    F(7 , __VA_ARGS__)          \
+    F(8 , __VA_ARGS__)          \
+    F(9 , __VA_ARGS__)          \
+    F(10, __VA_ARGS__)          \
+    F(11, __VA_ARGS__)          \
+    F(12, __VA_ARGS__)          \
+    F(13, __VA_ARGS__)          \
+    F(14, __VA_ARGS__)          \
+    F(15, __VA_ARGS__)          \
+    F(16, __VA_ARGS__)          \
+    F(17, __VA_ARGS__)          \
+    F(18, __VA_ARGS__)          \
+    F(19, __VA_ARGS__)          \
+    F(20, __VA_ARGS__)          \
+    F(21, __VA_ARGS__)          \
+    F(22, __VA_ARGS__)          \
+    F(23, __VA_ARGS__)          \
+    F(24, __VA_ARGS__)          \
+    F(25, __VA_ARGS__)          \
+    F(26, __VA_ARGS__)          \
+    F(27, __VA_ARGS__)          \
+    F(28, __VA_ARGS__)          \
+    F(29, __VA_ARGS__)          \
+    F(30, __VA_ARGS__)          \
+    F(31, __VA_ARGS__)          \
+    F(32, __VA_ARGS__)
+
+#define APPLY_0_80(F, ...)      \
+    F(0 , __VA_ARGS__)          \
+    F(1 , __VA_ARGS__)          \
+    F(2 , __VA_ARGS__)          \
+    F(3 , __VA_ARGS__)          \
+    F(4 , __VA_ARGS__)          \
+    F(5 , __VA_ARGS__)          \
+    F(6 , __VA_ARGS__)          \
+    F(7 , __VA_ARGS__)          \
+    F(8 , __VA_ARGS__)          \
+    F(9 , __VA_ARGS__)          \
+    F(10, __VA_ARGS__)          \
+    F(11, __VA_ARGS__)          \
+    F(12, __VA_ARGS__)          \
+    F(13, __VA_ARGS__)          \
+    F(14, __VA_ARGS__)          \
+    F(15, __VA_ARGS__)          \
+    F(16, __VA_ARGS__)          \
+    F(17, __VA_ARGS__)          \
+    F(18, __VA_ARGS__)          \
+    F(19, __VA_ARGS__)          \
+    F(20, __VA_ARGS__)          \
+    F(21, __VA_ARGS__)          \
+    F(22, __VA_ARGS__)          \
+    F(23, __VA_ARGS__)          \
+    F(24, __VA_ARGS__)          \
+    F(25, __VA_ARGS__)          \
+    F(26, __VA_ARGS__)          \
+    F(27, __VA_ARGS__)          \
+    F(28, __VA_ARGS__)          \
+    F(29, __VA_ARGS__)          \
+    F(30, __VA_ARGS__)          \
+    F(31, __VA_ARGS__)          \
+    F(32, __VA_ARGS__)          \
+    F(33, __VA_ARGS__)          \
+    F(34, __VA_ARGS__)          \
+    F(35, __VA_ARGS__)          \
+    F(36, __VA_ARGS__)          \
+    F(37, __VA_ARGS__)          \
+    F(38, __VA_ARGS__)          \
+    F(39, __VA_ARGS__)          \
+    F(40, __VA_ARGS__)          \
+    F(41, __VA_ARGS__)          \
+    F(42, __VA_ARGS__)          \
+    F(43, __VA_ARGS__)          \
+    F(44, __VA_ARGS__)          \
+    F(45, __VA_ARGS__)          \
+    F(46, __VA_ARGS__)          \
+    F(47, __VA_ARGS__)          \
+    F(48, __VA_ARGS__)          \
+    F(49, __VA_ARGS__)          \
+    F(50, __VA_ARGS__)          \
+    F(51, __VA_ARGS__)          \
+    F(52, __VA_ARGS__)          \
+    F(53, __VA_ARGS__)          \
+    F(54, __VA_ARGS__)          \
+    F(55, __VA_ARGS__)          \
+    F(56, __VA_ARGS__)          \
+    F(57, __VA_ARGS__)          \
+    F(58, __VA_ARGS__)          \
+    F(59, __VA_ARGS__)          \
+    F(60, __VA_ARGS__)          \
+    F(61, __VA_ARGS__)          \
+    F(62, __VA_ARGS__)          \
+    F(63, __VA_ARGS__)          \
+    F(64, __VA_ARGS__)          \
+    F(65, __VA_ARGS__)          \
+    F(66, __VA_ARGS__)          \
+    F(67, __VA_ARGS__)          \
+    F(68, __VA_ARGS__)          \
+    F(69, __VA_ARGS__)          \
+    F(70, __VA_ARGS__)          \
+    F(71, __VA_ARGS__)          \
+    F(72, __VA_ARGS__)          \
+    F(73, __VA_ARGS__)          \
+    F(74, __VA_ARGS__)          \
+    F(75, __VA_ARGS__)          \
+    F(76, __VA_ARGS__)          \
+    F(77, __VA_ARGS__)          \
+    F(78, __VA_ARGS__)          \
+    F(79, __VA_ARGS__)          \
+    F(80, __VA_ARGS__)
+
+#define APPLY_8_256(F, ...)     \
+    F(8  , __VA_ARGS__)         \
+    F(16 , __VA_ARGS__)         \
+    F(24 , __VA_ARGS__)         \
+    F(32 , __VA_ARGS__)         \
+    F(40 , __VA_ARGS__)         \
+    F(48 , __VA_ARGS__)         \
+    F(56 , __VA_ARGS__)         \
+    F(64 , __VA_ARGS__)         \
+    F(72 , __VA_ARGS__)         \
+    F(80 , __VA_ARGS__)         \
+    F(88 , __VA_ARGS__)         \
+    F(96 , __VA_ARGS__)         \
+    F(104, __VA_ARGS__)         \
+    F(112, __VA_ARGS__)         \
+    F(120, __VA_ARGS__)         \
+    F(128, __VA_ARGS__)         \
+    F(136, __VA_ARGS__)         \
+    F(144, __VA_ARGS__)         \
+    F(152, __VA_ARGS__)         \
+    F(160, __VA_ARGS__)         \
+    F(168, __VA_ARGS__)         \
+    F(176, __VA_ARGS__)         \
+    F(184, __VA_ARGS__)         \
+    F(192, __VA_ARGS__)         \
+    F(200, __VA_ARGS__)         \
+    F(208, __VA_ARGS__)         \
+    F(216, __VA_ARGS__)         \
+    F(224, __VA_ARGS__)         \
+    F(232, __VA_ARGS__)         \
+    F(240, __VA_ARGS__)         \
+    F(248, __VA_ARGS__)         \
+    F(256, __VA_ARGS__)
+
+#define PARTIAL(N, F1, F2, ...) \
+    F1(F2, N, __VA_ARGS__)
+
+APPLY_1_32(KEYWORD_N, bytes, KEYALL)
+APPLY_8_256(KEYWORD_N, int , KEYALL)
+APPLY_8_256(KEYWORD_N, uint, KEYALL)
+
+APPLY_0_80(PARTIAL, APPLY_8_256, KEYWORD_MxN, fixed , KEYALL)
+APPLY_0_80(PARTIAL, APPLY_8_256, KEYWORD_MxN, ufixed, KEYALL)
+
+#undef PARTIAL
+#undef APPLY_8_256
+#undef APPLY_0_80
+#undef APPLY_1_32
+#undef KEYWORD_MxN
+#undef KEYWORD_N
+
+#undef KEYWORD
+#undef PUNCTUATOR
+#undef TOK

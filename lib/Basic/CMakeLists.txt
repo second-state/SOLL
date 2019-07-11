@@ -1,3 +1,9 @@
 add_library(sollBasic
+  Diagnostic.cpp
+  DiagnosticIDs.cpp
+  FileManager.cpp
+  IdentifierTable.cpp
   SourceLocation.cpp
+  SourceManager.cpp
+  TokenKinds.cpp
   )

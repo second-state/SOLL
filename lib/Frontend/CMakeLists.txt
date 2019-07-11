@@ -1,7 +1,15 @@
 add_library(sollFrontend
+  ASTConsumers.cpp
   CompilerInstance.cpp
   CompilerInvocation.cpp
   DiagnosticRenderer.cpp
   TextDiagnostic.cpp
   TextDiagnosticPrinter.cpp
+  )
+target_link_libraries(sollFrontend
+  sollAST
+  sollBasic
+  sollLex
+  sollParse
+  sollSema
   )

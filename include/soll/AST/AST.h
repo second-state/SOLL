@@ -2,6 +2,6 @@
 
 namespace soll {
 
-class CodeGenerator {};
+class AST {};
 
 } // namespace soll

@@ -2,11 +2,14 @@
 
 namespace soll {
 
-void TextDiagnosticPrinter::HandleDiagnostic(
-    DiagnosticsEngine::Level DiagLevel,
-    const DiagnosticEntry &Entry
-) {
-    DiagnosticConsumer::HandleDiagnostic(DiagLevel, Entry);
+TextDiagnosticPrinter::TextDiagnosticPrinter(llvm::raw_ostream &os,
+                                             DiagnosticOptions *diags,
+                                             bool _OwnsOutputStream)
+    : OS(os), DiagOpts(diags), OwnsOutputStream(_OwnsOutputStream) {}
+
+void TextDiagnosticPrinter::HandleDiagnostic(DiagnosticsEngine::Level DiagLevel,
+                                             const Diagnostic &Info) {
+  DiagnosticConsumer::HandleDiagnostic(DiagLevel, Info);
 }
 
 } // namespace soll
