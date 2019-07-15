@@ -1,7 +1,7 @@
 #pragma once
 #include <cctype>
-#include <llvm/Support/Compiler.h>
 #include <llvm/ADT/StringRef.h>
+#include <llvm/Support/Compiler.h>
 
 namespace soll {
 /// Returns true if this is an ASCII character.
@@ -45,9 +45,7 @@ LLVM_READONLY inline bool isWhitespace(unsigned char c) {
 }
 
 /// Return true if this character is an ASCII digit: [0-9]
-LLVM_READONLY inline bool isDigit(unsigned char c) {
-  return std::isdigit(c);
-}
+LLVM_READONLY inline bool isDigit(unsigned char c) { return std::isdigit(c); }
 
 /// Return true if this character is a lowercase ASCII letter: [a-z]
 LLVM_READONLY inline bool isLowercase(unsigned char c) {
@@ -60,9 +58,7 @@ LLVM_READONLY inline bool isUppercase(unsigned char c) {
 }
 
 /// Return true if this character is an ASCII letter: [a-zA-Z]
-LLVM_READONLY inline bool isLetter(unsigned char c) {
-  return std::isalpha(c);
-}
+LLVM_READONLY inline bool isLetter(unsigned char c) { return std::isalpha(c); }
 
 /// Return true if this character is an ASCII letter or digit: [a-zA-Z0-9]
 LLVM_READONLY inline bool isAlphanumeric(unsigned char c) {
@@ -97,16 +93,12 @@ LLVM_READONLY inline bool isPrintable(unsigned char c) {
 /// Converts the given ASCII character to its lowercase equivalent.
 ///
 /// If the character is not an uppercase character, it is returned as is.
-LLVM_READONLY inline char toLowercase(char c) {
-  return std::tolower(c);
-}
+LLVM_READONLY inline char toLowercase(char c) { return std::tolower(c); }
 
 /// Converts the given ASCII character to its uppercase equivalent.
 ///
 /// If the character is not a lowercase character, it is returned as is.
-LLVM_READONLY inline char toUppercase(char c) {
-  return std::toupper(c);
-}
+LLVM_READONLY inline char toUppercase(char c) { return std::toupper(c); }
 
 /// Return true if this is a valid ASCII identifier.
 ///

@@ -18,7 +18,8 @@ void CompilerInvocation::ParseCommandLineOptions(int argc, const char **argv) {
   llvm::cl::ParseCommandLineOptions(argc, argv);
 
   DiagnosticOpts = new DiagnosticOptions();
-  DiagRenderer = std::make_unique<TextDiagnostic>(llvm::errs(), *DiagnosticOpts);
+  DiagRenderer =
+      std::make_unique<TextDiagnostic>(llvm::errs(), *DiagnosticOpts);
 }
 
 bool CompilerInvocation::Execute(CompilerInstance &CI) {

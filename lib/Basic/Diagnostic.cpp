@@ -16,8 +16,8 @@ bool DiagnosticsEngine::EmitCurrentDiagnostic(bool Force) {
   if (Force) {
     Diagnostic Info(this);
 
-    DiagnosticIDs::Level DiagLevel
-      = Diags->getDiagnosticLevel(Info.getID(), Info.getLocation(), *this);
+    DiagnosticIDs::Level DiagLevel =
+        Diags->getDiagnosticLevel(Info.getID(), Info.getLocation(), *this);
 
     Emitted = (DiagLevel != DiagnosticIDs::Ignored);
     if (Emitted) {

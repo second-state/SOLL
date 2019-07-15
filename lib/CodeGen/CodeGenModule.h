@@ -5,14 +5,14 @@
 namespace soll {
 
 class CodeGenModule {
-    CodeGenModule(const CodeGenModule &) = delete;
-    void operator=(const CodeGenModule &) = delete;
+  CodeGenModule(const CodeGenModule &) = delete;
+  void operator=(const CodeGenModule &) = delete;
 
 public:
-    CodeGenModule(llvm::Module& module);
+  CodeGenModule(llvm::Module &module);
 
 private:
-    llvm::Module& module;
+  llvm::Module &module;
 };
 
 } // namespace soll

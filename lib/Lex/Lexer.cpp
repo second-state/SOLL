@@ -14,8 +14,7 @@ static inline CharSourceRange makeCharRange(Lexer &L, const char *Begin,
                                        L.getSourceLocation(End));
 }
 
-Lexer::Lexer(FileID FID, const llvm::MemoryBuffer *InputFile,
-             SourceManager &SM)
+Lexer::Lexer(FileID FID, const llvm::MemoryBuffer *InputFile, SourceManager &SM)
     : Diags(SM.getDiagnostics()), FileMgr(SM.getFileManager()), SourceMgr(SM),
       FileLoc(SM.getLocForStartOfFile(FID)),
       BufferStart(InputFile->getBufferStart()),
@@ -25,8 +24,8 @@ Lexer::Lexer(FileID FID, const llvm::MemoryBuffer *InputFile,
     // Determine the size of the BOM.
     llvm::StringRef Buf(BufferStart, BufferEnd - BufferStart);
     size_t BOMLength = llvm::StringSwitch<size_t>(Buf)
-      .StartsWith("\xEF\xBB\xBF", 3) // UTF-8 BOM
-      .Default(0);
+                           .StartsWith("\xEF\xBB\xBF", 3) // UTF-8 BOM
+                           .Default(0);
 
     // Skip the BOM.
     BufferPtr += BOMLength;
@@ -426,7 +425,7 @@ llvm::Optional<Token> Lexer::LexUnicode(uint32_t C, const char *CurPtr) {
     // characters that allows us to map these particular characters to, say,
     // whitespace.
     Diag(BufferPtr, diag::err_non_ascii)
-      << FixItHint::CreateRemoval(makeCharRange(*this, BufferPtr, CurPtr));
+        << FixItHint::CreateRemoval(makeCharRange(*this, BufferPtr, CurPtr));
 
     BufferPtr = CurPtr;
     return llvm::None;
@@ -443,7 +442,8 @@ char Lexer::getCharAndSizeSlow(const char *Ptr, unsigned &Size) {
     ++Size;
     ++Ptr;
     // Common case, backslash-char where the char is not whitespace.
-    if (!isWhitespace(Ptr[0])) return '\\';
+    if (!isWhitespace(Ptr[0]))
+      return '\\';
 
     // See if we have optional whitespace characters between the slash and
     // newline.
@@ -454,7 +454,7 @@ char Lexer::getCharAndSizeSlow(const char *Ptr, unsigned &Size) {
 
       // Found backslash<whitespace><newline>.  Parse the char after it.
       Size += EscapedNewLineSize;
-      Ptr  += EscapedNewLineSize;
+      Ptr += EscapedNewLineSize;
 
       // Use slow version to accumulate a correct size field.
       return getCharAndSizeSlow(Ptr, Size);
@@ -474,12 +474,11 @@ unsigned Lexer::getEscapedNewLineSize(const char *Ptr) {
   while (isWhitespace(Ptr[Size])) {
     ++Size;
 
-    if (Ptr[Size-1] != '\n' && Ptr[Size-1] != '\r')
+    if (Ptr[Size - 1] != '\n' && Ptr[Size - 1] != '\r')
       continue;
 
     // If this is a \r\n or \n\r, skip the other half.
-    if ((Ptr[Size] == '\r' || Ptr[Size] == '\n') &&
-        Ptr[Size-1] != Ptr[Size])
+    if ((Ptr[Size] == '\r' || Ptr[Size] == '\n') && Ptr[Size - 1] != Ptr[Size])
       ++Size;
 
     return Size;
@@ -496,7 +495,7 @@ Token Lexer::LexIdentifier(const char *CurPtr) {
   while (isIdentifierBody(C))
     C = *CurPtr++;
 
-  --CurPtr;   // Back up over the skipped character.
+  --CurPtr; // Back up over the skipped character.
 
   const char *IdStart = BufferPtr;
   Token Result = FormTokenWithChars(CurPtr, tok::raw_identifier);
@@ -543,14 +542,14 @@ Token Lexer::LexCharConstant(const char *CurPtr) {
     if (C == '\\')
       C = getAndAdvanceChar(CurPtr);
 
-    if (C == '\n' || C == '\r' ||             // Newline.
-        (C == 0 && CurPtr-1 == BufferEnd)) {  // End of file.
+    if (C == '\n' || C == '\r' ||              // Newline.
+        (C == 0 && CurPtr - 1 == BufferEnd)) { // End of file.
       Diag(BufferPtr, diag::ext_unterminated_char_or_string) << 0;
-      return FormTokenWithChars(CurPtr-1, tok::unknown);
+      return FormTokenWithChars(CurPtr - 1, tok::unknown);
     }
 
     if (C == 0) {
-      NulCharacter = CurPtr-1;
+      NulCharacter = CurPtr - 1;
     }
     C = getAndAdvanceChar(CurPtr);
   }
@@ -578,14 +577,14 @@ Token Lexer::LexStringLiteral(const char *CurPtr) {
     if (C == '\\')
       C = getAndAdvanceChar(CurPtr);
 
-    if (C == '\n' || C == '\r' ||             // Newline.
-        (C == 0 && CurPtr-1 == BufferEnd)) {  // End of file.
+    if (C == '\n' || C == '\r' ||              // Newline.
+        (C == 0 && CurPtr - 1 == BufferEnd)) { // End of file.
       Diag(BufferPtr, diag::ext_unterminated_char_or_string) << 1;
-      return FormTokenWithChars(CurPtr-1, tok::unknown);
+      return FormTokenWithChars(CurPtr - 1, tok::unknown);
     }
 
     if (C == 0) {
-      NulCharacter = CurPtr-1;
+      NulCharacter = CurPtr - 1;
     }
     C = getAndAdvanceChar(CurPtr);
   }
@@ -634,9 +633,7 @@ void Lexer::SkipWhitespace(const char *CurPtr) {
   BufferPtr = CurPtr;
 }
 
-bool Lexer::isCodeCompletionPoint(const char *CurPtr) const {
-  return false;
-}
+bool Lexer::isCodeCompletionPoint(const char *CurPtr) const { return false; }
 
 void Lexer::SkipLineComment(const char *CurPtr) {
   // Scan over the body of the comment.  The common case, when scanning, is that
@@ -649,14 +646,14 @@ void Lexer::SkipLineComment(const char *CurPtr) {
   while (true) {
     C = *CurPtr;
     // Skip over characters in the fast loop.
-    while (C != 0 &&                // Potentially EOF.
-           C != '\n' && C != '\r')  // Newline or DOS-style newline.
+    while (C != 0 &&               // Potentially EOF.
+           C != '\n' && C != '\r') // Newline or DOS-style newline.
       C = *++CurPtr;
 
     const char *NextLine = CurPtr;
     if (C != 0) {
       // We found a newline, see if it's escaped.
-      const char *EscapePtr = CurPtr-1;
+      const char *EscapePtr = CurPtr - 1;
       bool HasSpace = false;
       while (isHorizontalWhitespace(*EscapePtr)) { // Skip whitespace.
         --EscapePtr;
@@ -683,7 +680,7 @@ void Lexer::SkipLineComment(const char *CurPtr) {
 
     // If we only read only one character, then no special handling is needed.
     // We're done and can skip forward to the newline.
-    if (C != 0 && CurPtr == OldPtr+1) {
+    if (C != 0 && CurPtr == OldPtr + 1) {
       CurPtr = NextLine;
       break;
     }
@@ -699,13 +696,13 @@ void Lexer::SkipLineComment(const char *CurPtr) {
           // line is also a // comment, but has spaces, don't emit a diagnostic.
           if (isWhitespace(C)) {
             const char *ForwardPtr = CurPtr;
-            while (isWhitespace(*ForwardPtr))  // Skip whitespace.
+            while (isWhitespace(*ForwardPtr)) // Skip whitespace.
               ++ForwardPtr;
             if (ForwardPtr[0] == '/' && ForwardPtr[1] == '/')
               break;
           }
 
-          Diag(OldPtr-1, diag::ext_multi_line_line_comment);
+          Diag(OldPtr - 1, diag::ext_multi_line_line_comment);
           break;
         }
     }
@@ -772,7 +769,7 @@ void Lexer::SkipBlockComment(const char *CurPtr) {
   unsigned CharSize;
   unsigned char C = getCharAndSize(CurPtr, CharSize);
   CurPtr += CharSize;
-  if (C == 0 && CurPtr == BufferEnd+1) {
+  if (C == 0 && CurPtr == BufferEnd + 1) {
     Diag(BufferPtr, diag::err_unterminated_block_comment);
     --CurPtr;
 
@@ -793,13 +790,14 @@ void Lexer::SkipBlockComment(const char *CurPtr) {
       while (C != '/' && ((intptr_t)CurPtr & 0x0F) != 0)
         C = *CurPtr++;
 
-      if (C == '/') goto FoundSlash;
+      if (C == '/')
+        goto FoundSlash;
 
 #ifdef __SSE2__
       __m128i Slashes = _mm_set1_epi8('/');
-      while (CurPtr+16 <= BufferEnd) {
-        int cmp = _mm_movemask_epi8(_mm_cmpeq_epi8(*(const __m128i*)CurPtr,
-                                    Slashes));
+      while (CurPtr + 16 <= BufferEnd) {
+        int cmp = _mm_movemask_epi8(
+            _mm_cmpeq_epi8(*(const __m128i *)CurPtr, Slashes));
         if (cmp != 0) {
           // Adjust the pointer to point directly after the first slash. It's
           // not necessary to set C here, it will be overwritten at the end of
@@ -810,20 +808,15 @@ void Lexer::SkipBlockComment(const char *CurPtr) {
         CurPtr += 16;
       }
 #elif __ALTIVEC__
-      __vector unsigned char Slashes = {
-        '/', '/', '/', '/',  '/', '/', '/', '/',
-        '/', '/', '/', '/',  '/', '/', '/', '/'
-      };
-      while (CurPtr+16 <= BufferEnd &&
-             !vec_any_eq(*(const vector unsigned char*)CurPtr, Slashes))
+      __vector unsigned char Slashes = {'/', '/', '/', '/', '/', '/', '/', '/',
+                                        '/', '/', '/', '/', '/', '/', '/', '/'};
+      while (CurPtr + 16 <= BufferEnd &&
+             !vec_any_eq(*(const vector unsigned char *)CurPtr, Slashes))
         CurPtr += 16;
 #else
       // Scan for '/' quickly.  Many block comments are very large.
-      while (CurPtr[0] != '/' &&
-             CurPtr[1] != '/' &&
-             CurPtr[2] != '/' &&
-             CurPtr[3] != '/' &&
-             CurPtr+4 < BufferEnd) {
+      while (CurPtr[0] != '/' && CurPtr[1] != '/' && CurPtr[2] != '/' &&
+             CurPtr[3] != '/' && CurPtr + 4 < BufferEnd) {
         CurPtr += 4;
       }
 #endif
@@ -837,12 +830,12 @@ void Lexer::SkipBlockComment(const char *CurPtr) {
       C = *CurPtr++;
 
     if (C == '/') {
-  FoundSlash:
-      if (CurPtr[-2] == '*')  // We found the final */.  We're done!
+    FoundSlash:
+      if (CurPtr[-2] == '*') // We found the final */.  We're done!
         break;
 
       if ((CurPtr[-2] == '\n' || CurPtr[-2] == '\r')) {
-        if (isEndOfBlockCommentWithEscapedNewLine(CurPtr-2, this)) {
+        if (isEndOfBlockCommentWithEscapedNewLine(CurPtr - 2, this)) {
           // We found the final */, though it had an escaped newline between the
           // * and /.  We're done!
           break;
@@ -852,9 +845,9 @@ void Lexer::SkipBlockComment(const char *CurPtr) {
         // If this is a /* inside of the comment, emit a warning.  Don't do this
         // if this is a /*/, which will end the comment.  This misses cases with
         // embedded escaped newlines, but oh well.
-        Diag(CurPtr-1, diag::warn_nested_block_comment);
+        Diag(CurPtr - 1, diag::warn_nested_block_comment);
       }
-    } else if (C == 0 && CurPtr == BufferEnd+1) {
+    } else if (C == 0 && CurPtr == BufferEnd + 1) {
       Diag(BufferPtr, diag::err_unterminated_block_comment);
       // Note: the user probably forgot a */.  We could continue immediately
       // after the /*, but this would involve lexing a lot of what really is the
@@ -873,7 +866,7 @@ void Lexer::SkipBlockComment(const char *CurPtr) {
   // efficiently now.  This is safe even in KeepWhitespaceMode because we would
   // have already returned above with the comment as a token.
   if (isHorizontalWhitespace(*CurPtr)) {
-    SkipWhitespace(CurPtr+1);
+    SkipWhitespace(CurPtr + 1);
     return;
   }
 

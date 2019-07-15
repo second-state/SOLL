@@ -4,12 +4,11 @@
 namespace soll {
 namespace tok {
 
-static const char * const TokNames[] = {
+static const char *const TokNames[] = {
 #define TOK(X) #X,
-#define KEYWORD(X,Y) #X,
+#define KEYWORD(X, Y) #X,
 #include "soll/Basic/TokenKinds.def"
-  nullptr
-};
+    nullptr};
 
 const char *getTokenName(TokenKind Kind) {
   if (Kind < tok::NUM_TOKENS)
@@ -20,21 +19,27 @@ const char *getTokenName(TokenKind Kind) {
 
 const char *getPunctuatorSpelling(TokenKind Kind) {
   switch (Kind) {
-#define PUNCTUATOR(X,Y) case X: return Y;
+#define PUNCTUATOR(X, Y)                                                       \
+  case X:                                                                      \
+    return Y;
 #include "soll/Basic/TokenKinds.def"
-  default: break;
+  default:
+    break;
   }
   return nullptr;
 }
 
 const char *getKeywordSpelling(TokenKind Kind) {
   switch (Kind) {
-#define KEYWORD(X,Y) case kw_ ## X: return #X;
+#define KEYWORD(X, Y)                                                          \
+  case kw_##X:                                                                 \
+    return #X;
 #include "soll/Basic/TokenKinds.def"
-    default: break;
+  default:
+    break;
   }
   return nullptr;
 }
 
-}  // namespace tok
-}  // namespace soll
+} // namespace tok
+} // namespace soll

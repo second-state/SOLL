@@ -115,9 +115,7 @@ class IdentifierTable {
 public:
   explicit IdentifierTable() : HashTable(8192) {}
 
-  llvm::BumpPtrAllocator& getAllocator() {
-    return HashTable.getAllocator();
-  }
+  llvm::BumpPtrAllocator &getAllocator() { return HashTable.getAllocator(); }
 
   /// Return the identifier token info for the specified named
   /// identifier.
@@ -125,7 +123,8 @@ public:
     auto &Entry = *HashTable.insert(std::make_pair(Name, nullptr)).first;
 
     IdentifierInfo *&II = Entry.second;
-    if (II) return *II;
+    if (II)
+      return *II;
 
     // Lookups failed, make a new IdentifierInfo.
     void *Mem = getAllocator().Allocate<IdentifierInfo>();
@@ -141,7 +140,8 @@ public:
   IdentifierInfo &get(llvm::StringRef Name, tok::TokenKind TokenCode) {
     IdentifierInfo &II = get(Name);
     II.TokenID = TokenCode;
-    assert(II.TokenID == (unsigned) TokenCode && "TokenCode too large");
+    assert(II.TokenID == static_cast<unsigned>(TokenCode) &&
+           "TokenCode too large");
     return II;
   }
 
@@ -177,8 +177,8 @@ public:
   using const_iterator = HashTableTy::const_iterator;
 
   iterator begin() const { return HashTable.begin(); }
-  iterator end() const   { return HashTable.end(); }
-  unsigned size() const  { return HashTable.size(); }
+  iterator end() const { return HashTable.end(); }
+  unsigned size() const { return HashTable.size(); }
 
   /// Print some statistics to stderr that indicate how well the
   /// hashing is doing.

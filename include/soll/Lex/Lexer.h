@@ -15,8 +15,8 @@ class SourceManager;
 
 class Lexer {
   DiagnosticsEngine &Diags;
-  FileManager       &FileMgr;
-  SourceManager     &SourceMgr;
+  FileManager &FileMgr;
+  SourceManager &SourceMgr;
   const char *BufferStart;
   const char *BufferEnd;
   SourceLocation FileLoc;
@@ -24,8 +24,7 @@ class Lexer {
   mutable IdentifierTable Identifiers;
 
 public:
-  Lexer(FileID FID, const llvm::MemoryBuffer *FromFile,
-        SourceManager &SM);
+  Lexer(FileID FID, const llvm::MemoryBuffer *FromFile, SourceManager &SM);
 
   Lexer(const Lexer &) = delete;
   Lexer &operator=(const Lexer &) = delete;

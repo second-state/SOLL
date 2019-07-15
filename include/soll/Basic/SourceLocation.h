@@ -68,8 +68,7 @@ public:
   }
 
   void *getPtrEncoding() const {
-    return reinterpret_cast<void *>(
-        static_cast<uintptr_t>(getRawEncoding()));
+    return reinterpret_cast<void *>(static_cast<uintptr_t>(getRawEncoding()));
   }
   static SourceLocation getFromPtrEncoding(const void *Encoding) {
     return getFromRawEncoding(
@@ -109,13 +108,9 @@ public:
   bool isValid() const { return B.isValid() && E.isValid(); }
   bool isInvalid() const { return !isValid(); }
 
-  bool operator==(const SourceRange &X) const {
-    return B == X.B && E == X.E;
-  }
+  bool operator==(const SourceRange &X) const { return B == X.B && E == X.E; }
 
-  bool operator!=(const SourceRange &X) const {
-    return B != X.B || E != X.E;
-  }
+  bool operator!=(const SourceRange &X) const { return B != X.B || E != X.E; }
 
   void print(llvm::raw_ostream &OS, const SourceManager &SM) const;
   std::string printToString(const SourceManager &SM) const;
@@ -208,9 +203,10 @@ public:
       : SourceLocation(Loc), SrcMgr(&SM) {}
 
   bool hasManager() const {
-      bool hasSrcMgr =  SrcMgr != nullptr;
-      assert(hasSrcMgr == isValid() && "FullSourceLoc has location but no manager");
-      return hasSrcMgr;
+    bool hasSrcMgr = SrcMgr != nullptr;
+    assert(hasSrcMgr == isValid() &&
+           "FullSourceLoc has location but no manager");
+    return hasSrcMgr;
   }
 
   /// \pre This FullSourceLoc has an associated SourceManager.
@@ -271,7 +267,7 @@ public:
 
   /// Comparison function class, useful for sorting FullSourceLocs.
   struct BeforeThanCompare {
-    bool operator()(const FullSourceLoc& lhs, const FullSourceLoc& rhs) const {
+    bool operator()(const FullSourceLoc &lhs, const FullSourceLoc &rhs) const {
       return lhs.isBeforeInTranslationUnitThan(rhs);
     }
   };
@@ -281,18 +277,15 @@ public:
   /// This is useful for debugging.
   void dump() const;
 
-  friend bool
-  operator==(const FullSourceLoc &LHS, const FullSourceLoc &RHS) {
+  friend bool operator==(const FullSourceLoc &LHS, const FullSourceLoc &RHS) {
     return LHS.getRawEncoding() == RHS.getRawEncoding() &&
-          LHS.SrcMgr == RHS.SrcMgr;
+           LHS.SrcMgr == RHS.SrcMgr;
   }
 
-  friend bool
-  operator!=(const FullSourceLoc &LHS, const FullSourceLoc &RHS) {
+  friend bool operator!=(const FullSourceLoc &LHS, const FullSourceLoc &RHS) {
     return !(LHS == RHS);
   }
 };
-
 
 } // namespace soll
 

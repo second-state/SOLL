@@ -20,7 +20,6 @@ public:
   SourceManager &SourceMgr;
 
   Sema(Lexer &lexer, ASTContext &ctxt, ASTConsumer &consumer);
-
 };
 
 } // namespace soll
