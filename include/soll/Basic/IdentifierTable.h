@@ -9,7 +9,7 @@ class IdentifierInfo {
   friend class IdentifierTable;
 
   // Front-end token ID or tok::identifier.
-  unsigned TokenID : 9;
+  unsigned TokenID : 13;
 
   // True if the identifier is a keyword in a newer or proposed Standard.
   bool IsFutureCompatKeyword : 1;
@@ -183,6 +183,8 @@ public:
   /// Print some statistics to stderr that indicate how well the
   /// hashing is doing.
   void PrintStats() const;
+
+  void AddKeywords();
 };
 
 } // namespace soll

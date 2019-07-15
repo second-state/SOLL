@@ -29,6 +29,8 @@ public:
   Lexer(const Lexer &) = delete;
   Lexer &operator=(const Lexer &) = delete;
 
+  void Initialize() { Identifiers.AddKeywords(); }
+
   DiagnosticsEngine &getDiagnostics() const { return Diags; }
   FileManager &getFileManager() const { return FileMgr; }
   SourceManager &getSourceManager() const { return SourceMgr; }
@@ -61,11 +63,10 @@ private:
   }
 
   static constexpr bool isObviouslySimpleCharacter(char C) {
-    return C != '?' && C != '\\';
+    return C != '\\';
   }
 
   inline char getAndAdvanceChar(const char *&Ptr) {
-    // If this is not a UCN or escaped newline, return quickly.
     if (isObviouslySimpleCharacter(Ptr[0]))
       return *Ptr++;
 
@@ -76,20 +77,15 @@ private:
   }
 
   const char *ConsumeChar(const char *Ptr, unsigned Size) {
-    // Normal case, we consumed exactly one token.  Just return it.
     if (Size == 1)
       return Ptr + Size;
 
-    // Otherwise, re-lex the character with a current token, allowing
-    // diagnostics to be emitted and flags to be set.
     Size = 0;
     getCharAndSizeSlow(Ptr, Size);
     return Ptr + Size;
   }
 
   inline char getCharAndSize(const char *Ptr, unsigned &Size) {
-    // If this is not a trigraph and not a UCN or escaped newline, return
-    // quickly.
     if (isObviouslySimpleCharacter(Ptr[0])) {
       Size = 1;
       return *Ptr;
