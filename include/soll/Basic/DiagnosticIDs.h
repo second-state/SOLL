@@ -72,9 +72,7 @@ class DiagnosticsEngine;
 
 class DiagnosticIDs : public llvm::RefCountedBase<DiagnosticIDs> {
 public:
-  enum Level {
-    Ignored, Note, Remark, Warning, Error, Fatal
-  };
+  enum Level { Ignored, Note, Remark, Warning, Error, Fatal };
 
 private:
   DiagnosticIDs::Level

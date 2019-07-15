@@ -39,29 +39,19 @@ public:
     return is(K1) || isOneOf(K2, Ks...);
   }
 
-  bool isAnyIdentifier() const {
-    return tok::isAnyIdentifier(getKind());
-  }
+  bool isAnyIdentifier() const { return tok::isAnyIdentifier(getKind()); }
 
-  bool isLiteral() const {
-    return tok::isLiteral(getKind());
-  }
+  bool isLiteral() const { return tok::isLiteral(getKind()); }
 
   SourceLocation getLocation() const {
     return SourceLocation::getFromRawEncoding(Loc);
   }
   void setLocation(SourceLocation L) { Loc = L.getRawEncoding(); }
 
-  unsigned getLength() const {
-    return Length;
-  }
-  void setLength(unsigned Len) {
-    Length = Len;
-  }
+  unsigned getLength() const { return Length; }
+  void setLength(unsigned Len) { Length = Len; }
 
-  SourceLocation getLastLoc() const {
-    return getLocation();
-  }
+  SourceLocation getLastLoc() const { return getLocation(); }
 
   SourceLocation getEndLoc() const {
     return getLocation().getLocWithOffset(getLength());
@@ -72,30 +62,33 @@ public:
   IdentifierInfo *getIdentifierInfo() const {
     assert(isNot(tok::raw_identifier) &&
            "getIdentifierInfo() on a tok::raw_identifier token!");
-    if (isLiteral()) return nullptr;
-    if (is(tok::eof)) return nullptr;
-    return reinterpret_cast<IdentifierInfo*>(PtrData);
+    if (isLiteral())
+      return nullptr;
+    if (is(tok::eof))
+      return nullptr;
+    return reinterpret_cast<IdentifierInfo *>(PtrData);
   }
   void setIdentifierInfo(IdentifierInfo *II) {
-    PtrData = reinterpret_cast<void*>(II);
+    PtrData = reinterpret_cast<void *>(II);
   }
 
   llvm::StringRef getRawIdentifier() const {
     assert(is(tok::raw_identifier));
-    return llvm::StringRef(reinterpret_cast<const char *>(PtrData), getLength());
+    return llvm::StringRef(reinterpret_cast<const char *>(PtrData),
+                           getLength());
   }
   void setRawIdentifierData(const char *Ptr) {
     assert(is(tok::raw_identifier));
-    PtrData = const_cast<char*>(Ptr);
+    PtrData = const_cast<char *>(Ptr);
   }
 
   const char *getLiteralData() const {
     assert(isLiteral() && "Cannot get literal data of non-literal");
-    return reinterpret_cast<const char*>(PtrData);
+    return reinterpret_cast<const char *>(PtrData);
   }
   void setLiteralData(const char *Ptr) {
     assert(isLiteral() && "Cannot set literal data of non-literal");
-    PtrData = const_cast<char*>(Ptr);
+    PtrData = const_cast<char *>(Ptr);
   }
 };
 

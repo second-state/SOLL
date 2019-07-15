@@ -19,15 +19,12 @@ inline bool isAnyIdentifier(TokenKind K) {
   return (K == tok::identifier) || (K == tok::raw_identifier);
 }
 
-inline bool isStringLiteral(TokenKind K) {
-  return K == tok::string_literal;
-}
+inline bool isStringLiteral(TokenKind K) { return K == tok::string_literal; }
 
 inline bool isLiteral(TokenKind K) {
   return K == tok::numeric_constant || K == tok::char_constant ||
          isStringLiteral(K);
 }
 
-
-}  // namespace tok
-}  // namespace soll
+} // namespace tok
+} // namespace soll

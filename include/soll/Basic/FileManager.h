@@ -62,8 +62,8 @@ class FileManager : public llvm::RefCountedBase<FileManager> {
   std::map<llvm::sys::fs::UniqueID, DirectoryEntry> UniqueRealDirs;
   std::map<llvm::sys::fs::UniqueID, FileEntry> UniqueRealFiles;
 
-  llvm::StringMap<DirectoryEntry*, llvm::BumpPtrAllocator> SeenDirEntries;
-  llvm::StringMap<FileEntry*, llvm::BumpPtrAllocator> SeenFileEntries;
+  llvm::StringMap<DirectoryEntry *, llvm::BumpPtrAllocator> SeenDirEntries;
+  llvm::StringMap<FileEntry *, llvm::BumpPtrAllocator> SeenFileEntries;
 
   unsigned NextFileUID;
   unsigned NumDirLookups = 0, NumFileLookups = 0;

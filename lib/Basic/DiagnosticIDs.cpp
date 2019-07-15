@@ -1,6 +1,6 @@
+#include "soll/Basic/DiagnosticIDs.h"
 #include "soll/Basic/AllDiagnostics.h"
 #include "soll/Basic/Diagnostic.h"
-#include "soll/Basic/DiagnosticIDs.h"
 
 namespace {
 
@@ -81,23 +81,23 @@ static const StaticDiagInfoRec *GetDiagInfo(unsigned DiagID) {
 
   unsigned Offset = 0;
   unsigned ID = DiagID - DIAG_START_COMMON - 1;
-#define CATEGORY(NAME, PREV) \
-  if (DiagID > DIAG_START_##NAME) { \
-    Offset += NUM_BUILTIN_##PREV##_DIAGNOSTICS - DIAG_START_##PREV - 1; \
-    ID -= DIAG_START_##NAME - DIAG_START_##PREV; \
+#define CATEGORY(NAME, PREV)                                                   \
+  if (DiagID > DIAG_START_##NAME) {                                            \
+    Offset += NUM_BUILTIN_##PREV##_DIAGNOSTICS - DIAG_START_##PREV - 1;        \
+    ID -= DIAG_START_##NAME - DIAG_START_##PREV;                               \
   }
-CATEGORY(LEX, COMMON)
-//CATEGORY(DRIVER, COMMON)
-//CATEGORY(FRONTEND, DRIVER)
-//CATEGORY(SERIALIZATION, FRONTEND)
-//CATEGORY(LEX, SERIALIZATION)
-//CATEGORY(PARSE, LEX)
-//CATEGORY(AST, PARSE)
-//CATEGORY(COMMENT, AST)
-//CATEGORY(CROSSTU, COMMENT)
-//CATEGORY(SEMA, CROSSTU)
-//CATEGORY(ANALYSIS, SEMA)
-//CATEGORY(REFACTORING, ANALYSIS)
+  CATEGORY(LEX, COMMON)
+// CATEGORY(DRIVER, COMMON)
+// CATEGORY(FRONTEND, DRIVER)
+// CATEGORY(SERIALIZATION, FRONTEND)
+// CATEGORY(LEX, SERIALIZATION)
+// CATEGORY(PARSE, LEX)
+// CATEGORY(AST, PARSE)
+// CATEGORY(COMMENT, AST)
+// CATEGORY(CROSSTU, COMMENT)
+// CATEGORY(SEMA, CROSSTU)
+// CATEGORY(ANALYSIS, SEMA)
+// CATEGORY(REFACTORING, ANALYSIS)
 #undef CATEGORY
 
   if (ID + Offset >= StaticDiagInfoSize)
@@ -150,14 +150,14 @@ DiagnosticIDs::getDiagnosticSeverity(unsigned DiagID, SourceLocation Loc,
   assert(getBuiltinDiagClass(DiagID) != CLASS_NOTE);
 
   switch (getBuiltinDiagClass(DiagID)) {
-    case CLASS_REMARK:
-      return diag::Severity::Remark;
-    case CLASS_EXTENSION:
-    case CLASS_WARNING:
-      return diag::Severity::Warning;
-    case CLASS_ERROR:
-    default:
-      return diag::Severity::Error;
+  case CLASS_REMARK:
+    return diag::Severity::Remark;
+  case CLASS_EXTENSION:
+  case CLASS_WARNING:
+    return diag::Severity::Warning;
+  case CLASS_ERROR:
+  default:
+    return diag::Severity::Error;
   }
 }
 
@@ -167,8 +167,8 @@ bool DiagnosticIDs::ProcessDiag(DiagnosticsEngine &Diag) const {
   assert(Diag.getClient() && "DiagnosticClient not set!");
 
   unsigned DiagID = Info.getID();
-  DiagnosticIDs::Level DiagLevel
-    = getDiagnosticLevel(DiagID, Info.getLocation(), Diag);
+  DiagnosticIDs::Level DiagLevel =
+      getDiagnosticLevel(DiagID, Info.getLocation(), Diag);
 
   EmitDiag(Diag, DiagLevel);
   return true;
@@ -176,7 +176,8 @@ bool DiagnosticIDs::ProcessDiag(DiagnosticsEngine &Diag) const {
 
 void DiagnosticIDs::EmitDiag(DiagnosticsEngine &Diag, Level DiagLevel) const {
   Diagnostic Info(&Diag);
-  assert(DiagLevel != DiagnosticIDs::Ignored && "Cannot emit ignored diagnostics!");
+  assert(DiagLevel != DiagnosticIDs::Ignored &&
+         "Cannot emit ignored diagnostics!");
 
   Diag.Client->HandleDiagnostic(
       static_cast<DiagnosticsEngine::Level>(DiagLevel), Info);

@@ -8,6 +8,7 @@ class TextDiagnosticPrinter : public DiagnosticConsumer {
   llvm::raw_ostream &OS;
   llvm::IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts;
   bool OwnsOutputStream;
+
 public:
   TextDiagnosticPrinter(llvm::raw_ostream &os, DiagnosticOptions *diags,
                         bool OwnsOutputStream = false);

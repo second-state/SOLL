@@ -15,8 +15,7 @@ public:
       : Out(Out ? *Out : llvm::outs()), OwnedOut(std::move(Out)), OutputKind(K),
         FilterString(FilterString), DumpLookups(DumpLookups) {}
 
-  void HandleTranslationUnit(ASTContext &Context) override {
-  }
+  void HandleTranslationUnit(ASTContext &Context) override {}
 
 private:
   llvm::raw_ostream &Out;

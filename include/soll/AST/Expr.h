@@ -1,30 +1,32 @@
 #pragma once
 
-#include "Stmt.h"
-#include "OperationKinds.h"
+#include "soll/AST/OperationKinds.h"
+#include "soll/AST/Stmt.h"
 
 namespace soll {
 
 class Expr : public ExprStmt {
-    // TODO
+  // TODO
 };
 
 class TupleExpr {
-    // TODO
+  // TODO
 };
 
 class UnaryOperator : public Expr {
   StmtPtr Val;
+
 public:
   typedef UnaryOperator Opcode;
-static bool isPostfix(Opcode Op) {
-  return Op == UO_PostInc || Op == UO_PostDec;
-}
+  static bool isPostfix(Opcode Op) {
+    return Op == UO_PostInc || Op == UO_PostDec;
+  }
 };
 
 class BinaryOperator : public Expr {
   enum { LHS, RHS, END };
   StmtPtr SubExprs[END];
+
 public:
   typedef BinaryOperatorKind Opcode;
 };
@@ -57,7 +59,7 @@ class ParenExpr : public Expr {
   Stmt *Val;
 };
 
-class ConstantExpr : public Expr{
+class ConstantExpr : public Expr {
   // TODO
 };
 
@@ -73,4 +75,4 @@ class Literal : public Expr {
   // TODO
 };
 
-}
+} // namespace soll

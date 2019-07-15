@@ -69,7 +69,6 @@ const SrcMgr::SLocEntry *SourceManager::loadSLocEntry(unsigned Index) const {
   return &LoadedSLocEntryTable[Index];
 }
 
-
 FileID SourceManager::getPreviousFileID(FileID FID) const {
   if (FID.isInvalid())
     return FileID();
