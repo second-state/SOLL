@@ -52,6 +52,7 @@ LexNextToken:
     ++CurPtr;
     while ((*CurPtr == ' ') || (*CurPtr == '\t'))
       ++CurPtr;
+    BufferPtr = CurPtr;
   }
 
   unsigned SizeTmp, SizeTmp2;
@@ -502,7 +503,7 @@ Token Lexer::LexIdentifier(const char *CurPtr) {
   Result.setRawIdentifierData(IdStart);
 
   {
-    IdentifierInfo *II = &Identifiers.get(IdStart);
+    IdentifierInfo *II = &Identifiers.get(llvm::StringRef(IdStart, Result.getLength()));
     Result.setIdentifierInfo(II);
     Result.setKind(II->getTokenID());
   }

@@ -59,6 +59,7 @@ void CompilerInstance::createLexer(FileID FID) {
   const llvm::MemoryBuffer *InputFile = SourceMgr->getBuffer(FID);
 
   TheLexer = std::make_unique<Lexer>(FID, InputFile, *SourceMgr);
+  TheLexer->Initialize();
 }
 
 FileManager *CompilerInstance::createFileManager() {
