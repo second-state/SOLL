@@ -5,9 +5,12 @@
 
 namespace soll {
 
+class Expr;
+
 class Stmt {};
 
 using StmtPtr = std::unique_ptr<Stmt>;
+using ExprPtr = std::unique_ptr<Expr>;
 
 class DeclStmt : public Stmt {};
 
@@ -18,9 +21,17 @@ class Block : public Stmt {
 };
 
 class IfStmt : public Stmt {
-  StmtPtr m_condition;
-  StmtPtr m_trueBody;
-  StmtPtr m_falseBody; ///< "else" part, optional
+  ExprPtr Condition;
+	StmtPtr TrueBody;
+	StmtPtr FalseBody; ///< "else" part, optional
+
+  const Expr *getCond() const {
+      return Condition.get();
+  }
+
+  void setCond(ExprPtr Cond) {
+    // TODO
+  }
 };
 
 class BreakableStmt : public Stmt {};
