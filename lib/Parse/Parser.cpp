@@ -4,21 +4,6 @@
 
 namespace soll {
 
-static void convert_tok(llvm::Optional<Token> &Tok) {
-  if (Tok->getKind() == tok::identifier) {
-    if (Tok->getIdentifierInfo()->getName().find("contract") !=
-        llvm::StringLiteral::npos) {
-      Tok->setKind(tok::kw_contract);
-    } else if (Tok->getIdentifierInfo()->getName().find("function") !=
-               llvm::StringLiteral::npos) {
-      Tok->setKind(tok::kw_function);
-    } else if (Tok->getIdentifierInfo()->getName().find("is") !=
-               llvm::StringLiteral::npos) {
-      Tok->setKind(tok::kw_is);
-    }
-  }
-}
-
 Parser::Parser(Lexer &lexer) : TheLexer(lexer) {}
 
 std::shared_ptr<AST> Parser::parse() {
@@ -26,9 +11,7 @@ std::shared_ptr<AST> Parser::parse() {
   std::vector<std::shared_ptr<AST>> Nodes;
 
   while ((CurTok = TheLexer.Lex())->isNot(tok::eof)) {
-
-    convert_tok(CurTok);
-
+    //printf("%s\n", CurTok->getName());
     tok::TokenKind Kind = CurTok->getKind();
     switch (Kind) {
     case tok::kw_pragma:
@@ -56,7 +39,6 @@ std::shared_ptr<AST> Parser::parseContractDefinition(tok::TokenKind Kind) {
   printf("Contract: %s\n", name);
 
   CurTok = TheLexer.Lex();
-  convert_tok(CurTok);
   if (CurTok->getKind() == tok::kw_is) {
     do {
       CurTok = TheLexer.Lex();
@@ -70,7 +52,6 @@ std::shared_ptr<AST> Parser::parseContractDefinition(tok::TokenKind Kind) {
     //if (CurTok->getKind() == tok::identifier)
     //  printf("%s %s %s\n", tok::getTokenName(CurTok->getKind()),
     //         CurTok->getIdentifierInfo()->getName().str().c_str(), CurTok->getLiteralData());
-    convert_tok(CurTok);
     tok::TokenKind Kind = CurTok->getKind();
     if (Kind == tok::r_brace) {
       break;
