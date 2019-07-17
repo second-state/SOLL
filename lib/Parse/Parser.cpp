@@ -35,8 +35,6 @@ std::shared_ptr<AST> Parser::parse() {
   return nullptr;
 }
 
-
-
 std::shared_ptr<AST> Parser::parsePragmaDirective() {
   // pragma anything* ;
   // Currently supported:
@@ -47,32 +45,36 @@ std::shared_ptr<AST> Parser::parsePragmaDirective() {
   do {
     tok::TokenKind Kind = CurTok->getKind();
     if (Kind == tok::unknown)
-      printf("Token incompatible with Solidity parser as part of pragma "
-             "directive.");
+      printf("Solidity Error: Token incompatible with Solidity parser as part "
+             "of pragma directive.");
     else if (Kind == tok::caret) {
       // [TODO] Fix tok::caret no literal, but not sure what means
-      // Pattern not match Solidity | Solidity | ^ | 0.5 | .0
-      //                   Soll       Solidity | 0.5.0
-    }
-    else {
-      std::string literal = CurTok->isLiteral() ? getLiteral(CurTok).str() : CurTok->getIdentifierInfo()->getName().str();
+      // Pattern not match Solidity : Solidity | ^ | 0.5 | .0 |
+      //                   Soll     : Solidity | 0.5.0
+    } else {
+      std::string literal = CurTok->isLiteral()
+                                ? getLiteral(CurTok).str()
+                                : CurTok->getIdentifierInfo()->getName().str();
       printf("%s\n", literal.c_str());
       Literals.push_back(literal);
       Tokens.push_back(CurTok);
     }
     CurTok = TheLexer.Lex();
   } while (!CurTok->isOneOf(tok::semi, tok::eof));
-  // [TODO] : Implement version recognize and compare. ref: parsePragmaVersion
+  // [TODO] Implement version recognize and compare. ref: parsePragmaVersion
   return nullptr;
 }
 
 std::shared_ptr<AST> Parser::parseContractDefinition(tok::TokenKind Kind) {
-  const char *name = nullptr;
-  std::vector<std::shared_ptr<AST>> SubNodes;
 
+  printf("Contract kind: %s\n", tok::getTokenName(Kind));
+
+  std::shared_ptr<std::string> name = nullptr;
+  std::vector<std::shared_ptr<AST>> SubNodes;
   llvm::Optional<Token> CurTok = TheLexer.Lex();
-  name = CurTok->getIdentifierInfo()->getName().str().c_str();
-  printf("Contract: %s\n", name);
+  name = std::make_shared<std::string>(
+      CurTok->getIdentifierInfo()->getName().str());
+  printf("Contract: %s\n", name->c_str());
 
   CurTok = TheLexer.Lex();
   if (CurTok->getKind() == tok::kw_is) {
@@ -80,23 +82,34 @@ std::shared_ptr<AST> Parser::parseContractDefinition(tok::TokenKind Kind) {
       CurTok = TheLexer.Lex();
       printf("Inheritance: %s\n",
              CurTok->getIdentifierInfo()->getName().str().c_str());
-      // baseContracts.push_back(parseInheritanceSpecifier());
+      // [TODO] update vector<InheritanceSpecifier> baseContracts
     } while ((CurTok = TheLexer.Lex())->is(tok::comma));
   }
 
   while (true) {
-    // if (CurTok->getKind() == tok::identifier)
-    //  printf("%s %s %s\n", tok::getTokenName(CurTok->getKind()),
-    //         CurTok->getIdentifierInfo()->getName().str().c_str(),
-    //         CurTok->getLiteralData());
     tok::TokenKind Kind = CurTok->getKind();
     if (Kind == tok::r_brace) {
       break;
     }
     if (Kind == tok::kw_function) {
       SubNodes.push_back(parseFunctionDefinitionOrFunctionTypeStateVariable());
-    }
-
+    } else if (Kind == tok::kw_struct) {
+      // [TODO] contract tok::kw_struct
+    } else if (Kind == tok::kw_enum) {
+      // [TODO] contract tok::kw_enum
+    } else if (Kind == tok::identifier || Kind == tok::kw_mapping ||
+               true // TokenTraits::isElementaryTypeName(currentTokenValue)
+    ) {
+      // [TODO] contract tok::identifier, tok::kw_mapping, tok::/type keywords/
+    } else if (Kind == tok::kw_modifier) {
+      // [TODO] contract tok::kw_modifier
+    } else if (Kind == tok::kw_event) {
+      // [TODO] contract tok::kw_event
+    } else if (Kind == tok::kw_using) {
+      // [TODO]  contract tok::kw_using
+    } else
+      printf("Solidity Error: Function, variable, struct or modifier "
+             "declaration expected.");
     CurTok = TheLexer.Lex();
   }
   return nullptr;
@@ -108,7 +121,7 @@ Parser::parseFunctionHeader(bool _forceEmptyName, bool _allowModifiers) {
 
   result.isConstructor = false;
 
-  // now lexer not support contructor keyword
+  // [TODO] lexer not support contructor keyword, only pure function case
 
   llvm::Optional<Token> CurTok = TheLexer.Lex();
 
@@ -120,6 +133,24 @@ Parser::parseFunctionHeader(bool _forceEmptyName, bool _allowModifiers) {
     result.name = std::make_shared<std::string>(
         CurTok->getIdentifierInfo()->getName().str());
   printf("Function: %s\n", result.name->c_str());
+
+  /*
+  while (true){
+    CurTok = TheLexer.Lex();
+    if (_allowModifiers && token == tok::identifier) {
+      // If the name is empty (and this is not a constructor),
+      // then this can either be a modifier (fallback function declaration)
+      // or the name of the state variable (function type name plus variable).
+      if ((result.name->empty() && !result.isConstructor) &&
+          (m_scanner->peekNextToken() == Token::Semicolon ||
+           m_scanner->peekNextToken() == Token::Assign))
+        // Variable declaration, break here.
+        break;
+      else
+        result.modifiers.push_back(parseModifierInvocation());
+    }
+  }
+  */
 
   return result;
 }
