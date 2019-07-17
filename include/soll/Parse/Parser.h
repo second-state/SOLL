@@ -20,6 +20,8 @@ private:
   };
 
 public:
+  //void parsePragmaVersion(langutil::SourceLocation const& _location, std::vector<Token> const& _tokens, std::vector<std::string> const& _literals);
+  std::shared_ptr<AST> parsePragmaDirective();
   std::shared_ptr<AST> parseContractDefinition(tok::TokenKind);
   FunctionHeaderParserResult parseFunctionHeader(bool _forceEmptyName,
                                                  bool _allowModifiers);
