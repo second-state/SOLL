@@ -21,17 +21,21 @@ class Block : public Stmt {
 };
 
 class IfStmt : public Stmt {
-  ExprPtr Condition;
-	StmtPtr TrueBody;
-	StmtPtr FalseBody; ///< "else" part, optional
+  ExprPtr Cond;
+	StmtPtr Then;
+	StmtPtr Else; /// optional
 
-  const Expr *getCond() const {
-      return Condition.get();
-  }
+public:
 
-  void setCond(ExprPtr Cond) {
-    // TODO
-  }
+  IfStmt(ExprPtr Cond, StmtPtr Then, StmtPtr Else): Cond(Cond), Then(Then), Else(Else) {}
+  
+  const Expr *getCond() const { return Cond.get(); }
+  const Stmt *getThen() const { return Then.get(); }
+  const Stmt *getElse() const { return Else.get(); }
+
+  void setCond(ExprPtr &&Cond) { this->Cond = std::move(Cond); }
+  void setThen(StmtPtr &&Then) { this->Then = std::move(Then); }
+  void setElse(StmtPtr &&Else) { this->Else = std::move(Else); }
 };
 
 class BreakableStmt : public Stmt {};
