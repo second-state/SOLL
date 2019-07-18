@@ -56,6 +56,9 @@ public:
     return isIncrementDecrementOp(getOpcode());
   }
   bool isArithmeticOp() const { return isArithmeticOp(getOpcode()); }
+
+  void accept(StmtVisitor &visitor) override;
+  void accept(ConstStmtVisitor &visitor) const override;
 };
 
 class BinaryOperator : public Expr {
@@ -123,6 +126,9 @@ public:
     return isCompoundAssignmentOp(getOpcode());
   }
   bool isShiftAssignOp() const { return isShiftAssignOp(getOpcode()); }
+
+  void accept(StmtVisitor &visitor) override;
+  void accept(ConstStmtVisitor &visitor) const override;
 };
 
 class CallExpr : public Expr {
@@ -189,6 +195,9 @@ public:
   Identifier(std::string &&Name) : name(Name) {}
   void setName(std::string &&Name) { name = Name; }
   std::string getName() const { return name; }
+public:
+  void accept(StmtVisitor &visitor) override;
+  void accept(ConstStmtVisitor &visitor) const override;
 };
 
 class ElementaryTypeNameExpr : public Expr {
@@ -201,6 +210,8 @@ public:
   BooleanLiteral(bool val) : value(val) {}
   void setValue(bool val) { value = val; }
   bool getValue() const { return value; }
+  void accept(StmtVisitor &visitor) override;
+  void accept(ConstStmtVisitor &visitor) const override;
 };
 
 class StringLiteral : public Expr {
@@ -209,6 +220,9 @@ public:
   StringLiteral(std::string &&val) : value(val) {}
   void setValue(std::string &&val) { value = val; }
   std::string getValue() const { return value; }
+
+  void accept(StmtVisitor &visitor) override;
+  void accept(ConstStmtVisitor &visitor) const override;
 };
 
 // solidity NumberLiteral support 256bit operation, Boost library should be used.
@@ -218,7 +232,8 @@ public:
   NumberLiteral(int val) : value(val) {}
   void setValue(int val) { value = val; }
   int getValue() const { return value; }
+  void accept(StmtVisitor &visitor) override;
+  void accept(ConstStmtVisitor &visitor) const override;
 };
-
 
 } // namespace soll

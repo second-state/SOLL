@@ -5,11 +5,17 @@
 #include <memory>
 #include <vector>
 
+#include "soll/AST/StmtVisitor.h"
+
 namespace soll {
 
 class Expr;
 
-class Stmt {};
+class Stmt {
+public:
+  virtual void accept(StmtVisitor &visitor) = 0;
+  virtual void accept(ConstStmtVisitor &visitor) const = 0;
+};
 
 using StmtPtr = std::unique_ptr<Stmt>;
 using ExprPtr = std::unique_ptr<Expr>;
