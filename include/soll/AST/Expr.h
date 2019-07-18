@@ -8,6 +8,9 @@ namespace soll {
 
 class Expr : public ExprStmt {
   // TODO
+public:
+  virtual SourceLocation getBeginLoc() const = 0;
+  virtual SourceLocation getEndLoc() const = 0;
 };
 
 using ExprPtr = std::unique_ptr<Expr>;
@@ -22,13 +25,13 @@ class UnaryOperator : public Expr {
 public:
   typedef UnaryOperatorKind Opcode;
 
-  UnaryOperator(ExprPtr && val, Opcode opc): Val(val), Opc(opc) {}
+  UnaryOperator(ExprPtr && val, Opcode opc): Val(std::move(val)), Opc(opc) {}
 
-  Opcode getOpcode() const { return Op; }
+  Opcode getOpcode() const { return Opc; }
   Expr *getSubExpr() const { return Val.get(); }
 
   void setOpcode(Opcode Opc) { this->Opc = Opc; }
-  void setSubExpr(ExprPtr &&E) { Val = E; }
+  void setSubExpr(ExprPtr &&E) { Val = std::move(E); }
 
   /// isPostfix - Return true if this is a postfix operation, like x++.
   static bool isPostfix(Opcode Op) { return Op == UO_PostInc || Op == UO_PostDec; }
@@ -55,8 +58,8 @@ public:
   typedef BinaryOperatorKind Opcode;
 
   BinaryOperator(ExprPtr &&lhs, ExprPtr &&rhs, Opcode opc): Opc(opc) {
-    SubExprs[LHS] = lhs;
-    SubExprs[RHS] = rhs;
+    SubExprs[LHS] = std::move(lhs);
+    SubExprs[RHS] = std::move(rhs);
   }
 
   Opcode getOpcode() const { return Opc; }
@@ -67,8 +70,8 @@ public:
   SourceLocation getEndLoc() const { return getRHS()->getEndLoc(); }
 
   void setOpcode(Opcode Opc) { this->Opc = Opc; }
-  void setLHS(ExprPtr &&E) { SubExprs[LHS] = E; }
-  void setRHS(ExprPtr &&E) { SubExprs[RHS] = E; }
+  void setLHS(ExprPtr &&E) { SubExprs[LHS] = std::move(E); }
+  void setRHS(ExprPtr &&E) { SubExprs[RHS] = std::move(E); }
 
   static bool isMultiplicativeOp(Opcode Opc) { return Opc >= BO_Mul && Opc <= BO_Rem; }
   static bool isAdditiveOp(Opcode Opc) { return Opc == BO_Add || Opc==BO_Sub; }
@@ -76,7 +79,7 @@ public:
   static bool isBitwiseOp(Opcode Opc) { return Opc >= BO_And && Opc <= BO_Or; }
   static bool isRelationalOp(Opcode Opc) { return Opc >= BO_LT && Opc<=BO_GE; }
   static bool isEqualityOp(Opcode Opc) { return Opc == BO_EQ || Opc == BO_NE; }
-  static bool isComparisonOp(Opcode Opc) { return Opc >= BO_Cmp && Opc<=BO_NE; }
+  static bool isComparisonOp(Opcode Opc) { return Opc >= BO_LT && Opc<=BO_NE; }
   static bool isCommaOp(Opcode Opc) { return Opc == BO_Comma; }
   static bool isLogicalOp(Opcode Opc) { return Opc == BO_LAnd || Opc==BO_LOr; }
   static bool isAssignmentOp(Opcode Opc) { return Opc >= BO_Assign && Opc <= BO_OrAssign; }
