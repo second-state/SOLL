@@ -124,7 +124,7 @@ bool CompilerInstance::Execute(llvm::StringRef filename) {
 
   /*
   Lexer L(id, InputBuffer.get().get());
-  L.Lex();
+  L.CachedLex();
   */
 
   Module->print(llvm::errs(), nullptr);

@@ -45,6 +45,30 @@ DiagnosticBuilder Lexer::Diag(const char *Loc, unsigned DiagID) const {
   return Diags.Report(getSourceLocation(Loc), DiagID);
 }
 
+llvm::Optional<Token> Lexer::PeekAhead(unsigned N) {
+  assert(CachedLexPos + N > CachedTokens.size() && "Confused caching.");
+  for (size_t C = CachedLexPos + N - CachedTokens.size(); C > 0; --C) {
+    if (auto Result = Lex()) {
+      CachedTokens.push_back(*Result);
+    }
+  }
+  if (CachedLexPos + N == CachedTokens.size()) {
+    return CachedTokens.back();
+  }
+  return llvm::None;
+}
+
+llvm::Optional<Token> Lexer::CachedLex() {
+  if (CachedLexPos < CachedTokens.size()) {
+    return CachedTokens[CachedLexPos++];
+  } else if (!CachedTokens.empty()) {
+    CachedTokens.clear();
+    CachedLexPos = 0;
+  }
+
+  return Lex();
+}
+
 llvm::Optional<Token> Lexer::Lex() {
 LexNextToken:
   const char *CurPtr = BufferPtr;

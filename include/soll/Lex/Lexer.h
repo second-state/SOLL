@@ -23,6 +23,10 @@ class Lexer {
   const char *BufferPtr;
   mutable IdentifierTable Identifiers;
 
+  using CachedTokensTy = llvm::SmallVector<Token, 1>;
+  CachedTokensTy CachedTokens;
+  CachedTokensTy::size_type CachedLexPos = 0;
+
 public:
   Lexer(FileID FID, const llvm::MemoryBuffer *FromFile, SourceManager &SM);
 
@@ -47,7 +51,18 @@ public:
 
   SourceLocation getSourceLocation() { return getSourceLocation(BufferPtr); }
 
+  llvm::Optional<Token> LookAhead(unsigned N) {
+    if (CachedLexPos + N < CachedTokens.size())
+      return CachedTokens[CachedLexPos+N];
+    else
+      return PeekAhead(N+1);
+  }
+
+  llvm::Optional<Token> CachedLex();
+
 private:
+  llvm::Optional<Token> PeekAhead(unsigned N);
+
   llvm::Optional<Token> Lex();
 
   llvm::Optional<Token> LexUnicode(uint32_t C, const char *CurPtr);
