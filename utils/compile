@@ -1,0 +1,39 @@
+#!/bin/bash
+
+CLANG=$(command -v clang-8)
+CLANG=${CLANG:-$(command -v clang)}
+WASM_LD=$(command -v wasm-ld-8)
+WASM_LD=${WASM_LD:-$(command -v wasm-ld)}
+
+TARGET="wasm32-unknown-unknown-wasm"
+OUTPUT=()
+VERBOSE=false
+
+while getopts 'vho:' OPT; do
+    case $OPT in
+        v)
+            VERBOSE=true
+            ;;
+        o)
+            OUTPUT=(-o "$OPTARG")
+            ;;
+        h|?)
+            echo "Usage: $0 [-v] [-o OUTPUT] INPUT"
+            exit 1
+            ;;
+    esac
+done
+
+shift $(("$OPTIND" - 1))
+
+run() {
+    if "$VERBOSE"; then
+        for arg in "$@"; do
+            echo -n \""$arg"\"' '
+        done
+        echo
+    fi
+    "$@"
+}
+
+run "$CLANG" --target="$TARGET" -fuse-ld="$WASM_LD" -nostartfiles -nodefaultlibs -Wl,--allow-undefined,--entry=main -Oz "$@" "${OUTPUT[@]}"
