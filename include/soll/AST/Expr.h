@@ -101,7 +101,22 @@ public:
 };
 
 class CallExpr : public Expr {
-  // TODO
+  ExprPtr CalleeExpr;
+	std::vector<ExprPtr> Arguments;
+	std::optional<std::vector<std::string>> Names; // option for named call, such as set({value: 2, key: 3});
+public:
+  CallExpr(ExprPtr &&CalleeExpr, std::vector<ExprPtr> &&Arguments)
+    : CalleeExpr(std::move(CalleeExpr)), 
+      Arguments(std::move(Arguments)) {}
+  CallExpr(ExprPtr &&CalleeExpr, std::vector<ExprPtr> &&Arguments, std::vector<std::string> &&Names)
+    : CalleeExpr(std::move(CalleeExpr)), 
+      Arguments(std::move(Arguments)),
+      Names(Names) {}
+  const Expr *getCalleeExpr() const { return CalleeExpr.get(); }
+  std::vector<const Expr *> getArguments() const { return {Arguments.begin(), Arguments.end()};}
+  const std::vector<std::string> &getNames() const { return Names.value_or(std::vector<std::string>()); }
+
+  bool isNamedCall() { return Names.has_value(); }
 };
 
 class ImplicitCastExpr : public Expr {
