@@ -527,7 +527,8 @@ Token Lexer::LexIdentifier(const char *CurPtr) {
   Result.setRawIdentifierData(IdStart);
 
   {
-    IdentifierInfo *II = &Identifiers.get(llvm::StringRef(IdStart, Result.getLength()));
+    IdentifierInfo *II =
+        &Identifiers.get(llvm::StringRef(IdStart, Result.getLength()));
     Result.setIdentifierInfo(II);
     Result.setKind(II->getTokenID());
   }

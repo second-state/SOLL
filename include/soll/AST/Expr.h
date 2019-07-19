@@ -22,10 +22,11 @@ class TupleExpr {
 class UnaryOperator : public Expr {
   ExprPtr Val;
   UnaryOperatorKind Opc;
+
 public:
   typedef UnaryOperatorKind Opcode;
 
-  UnaryOperator(ExprPtr && val, Opcode opc): Val(std::move(val)), Opc(opc) {}
+  UnaryOperator(ExprPtr &&val, Opcode opc) : Val(std::move(val)), Opc(opc) {}
 
   Opcode getOpcode() const { return Opc; }
   Expr *getSubExpr() const { return Val.get(); }
@@ -34,19 +35,29 @@ public:
   void setSubExpr(ExprPtr &&E) { Val = std::move(E); }
 
   /// isPostfix - Return true if this is a postfix operation, like x++.
-  static bool isPostfix(Opcode Op) { return Op == UO_PostInc || Op == UO_PostDec; }
+  static bool isPostfix(Opcode Op) {
+    return Op == UO_PostInc || Op == UO_PostDec;
+  }
   /// isPrefix - Return true if this is a prefix operation, like --x.
   static bool isPrefix(Opcode Op) { return Op == UO_PreInc || Op == UO_PreDec; }
-  static bool isIncrementOp(Opcode Op) { return Op == UO_PreInc || Op == UO_PostInc; }
-  static bool isDecrementOp(Opcode Op) { return Op == UO_PreDec || Op == UO_PostDec; }
+  static bool isIncrementOp(Opcode Op) {
+    return Op == UO_PreInc || Op == UO_PostInc;
+  }
+  static bool isDecrementOp(Opcode Op) {
+    return Op == UO_PreDec || Op == UO_PostDec;
+  }
   static bool isIncrementDecrementOp(Opcode Op) { return Op <= UO_PreDec; }
-  static bool isArithmeticOp(Opcode Op) { return Op >= UO_Plus && Op <= UO_LNot; }
+  static bool isArithmeticOp(Opcode Op) {
+    return Op >= UO_Plus && Op <= UO_LNot;
+  }
 
   bool isPrefix() const { return isPrefix(getOpcode()); }
   bool isPostfix() const { return isPostfix(getOpcode()); }
   bool isIncrementOp() const { return isIncrementOp(getOpcode()); }
   bool isDecrementOp() const { return isDecrementOp(getOpcode()); }
-  bool isIncrementDecrementOp() const { return isIncrementDecrementOp(getOpcode()); }
+  bool isIncrementDecrementOp() const {
+    return isIncrementDecrementOp(getOpcode());
+  }
   bool isArithmeticOp() const { return isArithmeticOp(getOpcode()); }
 };
 
@@ -54,10 +65,11 @@ class BinaryOperator : public Expr {
   enum { LHS, RHS, END };
   ExprPtr SubExprs[END];
   BinaryOperatorKind Opc;
+
 public:
   typedef BinaryOperatorKind Opcode;
 
-  BinaryOperator(ExprPtr &&lhs, ExprPtr &&rhs, Opcode opc): Opc(opc) {
+  BinaryOperator(ExprPtr &&lhs, ExprPtr &&rhs, Opcode opc) : Opc(opc) {
     SubExprs[LHS] = std::move(lhs);
     SubExprs[RHS] = std::move(rhs);
   }
@@ -73,18 +85,34 @@ public:
   void setLHS(ExprPtr &&E) { SubExprs[LHS] = std::move(E); }
   void setRHS(ExprPtr &&E) { SubExprs[RHS] = std::move(E); }
 
-  static bool isMultiplicativeOp(Opcode Opc) { return Opc >= BO_Mul && Opc <= BO_Rem; }
-  static bool isAdditiveOp(Opcode Opc) { return Opc == BO_Add || Opc==BO_Sub; }
+  static bool isMultiplicativeOp(Opcode Opc) {
+    return Opc >= BO_Mul && Opc <= BO_Rem;
+  }
+  static bool isAdditiveOp(Opcode Opc) {
+    return Opc == BO_Add || Opc == BO_Sub;
+  }
   static bool isShiftOp(Opcode Opc) { return Opc == BO_Shl || Opc == BO_Shr; }
   static bool isBitwiseOp(Opcode Opc) { return Opc >= BO_And && Opc <= BO_Or; }
-  static bool isRelationalOp(Opcode Opc) { return Opc >= BO_LT && Opc<=BO_GE; }
+  static bool isRelationalOp(Opcode Opc) {
+    return Opc >= BO_LT && Opc <= BO_GE;
+  }
   static bool isEqualityOp(Opcode Opc) { return Opc == BO_EQ || Opc == BO_NE; }
-  static bool isComparisonOp(Opcode Opc) { return Opc >= BO_LT && Opc<=BO_NE; }
+  static bool isComparisonOp(Opcode Opc) {
+    return Opc >= BO_LT && Opc <= BO_NE;
+  }
   static bool isCommaOp(Opcode Opc) { return Opc == BO_Comma; }
-  static bool isLogicalOp(Opcode Opc) { return Opc == BO_LAnd || Opc==BO_LOr; }
-  static bool isAssignmentOp(Opcode Opc) { return Opc >= BO_Assign && Opc <= BO_OrAssign; }
-  static bool isCompoundAssignmentOp(Opcode Opc) { return Opc > BO_Assign && Opc <= BO_OrAssign; }
-  static bool isShiftAssignOp(Opcode Opc) { return Opc == BO_ShlAssign || Opc == BO_ShrAssign; }
+  static bool isLogicalOp(Opcode Opc) {
+    return Opc == BO_LAnd || Opc == BO_LOr;
+  }
+  static bool isAssignmentOp(Opcode Opc) {
+    return Opc >= BO_Assign && Opc <= BO_OrAssign;
+  }
+  static bool isCompoundAssignmentOp(Opcode Opc) {
+    return Opc > BO_Assign && Opc <= BO_OrAssign;
+  }
+  static bool isShiftAssignOp(Opcode Opc) {
+    return Opc == BO_ShlAssign || Opc == BO_ShrAssign;
+  }
 
   bool isMultiplicativeOp() const { return isMultiplicativeOp(getOpcode()); }
   bool isAdditiveOp() const { return isAdditiveOp(getOpcode()); }
@@ -96,7 +124,9 @@ public:
   bool isCommaOp() const { return isCommaOp(getOpcode()); }
   bool isLogicalOp() const { return isLogicalOp(getOpcode()); }
   bool isAssignmentOp() const { return isAssignmentOp(getOpcode()); }
-  bool isCompoundAssignmentOp() const { return isCompoundAssignmentOp(getOpcode()); }
+  bool isCompoundAssignmentOp() const {
+    return isCompoundAssignmentOp(getOpcode());
+  }
   bool isShiftAssignOp() const { return isShiftAssignOp(getOpcode()); }
 };
 

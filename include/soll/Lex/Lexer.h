@@ -53,9 +53,9 @@ public:
 
   llvm::Optional<Token> LookAhead(unsigned N) {
     if (CachedLexPos + N < CachedTokens.size())
-      return CachedTokens[CachedLexPos+N];
+      return CachedTokens[CachedLexPos + N];
     else
-      return PeekAhead(N+1);
+      return PeekAhead(N + 1);
   }
 
   llvm::Optional<Token> CachedLex();
@@ -77,9 +77,7 @@ private:
     return Result;
   }
 
-  static constexpr bool isObviouslySimpleCharacter(char C) {
-    return C != '\\';
-  }
+  static constexpr bool isObviouslySimpleCharacter(char C) { return C != '\\'; }
 
   inline char getAndAdvanceChar(const char *&Ptr) {
     if (isObviouslySimpleCharacter(Ptr[0]))

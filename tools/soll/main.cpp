@@ -1,3 +1,4 @@
+#include "soll/AST/Expr.h"
 #include "soll/Frontend/CompilerInstance.h"
 #include "soll/Frontend/CompilerInvocation.h"
 #include <llvm/Support/Process.h>

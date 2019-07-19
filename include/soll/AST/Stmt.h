@@ -22,13 +22,13 @@ class Block : public Stmt {
 
 class IfStmt : public Stmt {
   ExprPtr Cond;
-	StmtPtr Then;
-	StmtPtr Else; /// optional
+  StmtPtr Then;
+  StmtPtr Else; /// optional
 
 public:
+  IfStmt(ExprPtr Cond, StmtPtr Then, StmtPtr Else)
+      : Cond(std::move(Cond)), Then(std::move(Then)), Else(std::move(Else)) {}
 
-  IfStmt(ExprPtr Cond, StmtPtr Then, StmtPtr Else): Cond(std::move(Cond)), Then(std::move(Then)), Else(std::move(Else)) {}
-  
   const Expr *getCond() const { return Cond.get(); }
   const Stmt *getThen() const { return Then.get(); }
   const Stmt *getElse() const { return Else.get(); }
