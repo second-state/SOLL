@@ -156,9 +156,7 @@ public:
   const llvm::Optional<std::vector<std::string>> &getNames() const {
     return Names;
   }
-  llvm::Optional<std::vector<std::string>> &getNames() {
-    return Names;
-  }
+  llvm::Optional<std::vector<std::string>> &getNames() { return Names; }
 
   bool isNamedCall() { return Names.hasValue(); }
 };
