@@ -17,6 +17,10 @@ public:
 
   std::ostream& os() { return OS; }
 
+protected:
+  std::string indent() { return std::string(Level++ << 1, ' '); }
+  void unindent() { --Level; }
+
 private:
   std::ostream& OS;
   int Level;

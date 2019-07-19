@@ -3,18 +3,26 @@
 
 using namespace soll;
 
-void ASTPrinter::visit(const UnaryOperator &) {
-  // TODO: implement
+void ASTPrinter::visit(const UnaryOperator &op) {
+  os() << indent() << "UnaryOperator" << std::endl;
+  ConstStmtVisitor::visit(op);
+  unindent();
 }
 
-void ASTPrinter::visit(const BinaryOperator &) {
-  // TODO: implement
+void ASTPrinter::visit(const BinaryOperator &op) {
+  os() << indent() << "BinaryOperator" << std::endl;
+  ConstStmtVisitor::visit(op);
+  unindent();
 }
 
-void ASTPrinter::visit(const Identifier &) {
-  // TODO: implement
+void ASTPrinter::visit(const Identifier &id) {
+  os() << indent() << "Identifier" << std::endl;
+  ConstStmtVisitor::visit(id);
+  unindent();
 }
 
-void ASTPrinter::visit(const Literal &) {
-  // TODO: implement
+void ASTPrinter::visit(const Literal &literal) {
+  os() << indent() << "Literal" << std::endl;
+  ConstStmtVisitor::visit(literal);
+  unindent();
 }
