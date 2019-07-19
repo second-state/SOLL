@@ -46,7 +46,7 @@ std::shared_ptr<AST> Parser::parsePragmaDirective() {
     CurTok = TheLexer.CachedLex();
     tok::TokenKind Kind = CurTok->getKind();
     if (Kind == tok::unknown)
-      printf("Solidity Error: Token incompatible with Solidity parser as part "
+      assert("Solidity Error: Token incompatible with Solidity parser as part "
              "of pragma directive.");
     else if (Kind == tok::caret) {
       // [TODO] Fix tok::caret no literal, but not sure what means
@@ -56,7 +56,7 @@ std::shared_ptr<AST> Parser::parsePragmaDirective() {
       std::string literal = CurTok->isLiteral()
                                 ? getLiteral(CurTok).str()
                                 : CurTok->getIdentifierInfo()->getName().str();
-      printf("%s\n", literal.c_str());
+      // [Integration TODO] printf("%s\n", literal.c_str());
       Literals.push_back(literal);
       Tokens.push_back(CurTok);
     }
@@ -68,22 +68,21 @@ std::shared_ptr<AST> Parser::parsePragmaDirective() {
 }
 
 std::shared_ptr<AST> Parser::parseContractDefinition() {
-  llvm::Optional<Token> CurTok;
+  llvm::Optional<Token> CurTok = TheLexer.CachedLex();
 
-  printf("Contract kind: %s\n", TheLexer.CachedLex()->getName());
+  // [Integration TODO] printf("Contract kind: %s\n", CurTok->getName());
 
   std::shared_ptr<std::string> Name = nullptr;
   std::vector<std::shared_ptr<AST>> SubNodes;
   Name = std::make_shared<std::string>(
       TheLexer.CachedLex()->getIdentifierInfo()->getName().str());
-  printf("Contract: %s\n", Name->c_str());
+  // [Integration TODO] printf("Contract: %s\n", Name->c_str());
 
   if (TheLexer.PeekAhead(1)->is(tok::kw_is)) {
     do {
       TheLexer.CachedLex();
-      printf(
-          "Inheritance: %s\n",
-          TheLexer.CachedLex()->getIdentifierInfo()->getName().str().c_str());
+      CurTok = TheLexer.CachedLex();
+      // [Integration TODO] printf( "Inheritance: %s\n", CurTok->getIdentifierInfo()->getName().str().c_str());
       // [TODO] Update vector<InheritanceSpecifier> baseContracts
     } while ((TheLexer.PeekAhead(1))->is(tok::comma));
   }
@@ -113,8 +112,7 @@ std::shared_ptr<AST> Parser::parseContractDefinition() {
     } else if (Kind == tok::kw_using) {
       // [TODO]  contract tok::kw_using
     } else
-      printf("Solidity Error: Function, variable, struct or modifier "
-             "declaration expected.");
+      assert("Solidity Error: Function, variable, struct or modifier declaration expected.");
     Kind = TheLexer.PeekAhead(1)->getKind();
   }
   return nullptr;
@@ -138,7 +136,7 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
   else
     Result.Name = std::make_shared<std::string>(
         TheLexer.CachedLex()->getIdentifierInfo()->getName().str());
-  printf("Function: %s\n", Result.Name->c_str());
+  // [Integration TODO] printf("Function: %s\n", Result.Name->c_str());
 
   VarDeclParserOptions Options;
   Options.AllowLocationSpecifier = true;
@@ -152,11 +150,11 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
                                tok::kw_internal, tok::kw_external)) {
       // [TODO] Special case of a public state variable of function Type.
       Result.Visibility = TheLexer.CachedLex()->getName();
-      printf("Visibility: %s\n", Result.Visibility);
+      // [Integration TODO] printf("Visibility: %s\n", Result.Visibility);
     } else if (CurTok->isOneOf(tok::kw_constant, tok::kw_pure, tok::kw_view,
                                tok::kw_payable)) {
       Result.StateMutability = TheLexer.CachedLex()->getName();
-      printf("StateMutability: %s\n", Result.StateMutability);
+      // [Integration TODO] printf("StateMutability: %s\n", Result.StateMutability);
     } else {
       break;
     }
@@ -269,7 +267,7 @@ std::shared_ptr<AST> Parser::parseVariableDeclaration(
     Identifier = std::make_shared<std::string>(
         TheLexer.CachedLex()->getIdentifierInfo()->getName());
   }
-  printf("Variable: %s\n", Identifier->c_str());
+  // [Integration TODO] printf("Variable: %s\n", Identifier->c_str());
 
   // [TODO] Handle variable with init value
   /*
@@ -279,7 +277,7 @@ std::shared_ptr<AST> Parser::parseVariableDeclaration(
     if (TheLexer.CachedLex()->is(tok::equal))
     {
       value = parseExpression();
-      printf("Initial Value: %s\n", value->c_str());
+      // [Integration TODO] printf("Initial Value: %s\n", value->c_str());
     }
   }
   */
@@ -304,7 +302,7 @@ std::shared_ptr<AST> Parser::parseTypeNameSuffix(std::shared_ptr<AST> Type) {
     TheLexer.CachedLex();
     std::shared_ptr<std::string> Length;
     Length = parseExpression();
-    printf("[%s]", Length->c_str());
+    // [Integration TODO] printf("[%s]", Length->c_str());
     TheLexer.CachedLex();
   }
   return Type;
@@ -319,7 +317,7 @@ std::shared_ptr<AST> Parser::parseTypeName(bool AllowVar) {
   if (true) // (TokenTraits::isElementaryTypeName(token))
   {
     // [TODO] parseTypeName handle address case
-    printf("Type: %s", CurTok->getName());
+    // [Integration TODO] printf("Type: %s", CurTok->getName());
     HaveType = true;
   } else if (Kind == tok::kw_var) {
     // [TODO] parseTypeName tok::kw_var
@@ -330,11 +328,11 @@ std::shared_ptr<AST> Parser::parseTypeName(bool AllowVar) {
   } else if (Kind == tok::identifier) {
     // [TODO] parseTypeName tok::var
   } else
-    printf("Solidity Error: Expected Type Name");
+    assert("Expected Type Name");
 
   if (HaveType) {
     Type = parseTypeNameSuffix(Type);
-    printf("\n");
+    // [Integration TODO] printf("\n");
   }
 
   return Type;
@@ -347,7 +345,7 @@ Parser::parseParameterList(VarDeclParserOptions const &options,
 
   VarDeclParserOptions Options(options);
   Options.AllowEmptyName = true;
-  printf("Parameters:\n");
+  // [Integration TODO] printf("Parameters:\n");
   if (TheLexer.PeekAhead(1)->is(tok::l_paren)) {
     do {
       TheLexer.CachedLex();
