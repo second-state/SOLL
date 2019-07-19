@@ -102,26 +102,32 @@ public:
 
 class CallExpr : public Expr {
   ExprPtr CalleeExpr;
-	std::vector<ExprPtr> Arguments;
-	std::optional<std::vector<std::string>> Names; // option for named call, such as set({value: 2, key: 3});
+  std::vector<ExprPtr> Arguments;
+  // option for named call, such as set({value: 2, key: 3});
+  llvm::Optional<std::vector<std::string>> Names;
+
 public:
   CallExpr(ExprPtr &&CalleeExpr, std::vector<ExprPtr> &&Arguments)
-    : CalleeExpr(std::move(CalleeExpr)), 
-      Arguments(std::move(Arguments)) {}
-  CallExpr(ExprPtr &&CalleeExpr, std::vector<ExprPtr> &&Arguments, std::vector<std::string> &&Names)
-    : CalleeExpr(std::move(CalleeExpr)), 
-      Arguments(std::move(Arguments)),
-      Names(Names) {}
+      : CalleeExpr(std::move(CalleeExpr)), Arguments(std::move(Arguments)) {}
+  CallExpr(ExprPtr &&CalleeExpr, std::vector<ExprPtr> &&Arguments,
+           std::vector<std::string> &&Names)
+      : CalleeExpr(std::move(CalleeExpr)), Arguments(std::move(Arguments)),
+        Names(std::move(Names)) {}
   const Expr *getCalleeExpr() const { return CalleeExpr.get(); }
   std::vector<const Expr *> getArguments() const {
     std::vector<const Expr *> arguments;
-    for (auto &&arg: Arguments)
+    for (auto &arg : Arguments)
       arguments.emplace_back(arg.get());
     return arguments;
   }
-  const std::vector<std::string> &getNames() const { return Names.value_or(std::vector<std::string>()); }
+  const llvm::Optional<std::vector<std::string>> &getNames() const {
+    return Names;
+  }
+  llvm::Optional<std::vector<std::string>> &getNames() {
+    return Names;
+  }
 
-  bool isNamedCall() { return Names.has_value(); }
+  bool isNamedCall() { return Names.hasValue(); }
 };
 
 class ImplicitCastExpr : public Expr {
