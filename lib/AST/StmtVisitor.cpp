@@ -3,20 +3,23 @@
 
 using namespace soll;
 
-template <bool Const> void StmtVisitorBase<Const>::visit(UnaryOperatorType &) {
-  // TODO: implement
+template <bool Const>
+void StmtVisitorBase<Const>::visit(UnaryOperatorType &op) {
+  op.getSubExpr()->accept(*this);
 }
 
-template <bool Const> void StmtVisitorBase<Const>::visit(BinaryOperatorType &) {
-  // TODO: implement
+template <bool Const>
+void StmtVisitorBase<Const>::visit(BinaryOperatorType &op) {
+  op.getLHS()->accept(*this);
+  op.getRHS()->accept(*this);
 }
 
 template <bool Const> void StmtVisitorBase<Const>::visit(IdentifierType &) {
-  // TODO: implement
+  // leaf, do nothing
 }
 
 template <bool Const> void StmtVisitorBase<Const>::visit(LiteralType &) {
-  // TODO: implement
+  // leaf, do nothing
 }
 
 /// Explicit instantiation
