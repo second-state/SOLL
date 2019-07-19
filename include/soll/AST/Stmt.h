@@ -27,7 +27,7 @@ class IfStmt : public Stmt {
 
 public:
 
-  IfStmt(ExprPtr Cond, StmtPtr Then, StmtPtr Else): Cond(Cond), Then(Then), Else(Else) {}
+  IfStmt(ExprPtr Cond, StmtPtr Then, StmtPtr Else): Cond(std::move(Cond)), Then(std::move(Then)), Else(std::move(Else)) {}
   
   const Expr *getCond() const { return Cond.get(); }
   const Stmt *getThen() const { return Then.get(); }

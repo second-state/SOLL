@@ -113,7 +113,12 @@ public:
       Arguments(std::move(Arguments)),
       Names(Names) {}
   const Expr *getCalleeExpr() const { return CalleeExpr.get(); }
-  std::vector<const Expr *> getArguments() const { return {Arguments.begin(), Arguments.end()};}
+  std::vector<const Expr *> getArguments() const {
+    std::vector<const Expr *> arguments;
+    for (auto &&arg: Arguments)
+      arguments.emplace_back(arg.get());
+    return arguments;
+  }
   const std::vector<std::string> &getNames() const { return Names.value_or(std::vector<std::string>()); }
 
   bool isNamedCall() { return Names.has_value(); }
