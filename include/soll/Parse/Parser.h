@@ -19,22 +19,22 @@ private:
     // have to. https://stackoverflow.com/questions/17430377
     VarDeclParserOptions() {}
 
-    bool allowVar = false;
-    bool isStateVariable = false;
-    bool allowIndexed = false;
-    bool allowEmptyName = false;
-    bool allowInitialValue = false;
-    bool allowLocationSpecifier = false;
+    bool AllowVar = false;
+    bool IsStateVariable = false;
+    bool AllowIndexed = false;
+    bool AllowEmptyName = false;
+    bool AllowInitialValue = false;
+    bool AllowLocationSpecifier = false;
   };
 
   struct FunctionHeaderParserResult {
-    bool isConstructor;
-    std::shared_ptr<std::string> name;
-    const char *visibility;
-    const char *stateMutability;
-    std::vector<std::shared_ptr<AST>> parameters;
-    std::vector<std::shared_ptr<AST>> modifiers;
-    std::vector<std::shared_ptr<AST>> returnParameters;
+    bool IsConstructor;
+    std::shared_ptr<std::string> Name;
+    const char *Visibility;
+    const char *StateMutability;
+    std::vector<std::shared_ptr<AST>> Parameters;
+    std::vector<std::shared_ptr<AST>> Modifiers;
+    std::vector<std::shared_ptr<AST>> ReturnParameters;
   };
 
 public:
@@ -43,22 +43,22 @@ public:
   // _literals);
   std::shared_ptr<AST> parsePragmaDirective();
   std::shared_ptr<AST> parseContractDefinition();
-  FunctionHeaderParserResult parseFunctionHeader(bool _forceEmptyName,
-                                                 bool _allowModifiers);
+  FunctionHeaderParserResult parseFunctionHeader(bool ForceEmptyName,
+                                                 bool AllowModifiers);
   std::shared_ptr<AST> parseFunctionDefinitionOrFunctionTypeStateVariable();
   std::shared_ptr<AST> parseVariableDeclaration(
-      VarDeclParserOptions const &_options = {},
-      std::shared_ptr<AST> const &_lookAheadArrayType = nullptr);
-  std::shared_ptr<AST>  parseTypeNameSuffix(std::shared_ptr<AST> type);
-  std::shared_ptr<AST> parseTypeName(bool _allowVar);
+      VarDeclParserOptions const &Options = {},
+      std::shared_ptr<AST> const &LookAheadArrayType = nullptr);
+  std::shared_ptr<AST> parseTypeNameSuffix(std::shared_ptr<AST> Type);
+  std::shared_ptr<AST> parseTypeName(bool AllowVar);
   std::vector<std::shared_ptr<AST>>
-  parseParameterList(VarDeclParserOptions const &_options = {},
-                     bool _allowEmpty = true);
+  parseParameterList(VarDeclParserOptions const &Options = {},
+                     bool AllowEmpty = true);
   std::shared_ptr<AST> parseBlock();
   std::shared_ptr<AST> parseStatement();
-  std::shared_ptr<std::string> parseExpression(
-    std::shared_ptr<AST> const& _partiallyParsedExpression = std::shared_ptr<AST>()
-  );
+  std::shared_ptr<std::string>
+  parseExpression(std::shared_ptr<AST> const &PartiallyParsedExpression =
+                      std::shared_ptr<AST>());
 };
 
 } // namespace soll
