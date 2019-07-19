@@ -4,6 +4,9 @@
 #include "soll/AST/Stmt.h"
 #include "soll/Basic/SourceLocation.h"
 
+// C++ header
+#include<string>
+
 namespace soll {
 
 class Expr : public ExprStmt {
@@ -189,15 +192,53 @@ class ConstantExpr : public Expr {
 };
 
 class Identifier : public Expr {
-  // TODO
+  std::string name;
+public:
+  Identifier(std::string &&Name) : name(Name) {}
+  void setName(std::string &&Name) { name = Name; }
+  std::string getName() const { return name; }
+  // TODO:
+  // SourceLocation getBeginLoc() const;
+  // SourceLocation getEndLoc() const;
 };
 
 class ElementaryTypeNameExpr : public Expr {
   // TODO
 };
 
-class Literal : public Expr {
-  // TODO
-};
+class BooleanLiteral : public Expr {
+  bool value;
+public:
+  BooleanLiteral(bool val) : value(val) {}
+  void setValue(bool val) { value = val; }
+  bool getValue() const { return value; }
+  // TODO:
+  // SourceLocation getBeginLoc() const;
+  // SourceLocation getEndLoc() const;
+}
+
+class StringLiteral : public Expr {
+  std::string value;
+public:
+  StringLiteral(std::string &&val) : value(val) {}
+  void setValue(std::string &&val) { value = val; }
+  std::string getValue() const { return value; }
+  // TODO:
+  // SourceLocation getBeginLoc() const;
+  // SourceLocation getEndLoc() const;
+}
+
+// solidity NumberLiteral support 256bit operation, Boost library should be used.
+class NumberLiteral : public Expr {
+  int value;
+public:
+  NumberLiteral(int val) : value(val) {}
+  void setValue(int val) { value = val; }
+  int getValue() const { return value; }
+  // TODO:
+  // SourceLocation getBeginLoc() const;
+  // SourceLocation getEndLoc() const;
+}
+
 
 } // namespace soll
