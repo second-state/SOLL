@@ -1,6 +1,7 @@
 #include "soll/Parse/Parser.h"
 #include "soll/AST/AST.h"
 #include "soll/Lex/Lexer.h"
+#include <iostream>
 
 namespace soll {
 
@@ -88,8 +89,8 @@ std::shared_ptr<AST> Parser::parseContractDefinition() {
   }
   TheLexer.CachedLex();
 
-  tok::TokenKind Kind = TheLexer.PeekAhead(1)->getKind();
   while (true) {
+    tok::TokenKind Kind = TheLexer.PeekAhead(1)->getKind();
     if (Kind == tok::r_brace) {
       break;
     }
@@ -113,7 +114,6 @@ std::shared_ptr<AST> Parser::parseContractDefinition() {
       // [TODO]  contract tok::kw_using
     } else
       assert("Solidity Error: Function, variable, struct or modifier declaration expected.");
-    Kind = TheLexer.PeekAhead(1)->getKind();
   }
   return nullptr;
 }
@@ -175,47 +175,14 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
 std::shared_ptr<AST>
 Parser::parseFunctionDefinitionOrFunctionTypeStateVariable() {
   FunctionHeaderParserResult Header = parseFunctionHeader(false, true);
-
-  // [PrePOC] Unhandle parse function body now. Hardcode drop for pair brace.
-  unsigned int Brace_cnt = 0;
-  if (TheLexer.PeekAhead(1)->is(tok::l_brace)){
-    TheLexer.CachedLex();
-    Brace_cnt ++;
-    while(Brace_cnt > 0){
-      while (TheLexer.PeekAhead(1)->isNot(tok::r_brace)) {
-        if (TheLexer.PeekAhead(1)->is(tok::l_brace))
-          Brace_cnt ++;
-        TheLexer.CachedLex();
-      }
-      Brace_cnt--;
-      TheLexer.CachedLex();
-    }
-  }
-  return nullptr;
-
   if (Header.IsConstructor || !Header.Modifiers.empty() ||
       !Header.Name->empty() ||
       TheLexer.PeekAhead(1)->isOneOf(tok::semi, tok::l_brace)) {
     // this has to be a function
     std::shared_ptr<AST> block = std::shared_ptr<AST>();
-    if (TheLexer.CachedLex()->isNot(tok::semi)) {
+    if (TheLexer.PeekAhead(1)->isNot(tok::semi)) {
       block = parseBlock();
-      // nodeFactory.setEndPositionFromNode(block);
     }
-
-    /*
-    return nodeFactory.createNode<FunctionDefinition>(
-      Header.Name,
-      Header.Visibility,
-      Header.StateMutability,
-      Header.IsConstructor,
-      docstring,
-      Header.Parameters,
-      Header.Modifiers,
-      Header.ReturnParameters,
-      block
-    );
-    */
   } else {
     // [TODO] State Variable case.
   }
@@ -270,30 +237,6 @@ std::shared_ptr<AST> Parser::parseVariableDeclaration(
   // [Integration TODO] printf("Variable: %s\n", Identifier->c_str());
 
   // [TODO] Handle variable with init value
-  /*
-  std::shared_ptr<std::string> value = nullptr;
-  if (Options.allowInitialValue)
-  {
-    if (TheLexer.CachedLex()->is(tok::equal))
-    {
-      value = parseExpression();
-      // [Integration TODO] printf("Initial Value: %s\n", value->c_str());
-    }
-  }
-  */
-
-  /*
-  return nodeFactory.createNode<VariableDeclaration>(
-    Type,
-    identifier,
-    value,
-    Visibility,
-    Options.isStateVariable,
-    IsIndexed,
-    IsDeclaredConst,
-    Location
-  );
-  */
   return nullptr;
 }
 
@@ -358,80 +301,84 @@ Parser::parseParameterList(VarDeclParserOptions const &options,
 
 std::shared_ptr<AST> Parser::parseBlock() {
   std::vector<std::shared_ptr<AST>> Statements;
-  llvm::Optional<Token> CurTok;
-  while ((CurTok = TheLexer.CachedLex())->isNot(tok::r_brace))
+  TheLexer.CachedLex();;
+  while (TheLexer.PeekAhead(1)->isNot(tok::r_brace)){
     Statements.push_back(parseStatement());
+  }
+  TheLexer.CachedLex();
   return nullptr;
 }
 
 // [TODO] < Parse all statements >
 std::shared_ptr<AST> Parser::parseStatement() {
   std::shared_ptr<AST> statement;
-  switch (TheLexer.CachedLex()->getKind()) {
+  llvm::Optional<Token> CurTok;
+  switch (TheLexer.PeekAhead(1)->getKind()) {
   case tok::kw_if:
-    // return parseIfStatement();
+    return parseIfStatement();
   case tok::kw_while:
-    // return parseWhileStatement(docString);
+    // [TODO] parseStatement kw_while
+    break;
   case tok::kw_do:
-    // return parseDoWhileStatement(docString);
+    // [TODO] parseStatement kw_do
+    break;
   case tok::kw_for:
-    // return parseForStatement(docString);
+    // [TODO] parseStatement kw_do
+    break;
   case tok::l_brace:
-    // return parseBlock(docString);
-    // starting from here, all statements must be terminated by a semicolon
+    return parseBlock();
+    break;
   case tok::kw_continue:
-    // statement = ASTNodeFactory(*this).createNode<Continue>(docString);
-    // m_scanner->next();
+    // [TODO] parseStatement kw_do
     break;
   case tok::kw_break:
-    // statement = ASTNodeFactory(*this).createNode<Break>(docString);
-    // m_scanner->next();
-    // break;
-  case tok::kw_return:
-    /*
-    {
-    ASTNodeFactory nodeFactory(*this);
-    ASTPointer<Expression> expression;
-    if (m_scanner->next() != tok::Semicolon)
-    {
-      expression = parseExpression();
-      nodeFactory.setEndPositionFromNode(expression);
-    }
-    statement = nodeFactory.createNode<Return>(docString, expression);
-      break;
-    }
-    */
-  case tok::kw_throw:
-    /*
-    {
-      statement = ASTNodeFactory(*this).createNode<Throw>(docString);
-      m_scanner->next();
-      break;
-    }
-    */
-  case tok::kw_assembly:
-    // return parseInlineAssembly(docString);
-  case tok::kw_emit:
-    // statement = parseEmitStatement(docString);
-    // break;
-  case tok::identifier:
-    /*
-    if (m_insideModifier && m_scanner->currentLiteral() == "_")
-      {
-        statement =
-    ASTNodeFactory(*this).createNode<PlaceholderStatement>(docString);
-        m_scanner->next();
-      }
-    else
-      statement = parseSimpleStatement(docString);
+    // [TODO] parseStatement kw_do
     break;
-    */
+  case tok::kw_return:
+    // [Integration TODO] printf("statement: ");
+    while (TheLexer.PeekAhead(1)->isNot(tok::semi)) {
+      CurTok = TheLexer.CachedLex();
+      // [Integration TODO] printf("%s ", CurTok->getName());
+    }
+    TheLexer.CachedLex();
+    // [Integration TODO] printf("\n");
+    break;
+  case tok::kw_assembly:
+    // [TODO] parseStatement kw_do
+    break;
+  case tok::kw_emit:
+    // [TODO] parseStatement kw_do
+    break;
+  case tok::identifier:
   default:
-    // statement = parseSimpleStatement(docString);
+    statement = parseSimpleStatement();
     break;
   }
-
   return statement;
+}
+
+std::shared_ptr<AST> Parser::parseIfStatement() {
+  // [Integration TODO] printf("statement: ");
+  llvm::Optional<Token> CurTok;
+  while (TheLexer.PeekAhead(1)->isNot(tok::r_paren)) {
+      CurTok = TheLexer.CachedLex();
+      // [Integration TODO] printf("%s ", CurTok->getName());
+  }
+  TheLexer.CachedLex();
+  // [Integration TODO] printf("\n");
+  return nullptr;
+}
+
+std::shared_ptr<AST> Parser::parseSimpleStatement() {
+  // [Integration TODO] printf("statement: ");
+  llvm::Optional<Token> CurTok;
+  while (TheLexer.PeekAhead(1)->isNot(tok::semi)) {
+      CurTok = TheLexer.CachedLex();
+      // [Integration TODO] printf("%s ", CurTok->getName());
+  }
+  TheLexer.CachedLex();
+  // [Integration TODO] printf("\n");
+  return nullptr;
 }
 
 std::shared_ptr<std::string> Parser::parseExpression(

@@ -56,6 +56,8 @@ public:
                      bool AllowEmpty = true);
   std::shared_ptr<AST> parseBlock();
   std::shared_ptr<AST> parseStatement();
+  std::shared_ptr<AST> parseIfStatement();
+  std::shared_ptr<AST> parseSimpleStatement();
   std::shared_ptr<std::string>
   parseExpression(std::shared_ptr<AST> const &PartiallyParsedExpression =
                       std::shared_ptr<AST>());
