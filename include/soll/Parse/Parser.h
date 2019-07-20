@@ -37,7 +37,6 @@ private:
     std::vector<std::shared_ptr<AST>> ReturnParameters;
   };
 
-public:
   // void parsePragmaVersion(langutil::SourceLocation const& _location,
   // std::vector<Token> const& _tokens, std::vector<std::string> const&
   // _literals);
@@ -58,9 +57,47 @@ public:
   std::shared_ptr<AST> parseStatement();
   std::shared_ptr<AST> parseIfStatement();
   std::shared_ptr<AST> parseSimpleStatement();
+  std::shared_ptr<AST> parseVariableDeclarationStatement(
+      std::shared_ptr<AST> const &LookAheadArrayType = std::shared_ptr<AST>());
+  std::shared_ptr<AST> parseExpressionStatement(
+      std::shared_ptr<AST> const &PartiallyParsedExpression =
+          std::shared_ptr<AST>());
   std::shared_ptr<std::string>
   parseExpression(std::shared_ptr<AST> const &PartiallyParsedExpression =
                       std::shared_ptr<AST>());
+
+  /// Used as return value of @see peekStatementType.
+  enum class LookAheadInfo {
+    IndexAccessStructure,
+    VariableDeclaration,
+    Expression
+  };
+
+  /// Structure that represents a.b.c[x][y][z]. Can be converted either to an
+  /// expression or to a type name. For this to be valid, path cannot be empty,
+  /// but indices can be empty.
+  struct IndexAccessedPath {
+    std::vector<std::shared_ptr<AST>> Path;
+  };
+
+  std::pair<LookAheadInfo, IndexAccessedPath> tryParseIndexAccessedPath();
+
+  /// Performs limited look-ahead to distinguish between variable declaration
+  /// and expression statement. For source code of the form "a[][8]"
+  /// ("IndexAccessStructure"), this is not possible to decide with constant
+  /// look-ahead.
+  LookAheadInfo peekStatementType() const;
+
+  /// @returns a typename parsed in look-ahead fashion from something like
+  /// "a.b[8][2**70]", or an empty pointer if an empty @a _pathAndIncides has
+  /// been supplied.
+  std::shared_ptr<AST>
+  typeNameFromIndexAccessStructure(IndexAccessedPath const &PathAndIndices);
+  /// @returns an expression parsed in look-ahead fashion from something like
+  /// "a.b[8][2**70]", or an empty pointer if an empty @a _pathAndIncides has
+  /// been supplied.
+  std::shared_ptr<AST>
+  expressionFromIndexAccessStructure(IndexAccessedPath const &PathAndIndices);
 };
 
 } // namespace soll

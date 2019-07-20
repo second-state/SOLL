@@ -89,7 +89,9 @@ std::shared_ptr<AST> Parser::parseContractDefinition() {
   TheLexer.CachedLex();
 
   while (true) {
-    tok::TokenKind Kind = TheLexer.LookAhead(0)->getKind();
+    // [Integration TODO] printf("\n");
+    CurTok = TheLexer.LookAhead(0);
+    tok::TokenKind Kind = CurTok->getKind();
     if (Kind == tok::r_brace) {
       break;
     }
@@ -101,8 +103,7 @@ std::shared_ptr<AST> Parser::parseContractDefinition() {
     } else if (Kind == tok::kw_enum) {
       // [TODO] contract tok::kw_enum
     } else if (Kind == tok::identifier || Kind == tok::kw_mapping ||
-               true /*TokenTraits::isElementaryTypeName(currentTokenValue)*/) {
-      // [TODO] Need recognize ElementaryTypeName rule
+               CurTok->isElementaryTypeName()) {
       // [TODO] contract tok::identifier, tok::kw_mapping, tok::/Type keywords/
     } else if (Kind == tok::kw_modifier) {
       // [TODO] contract tok::kw_modifier
@@ -261,13 +262,13 @@ std::shared_ptr<AST> Parser::parseTypeName(bool AllowVar) {
     // [Integration TODO] printf("Type: %s", CurTok->getName());
     HaveType = true;
   } else if (Kind == tok::kw_var) {
-    // [TODO] parseTypeName tok::kw_var
+    // [TODO] parseTypeName tok::kw_var (var is deprecated)
   } else if (Kind == tok::kw_function) {
     // [TODO] parseTypeName tok::kw_function
   } else if (Kind == tok::kw_mapping) {
     // [TODO] parseTypeName tok::kw_mapping
   } else if (Kind == tok::identifier) {
-    // [TODO] parseTypeName tok::var
+    // [TODO] parseTypeName tok::identifier
   } else
     assert("Expected Type Name");
 
@@ -280,11 +281,11 @@ std::shared_ptr<AST> Parser::parseTypeName(bool AllowVar) {
 }
 
 std::vector<std::shared_ptr<AST>>
-Parser::parseParameterList(VarDeclParserOptions const &options,
+Parser::parseParameterList(VarDeclParserOptions const &_Options,
                            bool AllowEmpty) {
   std::vector<std::shared_ptr<AST>> Parameters;
 
-  VarDeclParserOptions Options(options);
+  VarDeclParserOptions Options(_Options);
   Options.AllowEmptyName = true;
   // [Integration TODO] printf("Parameters:\n");
   if (TheLexer.LookAhead(0)->is(tok::l_paren)) {
@@ -385,12 +386,171 @@ std::shared_ptr<AST> Parser::parseIfStatement() {
 std::shared_ptr<AST> Parser::parseSimpleStatement() {
   // [Integration TODO] printf("Simple statement: ");
   llvm::Optional<Token> CurTok;
+
+  LookAheadInfo StatementType;
+  IndexAccessedPath Iap;
+  if (TheLexer.LookAhead(0)->is(tok::l_paren)) {
+    TheLexer.CachedLex();
+    size_t EmptyComponents = 0;
+    // First consume all empty components.
+    while (TheLexer.LookAhead(0)->is(tok::comma)) {
+      TheLexer.CachedLex();
+      EmptyComponents++;
+    }
+    // [TODO] parseSimpleStatement a simple statement begin with '{'
+    return nullptr;
+  } else {
+    std::tie(StatementType, Iap) = tryParseIndexAccessedPath();
+    switch (StatementType) {
+    case LookAheadInfo::VariableDeclaration:
+      return parseVariableDeclarationStatement(
+          typeNameFromIndexAccessStructure(Iap));
+    case LookAheadInfo::Expression:
+      return parseExpressionStatement(expressionFromIndexAccessStructure(Iap));
+    default:
+      assert("Unhandle statement.");
+    }
+  }
+  return nullptr;
+}
+
+std::shared_ptr<AST> Parser::parseVariableDeclarationStatement(
+    std::shared_ptr<AST> const &LookAheadArrayType) {
+  // [Integration TODO] printf("VariableDeclarationStatement:\n");
+  // This does not parse multi variable declaration statements starting directly
+  // with
+  // `(`, they are parsed in parseSimpleStatement, because they are hard to
+  // distinguish from tuple expressions.
+  std::vector<std::shared_ptr<AST>> Variables;
+  std::shared_ptr<AST> Value;
+  if (!LookAheadArrayType && TheLexer.LookAhead(0)->is(tok::kw_var) &&
+      TheLexer.LookAhead(0)->is(tok::l_paren)) {
+    // [0.4.20] The var keyword has been deprecated for security reasons.
+    // https://github.com/ethereum/solidity/releases/tag/v0.4.20
+    assert("The var keyword has been deprecated for security reasons.");
+  } else {
+    VarDeclParserOptions Options;
+    Options.AllowVar = false;
+    Options.AllowLocationSpecifier = true;
+    Variables.push_back(parseVariableDeclaration(Options, LookAheadArrayType));
+  }
+  if (TheLexer.LookAhead(0)->is(tok::equal)) {
+    TheLexer.CachedLex();
+    // [Integration TODO] printf("binary op (=)\n");
+    // [PrePOC] Parse assign expression to variable. Waitting for
+    // parseExpression() ready.
+    llvm::Optional<Token> CurTok;
+    while (!TheLexer.LookAhead(0)->isOneOf(tok::semi, tok::r_paren)) {
+      CurTok = TheLexer.CachedLex();
+      // [Integration TODO] printf("%s ", CurTok->getName());
+    }
+    TheLexer.CachedLex();
+    // [Integration TODO] printf("\n");
+    // Value = parseExpression();
+  }
+  return nullptr;
+}
+
+std::pair<Parser::LookAheadInfo, Parser::IndexAccessedPath>
+Parser::tryParseIndexAccessedPath() {
+  // These two cases are very hard to distinguish:
+  // x[7 * 20 + 3] a;     and     x[7 * 20 + 3] = 9;
+  // In the first case, x is a type name, in the second it is the name of a
+  // variable. As an extension, we can even have: `x.y.z[1][2] a;` and
+  // `x.y.z[1][2] = 10;` Where in the first, x.y.z leads to a type name where in
+  // the second, it accesses structs.
+
+  auto StatementType = peekStatementType();
+
+  switch (StatementType) {
+  case LookAheadInfo::VariableDeclaration:
+  case LookAheadInfo::Expression:
+    return std::make_pair(StatementType, IndexAccessedPath());
+  default:
+    break;
+  }
+
+  // [TODO] IAP complex case. ex. name[idx], name.name2, typename [3]
+  /*
+  // At this point, we have 'Identifier "["' or 'Identifier "." Identifier' or
+  'ElementoryTypeName "["'.
+  // We parse '(Identifier ("." Identifier)* |ElementaryTypeName) ( "["
+  Expression "]" )*'
+  // until we can decide whether to hand this over to ExpressionStatement or
+  create a
+  // VariableDeclarationStatement out of it.
+  IndexAccessedPath Iap = parseIndexAccessedPath();
+
+  if (m_scanner->currentToken() == Token::Identifier ||
+  TokenTraits::isLocationSpecifier(m_scanner->currentToken())) return
+  std::make_pair(LookAheadInfo::VariableDeclaration, move(Iap)); else return
+  std::make_pair(LookAheadInfo::Expression, move(Iap));
+  */
+  return std::make_pair(StatementType, IndexAccessedPath());
+}
+
+Parser::LookAheadInfo Parser::peekStatementType() const {
+  // Distinguish between variable declaration (and potentially assignment) and
+  // expression statement (which include assignments to other expressions and
+  // pre-declared variables). We have a variable declaration if we get a keyword
+  // that specifies a type name. If it is an identifier or an elementary type
+  // name followed by an identifier or a mutability specifier, we also have a
+  // variable declaration. If we get an identifier followed by a "[" or ".", it
+  // can be both ("lib.type[9] a;" or "variable.el[9] = 7;"). In all other
+  // cases, we have an expression statement.
+  llvm::Optional<Token> CurTok, NextTok;
+  CurTok = TheLexer.LookAhead(0);
+  bool MightBeTypeName =
+      CurTok->isElementaryTypeName() || CurTok->is(tok::identifier);
+  if (CurTok->isOneOf(tok::kw_mapping, tok::kw_function, tok::kw_var))
+    return LookAheadInfo::VariableDeclaration;
+
+  if (MightBeTypeName) {
+    NextTok = TheLexer.LookAhead(1);
+    // So far we only allow ``address payable`` in variable declaration
+    // statements and in no other kind of statement. This means, for example,
+    // that we do not allow type expressions of the form
+    // ``address payable;``.
+    // If we want to change this in the future, we need to consider another
+    // scanner token here.
+    if (CurTok->isElementaryTypeName() &&
+        NextTok->isOneOf(tok::kw_pure, tok::kw_view, tok::kw_payable)) {
+      return LookAheadInfo::VariableDeclaration;
+    }
+    if (NextTok->is(tok::identifier) ||
+        NextTok->isOneOf(tok::kw_memory, tok::kw_storage, tok::kw_calldata)) {
+      return LookAheadInfo::VariableDeclaration;
+    }
+    if (NextTok->isOneOf(tok::l_square, tok::period)) {
+      return LookAheadInfo::IndexAccessStructure;
+    }
+  }
+  return LookAheadInfo::Expression;
+}
+
+// [TODO] IAP relative functino
+std::shared_ptr<AST>
+Parser::typeNameFromIndexAccessStructure(Parser::IndexAccessedPath const &Iap) {
+  return {};
+}
+
+// [TODO] IAP relative functino
+std::shared_ptr<AST> Parser::expressionFromIndexAccessStructure(
+    Parser::IndexAccessedPath const &Iap) {
+  return {};
+}
+
+std::shared_ptr<AST> Parser::parseExpressionStatement(
+    std::shared_ptr<AST> const &PartialParserResult) {
+  llvm::Optional<Token> CurTok;
+  // [PrePOC] parseExpressionStatement() Wait for parseExpression() ready.
   while (TheLexer.LookAhead(0)->isNot(tok::semi)) {
     CurTok = TheLexer.CachedLex();
     // [Integration TODO] printf("%s ", CurTok->getName());
   }
   TheLexer.CachedLex();
   // [Integration TODO] printf("\n");
+  // std::shared_ptr<AST> expression = parseExpression(PartialParserResult);
   return nullptr;
 }
 

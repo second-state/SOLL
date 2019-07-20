@@ -43,6 +43,10 @@ public:
 
   bool isLiteral() const { return tok::isLiteral(getKind()); }
 
+  bool isElementaryTypeName() const {
+    return tok::kw_address <= getKind();
+  }
+
   SourceLocation getLocation() const {
     return SourceLocation::getFromRawEncoding(Loc);
   }
