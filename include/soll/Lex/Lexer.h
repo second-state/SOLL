@@ -14,8 +14,6 @@ class FileManager;
 class SourceManager;
 
 class Lexer {
-  friend class Parser;
-
   DiagnosticsEngine &Diags;
   FileManager &FileMgr;
   SourceManager &SourceMgr;

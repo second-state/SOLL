@@ -14,7 +14,7 @@ std::shared_ptr<AST> Parser::parse() {
   llvm::Optional<Token> CurTok;
   std::vector<std::shared_ptr<AST>> Nodes;
 
-  while ((CurTok = TheLexer.PeekAhead(1))->isNot(tok::eof)) {
+  while ((CurTok = TheLexer.LookAhead(0))->isNot(tok::eof)) {
     switch (CurTok->getKind()) {
     case tok::kw_pragma:
       Nodes.push_back(parsePragmaDirective());
@@ -60,7 +60,7 @@ std::shared_ptr<AST> Parser::parsePragmaDirective() {
       Literals.push_back(literal);
       Tokens.push_back(CurTok);
     }
-  } while (!TheLexer.PeekAhead(1)->isOneOf(tok::semi, tok::eof));
+  } while (!TheLexer.LookAhead(0)->isOneOf(tok::semi, tok::eof));
   TheLexer.CachedLex();
 
   // [TODO] Implement version recognize and compare. ref: parsePragmaVersion
@@ -78,18 +78,18 @@ std::shared_ptr<AST> Parser::parseContractDefinition() {
       TheLexer.CachedLex()->getIdentifierInfo()->getName().str());
   // [Integration TODO] printf("Contract: %s\n", Name->c_str());
 
-  if (TheLexer.PeekAhead(1)->is(tok::kw_is)) {
+  if (TheLexer.LookAhead(0)->is(tok::kw_is)) {
     do {
       TheLexer.CachedLex();
       CurTok = TheLexer.CachedLex();
       // [Integration TODO] printf("Inheritance: %s\n", CurTok->getIdentifierInfo()->getName().str().c_str());
       // [TODO] Update vector<InheritanceSpecifier> baseContracts
-    } while ((TheLexer.PeekAhead(1))->is(tok::comma));
+    } while ((TheLexer.LookAhead(0))->is(tok::comma));
   }
   TheLexer.CachedLex();
 
   while (true) {
-    tok::TokenKind Kind = TheLexer.PeekAhead(1)->getKind();
+    tok::TokenKind Kind = TheLexer.LookAhead(0)->getKind();
     if (Kind == tok::r_brace) {
       break;
     }
@@ -127,7 +127,7 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
     Result.IsConstructor = true;
   }
 
-  llvm::Optional<Token> CurTok = TheLexer.PeekAhead(1);
+  llvm::Optional<Token> CurTok = TheLexer.LookAhead(0);
   if (Result.IsConstructor)
     Result.Name = std::make_shared<std::string>();
   else if (ForceEmptyName || CurTok->is(tok::l_paren))
@@ -142,7 +142,7 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
   Result.Parameters = parseParameterList(Options);
 
   while (true) {
-    CurTok = TheLexer.PeekAhead(1);
+    CurTok = TheLexer.LookAhead(0);
     if (AllowModifiers && CurTok->is(tok::identifier)) {
       // [TODO] Function Modifier
     } else if (CurTok->isOneOf(tok::kw_public, tok::kw_private,
@@ -159,7 +159,7 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
     }
   }
 
-  if (TheLexer.PeekAhead(1)->is(tok::kw_returns)) {
+  if (TheLexer.LookAhead(0)->is(tok::kw_returns)) {
     bool const PermitEmptyParameterList = false;
     TheLexer.CachedLex();
     Result.ReturnParameters =
@@ -176,10 +176,10 @@ Parser::parseFunctionDefinitionOrFunctionTypeStateVariable() {
   FunctionHeaderParserResult Header = parseFunctionHeader(false, true);
   if (Header.IsConstructor || !Header.Modifiers.empty() ||
       !Header.Name->empty() ||
-      TheLexer.PeekAhead(1)->isOneOf(tok::semi, tok::l_brace)) {
+      TheLexer.LookAhead(0)->isOneOf(tok::semi, tok::l_brace)) {
     // this has to be a function
     std::shared_ptr<AST> block = std::shared_ptr<AST>();
-    if (TheLexer.PeekAhead(1)->isNot(tok::semi)) {
+    if (TheLexer.LookAhead(0)->isNot(tok::semi)) {
       block = parseBlock();
     }
   } else {
@@ -206,7 +206,7 @@ std::shared_ptr<AST> Parser::parseVariableDeclaration(
 
   llvm::Optional<Token> CurTok;
   while (true) {
-    CurTok = TheLexer.PeekAhead(1);
+    CurTok = TheLexer.LookAhead(0);
     if (Options.IsStateVariable &&
         CurTok->isOneOf(tok::kw_public, tok::kw_private, tok::kw_internal)) {
       Visibility = TheLexer.CachedLex()->getName();
@@ -226,7 +226,7 @@ std::shared_ptr<AST> Parser::parseVariableDeclaration(
     }
   }
 
-  if (Options.AllowEmptyName && TheLexer.PeekAhead(1)->isNot(tok::identifier)) {
+  if (Options.AllowEmptyName && TheLexer.LookAhead(0)->isNot(tok::identifier)) {
     Identifier = std::make_shared<std::string>("");
   } else {
     Identifier = std::make_shared<std::string>(
@@ -239,7 +239,7 @@ std::shared_ptr<AST> Parser::parseVariableDeclaration(
 }
 
 std::shared_ptr<AST> Parser::parseTypeNameSuffix(std::shared_ptr<AST> Type) {
-  while (TheLexer.PeekAhead(1)->is(tok::l_square)) {
+  while (TheLexer.LookAhead(0)->is(tok::l_square)) {
     TheLexer.CachedLex();
     std::shared_ptr<std::string> Length;
     Length = parseExpression();
@@ -287,11 +287,11 @@ Parser::parseParameterList(VarDeclParserOptions const &options,
   VarDeclParserOptions Options(options);
   Options.AllowEmptyName = true;
   // [Integration TODO] printf("Parameters:\n");
-  if (TheLexer.PeekAhead(1)->is(tok::l_paren)) {
+  if (TheLexer.LookAhead(0)->is(tok::l_paren)) {
     do {
       TheLexer.CachedLex();
       Parameters.push_back(parseVariableDeclaration(Options));
-    } while (TheLexer.PeekAhead(1)->is(tok::comma));
+    } while (TheLexer.LookAhead(0)->is(tok::comma));
     TheLexer.CachedLex();
   }
   return Parameters;
@@ -300,7 +300,7 @@ Parser::parseParameterList(VarDeclParserOptions const &options,
 std::shared_ptr<AST> Parser::parseBlock() {
   std::vector<std::shared_ptr<AST>> Statements;
   TheLexer.CachedLex();
-  while (TheLexer.PeekAhead(1)->isNot(tok::r_brace)) {
+  while (TheLexer.LookAhead(0)->isNot(tok::r_brace)) {
     Statements.push_back(parseStatement());
   }
   TheLexer.CachedLex();
@@ -311,7 +311,7 @@ std::shared_ptr<AST> Parser::parseBlock() {
 std::shared_ptr<AST> Parser::parseStatement() {
   std::shared_ptr<AST> statement;
   llvm::Optional<Token> CurTok;
-  switch (TheLexer.PeekAhead(1)->getKind()) {
+  switch (TheLexer.LookAhead(0)->getKind()) {
   case tok::kw_if:
     return parseIfStatement();
   case tok::kw_while:
@@ -335,7 +335,7 @@ std::shared_ptr<AST> Parser::parseStatement() {
   case tok::kw_return:
     // [Integration TODO] printf("Return statement: ");
     // [PrePOC] Parse expression after return. Wait for parseExpression() ready.
-    while (TheLexer.PeekAhead(1)->isNot(tok::semi)) {
+    while (TheLexer.LookAhead(0)->isNot(tok::semi)) {
       CurTok = TheLexer.CachedLex();
       // [Integration TODO] printf("%s ", CurTok->getName());
     }
@@ -363,7 +363,7 @@ std::shared_ptr<AST> Parser::parseIfStatement() {
 
   // [PrePOC] Parse condition expression wait for parseExpression() ready.
   TheLexer.CachedLex();
-  while (TheLexer.PeekAhead(1)->isNot(tok::r_paren)) {
+  while (TheLexer.LookAhead(0)->isNot(tok::r_paren)) {
     CurTok = TheLexer.CachedLex();
     // [Integration TODO] printf("%s ", CurTok->getName());
   }
@@ -372,7 +372,7 @@ std::shared_ptr<AST> Parser::parseIfStatement() {
 
   std::shared_ptr<AST> TrueBody = parseStatement();
   std::shared_ptr<AST> FalseBody;
-  if (TheLexer.PeekAhead(1)->is(tok::kw_else)) {
+  if (TheLexer.LookAhead(0)->is(tok::kw_else)) {
     CurTok = TheLexer.CachedLex();
     // [Integration TODO] printf("%s\n", CurTok->getName());
 
@@ -385,7 +385,7 @@ std::shared_ptr<AST> Parser::parseIfStatement() {
 std::shared_ptr<AST> Parser::parseSimpleStatement() {
   // [Integration TODO] printf("Simple statement: ");
   llvm::Optional<Token> CurTok;
-  while (TheLexer.PeekAhead(1)->isNot(tok::semi)) {
+  while (TheLexer.LookAhead(0)->isNot(tok::semi)) {
     CurTok = TheLexer.CachedLex();
     // [Integration TODO] printf("%s ", CurTok->getName());
   }
