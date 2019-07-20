@@ -2,19 +2,13 @@
 
 #include "soll/AST/OperationKinds.h"
 #include "soll/AST/Stmt.h"
-#include "soll/Basic/SourceLocation.h"
 
 // C++ header
 #include<string>
 
 namespace soll {
 
-class Expr : public ExprStmt {
-  // TODO
-public:
-  virtual SourceLocation getBeginLoc() const = 0;
-  virtual SourceLocation getEndLoc() const = 0;
-};
+class Expr : public ExprStmt {};
 
 using ExprPtr = std::unique_ptr<Expr>;
 
@@ -81,8 +75,6 @@ public:
 
   Expr *getLHS() const { return SubExprs[LHS].get(); }
   Expr *getRHS() const { return SubExprs[RHS].get(); }
-  SourceLocation getBeginLoc() const { return getLHS()->getBeginLoc(); }
-  SourceLocation getEndLoc() const { return getRHS()->getEndLoc(); }
 
   void setOpcode(Opcode Opc) { this->Opc = Opc; }
   void setLHS(ExprPtr &&E) { SubExprs[LHS] = std::move(E); }
@@ -195,9 +187,6 @@ public:
   Identifier(std::string &&Name) : name(Name) {}
   void setName(std::string &&Name) { name = Name; }
   std::string getName() const { return name; }
-  // TODO:
-  // SourceLocation getBeginLoc() const;
-  // SourceLocation getEndLoc() const;
 };
 
 class ElementaryTypeNameExpr : public Expr {
@@ -210,9 +199,6 @@ public:
   BooleanLiteral(bool val) : value(val) {}
   void setValue(bool val) { value = val; }
   bool getValue() const { return value; }
-  // TODO:
-  // SourceLocation getBeginLoc() const;
-  // SourceLocation getEndLoc() const;
 }
 
 class StringLiteral : public Expr {
@@ -221,9 +207,6 @@ public:
   StringLiteral(std::string &&val) : value(val) {}
   void setValue(std::string &&val) { value = val; }
   std::string getValue() const { return value; }
-  // TODO:
-  // SourceLocation getBeginLoc() const;
-  // SourceLocation getEndLoc() const;
 }
 
 // solidity NumberLiteral support 256bit operation, Boost library should be used.
@@ -233,9 +216,6 @@ public:
   NumberLiteral(int val) : value(val) {}
   void setValue(int val) { value = val; }
   int getValue() const { return value; }
-  // TODO:
-  // SourceLocation getBeginLoc() const;
-  // SourceLocation getEndLoc() const;
 }
 
 
