@@ -1,5 +1,7 @@
 #pragma once
 
+#include "llvm/ADT/APInt.h"
+
 #include <memory>
 #include <vector>
 
@@ -28,7 +30,7 @@ public:
   }
 
   std::vector<const Stmt *> getStmts() {
-    std::vector<const Expr *> Stmts;
+    std::vector<const Stmt *> Stmts;
     for (auto &S : this->Stmts)
       Stmts.emplace_back(S.get());
     return Stmts;
