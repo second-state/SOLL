@@ -1,7 +1,6 @@
 #include "soll/Parse/Parser.h"
 #include "soll/AST/AST.h"
 #include "soll/Lex/Lexer.h"
-#include <iostream>
 
 namespace soll {
 
@@ -83,7 +82,7 @@ std::shared_ptr<AST> Parser::parseContractDefinition() {
     do {
       TheLexer.CachedLex();
       CurTok = TheLexer.CachedLex();
-      // [Integration TODO] printf( "Inheritance: %s\n", CurTok->getIdentifierInfo()->getName().str().c_str());
+      // [Integration TODO] printf("Inheritance: %s\n", CurTok->getIdentifierInfo()->getName().str().c_str());
       // [TODO] Update vector<InheritanceSpecifier> baseContracts
     } while ((TheLexer.PeekAhead(1))->is(tok::comma));
   }
@@ -102,9 +101,8 @@ std::shared_ptr<AST> Parser::parseContractDefinition() {
     } else if (Kind == tok::kw_enum) {
       // [TODO] contract tok::kw_enum
     } else if (Kind == tok::identifier || Kind == tok::kw_mapping ||
-               true // TokenTraits::isElementaryTypeName(currentTokenValue)
-               // [TODO] Need recognize ElementaryTypeName rule
-    ) {
+               true /*TokenTraits::isElementaryTypeName(currentTokenValue)*/) {
+      // [TODO] Need recognize ElementaryTypeName rule
       // [TODO] contract tok::identifier, tok::kw_mapping, tok::/Type keywords/
     } else if (Kind == tok::kw_modifier) {
       // [TODO] contract tok::kw_modifier
@@ -113,7 +111,8 @@ std::shared_ptr<AST> Parser::parseContractDefinition() {
     } else if (Kind == tok::kw_using) {
       // [TODO]  contract tok::kw_using
     } else
-      assert("Solidity Error: Function, variable, struct or modifier declaration expected.");
+      assert("Solidity Error: Function, variable, struct or modifier "
+             "declaration expected.");
   }
   return nullptr;
 }
@@ -227,8 +226,7 @@ std::shared_ptr<AST> Parser::parseVariableDeclaration(
     }
   }
 
-  if (Options.AllowEmptyName &&
-      TheLexer.PeekAhead(1)->isNot(tok::identifier)) {
+  if (Options.AllowEmptyName && TheLexer.PeekAhead(1)->isNot(tok::identifier)) {
     Identifier = std::make_shared<std::string>("");
   } else {
     Identifier = std::make_shared<std::string>(
@@ -301,8 +299,8 @@ Parser::parseParameterList(VarDeclParserOptions const &options,
 
 std::shared_ptr<AST> Parser::parseBlock() {
   std::vector<std::shared_ptr<AST>> Statements;
-  TheLexer.CachedLex();;
-  while (TheLexer.PeekAhead(1)->isNot(tok::r_brace)){
+  TheLexer.CachedLex();
+  while (TheLexer.PeekAhead(1)->isNot(tok::r_brace)) {
     Statements.push_back(parseStatement());
   }
   TheLexer.CachedLex();
@@ -335,7 +333,8 @@ std::shared_ptr<AST> Parser::parseStatement() {
     // [TODO] parseStatement kw_do
     break;
   case tok::kw_return:
-    // [Integration TODO] printf("statement: ");
+    // [Integration TODO] printf("Return statement: ");
+    // [PrePOC] Parse expression after return. Wait for parseExpression() ready.
     while (TheLexer.PeekAhead(1)->isNot(tok::semi)) {
       CurTok = TheLexer.CachedLex();
       // [Integration TODO] printf("%s ", CurTok->getName());
@@ -358,31 +357,45 @@ std::shared_ptr<AST> Parser::parseStatement() {
 }
 
 std::shared_ptr<AST> Parser::parseIfStatement() {
-  // [Integration TODO] printf("statement: ");
-  llvm::Optional<Token> CurTok;
+  // [Integration TODO] printf("If statement:\n{\n");
+  llvm::Optional<Token> CurTok = TheLexer.CachedLex();
+  // [Integration TODO] printf("%s ( ", CurTok->getName());
+
+  // [PrePOC] Parse condition expression wait for parseExpression() ready.
+  TheLexer.CachedLex();
   while (TheLexer.PeekAhead(1)->isNot(tok::r_paren)) {
-      CurTok = TheLexer.CachedLex();
-      // [Integration TODO] printf("%s ", CurTok->getName());
+    CurTok = TheLexer.CachedLex();
+    // [Integration TODO] printf("%s ", CurTok->getName());
   }
   TheLexer.CachedLex();
-  // [Integration TODO] printf("\n");
+  // [Integration TODO] printf(" )\n");
+
+  std::shared_ptr<AST> TrueBody = parseStatement();
+  std::shared_ptr<AST> FalseBody;
+  if (TheLexer.PeekAhead(1)->is(tok::kw_else)) {
+    CurTok = TheLexer.CachedLex();
+    // [Integration TODO] printf("%s\n", CurTok->getName());
+
+    FalseBody = parseStatement();
+  }
+  // [Integration TODO] printf("}\n");
   return nullptr;
 }
 
 std::shared_ptr<AST> Parser::parseSimpleStatement() {
-  // [Integration TODO] printf("statement: ");
+  // [Integration TODO] printf("Simple statement: ");
   llvm::Optional<Token> CurTok;
   while (TheLexer.PeekAhead(1)->isNot(tok::semi)) {
-      CurTok = TheLexer.CachedLex();
-      // [Integration TODO] printf("%s ", CurTok->getName());
+    CurTok = TheLexer.CachedLex();
+    // [Integration TODO] printf("%s ", CurTok->getName());
   }
   TheLexer.CachedLex();
   // [Integration TODO] printf("\n");
   return nullptr;
 }
 
-std::shared_ptr<std::string> Parser::parseExpression(
-    std::shared_ptr<AST> const &PartiallyParsedExpression) {
+std::shared_ptr<std::string>
+Parser::parseExpression(std::shared_ptr<AST> const &PartiallyParsedExpression) {
   llvm::Optional<Token> CurTok = TheLexer.CachedLex();
   return std::make_shared<std::string>(getLiteral(CurTok));
 }
