@@ -3,7 +3,6 @@
 #include "soll/AST/OperationKinds.h"
 #include "soll/AST/Stmt.h"
 
-// C++ header
 #include<string>
 
 namespace soll {
@@ -199,7 +198,7 @@ public:
   BooleanLiteral(bool val) : value(val) {}
   void setValue(bool val) { value = val; }
   bool getValue() const { return value; }
-}
+};
 
 class StringLiteral : public Expr {
   std::string value;
@@ -207,7 +206,7 @@ public:
   StringLiteral(std::string &&val) : value(val) {}
   void setValue(std::string &&val) { value = val; }
   std::string getValue() const { return value; }
-}
+};
 
 // solidity NumberLiteral support 256bit operation, Boost library should be used.
 class NumberLiteral : public Expr {
@@ -216,7 +215,7 @@ public:
   NumberLiteral(int val) : value(val) {}
   void setValue(int val) { value = val; }
   int getValue() const { return value; }
-}
+};
 
 
 } // namespace soll
