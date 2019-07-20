@@ -17,7 +17,22 @@ class DeclStmt : public Stmt {};
 class ExprStmt : public Stmt {};
 
 class Block : public Stmt {
-  std::vector<StmtPtr> stmts;
+  std::vector<StmtPtr> Stmts;
+
+public:
+  /// this setter transfers the ownerships of Stmt from function argument to class instance
+  void setStmts(std::vector<StmtPtr> &&Stmts) {
+    Stmts.clear();
+    for(auto &&S: Stmts)
+      this->Stmts.emplace_back(std::move(S));
+  }
+
+  std::vector<const Stmt *> getStmts() {
+    std::vector<const Expr *> Stmts;
+    for (auto &S : this->Stmts)
+      Stmts.emplace_back(S.get());
+    return Stmts;
+  }
 };
 
 class IfStmt : public Stmt {
@@ -46,6 +61,11 @@ class ContinueStmt : public Stmt {};
 
 class BreakStmt : public Stmt {};
 
-class ReturnStmt : public Stmt {};
+class ReturnStmt : public Stmt {
+  ExprPtr RetExpr;
+public:
+  const Expr *getRetValue() { return RetExpr.get(); }
+  void setRetValue(ExprPtr &&E) { RetExpr = std::move(E); }
+};
 
 } // namespace soll
