@@ -4,6 +4,7 @@
 #include "soll/AST/Stmt.h"
 
 #include<string>
+#include <optional>
 
 namespace soll {
 
@@ -128,7 +129,7 @@ class CallExpr : public Expr {
   ExprPtr CalleeExpr;
   std::vector<ExprPtr> Arguments;
   // option for named call, such as set({value: 2, key: 3});
-  llvm::Optional<std::vector<std::string>> Names;
+  std::optional<std::vector<std::string>> Names;
 
 public:
   CallExpr(ExprPtr &&CalleeExpr, std::vector<ExprPtr> &&Arguments)
@@ -144,12 +145,14 @@ public:
       arguments.emplace_back(arg.get());
     return arguments;
   }
-  const llvm::Optional<std::vector<std::string>> &getNames() const {
+  const std::optional<std::vector<std::string>> &getNames() const {
     return Names;
   }
-  llvm::Optional<std::vector<std::string>> &getNames() { return Names; }
+  std::optional<std::vector<std::string>> &getNames() {
+    return Names;
+  }
 
-  bool isNamedCall() { return Names.hasValue(); }
+  bool isNamedCall() { return Names.has_value(); }
 };
 
 class ImplicitCastExpr : public Expr {
