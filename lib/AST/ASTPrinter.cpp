@@ -21,8 +21,20 @@ void ASTPrinter::visit(const Identifier &id) {
   unindent();
 }
 
-void ASTPrinter::visit(const Literal &literal) {
-  os() << indent() << "Literal" << std::endl;
+void ASTPrinter::visit(const BooleanLiteral &literal) {
+  os() << indent() << "BooleanLiteral" << std::endl;
+  ConstStmtVisitor::visit(literal);
+  unindent();
+}
+
+void ASTPrinter::visit(const StringLiteral &literal) {
+  os() << indent() << "StringLiteral" << std::endl;
+  ConstStmtVisitor::visit(literal);
+  unindent();
+}
+
+void ASTPrinter::visit(const NumberLiteral &literal) {
+  os() << indent() << "NumberLiteral" << std::endl;
   ConstStmtVisitor::visit(literal);
   unindent();
 }

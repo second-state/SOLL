@@ -18,7 +18,15 @@ template <bool Const> void StmtVisitorBase<Const>::visit(IdentifierType &) {
   // leaf, do nothing
 }
 
-template <bool Const> void StmtVisitorBase<Const>::visit(LiteralType &) {
+template <bool Const> void StmtVisitorBase<Const>::visit(BooleanLiteralType &) {
+  // leaf, do nothing
+}
+
+template <bool Const> void StmtVisitorBase<Const>::visit(StringLiteralType &) {
+  // leaf, do nothing
+}
+
+template <bool Const> void StmtVisitorBase<Const>::visit(NumberLiteralType &) {
   // leaf, do nothing
 }
 

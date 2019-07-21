@@ -13,7 +13,9 @@ public:
   void visit(UnaryOperatorType &) override;
   void visit(BinaryOperatorType &) override;
   void visit(IdentifierType &) override;
-  void visit(LiteralType &) override;
+  void visit(BooleanLiteralType &) override;
+  void visit(StringLiteralType &) override;
+  void visit(NumberLiteralType &) override;
 
   std::ostream& os() { return OS; }
 
