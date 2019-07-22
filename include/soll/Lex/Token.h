@@ -43,8 +43,15 @@ public:
 
   bool isLiteral() const { return tok::isLiteral(getKind()); }
 
+  // [TODO] Need refine follow clang architecture, reference BuiltinTypes.def and OperationKinds.def
   bool isElementaryTypeName() const {
     return tok::kw_address <= getKind();
+  }
+  bool isUnaryOp() const{
+    return tok::exclaim <= getKind() && getKind() <=tok::minusminus;
+  }
+  bool isCountOp() const{
+    return isOneOf(tok::plus, tok::minus);
   }
 
   SourceLocation getLocation() const {

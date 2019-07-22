@@ -1,8 +1,11 @@
 #pragma once
 #include "soll/Basic/SourceManager.h"
 
+using namespace std;
+
 namespace soll {
 
+class Token;
 class Lexer;
 class AST;
 
@@ -11,7 +14,7 @@ class Parser {
 
 public:
   Parser(Lexer &);
-  std::shared_ptr<AST> parse();
+  shared_ptr<AST> parse();
 
 private:
   struct VarDeclParserOptions {
@@ -29,42 +32,57 @@ private:
 
   struct FunctionHeaderParserResult {
     bool IsConstructor;
-    std::shared_ptr<std::string> Name;
+    shared_ptr<string> Name;
     const char *Visibility;
     const char *StateMutability;
-    std::vector<std::shared_ptr<AST>> Parameters;
-    std::vector<std::shared_ptr<AST>> Modifiers;
-    std::vector<std::shared_ptr<AST>> ReturnParameters;
+    vector<shared_ptr<AST>> Parameters;
+    vector<shared_ptr<AST>> Modifiers;
+    vector<shared_ptr<AST>> ReturnParameters;
   };
 
   // void parsePragmaVersion(langutil::SourceLocation const& _location,
-  // std::vector<Token> const& _tokens, std::vector<std::string> const&
+  // vector<Token> const& _tokens, vector<string> const&
   // _literals);
-  std::shared_ptr<AST> parsePragmaDirective();
-  std::shared_ptr<AST> parseContractDefinition();
+  shared_ptr<AST> parsePragmaDirective();
+  shared_ptr<AST> parseContractDefinition();
   FunctionHeaderParserResult parseFunctionHeader(bool ForceEmptyName,
                                                  bool AllowModifiers);
-  std::shared_ptr<AST> parseFunctionDefinitionOrFunctionTypeStateVariable();
-  std::shared_ptr<AST> parseVariableDeclaration(
+  shared_ptr<AST> parseFunctionDefinitionOrFunctionTypeStateVariable();
+  shared_ptr<AST> parseVariableDeclaration(
       VarDeclParserOptions const &Options = {},
-      std::shared_ptr<AST> const &LookAheadArrayType = nullptr);
-  std::shared_ptr<AST> parseTypeNameSuffix(std::shared_ptr<AST> Type);
-  std::shared_ptr<AST> parseTypeName(bool AllowVar);
-  std::vector<std::shared_ptr<AST>>
+      shared_ptr<AST> const &LookAheadArrayType = nullptr);
+  shared_ptr<AST> parseTypeNameSuffix(shared_ptr<AST> Type);
+  shared_ptr<AST> parseTypeName(bool AllowVar);
+  vector<shared_ptr<AST>>
   parseParameterList(VarDeclParserOptions const &Options = {},
                      bool AllowEmpty = true);
-  std::shared_ptr<AST> parseBlock();
-  std::shared_ptr<AST> parseStatement();
-  std::shared_ptr<AST> parseIfStatement();
-  std::shared_ptr<AST> parseSimpleStatement();
-  std::shared_ptr<AST> parseVariableDeclarationStatement(
-      std::shared_ptr<AST> const &LookAheadArrayType = std::shared_ptr<AST>());
-  std::shared_ptr<AST> parseExpressionStatement(
-      std::shared_ptr<AST> const &PartiallyParsedExpression =
-          std::shared_ptr<AST>());
-  std::shared_ptr<std::string>
-  parseExpression(std::shared_ptr<AST> const &PartiallyParsedExpression =
-                      std::shared_ptr<AST>());
+  shared_ptr<AST> parseBlock();
+  shared_ptr<AST> parseStatement();
+  shared_ptr<AST> parseIfStatement();
+  shared_ptr<AST> parseSimpleStatement();
+  shared_ptr<AST> parseVariableDeclarationStatement(
+      shared_ptr<AST> const &LookAheadArrayType = shared_ptr<AST>());
+  shared_ptr<AST> parseExpressionStatement(
+      shared_ptr<AST> const &PartiallyParsedExpression =
+          shared_ptr<AST>());
+  shared_ptr<AST>
+  parseExpression(shared_ptr<AST> const &PartiallyParsedExpression =
+                      shared_ptr<AST>());
+  shared_ptr<AST>
+  parseBinaryExpression(int MinPrecedence = 4,
+                        shared_ptr<AST> const &PartiallyParsedExpression =
+                            shared_ptr<AST>());
+  shared_ptr<AST>
+  parseUnaryExpression(shared_ptr<AST> const &PartiallyParsedExpression =
+                           shared_ptr<AST>());
+  shared_ptr<AST> parseLeftHandSideExpression(
+      shared_ptr<AST> const &PartiallyParsedExpression =
+          shared_ptr<AST>());
+  shared_ptr<AST> parsePrimaryExpression();
+  vector<shared_ptr<AST>> parseFunctionCallListArguments();
+  pair<vector<shared_ptr<AST>>,
+            vector<shared_ptr<string>>>
+  parseFunctionCallArguments();
 
   /// Used as return value of @see peekStatementType.
   enum class LookAheadInfo {
@@ -77,10 +95,10 @@ private:
   /// expression or to a type name. For this to be valid, path cannot be empty,
   /// but indices can be empty.
   struct IndexAccessedPath {
-    std::vector<std::shared_ptr<AST>> Path;
+    vector<shared_ptr<AST>> Path;
   };
 
-  std::pair<LookAheadInfo, IndexAccessedPath> tryParseIndexAccessedPath();
+  pair<LookAheadInfo, IndexAccessedPath> tryParseIndexAccessedPath();
 
   /// Performs limited look-ahead to distinguish between variable declaration
   /// and expression statement. For source code of the form "a[][8]"
@@ -91,13 +109,19 @@ private:
   /// @returns a typename parsed in look-ahead fashion from something like
   /// "a.b[8][2**70]", or an empty pointer if an empty @a _pathAndIncides has
   /// been supplied.
-  std::shared_ptr<AST>
+  shared_ptr<AST>
   typeNameFromIndexAccessStructure(IndexAccessedPath const &PathAndIndices);
   /// @returns an expression parsed in look-ahead fashion from something like
   /// "a.b[8][2**70]", or an empty pointer if an empty @a _pathAndIncides has
   /// been supplied.
-  std::shared_ptr<AST>
+  shared_ptr<AST>
   expressionFromIndexAccessStructure(IndexAccessedPath const &PathAndIndices);
+  shared_ptr<string> expectIdentifierToken();
+  shared_ptr<string> getLiteralAndAdvance();
+  /// Creates an empty ParameterList at the current location (used if parameters
+  /// can be omitted).
+  shared_ptr<AST> createEmptyParameterList();
+  llvm::StringRef getLiteralAndAdvance(llvm::Optional<Token> Tok);
 };
 
 } // namespace soll
