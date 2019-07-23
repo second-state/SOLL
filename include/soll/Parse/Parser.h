@@ -49,9 +49,9 @@ private:
 
   struct FunctionHeaderParserResult {
     bool IsConstructor;
-    string Name;
-    const char *Visibility;
-    const char *StateMutability;
+    llvm::StringRef Name;
+    Decl::Visibility Vsblty = Decl::Visibility::Default;
+    StateMutability SM = StateMutability::NonPayable;
     unique_ptr<ParamList> Parameters;
     vector<unique_ptr<ModifierInvocation>> Modifiers;
     unique_ptr<ParamList> ReturnParameters;
@@ -64,6 +64,7 @@ private:
   ContractDecl::ContractKind parseContractKind();
   unique_ptr<ContractDecl> parseContractDefinition();
   Decl::Visibility parseVisibilitySpecifier();
+  StateMutability parseStateMutability();
   FunctionHeaderParserResult parseFunctionHeader(bool ForceEmptyName,
                                                  bool AllowModifiers);
   unique_ptr<FunctionDecl> parseFunctionDefinitionOrFunctionTypeStateVariable();

@@ -127,6 +127,34 @@ Decl::Visibility Parser::parseVisibilitySpecifier()
   return Vsblty;
 }
 
+StateMutability Parser::parseStateMutability()
+{
+  StateMutability stateMutability(StateMutability::NonPayable);
+  switch(TheLexer.LookAhead(0)->getKind())
+  {
+    case tok::kw_payable:
+      stateMutability = StateMutability::Payable;
+      break;
+    case tok::kw_view:
+      stateMutability = StateMutability::View;
+      break;
+    case tok::kw_pure:
+      stateMutability = StateMutability::Pure;
+      break;
+    case tok::kw_constant:
+      stateMutability = StateMutability::View;
+      assert( false &&
+        "The state mutability modifier \"constant\" was removed in version 0.5.0. "
+        "Use \"view\" or \"pure\" instead."
+      );
+      break;
+    default:
+      assert(false && "Invalid state mutability specifier.");
+  }
+  TheLexer.CachedLex();
+  return stateMutability;
+}
+
 unique_ptr<ContractDecl> Parser::parseContractDefinition() {
   ContractDecl::ContractKind CtKind = parseContractKind();
   llvm::StringRef Name;
@@ -191,11 +219,11 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
 
   llvm::Optional<Token> CurTok = TheLexer.LookAhead(0);
   if (Result.IsConstructor)
-    Result.Name = string();
+    Result.Name = llvm::StringRef();
   else if (ForceEmptyName || CurTok->is(tok::l_paren))
-    Result.Name = string();
+    Result.Name = llvm::StringRef();
   else
-    Result.Name = TheLexer.CachedLex()->getIdentifierInfo()->getName().str();
+    Result.Name = TheLexer.CachedLex()->getIdentifierInfo()->getName();
   // [Integration TODO] printf("%*sFunction:%s\n", indent(0), "", Result.Name->c_str());
 
   VarDeclParserOptions Options;
@@ -212,12 +240,12 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
     } else if (CurTok->isOneOf(tok::kw_public, tok::kw_private,
                                tok::kw_internal, tok::kw_external)) {
       // [TODO] Special case of a public state variable of function Type.
-      Result.Visibility = TheLexer.CachedLex()->getName();
-      // [Integration TODO] printf("%*sVisibility:%s\n", indent(0), "", Result.Visibility);
+      Result.Vsblty = parseVisibilitySpecifier();
+      // [Integration TODO] printf("%*sVisibility:%d\n", indent(0), "", Result.Visibility);
     } else if (CurTok->isOneOf(tok::kw_constant, tok::kw_pure, tok::kw_view,
                                tok::kw_payable)) {
-      Result.StateMutability = TheLexer.CachedLex()->getName();
-      // [Integration TODO] printf("%*sStateMutability:%s\n", indent(0), "", Result.StateMutability);
+      Result.SM = parseStateMutability();
+      // [Integration TODO] printf("%*sStateMutability:%d\n", indent(0), "", Result.StateMutability);
     } else {
       break;
     }
@@ -254,7 +282,10 @@ Parser::parseFunctionDefinitionOrFunctionTypeStateVariable() {
   } else {
     // [TODO] State Variable case.
   }
-  return nullptr;
+  return std::move(std::make_unique<FunctionDecl>(
+      Header.Name, Header.Vsblty, Header.SM,
+      Header.IsConstructor, std::move(Header.Parameters), std::move(Header.Modifiers), std::move(Header.ReturnParameters),
+      nullptr));
 }
 
 unique_ptr<VarDecl> Parser::parseVariableDeclaration(
