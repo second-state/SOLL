@@ -1,4 +1,6 @@
 #pragma once
+
+#include "soll/AST/DeclVisitor.h"
 #include "soll/AST/Expr.h"
 #include "soll/Basic/IdentifierTable.h"
 #include "soll/Basic/SourceLocation.h"
@@ -24,8 +26,11 @@ protected:
   Decl(llvm::StringRef Name,
        Visibility vis = Visibility::Default)
       : Name(Name.str()), Vis(vis) {}
-  virtual ~Decl();
+  virtual ~Decl() {}
 
+public:
+  virtual void accept(DeclVisitor &visitor) = 0;
+  virtual void accept(ConstDeclVisitor &visitor) const = 0;
 };
 
 class PragmaDirective {
@@ -98,6 +103,9 @@ public:
         SM(sm), IsConstructor(isConstructor),
         FunctionModifiers(std::move(modifiers)), Body(std::move(body)),
         Implemented(body != nullptr) {}
+
+  void accept(DeclVisitor &visitor) override;
+  void accept(ConstDeclVisitor &visitor) const override;
 };
 
 class VarDecl;
@@ -130,6 +138,9 @@ public:
       : Decl(name, visibility), TypeName(type), Value(std::move(value)),
         IsStateVariable(isStateVar), IsIndexed(isIndexed),
         IsConstant(isConstant), ReferenceLocation(referenceLocation) {}
+
+  void accept(DeclVisitor &visitor) override;
+  void accept(ConstDeclVisitor &visitor) const override;
 };
 
 class ModifierInvocation {
