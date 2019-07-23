@@ -8,7 +8,6 @@
 namespace soll {
 
 class ASTContext;
-class Token;
 
 class Decl {
 public:
@@ -30,13 +29,6 @@ protected:
 };
 
 class PragmaDirective {
-  std::vector<Token> Tokens;
-  std::vector<std::string> Literals;
-
-public:
-  PragmaDirective(std::vector<Token> const &tokens,
-                  std::vector<std::string> const &literals)
-      : Tokens(tokens), Literals(literals) {}
 };
 
 class InheritanceSpecifier;
@@ -131,14 +123,13 @@ private:
 
 public:
   VarDecl(llvm::StringRef type, llvm::StringRef name,
-          std::unique_ptr<Expr> &&value, Visibility visibility,
-          bool isStateVar = false, bool isIndexed = false,
-          bool isConstant = false,
+          std::unique_ptr<Expr> &&value,
+          Visibility visibility = Visibility::Default, bool isStateVar = false,
+          bool isIndexed = false, bool isConstant = false,
           Location referenceLocation = Location::Unspecified)
-      : Decl(name, visibility), TypeName(type),
-        Value(std::move(value)), IsStateVariable(isStateVar),
-        IsIndexed(isIndexed), IsConstant(isConstant),
-        ReferenceLocation(referenceLocation) {}
+      : Decl(name, visibility), TypeName(type), Value(std::move(value)),
+        IsStateVariable(isStateVar), IsIndexed(isIndexed),
+        IsConstant(isConstant), ReferenceLocation(referenceLocation) {}
 };
 
 class ModifierInvocation {
