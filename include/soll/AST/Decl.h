@@ -1,5 +1,6 @@
 #pragma once
 #include "soll/AST/Expr.h"
+#include "soll/AST/Type.h"
 #include "soll/Basic/IdentifierTable.h"
 #include "soll/Basic/SourceLocation.h"
 #include <memory>
@@ -13,6 +14,7 @@ class Token;
 class Decl {
 public:
   enum class Visibility { Default, Private, Internal, Public, External };
+  virtual ~Decl() {}
 
 private:
   Visibility Vis;
@@ -22,19 +24,19 @@ protected:
   friend class ASTReader;
 
 protected:
+  Decl() {}
   Decl(llvm::StringRef Name,
        Visibility vis = Visibility::Default)
       : Name(Name.str()), Vis(vis) {}
-  virtual ~Decl();
 
 };
 
-class PragmaDirective {
-  std::vector<Token> Tokens;
+class PragmaDirective : public Decl {
+  std::vector<llvm::Optional<Token>> Tokens;
   std::vector<std::string> Literals;
 
 public:
-  PragmaDirective(std::vector<Token> const &tokens,
+  PragmaDirective(std::vector<llvm::Optional<Token>> const &tokens,
                   std::vector<std::string> const &literals)
       : Tokens(tokens), Literals(literals) {}
 };
@@ -122,7 +124,7 @@ public:
   enum class Location { Unspecified, Storage, Memory, CallData };
 
 private:
-  std::string TypeName;
+  std::unique_ptr<Type> TypeName;
   std::unique_ptr<Expr> Value;
   bool IsStateVariable;
   bool IsIndexed;
@@ -130,12 +132,12 @@ private:
   Location ReferenceLocation;
 
 public:
-  VarDecl(llvm::StringRef type, llvm::StringRef name,
+  VarDecl(std::unique_ptr<Type> &&T, llvm::StringRef name,
           std::unique_ptr<Expr> &&value, Visibility visibility,
           bool isStateVar = false, bool isIndexed = false,
           bool isConstant = false,
           Location referenceLocation = Location::Unspecified)
-      : Decl(name, visibility), TypeName(type),
+      : Decl(name, visibility), TypeName(std::move(T)),
         Value(std::move(value)), IsStateVariable(isStateVar),
         IsIndexed(isIndexed), IsConstant(isConstant),
         ReferenceLocation(referenceLocation) {}

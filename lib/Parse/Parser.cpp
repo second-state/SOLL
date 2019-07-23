@@ -10,6 +10,13 @@ using namespace std;
 
 namespace soll {
 
+struct Base {
+};
+
+struct Derived : public Base {
+};
+
+
 static int indent(int update) {
   static int _indent = 0;
   _indent += update;
@@ -20,14 +27,12 @@ Parser::Parser(Lexer &lexer) : TheLexer(lexer) {}
 
 unique_ptr<AST> Parser::parse() {
   llvm::Optional<Token> CurTok;
-  vector<shared_ptr<AST>> Nodes;
+  vector<unique_ptr<Decl>> Nodes;
 
   while ((CurTok = TheLexer.LookAhead(0))->isNot(tok::eof)) {
     switch (CurTok->getKind()) {
     case tok::kw_pragma:
-      parsePragmaDirective();
-      // [PrePOC] Gen AST tree
-      //Nodes.push_back(parsePragmaDirective());
+      Nodes.push_back(std::move(parsePragmaDirective()));
       break;
     case tok::kw_import:
       TheLexer.CachedLex();
@@ -74,17 +79,62 @@ unique_ptr<PragmaDirective> Parser::parsePragmaDirective() {
   TheLexer.CachedLex();
 
   // [TODO] Implement version recognize and compare. ref: parsePragmaVersion
-  return nullptr;
+  return std::move(std::make_unique<PragmaDirective>(Tokens, Literals));
+}
+
+ContractDecl::ContractKind Parser::parseContractKind()
+{
+  ContractDecl::ContractKind Kind;
+  switch(TheLexer.LookAhead(0)->getKind())
+  {
+  case tok::kw_interface:
+    Kind = ContractDecl::ContractKind::Interface;
+    break;
+  case tok::kw_contract:
+    Kind = ContractDecl::ContractKind::Contract;
+    break;
+  case tok::kw_library:
+    Kind = ContractDecl::ContractKind::Library;
+    break;
+  default:
+    assert(false && "Invalid contract kind.");
+  }
+  TheLexer.CachedLex();
+  return Kind;
+}
+
+Decl::Visibility Parser::parseVisibilitySpecifier()
+{
+  Decl::Visibility Vsblty(Decl::Visibility::Default);
+  switch (TheLexer.LookAhead(0)->getKind())
+  {
+    case tok::kw_public:
+      Vsblty = Decl::Visibility::Public;
+      break;
+    case tok::kw_internal:
+      Vsblty = Decl::Visibility::Internal;
+      break;
+    case tok::kw_private:
+      Vsblty = Decl::Visibility::Private;
+      break;
+    case tok::kw_external:
+      Vsblty = Decl::Visibility::External;
+      break;
+    default:
+      assert(false && "Invalid visibility specifier.");
+  }
+  TheLexer.CachedLex();
+  return Vsblty;
 }
 
 unique_ptr<ContractDecl> Parser::parseContractDefinition() {
-  TheLexer.CachedLex(); // contract
-  shared_ptr<string> Name = nullptr;
-  vector<shared_ptr<AST>> SubNodes;
-  Name = make_shared<string>(
-      TheLexer.CachedLex()->getIdentifierInfo()->getName().str());
+  ContractDecl::ContractKind CtKind = parseContractKind();
+  llvm::StringRef Name;
+  vector<unique_ptr<InheritanceSpecifier>> BaseContracts;
+  vector<unique_ptr<Decl>> SubNodes;
+  Name = TheLexer.CachedLex()->getIdentifierInfo()->getName();
 
-  // [Integration TODO] printf("%*sContract:%s\n", indent(0), "", Name->c_str());
+  // [Integration TODO] printf("%*sContract:%s\n", indent(0), "", Name->str()->c_str());
 
   if (TheLexer.LookAhead(0)->is(tok::kw_is)) {
     do {
@@ -92,10 +142,13 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
       TheLexer.CachedLex();
       // [Integration TODO] printf("%*sInheritance:%s\n", indent(0), "", TheLexer.LookAhead(0)->getIdentifierInfo()->getName().str().c_str());
       // [TODO] Update vector<InheritanceSpecifier> baseContracts
+      BaseContracts.push_back(std::move(std::make_unique<InheritanceSpecifier>(
+          TheLexer.LookAhead(0)->getIdentifierInfo()->getName().str(),
+          vector<std::unique_ptr<Expr>>())));
     } while ((TheLexer.LookAhead(0))->is(tok::comma));
   }
 
-  TheLexer.CachedLex();
+  TheLexer.CachedLex(); // (
   while (true) {
     tok::TokenKind Kind = TheLexer.LookAhead(0)->getKind();
     if (Kind == tok::r_brace) {
@@ -103,11 +156,8 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
     }
     // [TODO] < Parse all Types in contract's context >
     if (Kind == tok::kw_function) {
-
       // [Integration TODO] indent(2);
-      parseFunctionDefinitionOrFunctionTypeStateVariable();
-      // [PrePOC] Gen AST tree
-      //SubNodes.push_back(parseFunctionDefinitionOrFunctionTypeStateVariable());
+      SubNodes.push_back(std::move(parseFunctionDefinitionOrFunctionTypeStateVariable()));
       // [Integration TODO] indent(-2);
     } else if (Kind == tok::kw_struct) {
       // [TODO] contract tok::kw_struct
@@ -126,7 +176,7 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
       assert("Solidity Error: Function, variable, struct or modifier "
              "declaration expected.");
   }
-  return nullptr;
+  return std::move(std::make_unique<ContractDecl>(Name, std::move(BaseContracts), CtKind));
 }
 
 Parser::FunctionHeaderParserResult
@@ -212,7 +262,7 @@ unique_ptr<VarDecl> Parser::parseVariableDeclaration(
     unique_ptr<Type> const &LookAheadArrayType) {
   unique_ptr<Type> T;
   if (LookAheadArrayType) {
-    // [PrePOC] need bug fix below line
+    // [TODO] need bug fix below line
     //T = LookAheadArrayType;
   } else {
     T = parseTypeName(Options.AllowVar);
@@ -220,16 +270,16 @@ unique_ptr<VarDecl> Parser::parseVariableDeclaration(
 
   bool IsIndexed = false;
   bool IsDeclaredConst = false;
-  const char *Visibility = "default";
-  const char *Location = "Unspecified";
-  shared_ptr<string> Identifier;
+  Decl::Visibility Vsblty = Decl::Visibility::Default;
+  VarDecl::Location Loc= VarDecl::Location::Unspecified;
+  llvm::StringRef Name;
 
   llvm::Optional<Token> CurTok;
   while (true) {
     CurTok = TheLexer.LookAhead(0);
     if (Options.IsStateVariable &&
         CurTok->isOneOf(tok::kw_public, tok::kw_private, tok::kw_internal)) {
-      Visibility = TheLexer.CachedLex()->getName();
+      Vsblty = parseVisibilitySpecifier();
     } else {
       if (Options.AllowIndexed && CurTok->is(tok::kw_indexed))
 
@@ -239,23 +289,45 @@ unique_ptr<VarDecl> Parser::parseVariableDeclaration(
       else if (Options.AllowLocationSpecifier &&
                CurTok->isOneOf(tok::kw_memory, tok::kw_storage,
                                tok::kw_calldata)) {
-        Location = CurTok->getName();
+
+        // [PrePOC] Bug fix, fix below line
+        //Loc = CurTok->getName();
       } else {
-        break;
+        if (Loc != VarDecl::Location::Unspecified)
+          assert(false && "Location already specified.");
+        else if (!T)
+          assert(false && "Location specifier needs explicit type name.");
+        else
+        {
+          switch (TheLexer.LookAhead(0)->getKind())
+          {
+          case tok::kw_storage:
+            Loc = VarDecl::Location::Storage;
+            break;
+          case tok::kw_memory:
+            Loc = VarDecl::Location::Memory;
+            break;
+          case tok::kw_calldata:
+            Loc = VarDecl::Location::CallData;
+            break;
+          default:
+            assert(fals && "Unknown data location.");
+          }
+        }
       }
     }
   }
 
   if (Options.AllowEmptyName && TheLexer.LookAhead(0)->isNot(tok::identifier)) {
-    Identifier = make_shared<string>("");
+    Name = llvm::StringRef("");
   } else {
-    Identifier = make_shared<string>(
-        TheLexer.CachedLex()->getIdentifierInfo()->getName());
+    Name = TheLexer.CachedLex()->getIdentifierInfo()->getName();
   }
-  // [Integration TODO] printf("%*sVariableName:%s\n", indent(0), "", Identifier->c_str());
 
   // [TODO] Handle variable with init value
-  return nullptr;
+  // [Integration TODO] printf("%*sVariableName:%s\n", indent(0), "", Identifier->c_str());
+  // [PrePOC] Construct need value expression
+  return std::move(std::make_unique<VarDecl>(std::move(T), Name, nullptr, Vsblty, Options.IsStateVariable, IsIndexed, IsDeclaredConst));
 }
 
 unique_ptr<Type> Parser::parseTypeNameSuffix(unique_ptr<Type> T) {
@@ -296,15 +368,13 @@ unique_ptr<Type> Parser::parseTypeName(bool AllowVar) {
     T = parseTypeNameSuffix(move(T));
     // [Integration TODO] printf("\n");
   }
-
   return T;
 }
 
 unique_ptr<ParamList>
 Parser::parseParameterList(VarDeclParserOptions const &_Options,
                            bool AllowEmpty) {
-  unique_ptr<ParamList> Parameters;
-
+  vector<unique_ptr<VarDecl>> Parameters;
   VarDeclParserOptions Options(_Options);
   Options.AllowEmptyName = true;
   // [Integration TODO] printf("%*sParameters:%s\n", indent(0), "", "");
@@ -312,13 +382,12 @@ Parser::parseParameterList(VarDeclParserOptions const &_Options,
     do {
       TheLexer.CachedLex();
       // [Integration TODO] indent(2);
-      // [PrePOC] Gen AST tree, need parse variable
-      // Parameters.push_back(parseVariableDeclaration(Options));
+      Parameters.push_back(std::move(parseVariableDeclaration(Options)));
       // [Integration TODO] indent(-2);
     } while (TheLexer.LookAhead(0)->is(tok::comma));
     TheLexer.CachedLex();
   }
-  return Parameters;
+  return std::move(std::make_unique<ParamList>(std::move(Parameters)));;
 }
 
 unique_ptr<Block> Parser::parseBlock() {

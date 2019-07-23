@@ -1,5 +1,6 @@
 #pragma once
 #include "soll/Basic/SourceManager.h"
+#include "soll/AST/AST.h"
 
 using namespace std;
 
@@ -60,7 +61,9 @@ private:
   // vector<Token> const& _tokens, vector<string> const&
   // _literals);
   unique_ptr<PragmaDirective> parsePragmaDirective();
+  ContractDecl::ContractKind parseContractKind();
   unique_ptr<ContractDecl> parseContractDefinition();
+  Decl::Visibility parseVisibilitySpecifier();
   FunctionHeaderParserResult parseFunctionHeader(bool ForceEmptyName,
                                                  bool AllowModifiers);
   unique_ptr<FunctionDecl> parseFunctionDefinitionOrFunctionTypeStateVariable();
