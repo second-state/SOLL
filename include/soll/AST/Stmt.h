@@ -30,6 +30,8 @@ class Block : public Stmt {
   std::vector<StmtPtr> Stmts;
 
 public:
+  Block(std::vector<StmtPtr> &&Stmts) : Stmts(std::move(Stmts)) {}
+
   /// this setter transfers the ownerships of Stmt from function argument to class instance
   void setStmts(std::vector<StmtPtr> &&Stmts) {
     this->Stmts.clear();
