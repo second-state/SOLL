@@ -30,7 +30,7 @@ class Block : public Stmt {
 public:
   /// this setter transfers the ownerships of Stmt from function argument to class instance
   void setStmts(std::vector<StmtPtr> &&Stmts) {
-    Stmts.clear();
+    this->Stmts.clear();
     for(auto &&S: Stmts)
       this->Stmts.emplace_back(std::move(S));
   }
