@@ -1,11 +1,9 @@
 #pragma once
 
-#include "llvm/ADT/APInt.h"
-
+#include "soll/AST/StmtVisitor.h"
+#include <llvm/ADT/APInt.h>
 #include <memory>
 #include <vector>
-
-#include "soll/AST/StmtVisitor.h"
 
 namespace soll {
 
@@ -13,6 +11,8 @@ class Expr;
 
 class Stmt {
 public:
+  virtual ~Stmt() {}
+
   virtual void accept(StmtVisitor &visitor) = 0;
   virtual void accept(ConstStmtVisitor &visitor) const = 0;
   virtual ~Stmt();
@@ -29,6 +29,8 @@ class Block : public Stmt {
   std::vector<StmtPtr> Stmts;
 
 public:
+  Block(std::vector<StmtPtr> &&Stmts) : Stmts(std::move(Stmts)) {}
+
   /// this setter transfers the ownerships of Stmt from function argument to class instance
   void setStmts(std::vector<StmtPtr> &&Stmts) {
     this->Stmts.clear();
@@ -36,12 +38,22 @@ public:
       this->Stmts.emplace_back(std::move(S));
   }
 
-  std::vector<const Stmt *> getStmts() {
+  std::vector<const Stmt *> getStmts() const {
     std::vector<const Stmt *> Stmts;
     for (auto &S : this->Stmts)
       Stmts.emplace_back(S.get());
     return Stmts;
   }
+
+  std::vector<Stmt *> getStmts() {
+    std::vector<Stmt *> Stmts;
+    for (auto &S : this->Stmts)
+      Stmts.emplace_back(S.get());
+    return Stmts;
+  }
+
+  void accept(StmtVisitor &visitor) override;
+  void accept(ConstStmtVisitor &visitor) const override;
 };
 
 class IfStmt : public Stmt {

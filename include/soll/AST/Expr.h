@@ -3,8 +3,8 @@
 #include "soll/AST/OperationKinds.h"
 #include "soll/AST/Stmt.h"
 
-#include<string>
 #include <optional>
+#include <string>
 
 namespace soll {
 

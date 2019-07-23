@@ -1,20 +1,10 @@
 #pragma once
 
-namespace {
-
-/// Conditional const
-/// cond_const<true,  Type>: const Type
-/// cond_const<false, Type>: Type
-template <bool Const, class Type> struct cond_const {
-  typedef const Type type;
-};
-
-template <class Type> struct cond_const<false, Type> { typedef Type type; };
-
-} // namespace
+#include "soll/ADT/STLExtras.h"
 
 namespace soll {
 
+class Block;
 class UnaryOperator;
 class BinaryOperator;
 class Identifier;
@@ -24,13 +14,16 @@ class NumberLiteral;
 
 template <bool Const> class StmtVisitorBase {
 protected:
+  using BlockType = typename cond_const<Const, Block>::type;
   using UnaryOperatorType = typename cond_const<Const, UnaryOperator>::type;
   using BinaryOperatorType = typename cond_const<Const, BinaryOperator>::type;
   using IdentifierType = typename cond_const<Const, Identifier>::type;
   using BooleanLiteralType = typename cond_const<Const, BooleanLiteral>::type;
   using StringLiteralType = typename cond_const<Const, StringLiteral>::type;
   using NumberLiteralType = typename cond_const<Const, NumberLiteral>::type;
+
 public:
+  virtual void visit(BlockType &);
   virtual void visit(UnaryOperatorType &);
   virtual void visit(BinaryOperatorType &);
   virtual void visit(IdentifierType &);

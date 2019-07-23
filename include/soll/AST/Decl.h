@@ -1,4 +1,6 @@
 #pragma once
+
+#include "soll/AST/DeclVisitor.h"
 #include "soll/AST/Expr.h"
 #include "soll/AST/Type.h"
 #include "soll/Basic/IdentifierTable.h"
@@ -9,7 +11,6 @@
 namespace soll {
 
 class ASTContext;
-class Token;
 
 class Decl {
 public:
@@ -28,7 +29,11 @@ protected:
   Decl(llvm::StringRef Name,
        Visibility vis = Visibility::Default)
       : Name(Name.str()), Vis(vis) {}
+  virtual ~Decl() {}
 
+public:
+  virtual void accept(DeclVisitor &visitor) = 0;
+  virtual void accept(ConstDeclVisitor &visitor) const = 0;
 };
 
 class PragmaDirective : public Decl {
@@ -108,6 +113,11 @@ public:
         SM(sm), IsConstructor(isConstructor),
         FunctionModifiers(std::move(modifiers)), Body(std::move(body)),
         Implemented(body != nullptr) {}
+
+  Block *getBody() const { return Body.get(); }
+
+  void accept(DeclVisitor &visitor) override;
+  void accept(ConstDeclVisitor &visitor) const override;
 };
 
 class VarDecl;
@@ -132,15 +142,17 @@ private:
   Location ReferenceLocation;
 
 public:
-  VarDecl(std::unique_ptr<Type> &&T, llvm::StringRef name,
-          std::unique_ptr<Expr> &&value, Visibility visibility,
-          bool isStateVar = false, bool isIndexed = false,
-          bool isConstant = false,
+  VarDecl(llvm::StringRef type, llvm::StringRef name,
+          std::unique_ptr<Expr> &&value,
+          Visibility visibility = Visibility::Default, bool isStateVar = false,
+          bool isIndexed = false, bool isConstant = false,
           Location referenceLocation = Location::Unspecified)
-      : Decl(name, visibility), TypeName(std::move(T)),
-        Value(std::move(value)), IsStateVariable(isStateVar),
-        IsIndexed(isIndexed), IsConstant(isConstant),
-        ReferenceLocation(referenceLocation) {}
+      : Decl(name, visibility), TypeName(type), Value(std::move(value)),
+        IsStateVariable(isStateVar), IsIndexed(isIndexed),
+        IsConstant(isConstant), ReferenceLocation(referenceLocation) {}
+
+  void accept(DeclVisitor &visitor) override;
+  void accept(ConstDeclVisitor &visitor) const override;
 };
 
 class ModifierInvocation {

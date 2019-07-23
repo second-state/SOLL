@@ -1,7 +1,27 @@
 #include "soll/AST/ASTPrinter.h"
+#include "soll/AST/Decl.h"
 #include "soll/AST/Expr.h"
 
 using namespace soll;
+
+void ASTPrinter::visit(const FunctionDecl &decl) {
+  os() << indent() << "FunctionDecl" << std::endl;
+  ConstDeclVisitor::visit(decl);
+  decl.getBody()->accept(*this);
+  unindent();
+}
+
+void ASTPrinter::visit(const VarDecl &decl) {
+  os() << indent() << "VarDecl" << std::endl;
+  ConstDeclVisitor::visit(decl);
+  unindent();
+}
+
+void ASTPrinter::visit(const Block &block) {
+  os() << indent() << "Block" << std::endl;
+  ConstStmtVisitor::visit(block);
+  unindent();
+}
 
 void ASTPrinter::visit(const UnaryOperator &op) {
   os() << indent() << "UnaryOperator" << std::endl;

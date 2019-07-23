@@ -3,6 +3,11 @@
 
 using namespace soll;
 
+template <bool Const> void StmtVisitorBase<Const>::visit(BlockType &block) {
+  for (auto stmt : block.getStmts())
+    stmt->accept(*this);
+}
+
 template <bool Const>
 void StmtVisitorBase<Const>::visit(UnaryOperatorType &op) {
   op.getSubExpr()->accept(*this);
