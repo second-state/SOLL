@@ -4,6 +4,7 @@
 
 namespace soll {
 
+class Block;
 class UnaryOperator;
 class BinaryOperator;
 class Identifier;
@@ -13,13 +14,16 @@ class NumberLiteral;
 
 template <bool Const> class StmtVisitorBase {
 protected:
+  using BlockType = typename cond_const<Const, Block>::type;
   using UnaryOperatorType = typename cond_const<Const, UnaryOperator>::type;
   using BinaryOperatorType = typename cond_const<Const, BinaryOperator>::type;
   using IdentifierType = typename cond_const<Const, Identifier>::type;
   using BooleanLiteralType = typename cond_const<Const, BooleanLiteral>::type;
   using StringLiteralType = typename cond_const<Const, StringLiteral>::type;
   using NumberLiteralType = typename cond_const<Const, NumberLiteral>::type;
+
 public:
+  virtual void visit(BlockType &);
   virtual void visit(UnaryOperatorType &);
   virtual void visit(BinaryOperatorType &);
   virtual void visit(IdentifierType &);

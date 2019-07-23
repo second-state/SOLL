@@ -104,6 +104,8 @@ public:
         FunctionModifiers(std::move(modifiers)), Body(std::move(body)),
         Implemented(body != nullptr) {}
 
+  Block *getBody() const { return Body.get(); }
+
   void accept(DeclVisitor &visitor) override;
   void accept(ConstDeclVisitor &visitor) const override;
 };

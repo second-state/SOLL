@@ -3,6 +3,9 @@
 
 using namespace soll;
 
+void Block::accept(StmtVisitor &visitor) { visitor.visit(*this); }
+void Block::accept(ConstStmtVisitor &visitor) const { visitor.visit(*this); }
+
 void UnaryOperator::accept(StmtVisitor &visitor) { visitor.visit(*this); }
 void UnaryOperator::accept(ConstStmtVisitor &visitor) const {
   visitor.visit(*this);

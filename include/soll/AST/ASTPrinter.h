@@ -2,14 +2,19 @@
 
 #include <ostream>
 
+#include "soll/AST/DeclVisitor.h"
 #include "soll/AST/StmtVisitor.h"
 
 namespace soll {
 
-class ASTPrinter : public ConstStmtVisitor {
+class ASTPrinter : public ConstDeclVisitor, public ConstStmtVisitor {
 public:
   ASTPrinter(std::ostream &os) : OS(os), Level(0) {}
 
+  void visit(FunctionDeclType &) override;
+  void visit(VarDeclType &) override;
+
+  void visit(BlockType &) override;
   void visit(UnaryOperatorType &) override;
   void visit(BinaryOperatorType &) override;
   void visit(IdentifierType &) override;

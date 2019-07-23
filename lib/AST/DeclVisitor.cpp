@@ -4,11 +4,11 @@
 using namespace soll;
 
 template <bool Const> void DeclVisitorBase<Const>::visit(FunctionDeclType &) {
-  // TODO: implement
+  // leaf of Decl, do nothing
 }
 
 template <bool Const> void DeclVisitorBase<Const>::visit(VarDeclType &) {
-  // TODO: implement
+  // leaf, do nothing
 }
 
 /// Explicit instantiation
