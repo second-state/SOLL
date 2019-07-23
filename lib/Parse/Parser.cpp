@@ -1,21 +1,13 @@
 #include "soll/Parse/Parser.h"
 #include "soll/AST/AST.h"
 #include "soll/AST/Decl.h"
-#include "soll/AST/Type.h"
 #include "soll/AST/Stmt.h"
+#include "soll/AST/Type.h"
 #include "soll/Lex/Lexer.h"
-#include <iostream>
 
 using namespace std;
 
 namespace soll {
-
-struct Base {
-};
-
-struct Derived : public Base {
-};
-
 
 static int indent(int update) {
   static int _indent = 0;
@@ -32,7 +24,7 @@ unique_ptr<AST> Parser::parse() {
   while ((CurTok = TheLexer.LookAhead(0))->isNot(tok::eof)) {
     switch (CurTok->getKind()) {
     case tok::kw_pragma:
-      Nodes.push_back(std::move(parsePragmaDirective()));
+      Nodes.push_back(parsePragmaDirective());
       break;
     case tok::kw_import:
       TheLexer.CachedLex();
@@ -40,9 +32,7 @@ unique_ptr<AST> Parser::parse() {
     case tok::kw_interface:
     case tok::kw_library:
     case tok::kw_contract:
-      parseContractDefinition();
-      // [PrePOC] Gen AST tree
-      //Nodes.push_back(parseContractDefinition());
+      Nodes.push_back(parseContractDefinition());
       break;
     default:
       TheLexer.CachedLex();
@@ -82,11 +72,9 @@ unique_ptr<PragmaDirective> Parser::parsePragmaDirective() {
   return std::move(std::make_unique<PragmaDirective>(Tokens, Literals));
 }
 
-ContractDecl::ContractKind Parser::parseContractKind()
-{
+ContractDecl::ContractKind Parser::parseContractKind() {
   ContractDecl::ContractKind Kind;
-  switch(TheLexer.LookAhead(0)->getKind())
-  {
+  switch (TheLexer.LookAhead(0)->getKind()) {
   case tok::kw_interface:
     Kind = ContractDecl::ContractKind::Interface;
     break;
@@ -103,53 +91,48 @@ ContractDecl::ContractKind Parser::parseContractKind()
   return Kind;
 }
 
-Decl::Visibility Parser::parseVisibilitySpecifier()
-{
+Decl::Visibility Parser::parseVisibilitySpecifier() {
   Decl::Visibility Vsblty(Decl::Visibility::Default);
-  switch (TheLexer.LookAhead(0)->getKind())
-  {
-    case tok::kw_public:
-      Vsblty = Decl::Visibility::Public;
-      break;
-    case tok::kw_internal:
-      Vsblty = Decl::Visibility::Internal;
-      break;
-    case tok::kw_private:
-      Vsblty = Decl::Visibility::Private;
-      break;
-    case tok::kw_external:
-      Vsblty = Decl::Visibility::External;
-      break;
-    default:
-      assert(false && "Invalid visibility specifier.");
+  switch (TheLexer.LookAhead(0)->getKind()) {
+  case tok::kw_public:
+    Vsblty = Decl::Visibility::Public;
+    break;
+  case tok::kw_internal:
+    Vsblty = Decl::Visibility::Internal;
+    break;
+  case tok::kw_private:
+    Vsblty = Decl::Visibility::Private;
+    break;
+  case tok::kw_external:
+    Vsblty = Decl::Visibility::External;
+    break;
+  default:
+    assert(false && "Invalid visibility specifier.");
   }
   TheLexer.CachedLex();
   return Vsblty;
 }
 
-StateMutability Parser::parseStateMutability()
-{
+StateMutability Parser::parseStateMutability() {
   StateMutability stateMutability(StateMutability::NonPayable);
-  switch(TheLexer.LookAhead(0)->getKind())
-  {
-    case tok::kw_payable:
-      stateMutability = StateMutability::Payable;
-      break;
-    case tok::kw_view:
-      stateMutability = StateMutability::View;
-      break;
-    case tok::kw_pure:
-      stateMutability = StateMutability::Pure;
-      break;
-    case tok::kw_constant:
-      stateMutability = StateMutability::View;
-      assert( false &&
-        "The state mutability modifier \"constant\" was removed in version 0.5.0. "
-        "Use \"view\" or \"pure\" instead."
-      );
-      break;
-    default:
-      assert(false && "Invalid state mutability specifier.");
+  switch (TheLexer.LookAhead(0)->getKind()) {
+  case tok::kw_payable:
+    stateMutability = StateMutability::Payable;
+    break;
+  case tok::kw_view:
+    stateMutability = StateMutability::View;
+    break;
+  case tok::kw_pure:
+    stateMutability = StateMutability::Pure;
+    break;
+  case tok::kw_constant:
+    stateMutability = StateMutability::View;
+    assert(false && "The state mutability modifier \"constant\" was removed in "
+                    "version 0.5.0. "
+                    "Use \"view\" or \"pure\" instead.");
+    break;
+  default:
+    assert(false && "Invalid state mutability specifier.");
   }
   TheLexer.CachedLex();
   return stateMutability;
@@ -162,7 +145,7 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
   vector<unique_ptr<Decl>> SubNodes;
   Name = TheLexer.CachedLex()->getIdentifierInfo()->getName();
 
-  // [Integration TODO] printf("%*sContract:%s\n", indent(0), "", Name->str()->c_str());
+  // [Integration TODO] printf("%*sContract:%s\n", indent(0), "", Name.str().c_str());
 
   if (TheLexer.LookAhead(0)->is(tok::kw_is)) {
     do {
@@ -185,7 +168,8 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
     // [TODO] < Parse all Types in contract's context >
     if (Kind == tok::kw_function) {
       // [Integration TODO] indent(2);
-      SubNodes.push_back(std::move(parseFunctionDefinitionOrFunctionTypeStateVariable()));
+      SubNodes.push_back(
+          std::move(parseFunctionDefinitionOrFunctionTypeStateVariable()));
       // [Integration TODO] indent(-2);
     } else if (Kind == tok::kw_struct) {
       // [TODO] contract tok::kw_struct
@@ -204,7 +188,8 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
       assert("Solidity Error: Function, variable, struct or modifier "
              "declaration expected.");
   }
-  return std::move(std::make_unique<ContractDecl>(Name, std::move(BaseContracts), CtKind));
+  return std::move(
+      std::make_unique<ContractDecl>(Name, std::move(BaseContracts), CtKind));
 }
 
 Parser::FunctionHeaderParserResult
@@ -224,7 +209,7 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
     Result.Name = llvm::StringRef();
   else
     Result.Name = TheLexer.CachedLex()->getIdentifierInfo()->getName();
-  // [Integration TODO] printf("%*sFunction:%s\n", indent(0), "", Result.Name->c_str());
+  // [Integration TODO] printf("%*sFunction:%s\n", indent(0), "", Result.Name.str().c_str());
 
   VarDeclParserOptions Options;
   Options.AllowLocationSpecifier = true;
@@ -241,11 +226,11 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
                                tok::kw_internal, tok::kw_external)) {
       // [TODO] Special case of a public state variable of function Type.
       Result.Vsblty = parseVisibilitySpecifier();
-      // [Integration TODO] printf("%*sVisibility:%d\n", indent(0), "", Result.Visibility);
+      // [Integration TODO] printf("%*sVisibility:%d\n", indent(0), "", Result.Vsblty);
     } else if (CurTok->isOneOf(tok::kw_constant, tok::kw_pure, tok::kw_view,
                                tok::kw_payable)) {
       Result.SM = parseStateMutability();
-      // [Integration TODO] printf("%*sStateMutability:%d\n", indent(0), "", Result.StateMutability);
+      // [Integration TODO] printf("%*sStateMutability:%d\n", indent(0), "", Result.SM);
     } else {
       break;
     }
@@ -283,18 +268,18 @@ Parser::parseFunctionDefinitionOrFunctionTypeStateVariable() {
     // [TODO] State Variable case.
   }
   return std::move(std::make_unique<FunctionDecl>(
-      Header.Name, Header.Vsblty, Header.SM,
-      Header.IsConstructor, std::move(Header.Parameters), std::move(Header.Modifiers), std::move(Header.ReturnParameters),
-      nullptr));
+      Header.Name, Header.Vsblty, Header.SM, Header.IsConstructor,
+      std::move(Header.Parameters), std::move(Header.Modifiers),
+      std::move(Header.ReturnParameters), nullptr));
 }
 
-unique_ptr<VarDecl> Parser::parseVariableDeclaration(
-    VarDeclParserOptions const &Options,
-    unique_ptr<Type> const &LookAheadArrayType) {
+unique_ptr<VarDecl>
+Parser::parseVariableDeclaration(VarDeclParserOptions const &Options,
+                                 unique_ptr<Type> const &LookAheadArrayType) {
   unique_ptr<Type> T;
   if (LookAheadArrayType) {
     // [TODO] need bug fix below line
-    //T = LookAheadArrayType;
+    // T = LookAheadArrayType;
   } else {
     T = parseTypeName(Options.AllowVar);
   }
@@ -302,9 +287,8 @@ unique_ptr<VarDecl> Parser::parseVariableDeclaration(
   bool IsIndexed = false;
   bool IsDeclaredConst = false;
   Decl::Visibility Vsblty = Decl::Visibility::Default;
-  VarDecl::Location Loc= VarDecl::Location::Unspecified;
+  VarDecl::Location Loc = VarDecl::Location::Unspecified;
   llvm::StringRef Name;
-
   llvm::Optional<Token> CurTok;
   while (true) {
     CurTok = TheLexer.LookAhead(0);
@@ -313,25 +297,18 @@ unique_ptr<VarDecl> Parser::parseVariableDeclaration(
       Vsblty = parseVisibilitySpecifier();
     } else {
       if (Options.AllowIndexed && CurTok->is(tok::kw_indexed))
-
         IsIndexed = true;
       else if (CurTok->is(tok::kw_constant))
         IsDeclaredConst = true;
       else if (Options.AllowLocationSpecifier &&
                CurTok->isOneOf(tok::kw_memory, tok::kw_storage,
                                tok::kw_calldata)) {
-
-        // [PrePOC] Bug fix, fix below line
-        //Loc = CurTok->getName();
-      } else {
         if (Loc != VarDecl::Location::Unspecified)
           assert(false && "Location already specified.");
         else if (!T)
           assert(false && "Location specifier needs explicit type name.");
-        else
-        {
-          switch (TheLexer.LookAhead(0)->getKind())
-          {
+        else {
+          switch (TheLexer.LookAhead(0)->getKind()) {
           case tok::kw_storage:
             Loc = VarDecl::Location::Storage;
             break;
@@ -345,7 +322,9 @@ unique_ptr<VarDecl> Parser::parseVariableDeclaration(
             assert(fals && "Unknown data location.");
           }
         }
-      }
+      } else
+        break;
+      TheLexer.CachedLex();
     }
   }
 
@@ -356,9 +335,11 @@ unique_ptr<VarDecl> Parser::parseVariableDeclaration(
   }
 
   // [TODO] Handle variable with init value
-  // [Integration TODO] printf("%*sVariableName:%s\n", indent(0), "", Identifier->c_str());
+  // [Integration TODO] printf("%*sVariableName:%s\n", indent(0), "", Name.str().c_str());
   // [PrePOC] Construct need value expression
-  return std::move(std::make_unique<VarDecl>(std::move(T), Name, nullptr, Vsblty, Options.IsStateVariable, IsIndexed, IsDeclaredConst));
+  return std::move(std::make_unique<VarDecl>(std::move(T), Name, nullptr,
+                                             Vsblty, Options.IsStateVariable,
+                                             IsIndexed, IsDeclaredConst));
 }
 
 unique_ptr<Type> Parser::parseTypeNameSuffix(unique_ptr<Type> T) {
@@ -413,12 +394,13 @@ Parser::parseParameterList(VarDeclParserOptions const &_Options,
     do {
       TheLexer.CachedLex();
       // [Integration TODO] indent(2);
-      Parameters.push_back(std::move(parseVariableDeclaration(Options)));
+      Parameters.push_back(parseVariableDeclaration(Options));
       // [Integration TODO] indent(-2);
     } while (TheLexer.LookAhead(0)->is(tok::comma));
     TheLexer.CachedLex();
   }
-  return std::move(std::make_unique<ParamList>(std::move(Parameters)));;
+  return std::move(std::make_unique<ParamList>(std::move(Parameters)));
+  ;
 }
 
 unique_ptr<Block> Parser::parseBlock() {
@@ -530,7 +512,8 @@ unique_ptr<Stmt> Parser::parseSimpleStatement() {
       return parseVariableDeclarationStatement(
           typeNameFromIndexAccessStructure(Iap));
     case LookAheadInfo::Expression:
-      return std::move(parseExpressionStatement(std::move(expressionFromIndexAccessStructure(Iap))));
+      return std::move(parseExpressionStatement(
+          std::move(expressionFromIndexAccessStructure(Iap))));
     default:
       assert("Unhandle statement.");
     }
@@ -546,7 +529,7 @@ unique_ptr<DeclStmt> Parser::parseVariableDeclarationStatement(
   // with
   // `(`, they are parsed in parseSimpleStatement, because they are hard to
   // distinguish from tuple expressions.
-  vector<unique_ptr<AST>> Variables;
+  vector<unique_ptr<Decl>> Variables;
   unique_ptr<Expr> Value;
   if (!LookAheadArrayType && TheLexer.LookAhead(0)->is(tok::kw_var) &&
       TheLexer.LookAhead(0)->is(tok::l_paren)) {
@@ -558,8 +541,7 @@ unique_ptr<DeclStmt> Parser::parseVariableDeclarationStatement(
     Options.AllowVar = false;
     Options.AllowLocationSpecifier = true;
     // [PrePOC] Gen AST tree
-    parseVariableDeclaration(Options, LookAheadArrayType);
-    //Variables.push_back(parseVariableDeclaration(Options, LookAheadArrayType));
+    Variables.push_back(parseVariableDeclaration(Options, LookAheadArrayType));
   }
   if (TheLexer.LookAhead(0)->is(tok::equal)) {
     TheLexer.CachedLex();
@@ -661,8 +643,8 @@ unique_ptr<Expr> Parser::expressionFromIndexAccessStructure(
   return {};
 }
 
-unique_ptr<ExprStmt> Parser::parseExpressionStatement(
-    unique_ptr<Expr> &&PartialParserResult) {
+unique_ptr<ExprStmt>
+Parser::parseExpressionStatement(unique_ptr<Expr> &&PartialParserResult) {
   // [Integration TODO] printf("%*sExpressionStatement:%s\n", indent(0), "", "");
   // [Integration TODO] indent(2);
   unique_ptr<Expr> Exps = parseExpression(std::move(PartialParserResult));
@@ -692,9 +674,11 @@ Parser::parseExpression(unique_ptr<Expr> &&PartiallyParsedExpression) {
     return nullptr;
 }
 
-unique_ptr<Expr> Parser::parseBinaryExpression(
-    int MinPrecedence, unique_ptr<Expr> &&PartiallyParsedExpression) {
-  unique_ptr<Expr> Exps = parseUnaryExpression(std::move(PartiallyParsedExpression));
+unique_ptr<Expr>
+Parser::parseBinaryExpression(int MinPrecedence,
+                              unique_ptr<Expr> &&PartiallyParsedExpression) {
+  unique_ptr<Expr> Exps =
+      parseUnaryExpression(std::move(PartiallyParsedExpression));
   // [PrePOC] Need op precedence. Now assume all op precedence left's = right's
   // - 1 and minimal is 5 (bigger than default 4).
   if (TheLexer.LookAhead(0)->isOneOf(tok::semi, tok::comma, tok::r_paren))
@@ -716,8 +700,8 @@ unique_ptr<Expr> Parser::parseBinaryExpression(
   return Exps;
 }
 
-unique_ptr<Expr> Parser::parseUnaryExpression(
-    unique_ptr<Expr> &&PartiallyParsedExpression) {
+unique_ptr<Expr>
+Parser::parseUnaryExpression(unique_ptr<Expr> &&PartiallyParsedExpression) {
   llvm::Optional<Token> Op = TheLexer.LookAhead(0);
   if (!PartiallyParsedExpression && (Op->isUnaryOp() || Op->isCountOp())) {
     // [Integration TODO] printf("%*sUnaryExpression:%s\n", indent(0), "", Op->getName());
@@ -900,8 +884,7 @@ vector<unique_ptr<Expr>> Parser::parseFunctionCallListArguments() {
   return Arguments;
 }
 
-pair<vector<unique_ptr<Expr>>,
-          vector<unique_ptr<string>>>
+pair<vector<unique_ptr<Expr>>, vector<unique_ptr<string>>>
 Parser::parseFunctionCallArguments() {
   pair<vector<unique_ptr<Expr>>, vector<unique_ptr<string>>> Ret;
 

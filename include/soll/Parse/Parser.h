@@ -1,6 +1,6 @@
 #pragma once
-#include "soll/Basic/SourceManager.h"
 #include "soll/AST/AST.h"
+#include "soll/Basic/SourceManager.h"
 
 using namespace std;
 
@@ -83,24 +83,19 @@ private:
   unique_ptr<DeclStmt> parseVariableDeclarationStatement(
       unique_ptr<Type> const &LookAheadArrayType = make_unique<Type>());
   unique_ptr<ExprStmt> parseExpressionStatement(
-      unique_ptr<Expr>  &&PartiallyParsedExpression = nullptr);
+      unique_ptr<Expr> &&PartiallyParsedExpression = nullptr);
   unique_ptr<Expr>
-  parseExpression(unique_ptr<Expr> &&PartiallyParsedExpression =
-                      nullptr);
+  parseExpression(unique_ptr<Expr> &&PartiallyParsedExpression = nullptr);
   unique_ptr<Expr>
   parseBinaryExpression(int MinPrecedence = 4,
-                        unique_ptr<Expr> &&PartiallyParsedExpression =
-                            nullptr);
+                        unique_ptr<Expr> &&PartiallyParsedExpression = nullptr);
   unique_ptr<Expr>
-  parseUnaryExpression(unique_ptr<Expr> &&PartiallyParsedExpression =
-                           nullptr);
+  parseUnaryExpression(unique_ptr<Expr> &&PartiallyParsedExpression = nullptr);
   unique_ptr<Expr> parseLeftHandSideExpression(
-      unique_ptr<Expr> &&PartiallyParsedExpression =
-          nullptr);
+      unique_ptr<Expr> &&PartiallyParsedExpression = nullptr);
   unique_ptr<Expr> parsePrimaryExpression();
   vector<unique_ptr<Expr>> parseFunctionCallListArguments();
-  pair<vector<unique_ptr<Expr>>,
-            vector<unique_ptr<string>>>
+  pair<vector<unique_ptr<Expr>>, vector<unique_ptr<string>>>
   parseFunctionCallArguments();
 
   /// Used as return value of @see peekStatementType.
