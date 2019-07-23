@@ -13,6 +13,8 @@ class Expr;
 
 class Stmt {
 public:
+  virtual ~Stmt() {}
+
   virtual void accept(StmtVisitor &visitor) = 0;
   virtual void accept(ConstStmtVisitor &visitor) const = 0;
 };
