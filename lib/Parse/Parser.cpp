@@ -1,5 +1,8 @@
 #include "soll/Parse/Parser.h"
 #include "soll/AST/AST.h"
+#include "soll/AST/Decl.h"
+#include "soll/AST/Type.h"
+#include "soll/AST/Stmt.h"
 #include "soll/Lex/Lexer.h"
 #include <iostream>
 
@@ -15,14 +18,16 @@ static int indent(int update) {
 
 Parser::Parser(Lexer &lexer) : TheLexer(lexer) {}
 
-shared_ptr<AST> Parser::parse() {
+unique_ptr<AST> Parser::parse() {
   llvm::Optional<Token> CurTok;
   vector<shared_ptr<AST>> Nodes;
 
   while ((CurTok = TheLexer.LookAhead(0))->isNot(tok::eof)) {
     switch (CurTok->getKind()) {
     case tok::kw_pragma:
-      Nodes.push_back(parsePragmaDirective());
+      parsePragmaDirective();
+      // [PrePOC] Gen AST tree
+      //Nodes.push_back(parsePragmaDirective());
       break;
     case tok::kw_import:
       TheLexer.CachedLex();
@@ -30,7 +35,9 @@ shared_ptr<AST> Parser::parse() {
     case tok::kw_interface:
     case tok::kw_library:
     case tok::kw_contract:
-      Nodes.push_back(parseContractDefinition());
+      parseContractDefinition();
+      // [PrePOC] Gen AST tree
+      //Nodes.push_back(parseContractDefinition());
       break;
     default:
       TheLexer.CachedLex();
@@ -40,7 +47,7 @@ shared_ptr<AST> Parser::parse() {
   return nullptr;
 }
 
-shared_ptr<AST> Parser::parsePragmaDirective() {
+unique_ptr<PragmaDirective> Parser::parsePragmaDirective() {
   // pragma anything* ;
   // Currently supported:
   // pragma solidity ^0.4.0 || ^0.3.0;
@@ -70,7 +77,7 @@ shared_ptr<AST> Parser::parsePragmaDirective() {
   return nullptr;
 }
 
-shared_ptr<AST> Parser::parseContractDefinition() {
+unique_ptr<ContractDecl> Parser::parseContractDefinition() {
   TheLexer.CachedLex(); // contract
   shared_ptr<string> Name = nullptr;
   vector<shared_ptr<AST>> SubNodes;
@@ -96,8 +103,11 @@ shared_ptr<AST> Parser::parseContractDefinition() {
     }
     // [TODO] < Parse all Types in contract's context >
     if (Kind == tok::kw_function) {
+
       // [Integration TODO] indent(2);
-      SubNodes.push_back(parseFunctionDefinitionOrFunctionTypeStateVariable());
+      parseFunctionDefinitionOrFunctionTypeStateVariable();
+      // [PrePOC] Gen AST tree
+      //SubNodes.push_back(parseFunctionDefinitionOrFunctionTypeStateVariable());
       // [Integration TODO] indent(-2);
     } else if (Kind == tok::kw_struct) {
       // [TODO] contract tok::kw_struct
@@ -131,12 +141,11 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
 
   llvm::Optional<Token> CurTok = TheLexer.LookAhead(0);
   if (Result.IsConstructor)
-    Result.Name = make_shared<string>();
+    Result.Name = string();
   else if (ForceEmptyName || CurTok->is(tok::l_paren))
-    Result.Name = make_shared<string>();
+    Result.Name = string();
   else
-    Result.Name = make_shared<string>(
-        TheLexer.CachedLex()->getIdentifierInfo()->getName().str());
+    Result.Name = TheLexer.CachedLex()->getIdentifierInfo()->getName().str();
   // [Integration TODO] printf("%*sFunction:%s\n", indent(0), "", Result.Name->c_str());
 
   VarDeclParserOptions Options;
@@ -172,17 +181,18 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
         parseParameterList(Options, PermitEmptyParameterList);
     // [Integration TODO] indent(-2);
   } else {
-    Result.ReturnParameters.clear();
+    // [PrePOC] Need return empty parameter list.
+    Result.ReturnParameters = nullptr;
   }
 
   return Result;
 }
 
-shared_ptr<AST>
+unique_ptr<FunctionDecl>
 Parser::parseFunctionDefinitionOrFunctionTypeStateVariable() {
   FunctionHeaderParserResult Header = parseFunctionHeader(false, true);
   if (Header.IsConstructor || !Header.Modifiers.empty() ||
-      !Header.Name->empty() ||
+      !Header.Name.empty() ||
       TheLexer.LookAhead(0)->isOneOf(tok::semi, tok::l_brace)) {
     // this has to be a function
     shared_ptr<AST> block = shared_ptr<AST>();
@@ -197,14 +207,15 @@ Parser::parseFunctionDefinitionOrFunctionTypeStateVariable() {
   return nullptr;
 }
 
-shared_ptr<AST> Parser::parseVariableDeclaration(
+unique_ptr<VarDecl> Parser::parseVariableDeclaration(
     VarDeclParserOptions const &Options,
-    shared_ptr<AST> const &LookAheadArrayType) {
-  shared_ptr<AST> Type;
+    unique_ptr<Type> const &LookAheadArrayType) {
+  unique_ptr<Type> T;
   if (LookAheadArrayType) {
-    Type = LookAheadArrayType;
+    // [PrePOC] need bug fix below line
+    //T = LookAheadArrayType;
   } else {
-    Type = parseTypeName(Options.AllowVar);
+    T = parseTypeName(Options.AllowVar);
   }
 
   bool IsIndexed = false;
@@ -247,7 +258,7 @@ shared_ptr<AST> Parser::parseVariableDeclaration(
   return nullptr;
 }
 
-shared_ptr<AST> Parser::parseTypeNameSuffix(shared_ptr<AST> Type) {
+unique_ptr<Type> Parser::parseTypeNameSuffix(unique_ptr<Type> T) {
   while (TheLexer.LookAhead(0)->is(tok::l_square)) {
     TheLexer.CachedLex();
     shared_ptr<AST> Length;
@@ -256,12 +267,12 @@ shared_ptr<AST> Parser::parseTypeNameSuffix(shared_ptr<AST> Type) {
     // [Integration TODO] printf("]");
     TheLexer.CachedLex();
   }
-  return Type;
+  return T;
 }
 
 // [TODO] < Need complete all Types >
-shared_ptr<AST> Parser::parseTypeName(bool AllowVar) {
-  shared_ptr<AST> Type;
+unique_ptr<Type> Parser::parseTypeName(bool AllowVar) {
+  unique_ptr<Type> T;
   bool HaveType = false;
   llvm::Optional<Token> CurTok = TheLexer.CachedLex();
   tok::TokenKind Kind = CurTok->getKind();
@@ -282,17 +293,17 @@ shared_ptr<AST> Parser::parseTypeName(bool AllowVar) {
     assert("Expected Type Name");
 
   if (HaveType) {
-    Type = parseTypeNameSuffix(Type);
+    T = parseTypeNameSuffix(move(T));
     // [Integration TODO] printf("\n");
   }
 
-  return Type;
+  return T;
 }
 
-vector<shared_ptr<AST>>
+unique_ptr<ParamList>
 Parser::parseParameterList(VarDeclParserOptions const &_Options,
                            bool AllowEmpty) {
-  vector<shared_ptr<AST>> Parameters;
+  unique_ptr<ParamList> Parameters;
 
   VarDeclParserOptions Options(_Options);
   Options.AllowEmptyName = true;
@@ -301,7 +312,8 @@ Parser::parseParameterList(VarDeclParserOptions const &_Options,
     do {
       TheLexer.CachedLex();
       // [Integration TODO] indent(2);
-      Parameters.push_back(parseVariableDeclaration(Options));
+      // [PrePOC] Gen AST tree, need parse variable
+      // Parameters.push_back(parseVariableDeclaration(Options));
       // [Integration TODO] indent(-2);
     } while (TheLexer.LookAhead(0)->is(tok::comma));
     TheLexer.CachedLex();
@@ -427,7 +439,7 @@ shared_ptr<AST> Parser::parseSimpleStatement() {
 }
 
 shared_ptr<AST> Parser::parseVariableDeclarationStatement(
-    shared_ptr<AST> const &LookAheadArrayType) {
+    unique_ptr<Type> const &LookAheadArrayType) {
   // [Integration TODO] printf("%*sVariableDeclarationStatement:%s\n", indent(0), "", "");
   // [Integration TODO] indent(2);
   // This does not parse multi variable declaration statements starting directly
@@ -445,7 +457,9 @@ shared_ptr<AST> Parser::parseVariableDeclarationStatement(
     VarDeclParserOptions Options;
     Options.AllowVar = false;
     Options.AllowLocationSpecifier = true;
-    Variables.push_back(parseVariableDeclaration(Options, LookAheadArrayType));
+    // [PrePOC] Gen AST tree
+    parseVariableDeclaration(Options, LookAheadArrayType);
+    //Variables.push_back(parseVariableDeclaration(Options, LookAheadArrayType));
   }
   if (TheLexer.LookAhead(0)->is(tok::equal)) {
     TheLexer.CachedLex();
@@ -536,7 +550,7 @@ Parser::LookAheadInfo Parser::peekStatementType() const {
 }
 
 // [TODO] IAP relative function
-shared_ptr<AST>
+unique_ptr<Type>
 Parser::typeNameFromIndexAccessStructure(Parser::IndexAccessedPath const &Iap) {
   return {};
 }

@@ -8,13 +8,20 @@ namespace soll {
 class Token;
 class Lexer;
 class AST;
+class PragmaDirective;
+class ContractDecl;
+class Type;
+class FunctionDecl;
+class VarDecl;
+class ParamList;
+class ModifierInvocation;
 
 class Parser {
   Lexer &TheLexer;
 
 public:
   Parser(Lexer &);
-  shared_ptr<AST> parse();
+  unique_ptr<AST> parse();
 
 private:
   struct VarDeclParserOptions {
@@ -32,28 +39,28 @@ private:
 
   struct FunctionHeaderParserResult {
     bool IsConstructor;
-    shared_ptr<string> Name;
+    string Name;
     const char *Visibility;
     const char *StateMutability;
-    vector<shared_ptr<AST>> Parameters;
-    vector<shared_ptr<AST>> Modifiers;
-    vector<shared_ptr<AST>> ReturnParameters;
+    unique_ptr<ParamList> Parameters;
+    vector<unique_ptr<ModifierInvocation>> Modifiers;
+    unique_ptr<ParamList> ReturnParameters;
   };
 
   // void parsePragmaVersion(langutil::SourceLocation const& _location,
   // vector<Token> const& _tokens, vector<string> const&
   // _literals);
-  shared_ptr<AST> parsePragmaDirective();
-  shared_ptr<AST> parseContractDefinition();
+  unique_ptr<PragmaDirective> parsePragmaDirective();
+  unique_ptr<ContractDecl> parseContractDefinition();
   FunctionHeaderParserResult parseFunctionHeader(bool ForceEmptyName,
                                                  bool AllowModifiers);
-  shared_ptr<AST> parseFunctionDefinitionOrFunctionTypeStateVariable();
-  shared_ptr<AST> parseVariableDeclaration(
+  unique_ptr<FunctionDecl> parseFunctionDefinitionOrFunctionTypeStateVariable();
+  unique_ptr<VarDecl> parseVariableDeclaration(
       VarDeclParserOptions const &Options = {},
-      shared_ptr<AST> const &LookAheadArrayType = nullptr);
-  shared_ptr<AST> parseTypeNameSuffix(shared_ptr<AST> Type);
-  shared_ptr<AST> parseTypeName(bool AllowVar);
-  vector<shared_ptr<AST>>
+      unique_ptr<Type> const &LookAheadArrayType = nullptr);
+  unique_ptr<Type> parseTypeNameSuffix(unique_ptr<Type> T);
+  unique_ptr<Type> parseTypeName(bool AllowVar);
+  unique_ptr<ParamList>
   parseParameterList(VarDeclParserOptions const &Options = {},
                      bool AllowEmpty = true);
   shared_ptr<AST> parseBlock();
@@ -61,7 +68,7 @@ private:
   shared_ptr<AST> parseIfStatement();
   shared_ptr<AST> parseSimpleStatement();
   shared_ptr<AST> parseVariableDeclarationStatement(
-      shared_ptr<AST> const &LookAheadArrayType = shared_ptr<AST>());
+      unique_ptr<Type> const &LookAheadArrayType = make_unique<Type>());
   shared_ptr<AST> parseExpressionStatement(
       shared_ptr<AST> const &PartiallyParsedExpression =
           shared_ptr<AST>());
@@ -109,7 +116,7 @@ private:
   /// @returns a typename parsed in look-ahead fashion from something like
   /// "a.b[8][2**70]", or an empty pointer if an empty @a _pathAndIncides has
   /// been supplied.
-  shared_ptr<AST>
+  unique_ptr<Type>
   typeNameFromIndexAccessStructure(IndexAccessedPath const &PathAndIndices);
   /// @returns an expression parsed in look-ahead fashion from something like
   /// "a.b[8][2**70]", or an empty pointer if an empty @a _pathAndIncides has

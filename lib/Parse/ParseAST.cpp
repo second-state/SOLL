@@ -2,6 +2,7 @@
 #include "soll/Parse/Parser.h"
 #include "soll/Sema/Sema.h"
 #include "soll/Lex/Lexer.h"
+#include "soll/AST/AST.h"
 #include <memory>
 
 namespace soll {
