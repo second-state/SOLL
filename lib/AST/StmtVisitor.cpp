@@ -31,5 +31,5 @@ template <bool Const> void StmtVisitorBase<Const>::visit(NumberLiteralType &) {
 }
 
 /// Explicit instantiation
-template class StmtVisitorBase<true>;
-template class StmtVisitorBase<false>;
+template class soll::StmtVisitorBase<true>;
+template class soll::StmtVisitorBase<false>;
