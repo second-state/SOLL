@@ -8,6 +8,8 @@ namespace soll {
 class Token;
 class Lexer;
 class AST;
+
+class Decl;
 class PragmaDirective;
 class ContractDecl;
 class Type;
@@ -15,6 +17,13 @@ class FunctionDecl;
 class VarDecl;
 class ParamList;
 class ModifierInvocation;
+
+class Stmt;
+class Block;
+class IfStmt;
+class DeclStmt;
+class ExprStmt;
+class Expr;
 
 class Parser {
   Lexer &TheLexer;
@@ -63,32 +72,31 @@ private:
   unique_ptr<ParamList>
   parseParameterList(VarDeclParserOptions const &Options = {},
                      bool AllowEmpty = true);
-  shared_ptr<AST> parseBlock();
-  shared_ptr<AST> parseStatement();
-  shared_ptr<AST> parseIfStatement();
-  shared_ptr<AST> parseSimpleStatement();
-  shared_ptr<AST> parseVariableDeclarationStatement(
+  unique_ptr<Block> parseBlock();
+  unique_ptr<Stmt> parseStatement();
+  unique_ptr<IfStmt> parseIfStatement();
+  unique_ptr<Stmt> parseSimpleStatement();
+  unique_ptr<DeclStmt> parseVariableDeclarationStatement(
       unique_ptr<Type> const &LookAheadArrayType = make_unique<Type>());
-  shared_ptr<AST> parseExpressionStatement(
-      shared_ptr<AST> const &PartiallyParsedExpression =
-          shared_ptr<AST>());
-  shared_ptr<AST>
-  parseExpression(shared_ptr<AST> const &PartiallyParsedExpression =
-                      shared_ptr<AST>());
-  shared_ptr<AST>
+  unique_ptr<ExprStmt> parseExpressionStatement(
+      unique_ptr<Expr>  &&PartiallyParsedExpression = nullptr);
+  unique_ptr<Expr>
+  parseExpression(unique_ptr<Expr> &&PartiallyParsedExpression =
+                      nullptr);
+  unique_ptr<Expr>
   parseBinaryExpression(int MinPrecedence = 4,
-                        shared_ptr<AST> const &PartiallyParsedExpression =
-                            shared_ptr<AST>());
-  shared_ptr<AST>
-  parseUnaryExpression(shared_ptr<AST> const &PartiallyParsedExpression =
-                           shared_ptr<AST>());
-  shared_ptr<AST> parseLeftHandSideExpression(
-      shared_ptr<AST> const &PartiallyParsedExpression =
-          shared_ptr<AST>());
-  shared_ptr<AST> parsePrimaryExpression();
-  vector<shared_ptr<AST>> parseFunctionCallListArguments();
-  pair<vector<shared_ptr<AST>>,
-            vector<shared_ptr<string>>>
+                        unique_ptr<Expr> &&PartiallyParsedExpression =
+                            nullptr);
+  unique_ptr<Expr>
+  parseUnaryExpression(unique_ptr<Expr> &&PartiallyParsedExpression =
+                           nullptr);
+  unique_ptr<Expr> parseLeftHandSideExpression(
+      unique_ptr<Expr> &&PartiallyParsedExpression =
+          nullptr);
+  unique_ptr<Expr> parsePrimaryExpression();
+  vector<unique_ptr<Expr>> parseFunctionCallListArguments();
+  pair<vector<unique_ptr<Expr>>,
+            vector<unique_ptr<string>>>
   parseFunctionCallArguments();
 
   /// Used as return value of @see peekStatementType.
@@ -102,7 +110,7 @@ private:
   /// expression or to a type name. For this to be valid, path cannot be empty,
   /// but indices can be empty.
   struct IndexAccessedPath {
-    vector<shared_ptr<AST>> Path;
+    vector<unique_ptr<AST>> Path;
   };
 
   pair<LookAheadInfo, IndexAccessedPath> tryParseIndexAccessedPath();
@@ -121,13 +129,13 @@ private:
   /// @returns an expression parsed in look-ahead fashion from something like
   /// "a.b[8][2**70]", or an empty pointer if an empty @a _pathAndIncides has
   /// been supplied.
-  shared_ptr<AST>
+  unique_ptr<Expr>
   expressionFromIndexAccessStructure(IndexAccessedPath const &PathAndIndices);
-  shared_ptr<string> expectIdentifierToken();
-  shared_ptr<string> getLiteralAndAdvance();
+  unique_ptr<string> expectIdentifierToken();
+  unique_ptr<string> getLiteralAndAdvance();
   /// Creates an empty ParameterList at the current location (used if parameters
   /// can be omitted).
-  shared_ptr<AST> createEmptyParameterList();
+  unique_ptr<AST> createEmptyParameterList();
   llvm::StringRef getLiteralAndAdvance(llvm::Optional<Token> Tok);
 };
 

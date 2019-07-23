@@ -195,7 +195,7 @@ Parser::parseFunctionDefinitionOrFunctionTypeStateVariable() {
       !Header.Name.empty() ||
       TheLexer.LookAhead(0)->isOneOf(tok::semi, tok::l_brace)) {
     // this has to be a function
-    shared_ptr<AST> block = shared_ptr<AST>();
+    unique_ptr<Block> block;
     if (TheLexer.LookAhead(0)->isNot(tok::semi)) {
       // [Integration TODO] indent(2);
       block = parseBlock();
@@ -261,7 +261,7 @@ unique_ptr<VarDecl> Parser::parseVariableDeclaration(
 unique_ptr<Type> Parser::parseTypeNameSuffix(unique_ptr<Type> T) {
   while (TheLexer.LookAhead(0)->is(tok::l_square)) {
     TheLexer.CachedLex();
-    shared_ptr<AST> Length;
+    unique_ptr<Expr> Length;
     // [Integration TODO] printf("[");
     Length = parseExpression();
     // [Integration TODO] printf("]");
@@ -321,20 +321,20 @@ Parser::parseParameterList(VarDeclParserOptions const &_Options,
   return Parameters;
 }
 
-shared_ptr<AST> Parser::parseBlock() {
-  vector<shared_ptr<AST>> Statements;
+unique_ptr<Block> Parser::parseBlock() {
+  vector<unique_ptr<Stmt>> Statements;
   TheLexer.CachedLex();
   // [Integration TODO] printf("%*sBlock:%s\n", indent(0), "", "");
   while (TheLexer.LookAhead(0)->isNot(tok::r_brace)) {
-    Statements.push_back(parseStatement());
+    Statements.push_back(std::move(parseStatement()));
   }
   TheLexer.CachedLex();
   return nullptr;
 }
 
 // [TODO] < Parse all statements >
-shared_ptr<AST> Parser::parseStatement() {
-  shared_ptr<AST> statement;
+unique_ptr<Stmt> Parser::parseStatement() {
+  unique_ptr<Stmt> statement;
   llvm::Optional<Token> CurTok;
   switch (TheLexer.LookAhead(0)->getKind()) {
   case tok::kw_if:
@@ -385,19 +385,19 @@ shared_ptr<AST> Parser::parseStatement() {
   return statement;
 }
 
-shared_ptr<AST> Parser::parseIfStatement() {
+unique_ptr<IfStmt> Parser::parseIfStatement() {
   // [Integration TODO] printf("%*sIf Statement:%s\n", indent(0), "", "");
   TheLexer.CachedLex(); // if
   TheLexer.CachedLex(); //(
   // [Integration TODO] indent(2);
   // [Integration TODO] printf("%*sIf:%s\n", indent(0), "", "");
   // [Integration TODO] indent(2);
-  shared_ptr<AST> Condition = parseExpression();
+  unique_ptr<Expr> Condition = parseExpression();
   // [Integration TODO] indent(-2);
-  shared_ptr<AST> TrueBody = parseStatement();
+  unique_ptr<Stmt> TrueBody = parseStatement();
   // [Integration TODO] indent(-2);
 
-  shared_ptr<AST> FalseBody;
+  unique_ptr<Stmt> FalseBody;
   if (TheLexer.LookAhead(0)->is(tok::kw_else)) {
     TheLexer.CachedLex();
     // [Integration TODO] indent(2);
@@ -409,7 +409,7 @@ shared_ptr<AST> Parser::parseIfStatement() {
   return nullptr;
 }
 
-shared_ptr<AST> Parser::parseSimpleStatement() {
+unique_ptr<Stmt> Parser::parseSimpleStatement() {
   llvm::Optional<Token> CurTok;
   LookAheadInfo StatementType;
   IndexAccessedPath Iap;
@@ -430,7 +430,7 @@ shared_ptr<AST> Parser::parseSimpleStatement() {
       return parseVariableDeclarationStatement(
           typeNameFromIndexAccessStructure(Iap));
     case LookAheadInfo::Expression:
-      return parseExpressionStatement(expressionFromIndexAccessStructure(Iap));
+      return std::move(parseExpressionStatement(std::move(expressionFromIndexAccessStructure(Iap))));
     default:
       assert("Unhandle statement.");
     }
@@ -438,7 +438,7 @@ shared_ptr<AST> Parser::parseSimpleStatement() {
   return nullptr;
 }
 
-shared_ptr<AST> Parser::parseVariableDeclarationStatement(
+unique_ptr<DeclStmt> Parser::parseVariableDeclarationStatement(
     unique_ptr<Type> const &LookAheadArrayType) {
   // [Integration TODO] printf("%*sVariableDeclarationStatement:%s\n", indent(0), "", "");
   // [Integration TODO] indent(2);
@@ -446,8 +446,8 @@ shared_ptr<AST> Parser::parseVariableDeclarationStatement(
   // with
   // `(`, they are parsed in parseSimpleStatement, because they are hard to
   // distinguish from tuple expressions.
-  vector<shared_ptr<AST>> Variables;
-  shared_ptr<AST> Value;
+  vector<unique_ptr<AST>> Variables;
+  unique_ptr<Expr> Value;
   if (!LookAheadArrayType && TheLexer.LookAhead(0)->is(tok::kw_var) &&
       TheLexer.LookAhead(0)->is(tok::l_paren)) {
     // [0.4.20] The var keyword has been deprecated for security reasons.
@@ -556,45 +556,45 @@ Parser::typeNameFromIndexAccessStructure(Parser::IndexAccessedPath const &Iap) {
 }
 
 // [TODO] IAP relative function
-shared_ptr<AST> Parser::expressionFromIndexAccessStructure(
+unique_ptr<Expr> Parser::expressionFromIndexAccessStructure(
     Parser::IndexAccessedPath const &Iap) {
   return {};
 }
 
-shared_ptr<AST> Parser::parseExpressionStatement(
-    shared_ptr<AST> const &PartialParserResult) {
+unique_ptr<ExprStmt> Parser::parseExpressionStatement(
+    unique_ptr<Expr> &&PartialParserResult) {
   // [Integration TODO] printf("%*sExpressionStatement:%s\n", indent(0), "", "");
   // [Integration TODO] indent(2);
-  shared_ptr<AST> Exps = parseExpression(PartialParserResult);
+  unique_ptr<Expr> Exps = parseExpression(std::move(PartialParserResult));
   // [Integration TODO] indent(-2);
   return Exps;
 }
 
-shared_ptr<AST>
-Parser::parseExpression(shared_ptr<AST> const &PartiallyParsedExpression) {
-  shared_ptr<AST> expression =
-      parseBinaryExpression(4, PartiallyParsedExpression);
+unique_ptr<Expr>
+Parser::parseExpression(unique_ptr<Expr> &&PartiallyParsedExpression) {
+  unique_ptr<Expr> expression =
+      parseBinaryExpression(4, std::move(PartiallyParsedExpression));
   // TheLexer.CachedLex();
   if (TheLexer.LookAhead(0)->is(tok::equal)) {
     // [Integration TODO] printf("%*s%s\n", indent(0), "", "binary op (=)");
-    shared_ptr<AST> rightHandSide = parseExpression();
+    unique_ptr<Expr> rightHandSide = parseExpression();
     // [AST] Create BinaryExpression
     return nullptr;
   } else if (TheLexer.LookAhead(0)->is(tok::question)) {
     // [Integration TODO] printf("%*s%s\n", indent(0), "", "condition op (?)");
     TheLexer.CachedLex();
-    shared_ptr<AST> trueExpression = parseExpression();
+    unique_ptr<Expr> trueExpression = parseExpression();
     TheLexer.CachedLex();
-    shared_ptr<AST> falseExpression = parseExpression();
+    unique_ptr<Expr> falseExpression = parseExpression();
     // [AST] Create ConditionExpression
     return nullptr;
   } else
     return nullptr;
 }
 
-shared_ptr<AST> Parser::parseBinaryExpression(
-    int MinPrecedence, shared_ptr<AST> const &PartiallyParsedExpression) {
-  shared_ptr<AST> Exps = parseUnaryExpression(PartiallyParsedExpression);
+unique_ptr<Expr> Parser::parseBinaryExpression(
+    int MinPrecedence, unique_ptr<Expr> &&PartiallyParsedExpression) {
+  unique_ptr<Expr> Exps = parseUnaryExpression(std::move(PartiallyParsedExpression));
   // [PrePOC] Need op precedence. Now assume all op precedence left's = right's
   // - 1 and minimal is 5 (bigger than default 4).
   if (TheLexer.LookAhead(0)->isOneOf(tok::semi, tok::comma, tok::r_paren))
@@ -608,7 +608,7 @@ shared_ptr<AST> Parser::parseBinaryExpression(
       // [Integration TODO] printf("%*s%s (%s)\n", indent(0), "", "binary op", Op->getName());
       TheLexer.CachedLex();
       // [Integration TODO] indent(2);
-      shared_ptr<AST> right = parseBinaryExpression(Precedence + 1);
+      unique_ptr<Expr> right = parseBinaryExpression(Precedence + 1);
       // [Integration TODO] indent(-2);
       // [AST] Create BinaryExpression
     }
@@ -616,22 +616,22 @@ shared_ptr<AST> Parser::parseBinaryExpression(
   return Exps;
 }
 
-shared_ptr<AST> Parser::parseUnaryExpression(
-    shared_ptr<AST> const &PartiallyParsedExpression) {
+unique_ptr<Expr> Parser::parseUnaryExpression(
+    unique_ptr<Expr> &&PartiallyParsedExpression) {
   llvm::Optional<Token> Op = TheLexer.LookAhead(0);
   if (!PartiallyParsedExpression && (Op->isUnaryOp() || Op->isCountOp())) {
     // [Integration TODO] printf("%*sUnaryExpression:%s\n", indent(0), "", Op->getName());
     // prefix expression
     TheLexer.CachedLex();
     // [Integration TODO] indent(2);
-    shared_ptr<AST> SubExps = parseUnaryExpression();
+    unique_ptr<Expr> SubExps = parseUnaryExpression();
     // [AST] Create UnaryExpression
     // [Integration TODO] indent(-2);
     return nullptr;
   } else {
     // potential postfix expression
-    shared_ptr<AST> SubExps =
-        parseLeftHandSideExpression(PartiallyParsedExpression);
+    unique_ptr<Expr> SubExps =
+        parseLeftHandSideExpression(std::move(PartiallyParsedExpression));
     llvm::Optional<Token> Op = TheLexer.LookAhead(0);
     if (!Op->isOneOf(tok::plusplus, tok::minusminus))
       return nullptr;
@@ -641,11 +641,11 @@ shared_ptr<AST> Parser::parseUnaryExpression(
   }
 }
 
-shared_ptr<AST> Parser::parseLeftHandSideExpression(
-    shared_ptr<AST> const &PartiallyParsedExpression) {
-  shared_ptr<AST> Exps;
+unique_ptr<Expr> Parser::parseLeftHandSideExpression(
+    unique_ptr<Expr> &&PartiallyParsedExpression) {
+  unique_ptr<Expr> Exps;
   if (PartiallyParsedExpression)
-    Exps = PartiallyParsedExpression;
+    Exps = std::move(PartiallyParsedExpression);
   else if (TheLexer.LookAhead(0)->is(tok::kw_new)) {
     // [Integration TODO] printf("%*sNewExpression:%s\n", indent(0), "", "");
     TheLexer.CachedLex();
@@ -655,16 +655,16 @@ shared_ptr<AST> Parser::parseLeftHandSideExpression(
     // [Integration TODO] indent(-2);
     // [AST] create NewExpression
   } else
-    Exps = parsePrimaryExpression();
+    Exps = std::move(parsePrimaryExpression());
 
   while (true) {
     switch (TheLexer.LookAhead(0)->getKind()) {
     case tok::l_square: {
       // [Integration TODO] printf("%*sIndexAccessExpression:%s\n", indent(0), "", "");
       TheLexer.CachedLex();
-      shared_ptr<AST> Index;
+      unique_ptr<Expr> Index;
       if (TheLexer.LookAhead(0)->isNot(tok::r_square))
-        Index = parseExpression();
+        Index = std::move(parseExpression());
       TheLexer.CachedLex();
       // [AST] Create IndexAccess Expression
       break;
@@ -684,7 +684,8 @@ shared_ptr<AST> Parser::parseLeftHandSideExpression(
       vector<shared_ptr<AST>> Arguments;
       vector<shared_ptr<string>> Names;
       // [Integration TODO] indent(2);
-      tie(Arguments, Names) = parseFunctionCallArguments();
+      // [TODOTODO]
+      // tie(Arguments, Names) = parseFunctionCallArguments();
       // [Integration TODO] indent(-2);
       TheLexer.CachedLex();
       // [AST] Create FunctionCall Expression
@@ -696,10 +697,10 @@ shared_ptr<AST> Parser::parseLeftHandSideExpression(
   }
 }
 
-shared_ptr<AST> Parser::parsePrimaryExpression() {
+unique_ptr<Expr> Parser::parsePrimaryExpression() {
   // [Integration TODO] printf("%*sPrimaryExpression:%s\n", indent(0), "", "");
   llvm::Optional<Token> CurTok = TheLexer.LookAhead(0);
-  shared_ptr<AST> Exps;
+  unique_ptr<Expr> Exps;
 
   // [Integration TODO] indent(2);
   switch (CurTok->getKind()) {
@@ -732,7 +733,7 @@ shared_ptr<AST> Parser::parsePrimaryExpression() {
     // (x,) is one-dimensional tuple, elements in arrays cannot be left out,
     // only in tuples.
     TheLexer.CachedLex();
-    vector<shared_ptr<AST>> Components;
+    vector<unique_ptr<Expr>> Components;
     tok::TokenKind OppositeToken =
         (CurTok->is(tok::l_paren) ? tok::r_paren : tok::r_square);
     bool IsArray = (OppositeToken == tok::l_square);
@@ -748,7 +749,7 @@ shared_ptr<AST> Parser::parsePrimaryExpression() {
           assert(
               "Expected expression (inline array elements cannot be omitted).");
         else
-          Components.push_back(shared_ptr<AST>());
+          Components.push_back(nullptr);
 
         if (TheLexer.LookAhead(0)->is(OppositeToken)) {
           break;
@@ -787,8 +788,8 @@ shared_ptr<AST> Parser::parsePrimaryExpression() {
   return nullptr;
 }
 
-vector<shared_ptr<AST>> Parser::parseFunctionCallListArguments() {
-  vector<shared_ptr<AST>> Arguments;
+vector<unique_ptr<Expr>> Parser::parseFunctionCallListArguments() {
+  vector<unique_ptr<Expr>> Arguments;
   if (TheLexer.LookAhead(0)->isNot(tok::r_paren)) {
     Arguments.push_back(parseExpression());
     while (TheLexer.LookAhead(0)->isNot(tok::r_paren)) {
@@ -799,12 +800,11 @@ vector<shared_ptr<AST>> Parser::parseFunctionCallListArguments() {
   return Arguments;
 }
 
-pair<vector<shared_ptr<AST>>,
-          vector<shared_ptr<string>>>
+pair<vector<unique_ptr<Expr>>,
+          vector<unique_ptr<string>>>
 Parser::parseFunctionCallArguments() {
-  pair<vector<shared_ptr<AST>>,
-            vector<shared_ptr<string>>>
-      Ret;
+  pair<vector<unique_ptr<Expr>>, vector<unique_ptr<string>>> Ret;
+
   if (TheLexer.LookAhead(0)->is(tok::l_brace)) {
     // [TODO] Unverified function parameters case
     // call({arg1 : 1, arg2 : 2 })
@@ -831,9 +831,9 @@ Parser::parseFunctionCallArguments() {
   return Ret;
 }
 
-shared_ptr<AST> Parser::createEmptyParameterList() { return nullptr; }
+unique_ptr<AST> Parser::createEmptyParameterList() { return nullptr; }
 
-shared_ptr<string> Parser::expectIdentifierToken() { return nullptr; }
+unique_ptr<string> Parser::expectIdentifierToken() { return nullptr; }
 
 llvm::StringRef Parser::getLiteralAndAdvance(llvm::Optional<Token> Tok) {
   TheLexer.CachedLex();
