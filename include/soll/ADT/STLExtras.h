@@ -1,5 +1,9 @@
 #pragma once
 
+#include <initializer_list>
+#include <iterator>
+#include <utility>
+
 namespace soll {
 
 /// Conditional const
@@ -10,5 +14,19 @@ template <bool Const, class Type> struct cond_const {
 };
 
 template <class Type> struct cond_const<false, Type> { typedef Type type; };
+
+/// Create container C of unique_ptr from initializer_list
+template <class C> struct container {
+  template <class Type> struct movable {
+    mutable Type T;
+    operator Type() const && { return std::move(T); }
+    movable(Type &&t) : T(std::move(t)) {}
+  };
+
+  static C init(std::initializer_list<movable<typename C::value_type>> l) {
+    return C(std::make_move_iterator(l.begin()),
+             std::make_move_iterator(l.end()));
+  }
+};
 
 } // namespace
