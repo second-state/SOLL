@@ -3,6 +3,21 @@
 
 using namespace soll;
 
+template <bool Const> void DeclVisitorBase<Const>::visit(SourceUnitType &SU) {
+  for (auto Node : SU.getNodes())
+    Node->accept(*this);
+}
+
+template <bool Const>
+void DeclVisitorBase<Const>::visit(PragmaDirectiveType &) {
+  // leaf, do nothing
+}
+
+template <bool Const> void DeclVisitorBase<Const>::visit(ContractDeclType &CD) {
+  for (auto F : CD.getFuncs())
+    F->accept(*this);
+}
+
 template <bool Const> void DeclVisitorBase<Const>::visit(FunctionDeclType &) {
   // leaf of Decl, do nothing
 }

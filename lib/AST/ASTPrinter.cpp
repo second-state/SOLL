@@ -4,6 +4,18 @@
 
 using namespace soll;
 
+void ASTPrinter::visit(const SourceUnitType &decl) {
+  os() << indent() << "SourceUnit" << std::endl;
+  ConstDeclVisitor::visit(decl);
+  unindent();
+}
+
+void ASTPrinter::visit(const ContractDeclType &decl) {
+  os() << indent() << "ContractDecl" << std::endl;
+  ConstDeclVisitor::visit(decl);
+  unindent();
+}
+
 void ASTPrinter::visit(const FunctionDecl &decl) {
   os() << indent() << "FunctionDecl" << std::endl;
   ConstDeclVisitor::visit(decl);

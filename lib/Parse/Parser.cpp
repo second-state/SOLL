@@ -17,7 +17,7 @@ static int indent(int update) {
 
 Parser::Parser(Lexer &lexer) : TheLexer(lexer) {}
 
-unique_ptr<AST> Parser::parse() {
+unique_ptr<SourceUnit> Parser::parse() {
   llvm::Optional<Token> CurTok;
   vector<unique_ptr<Decl>> Nodes;
 
@@ -39,7 +39,7 @@ unique_ptr<AST> Parser::parse() {
       break;
     }
   }
-  return nullptr;
+  return std::move(make_unique<SourceUnit>(std::move(Nodes)));
 }
 
 unique_ptr<PragmaDirective> Parser::parsePragmaDirective() {

@@ -36,7 +36,40 @@ public:
   virtual void accept(ConstDeclVisitor &visitor) const = 0;
 };
 
-class PragmaDirective : public Decl {};
+class SourceUnit : public Decl {
+  std::vector<std::unique_ptr<Decl>> Nodes;
+
+public:
+  SourceUnit(std::vector<std::unique_ptr<Decl>> &&Nodes)
+      : Nodes(std::move(Nodes)) {}
+
+  void setNodes(std::vector<std::unique_ptr<Decl>> &&Nodes) {
+    for (auto &Node : Nodes)
+      this->Nodes.emplace_back(std::move(Node));
+  }
+
+  std::vector<Decl *> getNodes() {
+    std::vector<Decl *> Nodes;
+    for (auto &Node : this->Nodes)
+      Nodes.push_back(Node.get());
+    return Nodes;
+  }
+  std::vector<const Decl *> getNodes() const {
+    std::vector<const Decl *> Nodes;
+    for (auto &Node : this->Nodes)
+      Nodes.push_back(Node.get());
+    return Nodes;
+  }
+
+  void accept(DeclVisitor &visitor) override;
+  void accept(ConstDeclVisitor &visitor) const override;
+};
+
+class PragmaDirective : public Decl {
+public:
+  void accept(DeclVisitor &visitor) override;
+  void accept(ConstDeclVisitor &visitor) const override;
+};
 
 class InheritanceSpecifier;
 class FunctionDecl;
@@ -56,6 +89,22 @@ public:
       : Decl(name), BaseContracts(std::move(baseContracts)),
         Kind(kind) {}
   virtual ~ContractDecl() override = default;
+
+  std::vector<FunctionDecl *> getFuncs() {
+    std::vector<FunctionDecl *> Funcs;
+    for (auto &Func : this->Functions)
+      Funcs.push_back(Func.get());
+    return Funcs;
+  }
+  std::vector<const FunctionDecl *> getFuncs() const {
+    std::vector<const FunctionDecl *> Funcs;
+    for (auto &Func : this->Functions)
+      Funcs.push_back(Func.get());
+    return Funcs;
+  }
+
+  void accept(DeclVisitor &visitor) override;
+  void accept(ConstDeclVisitor &visitor) const override;
 };
 
 class InheritanceSpecifier {

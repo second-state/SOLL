@@ -11,6 +11,8 @@ class ASTPrinter : public ConstDeclVisitor, public ConstStmtVisitor {
 public:
   ASTPrinter(std::ostream &os) : OS(os), Level(0) {}
 
+  void visit(SourceUnitType &) override;
+  void visit(ContractDeclType &) override;
   void visit(FunctionDeclType &) override;
   void visit(VarDeclType &) override;
 

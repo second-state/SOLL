@@ -11,6 +11,7 @@ class Lexer;
 class AST;
 
 class Decl;
+class SourceUint;
 class PragmaDirective;
 class ContractDecl;
 class Type;
@@ -31,7 +32,7 @@ class Parser {
 
 public:
   Parser(Lexer &);
-  unique_ptr<AST> parse();
+  std::unique_ptr<SourceUnit> parse();
 
 private:
   struct VarDeclParserOptions {
