@@ -7,6 +7,7 @@ namespace soll {
 class Block;
 class UnaryOperator;
 class BinaryOperator;
+class CallExpr;
 class Identifier;
 class BooleanLiteral;
 class StringLiteral;
@@ -17,6 +18,7 @@ protected:
   using BlockType = typename cond_const<Const, Block>::type;
   using UnaryOperatorType = typename cond_const<Const, UnaryOperator>::type;
   using BinaryOperatorType = typename cond_const<Const, BinaryOperator>::type;
+  using CallExprType = typename cond_const<Const, CallExpr>::type;
   using IdentifierType = typename cond_const<Const, Identifier>::type;
   using BooleanLiteralType = typename cond_const<Const, BooleanLiteral>::type;
   using StringLiteralType = typename cond_const<Const, StringLiteral>::type;
@@ -27,6 +29,7 @@ public:
   virtual void visit(BlockType &);
   virtual void visit(UnaryOperatorType &);
   virtual void visit(BinaryOperatorType &);
+  virtual void visit(CallExprType &);
   virtual void visit(IdentifierType &);
   virtual void visit(BooleanLiteralType &);
   virtual void visit(StringLiteralType &);

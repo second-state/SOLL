@@ -159,6 +159,9 @@ public:
   }
 
   bool isNamedCall() { return Names.has_value(); }
+
+  void accept(StmtVisitor &visitor) override;
+  void accept(ConstStmtVisitor &visitor) const override;
 };
 
 class ImplicitCastExpr : public Expr {

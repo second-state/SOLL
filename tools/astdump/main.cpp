@@ -23,12 +23,21 @@ int main(int argc, const char **argv) {
       std::make_unique<Block>(
           std::move(container<std::vector<std::unique_ptr<Stmt>>>::init(
               {std::make_unique<BinaryOperator>(
-                  std::make_unique<Identifier>("c"),
-                  std::make_unique<BinaryOperator>(
-                      std::make_unique<Identifier>("a"),
-                      std::make_unique<Identifier>("b"),
-                      BinaryOperatorKind::BO_Add),
-                  BinaryOperatorKind::BO_Assign)}))));
+                   std::make_unique<Identifier>("c"),
+                   std::make_unique<BinaryOperator>(
+                       std::make_unique<Identifier>("a"),
+                       std::make_unique<Identifier>("b"),
+                       BinaryOperatorKind::BO_Add),
+                   BinaryOperatorKind::BO_Assign),
+               std::make_unique<CallExpr>(
+                   std::make_unique<Identifier>("require"),
+                   container<std::vector<std::unique_ptr<Expr>>>::init(
+                       {std::make_unique<BinaryOperator>(
+                            std::make_unique<Identifier>("c"),
+                            std::make_unique<Identifier>("a"),
+                            BinaryOperatorKind::BO_GE),
+                        std::make_unique<StringLiteral>(
+                            "SafeMath: addition overflow")}))}))));
 
   ASTPrinter p(std::cout);
   func.accept(p);

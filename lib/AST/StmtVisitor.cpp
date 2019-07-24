@@ -19,6 +19,10 @@ void StmtVisitorBase<Const>::visit(BinaryOperatorType &op) {
   op.getRHS()->accept(*this);
 }
 
+template <bool Const> void StmtVisitorBase<Const>::visit(CallExprType &) {
+  // TODO: implement
+}
+
 template <bool Const> void StmtVisitorBase<Const>::visit(IdentifierType &) {
   // leaf, do nothing
 }
