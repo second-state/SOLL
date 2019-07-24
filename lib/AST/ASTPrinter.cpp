@@ -23,6 +23,12 @@ void ASTPrinter::visit(const FunctionDecl &decl) {
   unindent();
 }
 
+void ASTPrinter::visit(ParamListType &param) {
+  os() << indent() << "ParamList" << std::endl;
+  ConstDeclVisitor::visit(param);
+  unindent();
+}
+
 void ASTPrinter::visit(const VarDecl &decl) {
   os() << indent() << "VarDecl" << std::endl;
   ConstDeclVisitor::visit(decl);

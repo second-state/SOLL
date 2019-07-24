@@ -15,6 +15,7 @@ public:
   void visit(SourceUnitType &) override;
   void visit(ContractDeclType &) override;
   void visit(FunctionDeclType &) override;
+  void visit(ParamListType &) override;
   void visit(VarDeclType &) override;
 
   void visit(BlockType &) override;
