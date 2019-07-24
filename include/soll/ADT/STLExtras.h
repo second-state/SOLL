@@ -19,8 +19,8 @@ template <class Type> struct cond_const<false, Type> { typedef Type type; };
 template <class C> struct container {
   template <class Type> struct movable {
     mutable Type T;
+    template <class U> movable(U &&u) : T(std::forward<U>(u)) {}
     operator Type() const && { return std::move(T); }
-    movable(Type &&t) : T(std::move(t)) {}
   };
 
   static C init(std::initializer_list<movable<typename C::value_type>> l) {

@@ -7,31 +7,28 @@
 using namespace soll;
 
 int main(int argc, const char **argv) {
-  std::vector<std::unique_ptr<Stmt>> stmts;
-  stmts.emplace_back(std::make_unique<BinaryOperator>(
-      std::make_unique<Identifier>("c"),
-      std::make_unique<BinaryOperator>(std::make_unique<Identifier>("a"),
-                                       std::make_unique<Identifier>("b"),
-                                       BinaryOperatorKind::BO_Add),
-      BinaryOperatorKind::BO_Assign));
-
-  std::vector<std::unique_ptr<VarDecl>> params;
-
-  params.emplace_back(std::make_unique<VarDecl>(
-      std::make_unique<Type>(), "a", nullptr, Decl::Visibility::Default));
-  params.emplace_back(std::make_unique<VarDecl>(
-      std::make_unique<Type>(), "b", nullptr, Decl::Visibility::Default));
-
-  std::vector<std::unique_ptr<VarDecl>> retval;
-
-  retval.emplace_back(std::make_unique<VarDecl>(
-      std::make_unique<Type>(), "", nullptr, Decl::Visibility::Default));
-
-  FunctionDecl func("add", Decl::Visibility::Public, StateMutability::Pure,
-                    false, std::make_unique<ParamList>(std::move(params)),
-                    std::vector<std::unique_ptr<ModifierInvocation>>(),
-                    std::make_unique<ParamList>(std::move(retval)),
-                    std::make_unique<Block>(std::move(stmts)));
+  FunctionDecl func(
+      "add", Decl::Visibility::Public, StateMutability::Pure, false,
+      std::make_unique<ParamList>(
+          std::move(container<std::vector<std::unique_ptr<VarDecl>>>::init(
+              {std::make_unique<VarDecl>(std::make_unique<Type>(), "a", nullptr,
+                                         Decl::Visibility::Default),
+               std::make_unique<VarDecl>(std::make_unique<Type>(), "b", nullptr,
+                                         Decl::Visibility::Default)}))),
+      std::vector<std::unique_ptr<ModifierInvocation>>(),
+      std::make_unique<ParamList>(
+          std::move(container<std::vector<std::unique_ptr<VarDecl>>>::init(
+              {std::make_unique<VarDecl>(std::make_unique<Type>(), "", nullptr,
+                                         Decl::Visibility::Default)}))),
+      std::make_unique<Block>(
+          std::move(container<std::vector<std::unique_ptr<Stmt>>>::init(
+              {std::make_unique<BinaryOperator>(
+                  std::make_unique<Identifier>("c"),
+                  std::make_unique<BinaryOperator>(
+                      std::make_unique<Identifier>("a"),
+                      std::make_unique<Identifier>("b"),
+                      BinaryOperatorKind::BO_Add),
+                  BinaryOperatorKind::BO_Assign)}))));
 
   ASTPrinter p(std::cout);
   func.accept(p);
