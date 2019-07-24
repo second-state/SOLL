@@ -69,7 +69,7 @@ unique_ptr<PragmaDirective> Parser::parsePragmaDirective() {
   TheLexer.CachedLex();
 
   // [TODO] Implement version recognize and compare. ref: parsePragmaVersion
-  return std::move(std::make_unique<PragmaDirective>(Tokens, Literals));
+  return std::move(std::make_unique<PragmaDirective>());
 }
 
 ContractDecl::ContractKind Parser::parseContractKind() {

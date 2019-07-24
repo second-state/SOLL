@@ -15,7 +15,6 @@ public:
 
   virtual void accept(StmtVisitor &visitor) = 0;
   virtual void accept(ConstStmtVisitor &visitor) const = 0;
-  virtual ~Stmt();
 };
 
 using StmtPtr = std::unique_ptr<Stmt>;
