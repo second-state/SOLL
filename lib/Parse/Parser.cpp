@@ -52,8 +52,7 @@ unique_ptr<PragmaDirective> Parser::parsePragmaDirective() {
   do {
     tok::TokenKind Kind = TheLexer.LookAhead(0)->getKind();
     if (Kind == tok::unknown)
-      assert("Solidity Error: Token incompatible with Solidity parser as part "
-             "of pragma directive.");
+      assert(false && "Solidity Error: Token incompatible with Solidity parser as part of pragma directive.");
     else if (Kind == tok::caret) {
       // [TODO] Fix tok::caret no literal, but not sure what means
       // Pattern not match Solidity : Solidity | ^ | 0.5 | .0 |
@@ -185,8 +184,7 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
     } else if (Kind == tok::kw_using) {
       // [TODO]  contract tok::kw_using
     } else
-      assert("Solidity Error: Function, variable, struct or modifier "
-             "declaration expected.");
+      assert(false && "Solidity Error: Function, variable, struct or modifier declaration expected.");
   }
   return std::move(
       std::make_unique<ContractDecl>(Name, std::move(BaseContracts), CtKind));
@@ -374,7 +372,7 @@ unique_ptr<Type> Parser::parseTypeName(bool AllowVar) {
   } else if (Kind == tok::identifier) {
     // [TODO] parseTypeName tok::identifier
   } else
-    assert("Expected Type Name");
+    assert(false && "Expected Type Name");
 
   if (HaveType) {
     T = parseTypeNameSuffix(move(T));
@@ -515,7 +513,7 @@ unique_ptr<Stmt> Parser::parseSimpleStatement() {
       return std::move(parseExpressionStatement(
           std::move(expressionFromIndexAccessStructure(Iap))));
     default:
-      assert("Unhandle statement.");
+      assert(false && "Unhandle statement.");
     }
   }
   return nullptr;
@@ -535,7 +533,7 @@ unique_ptr<DeclStmt> Parser::parseVariableDeclarationStatement(
       TheLexer.LookAhead(0)->is(tok::l_paren)) {
     // [0.4.20] The var keyword has been deprecated for security reasons.
     // https://github.com/ethereum/solidity/releases/tag/v0.4.20
-    assert("The var keyword has been deprecated for security reasons.");
+    assert(false && "The var keyword has been deprecated for security reasons.");
   } else {
     VarDeclParserOptions Options;
     Options.AllowVar = false;
@@ -830,8 +828,7 @@ unique_ptr<Expr> Parser::parsePrimaryExpression() {
         if (!TheLexer.LookAhead(0)->isOneOf(tok::comma, OppositeToken)) {
           Components.push_back(parseExpression());
         } else if (IsArray)
-          assert(
-              "Expected expression (inline array elements cannot be omitted).");
+          assert(false && "Expected expression (inline array elements cannot be omitted).");
         else
           Components.push_back(nullptr);
 
@@ -846,7 +843,7 @@ unique_ptr<Expr> Parser::parsePrimaryExpression() {
     break;
   }
   case tok::unknown:
-    assert("Unknown token");
+    assert(false && "Unknown token");
     break;
   default:
     // [TODO] Type MxN case
@@ -863,9 +860,9 @@ unique_ptr<Expr> Parser::parsePrimaryExpression() {
       m_scanner->next();
     }
     else
-      assert("Expected primary expression.");
+      assert(false && "Expected primary expression.");
     */
-    assert("Expected primary expression.");
+    assert(false && "Expected primary expression.");
     break;
   }
   // [Integration TODO] indent(-2);
@@ -903,7 +900,7 @@ Parser::parseFunctionCallArguments() {
 
       if (TheLexer.LookAhead(0)->is(tok::comma) &&
           TheLexer.LookAhead(1)->is(tok::r_brace)) {
-        assert("Unexpected trailing comma.");
+        assert(false && "Unexpected trailing comma.");
         TheLexer.CachedLex();
       }
       First = false;
