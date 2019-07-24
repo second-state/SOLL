@@ -144,7 +144,13 @@ public:
            std::vector<std::string> &&Names)
       : CalleeExpr(std::move(CalleeExpr)), Arguments(std::move(Arguments)),
         Names(std::move(Names)) {}
-  const Expr *getCalleeExpr() const { return CalleeExpr.get(); }
+  Expr *getCalleeExpr() const { return CalleeExpr.get(); }
+  std::vector<Expr *> getArguments() {
+    std::vector<Expr *> arguments;
+    for (auto &arg : Arguments)
+      arguments.emplace_back(arg.get());
+    return arguments;
+  }
   std::vector<const Expr *> getArguments() const {
     std::vector<const Expr *> arguments;
     for (auto &arg : Arguments)

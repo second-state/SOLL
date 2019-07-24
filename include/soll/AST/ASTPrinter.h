@@ -22,6 +22,7 @@ public:
   void visit(UnaryOperatorType &) override;
   void visit(BinaryOperatorType &) override;
   void visit(IdentifierType &) override;
+  void visit(CallExprType &) override;
   void visit(BooleanLiteralType &) override;
   void visit(StringLiteralType &) override;
   void visit(NumberLiteralType &) override;

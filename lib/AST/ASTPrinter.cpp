@@ -53,6 +53,12 @@ void ASTPrinter::visit(BinaryOperatorType &op) {
   unindent();
 }
 
+void ASTPrinter::visit(CallExprType &id) {
+  os() << indent() << "CallExpr" << std::endl;
+  ConstStmtVisitor::visit(id);
+  unindent();
+}
+
 void ASTPrinter::visit(IdentifierType &id) {
   os() << indent() << "Identifier" << std::endl;
   ConstStmtVisitor::visit(id);
