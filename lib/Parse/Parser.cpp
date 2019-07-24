@@ -319,7 +319,7 @@ Parser::parseVariableDeclaration(VarDeclParserOptions const &Options,
             Loc = VarDecl::Location::CallData;
             break;
           default:
-            assert(fals && "Unknown data location.");
+            assert(false && "Unknown data location.");
           }
         }
       } else
@@ -863,9 +863,9 @@ unique_ptr<Expr> Parser::parsePrimaryExpression() {
       m_scanner->next();
     }
     else
-      assert(string("Expected primary expression."));
+      assert("Expected primary expression.");
     */
-    assert(string("Expected primary expression."));
+    assert("Expected primary expression.");
     break;
   }
   // [Integration TODO] indent(-2);

@@ -16,7 +16,7 @@ class Token;
 class Decl {
 public:
   enum class Visibility { Default, Private, Internal, Public, External };
-  virtual ~Decl() {}
+  virtual ~Decl() noexcept {}
 
 private:
   Visibility Vis;
@@ -88,7 +88,6 @@ public:
       ContractKind kind = ContractKind::Contract)
       : Decl(name), BaseContracts(std::move(baseContracts)),
         Kind(kind) {}
-  virtual ~ContractDecl() override = default;
 
   std::vector<FunctionDecl *> getFuncs() {
     std::vector<FunctionDecl *> Funcs;
@@ -192,7 +191,6 @@ public:
         Value(std::move(value)), IsStateVariable(isStateVar),
         IsIndexed(isIndexed), IsConstant(isConstant),
         ReferenceLocation(referenceLocation) {}
-
 
   void accept(DeclVisitor &visitor) override;
   void accept(ConstDeclVisitor &visitor) const override;

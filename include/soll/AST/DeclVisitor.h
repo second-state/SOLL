@@ -18,6 +18,7 @@ protected:
   using VarDeclType = typename cond_const<Const, VarDecl>::type;
 
 public:
+  virtual ~DeclVisitorBase() noexcept {}
   virtual void visit(SourceUnitType &);
   virtual void visit(PragmaDirectiveType &);
   virtual void visit(ContractDeclType &);

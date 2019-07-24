@@ -4,5 +4,6 @@ add_library(sollParse
   )
 
 target_link_libraries(sollParse
+  sollAST
   sollBasic
   )

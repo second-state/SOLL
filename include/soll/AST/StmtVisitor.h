@@ -23,6 +23,7 @@ protected:
   using NumberLiteralType = typename cond_const<Const, NumberLiteral>::type;
 
 public:
+  virtual ~StmtVisitorBase() noexcept {}
   virtual void visit(BlockType &);
   virtual void visit(UnaryOperatorType &);
   virtual void visit(BinaryOperatorType &);

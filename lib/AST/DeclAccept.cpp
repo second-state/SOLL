@@ -1,7 +1,7 @@
 #include "soll/AST/Decl.h"
 #include "soll/AST/DeclVisitor.h"
 
-using namespace soll;
+namespace soll {
 
 void SourceUnit::accept(DeclVisitor &visitor) { visitor.visit(*this); }
 void SourceUnit::accept(ConstDeclVisitor &visitor) const {
@@ -25,3 +25,5 @@ void FunctionDecl::accept(ConstDeclVisitor &visitor) const {
 
 void VarDecl::accept(DeclVisitor &visitor) { visitor.visit(*this); }
 void VarDecl::accept(ConstDeclVisitor &visitor) const { visitor.visit(*this); }
+
+} // namespace soll
