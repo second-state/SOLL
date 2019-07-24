@@ -128,6 +128,9 @@ public:
       std::unique_ptr<ParamList> &&returnParams = nullptr)
       : Decl(name, visibility), Params(std::move(Params)),
         ReturnParams(std::move(returnParams)) {}
+
+  ParamList *getParams() const { return Params.get(); }
+  ParamList *getReturnParams() const { return ReturnParams.get(); }
 };
 
 enum class StateMutability { Pure, View, NonPayable, Payable };
@@ -167,6 +170,23 @@ class ParamList {
 public:
   ParamList(std::vector<std::unique_ptr<VarDecl>> &&Params)
       : Params(std::move(Params)) {}
+
+  std::vector<const VarDecl *> getParams() const {
+    std::vector<const VarDecl *> Params;
+    for (auto &P : this->Params)
+      Params.emplace_back(P.get());
+    return Params;
+  }
+
+  std::vector<VarDecl *> getParams() {
+    std::vector<VarDecl *> Params;
+    for (auto &P : this->Params)
+      Params.emplace_back(P.get());
+    return Params;
+  }
+
+  void accept(DeclVisitor &visitor);
+  void accept(ConstDeclVisitor &visitor) const;
 };
 
 class VarDecl : public Decl {

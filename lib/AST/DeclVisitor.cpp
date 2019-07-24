@@ -18,8 +18,15 @@ template <bool Const> void DeclVisitorBase<Const>::visit(ContractDeclType &CD) {
     F->accept(*this);
 }
 
-template <bool Const> void DeclVisitorBase<Const>::visit(FunctionDeclType &) {
-  // leaf of Decl, do nothing
+template <bool Const>
+void DeclVisitorBase<Const>::visit(FunctionDeclType &decl) {
+  decl.getParams()->accept(*this);
+  decl.getReturnParams()->accept(*this);
+}
+
+template <bool Const> void DeclVisitorBase<Const>::visit(ParamListType &decl) {
+  for (auto param : decl.getParams())
+    param->accept(*this);
 }
 
 template <bool Const> void DeclVisitorBase<Const>::visit(VarDeclType &) {

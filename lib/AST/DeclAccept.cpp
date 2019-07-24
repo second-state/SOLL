@@ -23,6 +23,11 @@ void FunctionDecl::accept(ConstDeclVisitor &visitor) const {
   visitor.visit(*this);
 }
 
+void ParamList::accept(DeclVisitor &visitor) { visitor.visit(*this); }
+void ParamList::accept(ConstDeclVisitor &visitor) const {
+  visitor.visit(*this);
+}
+
 void VarDecl::accept(DeclVisitor &visitor) { visitor.visit(*this); }
 void VarDecl::accept(ConstDeclVisitor &visitor) const { visitor.visit(*this); }
 
