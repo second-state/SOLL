@@ -1,0 +1,7 @@
+build:
+  image: yi2nd/ubuntu-soll-build:18.04
+  script:
+  - mkdir build
+  - cd build
+  - cmake ..
+  - make
