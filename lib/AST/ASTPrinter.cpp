@@ -41,24 +41,34 @@ void ASTPrinter::visit(BlockType &block) {
   unindent();
 }
 
-void ASTPrinter::visit(IfStmtType &) {
-  // TODO: implement
+void ASTPrinter::visit(IfStmtType &stmt) {
+  os() << indent() << "IfStmt" << std::endl;
+  ConstStmtVisitor::visit(stmt);
+  unindent();
 }
 
-void ASTPrinter::visit(ForStmtType &) {
-  // TODO: implement
+void ASTPrinter::visit(ForStmtType &stmt) {
+  os() << indent() << "ForStmt" << std::endl;
+  ConstStmtVisitor::visit(stmt);
+  unindent();
 }
 
-void ASTPrinter::visit(ContinueStmtType &) {
-  // TODO: implement
+void ASTPrinter::visit(ContinueStmtType &stmt) {
+  os() << indent() << "ContinueStmt" << std::endl;
+  ConstStmtVisitor::visit(stmt);
+  unindent();
 }
 
-void ASTPrinter::visit(BreakStmtType &) {
-  // TODO: implement
+void ASTPrinter::visit(BreakStmtType &stmt) {
+  os() << indent() << "BreakStmt" << std::endl;
+  ConstStmtVisitor::visit(stmt);
+  unindent();
 }
 
-void ASTPrinter::visit(ReturnStmtType &) {
-  // TODO: implement
+void ASTPrinter::visit(ReturnStmtType &stmt) {
+  os() << indent() << "ReturnStmt" << std::endl;
+  ConstStmtVisitor::visit(stmt);
+  unindent();
 }
 
 void ASTPrinter::visit(UnaryOperatorType &op) {

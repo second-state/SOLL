@@ -8,8 +8,10 @@ template <bool Const> void StmtVisitorBase<Const>::visit(BlockType &block) {
     stmt->accept(*this);
 }
 
-template <bool Const> void StmtVisitorBase<Const>::visit(IfStmtType &) {
-  // TODO: implement
+template <bool Const> void StmtVisitorBase<Const>::visit(IfStmtType &stmt) {
+  stmt.getCond()->accept(*this);
+  stmt.getThen()->accept(*this);
+  stmt.getElse()->accept(*this);
 }
 
 template <bool Const> void StmtVisitorBase<Const>::visit(ForStmtType &) {
@@ -17,15 +19,15 @@ template <bool Const> void StmtVisitorBase<Const>::visit(ForStmtType &) {
 }
 
 template <bool Const> void StmtVisitorBase<Const>::visit(ContinueStmtType &) {
-  // TODO: implement
+  // leaf, do nothing
 }
 
 template <bool Const> void StmtVisitorBase<Const>::visit(BreakStmtType &) {
-  // TODO: implement
+  // leaf, do nothing
 }
 
-template <bool Const> void StmtVisitorBase<Const>::visit(ReturnStmtType &) {
-  // TODO: implement
+template <bool Const> void StmtVisitorBase<Const>::visit(ReturnStmtType &stmt) {
+  stmt.getRetValue()->accept(*this);
 }
 
 template <bool Const>

@@ -64,9 +64,9 @@ public:
   IfStmt(ExprPtr Cond, StmtPtr Then, StmtPtr Else)
       : Cond(std::move(Cond)), Then(std::move(Then)), Else(std::move(Else)) {}
 
-  const Expr *getCond() const { return Cond.get(); }
-  const Stmt *getThen() const { return Then.get(); }
-  const Stmt *getElse() const { return Else.get(); }
+  Expr *getCond() const { return Cond.get(); }
+  Stmt *getThen() const { return Then.get(); }
+  Stmt *getElse() const { return Else.get(); }
 
   void setCond(ExprPtr &&Cond) { this->Cond = std::move(Cond); }
   void setThen(StmtPtr &&Then) { this->Then = std::move(Then); }
@@ -100,6 +100,8 @@ class ReturnStmt : public Stmt {
   ExprPtr RetExpr;
 
 public:
+  ReturnStmt(ExprPtr RetExpr) : RetExpr(std::move(RetExpr)) {}
+
   Expr *getRetValue() const { return RetExpr.get(); }
   void setRetValue(ExprPtr &&E) { RetExpr = std::move(E); }
 

@@ -37,7 +37,9 @@ int main(int argc, const char **argv) {
                             std::make_unique<Identifier>("a"),
                             BinaryOperatorKind::BO_GE),
                         std::make_unique<StringLiteral>(
-                            "SafeMath: addition overflow")}))}))));
+                            "SafeMath: addition overflow")})),
+               std::make_unique<ReturnStmt>(
+                   std::make_unique<Identifier>("c"))}))));
 
   ASTPrinter p(std::cout);
   func.accept(p);
