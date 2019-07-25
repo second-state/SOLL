@@ -1,6 +1,7 @@
 #include "soll/AST/ASTPrinter.h"
 #include "soll/AST/Decl.h"
 #include "soll/AST/Expr.h"
+#include "soll/AST/Stmt.h"
 
 using namespace soll;
 
@@ -68,6 +69,18 @@ void ASTPrinter::visit(BreakStmtType &stmt) {
 void ASTPrinter::visit(ReturnStmtType &stmt) {
   os() << indent() << "ReturnStmt" << std::endl;
   ConstStmtVisitor::visit(stmt);
+  unindent();
+}
+
+void ASTPrinter::visit(ExprStmtType &epstmt) {
+  os() << indent() << "Expression Stmt" << std::endl;
+  ConstStmtVisitor::visit(epstmt);
+  unindent();
+}
+
+void ASTPrinter::visit(DeclStmtType &decstmt) {
+  os() << indent() << "DeclStmt" << std::endl;
+  ConstStmtVisitor::visit(decstmt);
   unindent();
 }
 

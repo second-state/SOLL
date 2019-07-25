@@ -14,6 +14,7 @@ enum UnaryOperatorKind {
   UO_Minus,
   UO_Not,
   UO_LNot,
+  UO_Undefined,
 };
 
 // binary operators
@@ -61,7 +62,8 @@ enum BinaryOperatorKind {
   BO_AndAssign,
   BO_XorAssign,
   BO_OrAssign,
-  BO_Comma
+  BO_Comma,
+  BO_Undefined,
 };
 
 } // namespace soll

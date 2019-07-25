@@ -27,6 +27,12 @@ void ReturnStmt::accept(ConstStmtVisitor &visitor) const {
   visitor.visit(*this);
 }
 
+void ExprStmt::accept(StmtVisitor &visitor) { visitor.visit(*this); }
+void ExprStmt::accept(ConstStmtVisitor &visitor) const { visitor.visit(*this); }
+
+void DeclStmt::accept(StmtVisitor &visitor) { visitor.visit(*this); }
+void DeclStmt::accept(ConstStmtVisitor &visitor) const { visitor.visit(*this); }
+
 void UnaryOperator::accept(StmtVisitor &visitor) { visitor.visit(*this); }
 void UnaryOperator::accept(ConstStmtVisitor &visitor) const {
   visitor.visit(*this);

@@ -14,8 +14,9 @@ void DeclVisitorBase<Const>::visit(PragmaDirectiveType &) {
 }
 
 template <bool Const> void DeclVisitorBase<Const>::visit(ContractDeclType &CD) {
-  for (auto F : CD.getFuncs())
+  for (auto F : CD.getSubNodes()) {
     F->accept(*this);
+  }
 }
 
 template <bool Const>

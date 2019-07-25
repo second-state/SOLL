@@ -163,7 +163,6 @@ public:
   std::optional<std::vector<std::string>> &getNames() {
     return Names;
   }
-
   bool isNamedCall() { return Names.has_value(); }
 
   void accept(StmtVisitor &visitor) override;

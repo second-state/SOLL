@@ -79,27 +79,29 @@ public:
 
 private:
   std::vector<std::unique_ptr<InheritanceSpecifier>> BaseContracts;
-  std::vector<std::unique_ptr<FunctionDecl>> Functions;
+  std::vector<std::unique_ptr<Decl>> SubNodes;
   ContractKind Kind;
 
 public:
-  ContractDecl(llvm::StringRef name,
+  ContractDecl(
+      llvm::StringRef name,
       std::vector<std::unique_ptr<InheritanceSpecifier>> &&baseContracts,
+      std::vector<std::unique_ptr<Decl>> &&subNodes,
       ContractKind kind = ContractKind::Contract)
       : Decl(name), BaseContracts(std::move(baseContracts)),
-        Kind(kind) {}
+        SubNodes(std::move(subNodes)), Kind(kind) {}
 
-  std::vector<FunctionDecl *> getFuncs() {
-    std::vector<FunctionDecl *> Funcs;
-    for (auto &Func : this->Functions)
-      Funcs.push_back(Func.get());
-    return Funcs;
+  std::vector<Decl *> getSubNodes() {
+    std::vector<Decl *> Decls;
+    for (auto &Decl : this->SubNodes)
+      Decls.push_back(Decl.get());
+    return Decls;
   }
-  std::vector<const FunctionDecl *> getFuncs() const {
-    std::vector<const FunctionDecl *> Funcs;
-    for (auto &Func : this->Functions)
-      Funcs.push_back(Func.get());
-    return Funcs;
+  std::vector<const Decl *> getSubNodes() const {
+    std::vector<const Decl *> Decls;
+    for (auto &Decl : this->SubNodes)
+      Decls.push_back(Decl.get());
+    return Decls;
   }
 
   void accept(DeclVisitor &visitor) override;

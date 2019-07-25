@@ -4,8 +4,17 @@
 using namespace soll;
 
 template <bool Const> void StmtVisitorBase<Const>::visit(BlockType &block) {
-  for (auto stmt : block.getStmts())
-    stmt->accept(*this);
+  for (auto STMT : block.getStmts())
+    STMT->accept(*this);
+}
+
+template <bool Const> void StmtVisitorBase<Const>::visit(ExprStmtType &epstmt) {
+  // [TODO]
+}
+
+template <bool Const>
+void StmtVisitorBase<Const>::visit(DeclStmtType &declstmt) {
+  // [TODO]
 }
 
 template <bool Const> void StmtVisitorBase<Const>::visit(IfStmtType &stmt) {

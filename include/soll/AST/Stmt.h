@@ -8,6 +8,7 @@
 namespace soll {
 
 class Expr;
+class Decl;
 
 class Stmt {
 public:
@@ -19,10 +20,31 @@ public:
 
 using StmtPtr = std::unique_ptr<Stmt>;
 using ExprPtr = std::unique_ptr<Expr>;
+using DeclPtr = std::unique_ptr<Decl>;
 
-class DeclStmt : public Stmt {};
+class DeclStmt : public Stmt {
+  // [PrePOC] Contructor compile faile. Need Fix.
+  // std::vector<DeclPtr> Variables;
+  ExprPtr Value;
 
-class ExprStmt : public Stmt {};
+public:
+  DeclStmt() {}
+  // DeclStmt(std::vector<DeclPtr> &&Variables, ExprPtr Value) :
+  // Variables(std::move(Variables)), Value(std::move(Value)) {}
+  void accept(StmtVisitor &visitor) override;
+  void accept(ConstStmtVisitor &visitor) const override;
+};
+
+class ExprStmt : public Stmt {
+  ExprPtr Exps;
+
+public:
+  ExprStmt() {}
+  ExprStmt(ExprPtr Exps) : Exps(std::move(Exps)) {}
+
+  void accept(StmtVisitor &visitor) override;
+  void accept(ConstStmtVisitor &visitor) const override;
+};
 
 class Block : public Stmt {
   std::vector<StmtPtr> Stmts;
