@@ -71,21 +71,40 @@ public:
   void setCond(ExprPtr &&Cond) { this->Cond = std::move(Cond); }
   void setThen(StmtPtr &&Then) { this->Then = std::move(Then); }
   void setElse(StmtPtr &&Else) { this->Else = std::move(Else); }
+
+  void accept(StmtVisitor &visitor) override;
+  void accept(ConstStmtVisitor &visitor) const override;
 };
 
 class BreakableStmt : public Stmt {};
 
-class ForStmt : public Stmt {};
+class ForStmt : public Stmt {
+public:
+  void accept(StmtVisitor &visitor) override;
+  void accept(ConstStmtVisitor &visitor) const override;
+};
 
-class ContinueStmt : public Stmt {};
+class ContinueStmt : public Stmt {
+public:
+  void accept(StmtVisitor &visitor) override;
+  void accept(ConstStmtVisitor &visitor) const override;
+};
 
-class BreakStmt : public Stmt {};
+class BreakStmt : public Stmt {
+public:
+  void accept(StmtVisitor &visitor) override;
+  void accept(ConstStmtVisitor &visitor) const override;
+};
 
 class ReturnStmt : public Stmt {
   ExprPtr RetExpr;
+
 public:
-  const Expr *getRetValue() { return RetExpr.get(); }
+  Expr *getRetValue() const { return RetExpr.get(); }
   void setRetValue(ExprPtr &&E) { RetExpr = std::move(E); }
+
+  void accept(StmtVisitor &visitor) override;
+  void accept(ConstStmtVisitor &visitor) const override;
 };
 
 } // namespace soll

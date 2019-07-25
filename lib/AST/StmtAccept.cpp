@@ -6,6 +6,27 @@ using namespace soll;
 void Block::accept(StmtVisitor &visitor) { visitor.visit(*this); }
 void Block::accept(ConstStmtVisitor &visitor) const { visitor.visit(*this); }
 
+void IfStmt::accept(StmtVisitor &visitor) { visitor.visit(*this); }
+void IfStmt::accept(ConstStmtVisitor &visitor) const { visitor.visit(*this); }
+
+void ForStmt::accept(StmtVisitor &visitor) { visitor.visit(*this); }
+void ForStmt::accept(ConstStmtVisitor &visitor) const { visitor.visit(*this); }
+
+void ContinueStmt::accept(StmtVisitor &visitor) { visitor.visit(*this); }
+void ContinueStmt::accept(ConstStmtVisitor &visitor) const {
+  visitor.visit(*this);
+}
+
+void BreakStmt::accept(StmtVisitor &visitor) { visitor.visit(*this); }
+void BreakStmt::accept(ConstStmtVisitor &visitor) const {
+  visitor.visit(*this);
+}
+
+void ReturnStmt::accept(StmtVisitor &visitor) { visitor.visit(*this); }
+void ReturnStmt::accept(ConstStmtVisitor &visitor) const {
+  visitor.visit(*this);
+}
+
 void UnaryOperator::accept(StmtVisitor &visitor) { visitor.visit(*this); }
 void UnaryOperator::accept(ConstStmtVisitor &visitor) const {
   visitor.visit(*this);

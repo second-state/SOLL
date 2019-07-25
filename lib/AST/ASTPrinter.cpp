@@ -41,6 +41,26 @@ void ASTPrinter::visit(BlockType &block) {
   unindent();
 }
 
+void ASTPrinter::visit(IfStmtType &) {
+  // TODO: implement
+}
+
+void ASTPrinter::visit(ForStmtType &) {
+  // TODO: implement
+}
+
+void ASTPrinter::visit(ContinueStmtType &) {
+  // TODO: implement
+}
+
+void ASTPrinter::visit(BreakStmtType &) {
+  // TODO: implement
+}
+
+void ASTPrinter::visit(ReturnStmtType &) {
+  // TODO: implement
+}
+
 void ASTPrinter::visit(UnaryOperatorType &op) {
   os() << indent() << "UnaryOperator" << std::endl;
   ConstStmtVisitor::visit(op);

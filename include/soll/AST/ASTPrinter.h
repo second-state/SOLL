@@ -19,6 +19,11 @@ public:
   void visit(VarDeclType &) override;
 
   void visit(BlockType &) override;
+  void visit(IfStmtType &) override;
+  void visit(ForStmtType &) override;
+  void visit(ContinueStmtType &) override;
+  void visit(BreakStmtType &) override;
+  void visit(ReturnStmtType &) override;
   void visit(UnaryOperatorType &) override;
   void visit(BinaryOperatorType &) override;
   void visit(IdentifierType &) override;

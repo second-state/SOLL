@@ -5,6 +5,11 @@
 namespace soll {
 
 class Block;
+class IfStmt;
+class ForStmt;
+class ContinueStmt;
+class BreakStmt;
+class ReturnStmt;
 class UnaryOperator;
 class BinaryOperator;
 class CallExpr;
@@ -16,6 +21,11 @@ class NumberLiteral;
 template <bool Const> class StmtVisitorBase {
 protected:
   using BlockType = typename cond_const<Const, Block>::type;
+  using IfStmtType = typename cond_const<Const, IfStmt>::type;
+  using ForStmtType = typename cond_const<Const, ForStmt>::type;
+  using ContinueStmtType = typename cond_const<Const, ContinueStmt>::type;
+  using BreakStmtType = typename cond_const<Const, BreakStmt>::type;
+  using ReturnStmtType = typename cond_const<Const, ReturnStmt>::type;
   using UnaryOperatorType = typename cond_const<Const, UnaryOperator>::type;
   using BinaryOperatorType = typename cond_const<Const, BinaryOperator>::type;
   using CallExprType = typename cond_const<Const, CallExpr>::type;
@@ -27,6 +37,11 @@ protected:
 public:
   virtual ~StmtVisitorBase() noexcept {}
   virtual void visit(BlockType &);
+  virtual void visit(IfStmtType &);
+  virtual void visit(ForStmtType &);
+  virtual void visit(ContinueStmtType &);
+  virtual void visit(BreakStmtType &);
+  virtual void visit(ReturnStmtType &);
   virtual void visit(UnaryOperatorType &);
   virtual void visit(BinaryOperatorType &);
   virtual void visit(CallExprType &);

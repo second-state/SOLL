@@ -8,6 +8,26 @@ template <bool Const> void StmtVisitorBase<Const>::visit(BlockType &block) {
     stmt->accept(*this);
 }
 
+template <bool Const> void StmtVisitorBase<Const>::visit(IfStmtType &) {
+  // TODO: implement
+}
+
+template <bool Const> void StmtVisitorBase<Const>::visit(ForStmtType &) {
+  // TODO: implement
+}
+
+template <bool Const> void StmtVisitorBase<Const>::visit(ContinueStmtType &) {
+  // TODO: implement
+}
+
+template <bool Const> void StmtVisitorBase<Const>::visit(BreakStmtType &) {
+  // TODO: implement
+}
+
+template <bool Const> void StmtVisitorBase<Const>::visit(ReturnStmtType &) {
+  // TODO: implement
+}
+
 template <bool Const>
 void StmtVisitorBase<Const>::visit(UnaryOperatorType &op) {
   op.getSubExpr()->accept(*this);
