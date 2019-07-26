@@ -489,7 +489,7 @@ unique_ptr<Stmt> Parser::parseSimpleStatement() {
       return parseVariableDeclarationStatement(
           typeNameFromIndexAccessStructure(Iap));
     case LookAheadInfo::Expression:
-      return std::move(parseExpressionStatement(
+      return std::move(parseExpression(
           std::move(expressionFromIndexAccessStructure(Iap))));
     default:
       assert(false && "Unhandle statement.");
@@ -616,12 +616,6 @@ Parser::typeNameFromIndexAccessStructure(Parser::IndexAccessedPath const &Iap) {
 unique_ptr<Expr> Parser::expressionFromIndexAccessStructure(
     Parser::IndexAccessedPath const &Iap) {
   return {};
-}
-
-unique_ptr<ExprStmt>
-Parser::parseExpressionStatement(unique_ptr<Expr> &&PartialParserResult) {
-  unique_ptr<Expr> Exps = parseExpression(std::move(PartialParserResult));
-  return std::make_unique<ExprStmt>(std::move(Exps));
 }
 
 unique_ptr<Expr>

@@ -8,10 +8,6 @@ template <bool Const> void StmtVisitorBase<Const>::visit(BlockType &block) {
     stmt->accept(*this);
 }
 
-template <bool Const> void StmtVisitorBase<Const>::visit(ExprStmtType &epstmt) {
-  // [TODO]
-}
-
 template <bool Const>
 void StmtVisitorBase<Const>::visit(DeclStmtType &declstmt) {
   // [TODO]

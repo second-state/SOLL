@@ -24,7 +24,6 @@ public:
   void visit(ContinueStmtType &) override;
   void visit(BreakStmtType &) override;
   void visit(ReturnStmtType &) override;
-  void visit(ExprStmtType &) override;
   void visit(DeclStmtType &) override;
   void visit(UnaryOperatorType &) override;
   void visit(BinaryOperatorType &) override;

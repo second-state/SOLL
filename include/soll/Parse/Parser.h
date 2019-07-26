@@ -22,7 +22,6 @@ class Stmt;
 class Block;
 class IfStmt;
 class DeclStmt;
-class ExprStmt;
 class Expr;
 
 class Parser {
@@ -81,8 +80,6 @@ private:
   std::unique_ptr<Stmt> parseSimpleStatement();
   std::unique_ptr<DeclStmt> parseVariableDeclarationStatement(
       std::unique_ptr<Type> const &LookAheadArrayType = std::unique_ptr<Type>());
-  std::unique_ptr<ExprStmt> parseExpressionStatement(
-      std::unique_ptr<Expr> &&PartiallyParsedExpression = nullptr);
   std::unique_ptr<Expr>
   parseExpression(std::unique_ptr<Expr> &&PartiallyParsedExpression = nullptr);
   std::unique_ptr<Expr>

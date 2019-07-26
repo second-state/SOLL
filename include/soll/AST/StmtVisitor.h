@@ -10,7 +10,6 @@ class ForStmt;
 class ContinueStmt;
 class BreakStmt;
 class ReturnStmt;
-class ExprStmt;
 class DeclStmt;
 class UnaryOperator;
 class BinaryOperator;
@@ -28,7 +27,6 @@ protected:
   using ContinueStmtType = typename cond_const<Const, ContinueStmt>::type;
   using BreakStmtType = typename cond_const<Const, BreakStmt>::type;
   using ReturnStmtType = typename cond_const<Const, ReturnStmt>::type;
-  using ExprStmtType = typename cond_const<Const, ExprStmt>::type;
   using DeclStmtType = typename cond_const<Const, DeclStmt>::type;
   using UnaryOperatorType = typename cond_const<Const, UnaryOperator>::type;
   using BinaryOperatorType = typename cond_const<Const, BinaryOperator>::type;
@@ -46,7 +44,6 @@ public:
   virtual void visit(ContinueStmtType &);
   virtual void visit(BreakStmtType &);
   virtual void visit(ReturnStmtType &);
-  virtual void visit(ExprStmtType &);
   virtual void visit(DeclStmtType &);
   virtual void visit(UnaryOperatorType &);
   virtual void visit(BinaryOperatorType &);

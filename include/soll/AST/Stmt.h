@@ -35,16 +35,7 @@ public:
   void accept(ConstStmtVisitor &visitor) const override;
 };
 
-class ExprStmt : public Stmt {
-  ExprPtr Exps;
-
-public:
-  ExprStmt() {}
-  ExprStmt(ExprPtr Exps) : Exps(std::move(Exps)) {}
-
-  void accept(StmtVisitor &visitor) override;
-  void accept(ConstStmtVisitor &visitor) const override;
-};
+class ExprStmt : public Stmt {};
 
 class Block : public Stmt {
   std::vector<StmtPtr> Stmts;

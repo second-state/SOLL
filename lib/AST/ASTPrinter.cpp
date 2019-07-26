@@ -71,12 +71,6 @@ void ASTPrinter::visit(ReturnStmtType &stmt) {
   unindent();
 }
 
-void ASTPrinter::visit(ExprStmtType &epstmt) {
-  os() << indent() << "ExpStmt" << std::endl;
-  ConstStmtVisitor::visit(epstmt);
-  unindent();
-}
-
 void ASTPrinter::visit(DeclStmtType &decstmt) {
   os() << indent() << "DeclStmt" << std::endl;
   ConstStmtVisitor::visit(decstmt);
