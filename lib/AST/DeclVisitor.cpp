@@ -30,6 +30,10 @@ template <bool Const> void DeclVisitorBase<Const>::visit(ParamListType &decl) {
     param->accept(*this);
 }
 
+template <bool Const> void DeclVisitorBase<Const>::visit(CallableVarDeclType &) {
+  // leaf, do nothing
+}
+
 template <bool Const> void DeclVisitorBase<Const>::visit(VarDeclType &) {
   // leaf, do nothing
 }

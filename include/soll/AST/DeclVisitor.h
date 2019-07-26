@@ -8,6 +8,7 @@ class PragmaDirective;
 class ContractDecl;
 class FunctionDecl;
 class ParamList;
+class CallableVarDecl;
 class VarDecl;
 
 template <bool Const> class DeclVisitorBase {
@@ -17,6 +18,7 @@ protected:
   using ContractDeclType = typename cond_const<Const, ContractDecl>::type;
   using FunctionDeclType = typename cond_const<Const, FunctionDecl>::type;
   using ParamListType = typename cond_const<Const, ParamList>::type;
+  using CallableVarDeclType = typename cond_const<Const, CallableVarDecl>::type;
   using VarDeclType = typename cond_const<Const, VarDecl>::type;
 
 public:
@@ -26,6 +28,7 @@ public:
   virtual void visit(ContractDeclType &);
   virtual void visit(FunctionDeclType &);
   virtual void visit(ParamListType &);
+  virtual void visit(CallableVarDeclType &);
   virtual void visit(VarDeclType &);
 };
 

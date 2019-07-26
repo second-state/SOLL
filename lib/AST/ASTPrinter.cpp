@@ -74,6 +74,8 @@ void ASTPrinter::visit(ReturnStmtType &stmt) {
 void ASTPrinter::visit(DeclStmtType &decstmt) {
   os() << indent() << "DeclStmt" << std::endl;
   ConstStmtVisitor::visit(decstmt);
+  for (auto decl : decstmt.getDecls())
+    decl->accept(*this);
   unindent();
 }
 

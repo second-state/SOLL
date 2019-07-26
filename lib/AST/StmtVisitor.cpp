@@ -1,5 +1,6 @@
 #include "soll/AST/StmtVisitor.h"
 #include "soll/AST/Expr.h"
+#include "soll/AST/Decl.h"
 
 using namespace soll;
 
@@ -10,7 +11,6 @@ template <bool Const> void StmtVisitorBase<Const>::visit(BlockType &block) {
 
 template <bool Const>
 void StmtVisitorBase<Const>::visit(DeclStmtType &declstmt) {
-  // [TODO]
 }
 
 template <bool Const> void StmtVisitorBase<Const>::visit(IfStmtType &stmt) {

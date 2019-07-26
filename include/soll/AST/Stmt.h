@@ -23,14 +23,15 @@ using ExprPtr = std::unique_ptr<Expr>;
 using DeclPtr = std::unique_ptr<Decl>;
 
 class DeclStmt : public Stmt {
-  // [PrePOC] Contructor compile faile. Need Fix.
-  // std::vector<DeclPtr> Variables;
+  std::vector<DeclPtr> Decls;
   ExprPtr Value;
 
 public:
-  DeclStmt() {}
-  // DeclStmt(std::vector<DeclPtr> &&Variables, ExprPtr Value) :
-  // Variables(std::move(Variables)), Value(std::move(Value)) {}
+  DeclStmt(std::vector<DeclPtr> &&Decls, ExprPtr &&Value);
+
+  std::vector<const Decl*> getDecls() const;
+  std::vector<Decl*> getDecls();
+
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
 };

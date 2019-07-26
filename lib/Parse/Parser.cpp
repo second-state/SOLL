@@ -524,9 +524,9 @@ unique_ptr<DeclStmt> Parser::parseVariableDeclarationStatement(
   }
 
   // [TEMP] Need fix.
-  return std::move(std::make_unique<DeclStmt>());
-  // return std::move(
-  //    std::make_unique<DeclStmt>(std::move(Variables), std::move(Value)));
+  //return std::move(std::make_unique<DeclStmt>());
+  return std::move(
+    std::make_unique<DeclStmt>(std::move(Variables), std::move(Value)));
 }
 
 pair<Parser::LookAheadInfo, Parser::IndexAccessedPath>

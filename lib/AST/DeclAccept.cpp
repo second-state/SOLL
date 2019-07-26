@@ -28,6 +28,9 @@ void ParamList::accept(ConstDeclVisitor &visitor) const {
   visitor.visit(*this);
 }
 
+void CallableVarDecl::accept(DeclVisitor &visitor) { visitor.visit(*this); }
+void CallableVarDecl::accept(ConstDeclVisitor &visitor) const { visitor.visit(*this); }
+
 void VarDecl::accept(DeclVisitor &visitor) { visitor.visit(*this); }
 void VarDecl::accept(ConstDeclVisitor &visitor) const { visitor.visit(*this); }
 

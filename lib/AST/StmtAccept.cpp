@@ -1,5 +1,6 @@
 #include "soll/AST/Expr.h"
 #include "soll/AST/StmtVisitor.h"
+#include "soll/AST/Decl.h"
 
 using namespace soll;
 

@@ -133,6 +133,9 @@ public:
 
   ParamList *getParams() const { return Params.get(); }
   ParamList *getReturnParams() const { return ReturnParams.get(); }
+
+  void accept(DeclVisitor &visitor) override;
+  void accept(ConstDeclVisitor &visitor) const override;
 };
 
 enum class StateMutability { Pure, View, NonPayable, Payable };

@@ -6,4 +6,5 @@ add_library(sollAST
   DeclVisitor.cpp
   StmtAccept.cpp
   StmtVisitor.cpp
+  Stmt.cpp
   )
