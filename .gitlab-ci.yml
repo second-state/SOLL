@@ -1,7 +1,26 @@
 build:
+  stage: build
   image: yi2nd/ubuntu-soll-build:18.04
+  before_script:
+    - rm -rf build
+    - mkdir build
+    - cd build
   script:
-  - mkdir build
-  - cd build
-  - cmake ..
-  - make
+    - cmake ..
+    - make
+  cache:
+    paths:
+      - build
+    policy: push
+
+test:
+  stage: test
+  image: yi2nd/ubuntu-soll-build:18.04 # TODO: Create image for testing
+  before_script:
+    - cd build
+  script:
+    - ./tools/soll/soll ../test/lity/safemath.lity
+  cache:
+    paths:
+      - build
+    policy: pull
