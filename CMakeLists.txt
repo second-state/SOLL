@@ -19,9 +19,6 @@ include_directories(BEFORE
 include_directories("${LLVM_BINARY_DIR}/include" "${LLVM_INCLUDE_DIR}")
 link_directories("${LLVM_LIBRARY_DIR}")
 
-include(CheckIPOSupported)
-check_ipo_supported()
-set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
