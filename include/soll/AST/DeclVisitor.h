@@ -10,6 +10,7 @@ class FunctionDecl;
 class ParamList;
 class CallableVarDecl;
 class VarDecl;
+class ModifierInvocation;
 
 template <bool Const> class DeclVisitorBase {
 protected:
@@ -20,6 +21,8 @@ protected:
   using ParamListType = typename cond_const<Const, ParamList>::type;
   using CallableVarDeclType = typename cond_const<Const, CallableVarDecl>::type;
   using VarDeclType = typename cond_const<Const, VarDecl>::type;
+  using ModifierInvocationType =
+      typename cond_const<Const, ModifierInvocation>::type;
 
 public:
   virtual ~DeclVisitorBase() noexcept {}
@@ -30,6 +33,7 @@ public:
   virtual void visit(ParamListType &);
   virtual void visit(CallableVarDeclType &);
   virtual void visit(VarDeclType &);
+  virtual void visit(ModifierInvocationType &);
 };
 
 using ConstDeclVisitor = DeclVisitorBase<true>;

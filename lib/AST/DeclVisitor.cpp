@@ -38,6 +38,11 @@ template <bool Const> void DeclVisitorBase<Const>::visit(VarDeclType &) {
   // leaf, do nothing
 }
 
+template <bool Const>
+void DeclVisitorBase<Const>::visit(ModifierInvocationType &) {
+  // leaf, do nothing
+}
+
 } // namespace soll
 
 /// Explicit instantiation

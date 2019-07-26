@@ -17,6 +17,7 @@ public:
   void visit(FunctionDeclType &) override;
   void visit(ParamListType &) override;
   void visit(VarDeclType &) override;
+  void visit(ModifierInvocationType &) override;
 
   void visit(BlockType &) override;
   void visit(IfStmtType &) override;

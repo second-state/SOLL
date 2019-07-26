@@ -31,6 +31,8 @@ protected:
       : Name(Name.str()), Vis(vis) {}
 
 public:
+  const std::string &getName() const { return Name; }
+
   virtual void accept(DeclVisitor &visitor) = 0;
   virtual void accept(ConstDeclVisitor &visitor) const = 0;
 };
@@ -187,6 +189,11 @@ class ModifierInvocation {
 public:
   ModifierInvocation(llvm::StringRef name, std::vector<ExprPtr> arguments)
       : ModifierName(name), Arguments(std::move(arguments)) {}
+
+  const std::string &getName() const { return ModifierName; }
+
+  void accept(DeclVisitor &visitor);
+  void accept(ConstDeclVisitor &visitor) const;
 };
 
 } // namespace soll

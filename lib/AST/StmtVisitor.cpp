@@ -11,6 +11,7 @@ template <bool Const> void StmtVisitorBase<Const>::visit(BlockType &block) {
 
 template <bool Const>
 void StmtVisitorBase<Const>::visit(DeclStmtType &declstmt) {
+  // leaf, do nothing
 }
 
 template <bool Const> void StmtVisitorBase<Const>::visit(IfStmtType &stmt) {
