@@ -2,7 +2,7 @@
 #include "soll/AST/Expr.h"
 #include "soll/AST/Decl.h"
 
-using namespace soll;
+namespace soll {
 
 template <bool Const> void StmtVisitorBase<Const>::visit(BlockType &block) {
   for (auto stmt : block.getStmts())
@@ -68,6 +68,8 @@ template <bool Const> void StmtVisitorBase<Const>::visit(StringLiteralType &) {
 template <bool Const> void StmtVisitorBase<Const>::visit(NumberLiteralType &) {
   // leaf, do nothing
 }
+
+} // namespace soll
 
 /// Explicit instantiation
 template class soll::StmtVisitorBase<true>;

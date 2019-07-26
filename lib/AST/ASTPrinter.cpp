@@ -2,7 +2,7 @@
 #include "soll/AST/Decl.h"
 #include "soll/AST/Expr.h"
 
-using namespace soll;
+namespace soll {
 
 void ASTPrinter::visit(SourceUnitType &decl) {
   os() << indent() << "SourceUnit" << std::endl;
@@ -120,3 +120,5 @@ void ASTPrinter::visit(NumberLiteralType &literal) {
   ConstStmtVisitor::visit(literal);
   unindent();
 }
+
+} // namespace soll

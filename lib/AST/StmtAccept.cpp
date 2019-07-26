@@ -2,7 +2,7 @@
 #include "soll/AST/StmtVisitor.h"
 #include "soll/AST/Decl.h"
 
-using namespace soll;
+namespace soll {
 
 void Block::accept(StmtVisitor &visitor) { visitor.visit(*this); }
 void Block::accept(ConstStmtVisitor &visitor) const { visitor.visit(*this); }
@@ -57,3 +57,5 @@ void StringLiteral::accept(ConstStmtVisitor &visitor) const { visitor.visit(*thi
 
 void NumberLiteral::accept(StmtVisitor &visitor) { visitor.visit(*this); }
 void NumberLiteral::accept(ConstStmtVisitor &visitor) const { visitor.visit(*this); }
+
+} // namespace soll

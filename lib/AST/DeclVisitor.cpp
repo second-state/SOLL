@@ -1,7 +1,7 @@
 #include "soll/AST/DeclVisitor.h"
 #include "soll/AST/Decl.h"
 
-using namespace soll;
+namespace soll {
 
 template <bool Const> void DeclVisitorBase<Const>::visit(SourceUnitType &SU) {
   for (auto Node : SU.getNodes())
@@ -37,6 +37,8 @@ template <bool Const> void DeclVisitorBase<Const>::visit(CallableVarDeclType &) 
 template <bool Const> void DeclVisitorBase<Const>::visit(VarDeclType &) {
   // leaf, do nothing
 }
+
+} // namespace soll
 
 /// Explicit instantiation
 template class soll::DeclVisitorBase<true>;

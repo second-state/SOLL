@@ -2,9 +2,10 @@ add_library(sollAST
   ASTConsumer.cpp
   ASTContext.cpp
   ASTPrinter.cpp
+  Decl.cpp
   DeclAccept.cpp
   DeclVisitor.cpp
+  Stmt.cpp
   StmtAccept.cpp
   StmtVisitor.cpp
-  Stmt.cpp
   )
