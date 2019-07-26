@@ -10,8 +10,6 @@ namespace soll {
 
 class Expr : public ExprStmt {};
 
-using ExprPtr = std::unique_ptr<Expr>;
-
 class TupleExpr {
   // TODO
 };

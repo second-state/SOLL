@@ -1,17 +1,16 @@
 #pragma once
 
+#include "soll/AST/ASTForward.h"
 #include "soll/AST/DeclVisitor.h"
 #include "soll/AST/Expr.h"
 #include "soll/AST/Type.h"
 #include "soll/Basic/IdentifierTable.h"
 #include "soll/Basic/SourceLocation.h"
-#include <memory>
 #include <vector>
 
 namespace soll {
 
 class ASTContext;
-class Token;
 
 class Decl {
 public:
@@ -37,13 +36,12 @@ public:
 };
 
 class SourceUnit : public Decl {
-  std::vector<std::unique_ptr<Decl>> Nodes;
+  std::vector<DeclPtr> Nodes;
 
 public:
-  SourceUnit(std::vector<std::unique_ptr<Decl>> &&Nodes)
-      : Nodes(std::move(Nodes)) {}
+  SourceUnit(std::vector<DeclPtr> &&Nodes) : Nodes(std::move(Nodes)) {}
 
-  void setNodes(std::vector<std::unique_ptr<Decl>> &&Nodes) {
+  void setNodes(std::vector<DeclPtr> &&Nodes) {
     for (auto &Node : Nodes)
       this->Nodes.emplace_back(std::move(Node));
   }
@@ -71,22 +69,20 @@ public:
   void accept(ConstDeclVisitor &visitor) const override;
 };
 
-class InheritanceSpecifier;
-class FunctionDecl;
 class ContractDecl : public Decl {
 public:
   enum class ContractKind { Interface, Contract, Library };
 
 private:
   std::vector<std::unique_ptr<InheritanceSpecifier>> BaseContracts;
-  std::vector<std::unique_ptr<Decl>> SubNodes;
+  std::vector<DeclPtr> SubNodes;
   ContractKind Kind;
 
 public:
   ContractDecl(
       llvm::StringRef name,
       std::vector<std::unique_ptr<InheritanceSpecifier>> &&baseContracts,
-      std::vector<std::unique_ptr<Decl>> &&subNodes,
+      std::vector<DeclPtr> &&subNodes,
       ContractKind kind = ContractKind::Contract)
       : Decl(name), BaseContracts(std::move(baseContracts)),
         SubNodes(std::move(subNodes)), Kind(kind) {}
@@ -110,16 +106,14 @@ public:
 
 class InheritanceSpecifier {
   std::string BaseName;
-  std::vector<std::unique_ptr<Expr>> Arguments;
+  std::vector<ExprPtr> Arguments;
 
 public:
   InheritanceSpecifier(llvm::StringRef baseName,
-                       std::vector<std::unique_ptr<Expr>> &&arguments)
-      : BaseName(baseName.str()),
-        Arguments(std::move(arguments)) {}
+                       std::vector<ExprPtr> &&arguments)
+      : BaseName(baseName.str()), Arguments(std::move(arguments)) {}
 };
 
-class ParamList;
 class CallableVarDecl : public Decl {
   std::unique_ptr<ParamList> Params;
   std::unique_ptr<ParamList> ReturnParams;
@@ -141,8 +135,6 @@ public:
 };
 
 enum class StateMutability { Pure, View, NonPayable, Payable };
-class ModifierInvocation;
-class Block;
 
 class FunctionDecl : public CallableVarDecl {
   StateMutability SM;
@@ -171,7 +163,6 @@ public:
   void accept(ConstDeclVisitor &visitor) const override;
 };
 
-class VarDecl;
 class ParamList {
   std::vector<std::unique_ptr<VarDecl>> Params;
 
@@ -202,23 +193,21 @@ public:
   enum class Location { Unspecified, Storage, Memory, CallData };
 
 private:
-  std::unique_ptr<Type> TypeName;
-  std::unique_ptr<Expr> Value;
+  TypePtr TypeName;
+  ExprPtr Value;
   bool IsStateVariable;
   bool IsIndexed;
   bool IsConstant;
   Location ReferenceLocation;
 
 public:
-  VarDecl(std::unique_ptr<Type> &&T, llvm::StringRef name,
-          std::unique_ptr<Expr> &&value, Visibility visibility,
-          bool isStateVar = false, bool isIndexed = false,
-          bool isConstant = false,
+  VarDecl(TypePtr &&T, llvm::StringRef name, ExprPtr &&value,
+          Visibility visibility, bool isStateVar = false,
+          bool isIndexed = false, bool isConstant = false,
           Location referenceLocation = Location::Unspecified)
-      : Decl(name, visibility), TypeName(std::move(T)),
-        Value(std::move(value)), IsStateVariable(isStateVar),
-        IsIndexed(isIndexed), IsConstant(isConstant),
-        ReferenceLocation(referenceLocation) {}
+      : Decl(name, visibility), TypeName(std::move(T)), Value(std::move(value)),
+        IsStateVariable(isStateVar), IsIndexed(isIndexed),
+        IsConstant(isConstant), ReferenceLocation(referenceLocation) {}
 
   void accept(DeclVisitor &visitor) override;
   void accept(ConstDeclVisitor &visitor) const override;
@@ -226,11 +215,10 @@ public:
 
 class ModifierInvocation {
   std::string ModifierName;
-  std::vector<std::unique_ptr<Expr>> Arguments;
+  std::vector<ExprPtr> Arguments;
 
 public:
-  ModifierInvocation(llvm::StringRef name,
-                     std::vector<std::unique_ptr<Expr>> arguments)
+  ModifierInvocation(llvm::StringRef name, std::vector<ExprPtr> arguments)
       : ModifierName(name), Arguments(std::move(arguments)) {}
 };
 

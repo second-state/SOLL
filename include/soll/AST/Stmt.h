@@ -1,14 +1,11 @@
 #pragma once
 
+#include "soll/AST/ASTForward.h"
 #include "soll/AST/StmtVisitor.h"
 #include <llvm/ADT/APInt.h>
-#include <memory>
 #include <vector>
 
 namespace soll {
-
-class Expr;
-class Decl;
 
 class Stmt {
 public:
@@ -17,10 +14,6 @@ public:
   virtual void accept(StmtVisitor &visitor) = 0;
   virtual void accept(ConstStmtVisitor &visitor) const = 0;
 };
-
-using StmtPtr = std::unique_ptr<Stmt>;
-using ExprPtr = std::unique_ptr<Expr>;
-using DeclPtr = std::unique_ptr<Decl>;
 
 class DeclStmt : public Stmt {
   std::vector<DeclPtr> Decls;
