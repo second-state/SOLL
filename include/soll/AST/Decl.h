@@ -41,23 +41,10 @@ class SourceUnit : public Decl {
 public:
   SourceUnit(std::vector<DeclPtr> &&Nodes) : Nodes(std::move(Nodes)) {}
 
-  void setNodes(std::vector<DeclPtr> &&Nodes) {
-    for (auto &Node : Nodes)
-      this->Nodes.emplace_back(std::move(Node));
-  }
+  void setNodes(std::vector<DeclPtr> &&Nodes);
 
-  std::vector<Decl *> getNodes() {
-    std::vector<Decl *> Nodes;
-    for (auto &Node : this->Nodes)
-      Nodes.push_back(Node.get());
-    return Nodes;
-  }
-  std::vector<const Decl *> getNodes() const {
-    std::vector<const Decl *> Nodes;
-    for (auto &Node : this->Nodes)
-      Nodes.push_back(Node.get());
-    return Nodes;
-  }
+  std::vector<Decl *> getNodes();
+  std::vector<const Decl *> getNodes() const;
 
   void accept(DeclVisitor &visitor) override;
   void accept(ConstDeclVisitor &visitor) const override;
@@ -87,18 +74,8 @@ public:
       : Decl(name), BaseContracts(std::move(baseContracts)),
         SubNodes(std::move(subNodes)), Kind(kind) {}
 
-  std::vector<Decl *> getSubNodes() {
-    std::vector<Decl *> Decls;
-    for (auto &Decl : this->SubNodes)
-      Decls.push_back(Decl.get());
-    return Decls;
-  }
-  std::vector<const Decl *> getSubNodes() const {
-    std::vector<const Decl *> Decls;
-    for (auto &Decl : this->SubNodes)
-      Decls.push_back(Decl.get());
-    return Decls;
-  }
+  std::vector<Decl *> getSubNodes();
+  std::vector<const Decl *> getSubNodes() const;
 
   void accept(DeclVisitor &visitor) override;
   void accept(ConstDeclVisitor &visitor) const override;
@@ -127,6 +104,7 @@ public:
 
   ParamList *getParams() { return Params.get(); }
   const ParamList *getParams() const { return Params.get(); }
+
   ParamList *getReturnParams() { return ReturnParams.get(); }
   const ParamList *getReturnParams() const { return ReturnParams.get(); }
 
@@ -170,19 +148,8 @@ public:
   ParamList(std::vector<std::unique_ptr<VarDecl>> &&Params)
       : Params(std::move(Params)) {}
 
-  std::vector<const VarDecl *> getParams() const {
-    std::vector<const VarDecl *> Params;
-    for (auto &P : this->Params)
-      Params.emplace_back(P.get());
-    return Params;
-  }
-
-  std::vector<VarDecl *> getParams() {
-    std::vector<VarDecl *> Params;
-    for (auto &P : this->Params)
-      Params.emplace_back(P.get());
-    return Params;
-  }
+  std::vector<const VarDecl *> getParams() const;
+  std::vector<VarDecl *> getParams();
 
   void accept(DeclVisitor &visitor);
   void accept(ConstDeclVisitor &visitor) const;

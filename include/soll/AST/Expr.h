@@ -23,12 +23,13 @@ public:
 
   UnaryOperator(ExprPtr &&val, Opcode opc) : Val(std::move(val)), Opc(opc) {}
 
-  Opcode getOpcode() const { return Opc; }
-  Expr *getSubExpr() { return Val.get(); }
-  const Expr *getSubExpr() const { return Val.get(); }
-
   void setOpcode(Opcode Opc) { this->Opc = Opc; }
   void setSubExpr(ExprPtr &&E) { Val = std::move(E); }
+
+  Opcode getOpcode() const { return Opc; }
+
+  Expr *getSubExpr() { return Val.get(); }
+  const Expr *getSubExpr() const { return Val.get(); }
 
   /// isPostfix - Return true if this is a postfix operation, like x++.
   static bool isPostfix(Opcode Op) {
@@ -73,17 +74,17 @@ public:
     SubExprs[RHS] = std::move(rhs);
   }
 
-  Opcode getOpcode() const { return Opc; }
-
-  Expr *getLHS() { return SubExprs[LHS].get(); }
-  Expr *getRHS() { return SubExprs[RHS].get(); }
-
-  const Expr *getLHS() const { return SubExprs[LHS].get(); }
-  const Expr *getRHS() const { return SubExprs[RHS].get(); }
-
   void setOpcode(Opcode Opc) { this->Opc = Opc; }
   void setLHS(ExprPtr &&E) { SubExprs[LHS] = std::move(E); }
   void setRHS(ExprPtr &&E) { SubExprs[RHS] = std::move(E); }
+
+  Opcode getOpcode() const { return Opc; }
+
+  Expr *getLHS() { return SubExprs[LHS].get(); }
+  const Expr *getLHS() const { return SubExprs[LHS].get(); }
+
+  Expr *getRHS() { return SubExprs[RHS].get(); }
+  const Expr *getRHS() const { return SubExprs[RHS].get(); }
 
   static bool isMultiplicativeOp(Opcode Opc) {
     return Opc >= BO_Mul && Opc <= BO_Rem;
@@ -146,25 +147,18 @@ public:
            std::vector<std::string> &&Names)
       : CalleeExpr(std::move(CalleeExpr)), Arguments(std::move(Arguments)),
         Names(std::move(Names)) {}
-  Expr *getCalleeExpr() const { return CalleeExpr.get(); }
-  std::vector<Expr *> getArguments() {
-    std::vector<Expr *> arguments;
-    for (auto &arg : Arguments)
-      arguments.emplace_back(arg.get());
-    return arguments;
-  }
-  std::vector<const Expr *> getArguments() const {
-    std::vector<const Expr *> arguments;
-    for (auto &arg : Arguments)
-      arguments.emplace_back(arg.get());
-    return arguments;
-  }
+
+  Expr *getCalleeExpr() { return CalleeExpr.get(); }
+  const Expr *getCalleeExpr() const { return CalleeExpr.get(); }
+
+  std::vector<Expr *> getArguments();
+  std::vector<const Expr *> getArguments() const;
+
+  std::optional<std::vector<std::string>> &getNames() { return Names; }
   const std::optional<std::vector<std::string>> &getNames() const {
     return Names;
   }
-  std::optional<std::vector<std::string>> &getNames() {
-    return Names;
-  }
+
   bool isNamedCall() { return Names.has_value(); }
 
   void accept(StmtVisitor &visitor) override;

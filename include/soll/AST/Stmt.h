@@ -20,10 +20,11 @@ class DeclStmt : public Stmt {
   ExprPtr Value;
 
 public:
-  DeclStmt(std::vector<DeclPtr> &&Decls, ExprPtr &&Value);
+  DeclStmt(std::vector<DeclPtr> &&Decls, ExprPtr &&Value)
+      : Decls(std::move(Decls)), Value(std::move(Value)) {}
 
-  std::vector<const Decl*> getDecls() const;
   std::vector<Decl*> getDecls();
+  std::vector<const Decl *> getDecls() const;
 
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
@@ -38,25 +39,10 @@ public:
   Block(std::vector<StmtPtr> &&Stmts) : Stmts(std::move(Stmts)) {}
 
   /// this setter transfers the ownerships of Stmt from function argument to class instance
-  void setStmts(std::vector<StmtPtr> &&Stmts) {
-    this->Stmts.clear();
-    for(auto &&S: Stmts)
-      this->Stmts.emplace_back(std::move(S));
-  }
+  void setStmts(std::vector<StmtPtr> &&Stmts);
 
-  std::vector<const Stmt *> getStmts() const {
-    std::vector<const Stmt *> Stmts;
-    for (auto &S : this->Stmts)
-      Stmts.emplace_back(S.get());
-    return Stmts;
-  }
-
-  std::vector<Stmt *> getStmts() {
-    std::vector<Stmt *> Stmts;
-    for (auto &S : this->Stmts)
-      Stmts.emplace_back(S.get());
-    return Stmts;
-  }
+  std::vector<Stmt *> getStmts();
+  std::vector<const Stmt *> getStmts() const;
 
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
@@ -71,17 +57,18 @@ public:
   IfStmt(ExprPtr Cond, StmtPtr Then, StmtPtr Else)
       : Cond(std::move(Cond)), Then(std::move(Then)), Else(std::move(Else)) {}
 
-  const Expr *getCond() const { return Cond.get(); }
-  const Stmt *getThen() const { return Then.get(); }
-  const Stmt *getElse() const { return Else.get(); }
-
-  Expr *getCond() { return Cond.get(); }
-  Stmt *getThen() { return Then.get(); }
-  Stmt *getElse() { return Else.get(); }
-
   void setCond(ExprPtr &&Cond) { this->Cond = std::move(Cond); }
   void setThen(StmtPtr &&Then) { this->Then = std::move(Then); }
   void setElse(StmtPtr &&Else) { this->Else = std::move(Else); }
+
+  Expr *getCond() { return Cond.get(); }
+  const Expr *getCond() const { return Cond.get(); }
+
+  Stmt *getThen() { return Then.get(); }
+  const Stmt *getThen() const { return Then.get(); }
+
+  Stmt *getElse() { return Else.get(); }
+  const Stmt *getElse() const { return Else.get(); }
 
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
@@ -113,9 +100,10 @@ class ReturnStmt : public Stmt {
 public:
   ReturnStmt(ExprPtr RetExpr) : RetExpr(std::move(RetExpr)) {}
 
+  void setRetValue(ExprPtr &&E) { RetExpr = std::move(E); }
+
   Expr *getRetValue() { return RetExpr.get(); }
   const Expr *getRetValue() const { return RetExpr.get(); }
-  void setRetValue(ExprPtr &&E) { RetExpr = std::move(E); }
 
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
