@@ -131,8 +131,10 @@ public:
       : Decl(name, visibility), Params(std::move(Params)),
         ReturnParams(std::move(returnParams)) {}
 
-  ParamList *getParams() const { return Params.get(); }
-  ParamList *getReturnParams() const { return ReturnParams.get(); }
+  ParamList *getParams() { return Params.get(); }
+  const ParamList *getParams() const { return Params.get(); }
+  ParamList *getReturnParams() { return ReturnParams.get(); }
+  const ParamList *getReturnParams() const { return ReturnParams.get(); }
 
   void accept(DeclVisitor &visitor) override;
   void accept(ConstDeclVisitor &visitor) const override;
@@ -162,7 +164,8 @@ public:
         FunctionModifiers(std::move(modifiers)), Body(std::move(body)),
         Implemented(body != nullptr) {}
 
-  Block *getBody() const { return Body.get(); }
+  Block *getBody() { return Body.get(); }
+  const Block *getBody() const { return Body.get(); }
 
   void accept(DeclVisitor &visitor) override;
   void accept(ConstDeclVisitor &visitor) const override;

@@ -26,7 +26,8 @@ public:
   UnaryOperator(ExprPtr &&val, Opcode opc) : Val(std::move(val)), Opc(opc) {}
 
   Opcode getOpcode() const { return Opc; }
-  Expr *getSubExpr() const { return Val.get(); }
+  Expr *getSubExpr() { return Val.get(); }
+  const Expr *getSubExpr() const { return Val.get(); }
 
   void setOpcode(Opcode Opc) { this->Opc = Opc; }
   void setSubExpr(ExprPtr &&E) { Val = std::move(E); }
@@ -76,8 +77,11 @@ public:
 
   Opcode getOpcode() const { return Opc; }
 
-  Expr *getLHS() const { return SubExprs[LHS].get(); }
-  Expr *getRHS() const { return SubExprs[RHS].get(); }
+  Expr *getLHS() { return SubExprs[LHS].get(); }
+  Expr *getRHS() { return SubExprs[RHS].get(); }
+
+  const Expr *getLHS() const { return SubExprs[LHS].get(); }
+  const Expr *getRHS() const { return SubExprs[RHS].get(); }
 
   void setOpcode(Opcode Opc) { this->Opc = Opc; }
   void setLHS(ExprPtr &&E) { SubExprs[LHS] = std::move(E); }
