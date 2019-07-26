@@ -516,7 +516,6 @@ unique_ptr<DeclStmt> Parser::parseVariableDeclarationStatement(
     VarDeclParserOptions Options;
     Options.AllowVar = false;
     Options.AllowLocationSpecifier = true;
-    // [PrePOC] Gen AST tree
     Variables.push_back(parseVariableDeclaration(Options, LookAheadArrayType));
   }
   if (TheLexer.LookAhead(0)->is(tok::equal)) {
@@ -642,7 +641,7 @@ Parser::parseExpression(unique_ptr<Expr> &&PartiallyParsedExpression) {
     // [TODO] Create ConditionExpression
     return nullptr;
   } else
-    return nullptr;
+    return Expression;
 }
 
 unique_ptr<Expr>
@@ -701,8 +700,7 @@ unique_ptr<Expr> Parser::parseLeftHandSideExpression(
     Exps = std::move(PartiallyParsedExpression);
   else if (TheLexer.LookAhead(0)->is(tok::kw_new)) {
     TheLexer.CachedLex();
-    unique_ptr<Type> typeName;
-    parseTypeName(false);
+    unique_ptr<Type> typeName = parseTypeName(false);
     // [AST] create NewExpression
   } else
     Exps = std::move(parsePrimaryExpression());
@@ -745,25 +743,34 @@ unique_ptr<Expr> Parser::parsePrimaryExpression() {
 
   switch (CurTok->getKind()) {
   case tok::kw_true:
+    Exps = std::make_unique<BooleanLiteral>(true);
+    break;
   case tok::kw_false:
-    // [AST] Create Literal Expression
+    Exps = std::make_unique<BooleanLiteral>(false);
     break;
-  case tok::numeric_constant:
-    // [TODO] Handle EtherSubdenomination, TimeSubdenomination number case.
-    // [AST] Create Literal Expression
+  case tok::numeric_constant: {
+    int NumValue;
+    getLiteralAndAdvance(CurTok).getAsInteger(0, NumValue);
+    Exps = std::make_unique<NumberLiteral>(NumValue);
     break;
-  case tok::string_literal:
-    // [AST] Create StringLiteral Expression
+  }
+  case tok::string_literal: {
+    string StrValue = getLiteralAndAdvance(CurTok).str();
+    Exps = make_unique<StringLiteral>(std::move(StrValue));
     break;
-  case tok::identifier:
-    // [AST] Create sIdentifier Expression
+  }
+  case tok::identifier: {
+    string Name = getLiteralAndAdvance(CurTok).str();
+    Exps = make_unique<Identifier>(std::move(Name));
     break;
+  }
   case tok::kw_type:
     // [TODO] Type expression is globally-avariable function
     TheLexer.CachedLex();
     break;
   case tok::l_paren:
   case tok::l_square: {
+    // [TODO] Tuple case
     // Tuple/parenthesized expression or inline array/bracketed expression.
     // Special cases: ()/[] is empty tuple/array type, (x) is not a real tuple,
     // (x,) is one-dimensional tuple, elements in arrays cannot be left out,
@@ -818,7 +825,7 @@ unique_ptr<Expr> Parser::parsePrimaryExpression() {
     assert(false && "Expected primary expression.");
     break;
   }
-  return nullptr;
+  return Exps;
 }
 
 vector<unique_ptr<Expr>> Parser::parseFunctionCallListArguments() {
@@ -836,7 +843,6 @@ vector<unique_ptr<Expr>> Parser::parseFunctionCallListArguments() {
 pair<vector<unique_ptr<Expr>>, vector<unique_ptr<string>>>
 Parser::parseFunctionCallArguments() {
   pair<vector<unique_ptr<Expr>>, vector<unique_ptr<string>>> Ret;
-
   if (TheLexer.LookAhead(0)->is(tok::l_brace)) {
     // [TODO] Unverified function parameters case
     // call({arg1 : 1, arg2 : 2 })
