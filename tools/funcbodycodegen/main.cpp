@@ -19,6 +19,12 @@ using llvm::IRBuilder;
 
 int main(int argc, const char **argv) {
   std::vector<std::unique_ptr<Stmt>> stmts;
+
+  std::vector<DeclPtr> Dec;
+  // VarDecl VarDec(nullptr, "c", nullptr, Decl::Visibility::Default);
+  Dec.emplace_back(std::make_unique<VarDecl>(nullptr, "c", nullptr, Decl::Visibility::Default));
+  stmts.emplace_back(std::make_unique<DeclStmt>(std::move(Dec), nullptr));
+
   stmts.emplace_back(std::make_unique<BinaryOperator>(
       std::make_unique<Identifier>("c"),
       std::make_unique<BinaryOperator>(std::make_unique<Identifier>("a"),
@@ -51,6 +57,7 @@ int main(int argc, const char **argv) {
   IRBuilder<llvm::NoFolder> Builder(Context);
   llvm::Module Module("FuncBodyCGTest", Context);
   FuncBodyCodeGen FBCG(Context, Builder, Module);
+
   FBCG.compile(func);
   Module.print(llvm::errs(), nullptr);
   return EXIT_SUCCESS;
