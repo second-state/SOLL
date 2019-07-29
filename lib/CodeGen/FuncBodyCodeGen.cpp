@@ -107,15 +107,12 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
     if (auto ID = dynamic_cast<const Identifier *>(BO.getLHS())) {
       if (auto Addr = findLocalVarAddr(ID->getName())) {
         auto *Val = findTempValue(BO.getRHS());
-        if (Val == nullptr)
-          while (1)
-            ;
         Builder.CreateStore(Val, Addr);
       }
     }
   }
 
-  if (BO.isAdditiveOp()) {
+  if (BO.isAdditiveOp() || BO.isMultiplicativeOp() || BO.isComparisonOp()) {
     BO.getLHS()->accept(*this);
     BO.getRHS()->accept(*this);
 
@@ -132,15 +129,6 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
     case BinaryOperatorKind::BO_Div:
       V = Builder.CreateUDiv(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_DIV");
       break;
-    // TODO: other operators
-    default:
-      ;
-    }
-  }
-  if (BO.isComparisonOp()) {
-    BO.getLHS()->accept(*this);
-    BO.getRHS()->accept(*this);
-    switch (BO.getOpcode()) {
     case BinaryOperatorKind::BO_GE:
       V = Builder.CreateICmpUGE(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_UGE");
       break;
@@ -164,6 +152,7 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
       ;
     }
   }
+  
   TempValueTable[&BO] = V;
 }
 
@@ -182,14 +171,12 @@ void FuncBodyCodeGen::visit(CallExprType &CALL) {
     Builder.CreateCondBr(CondV, RevertBB, ContBB);
     Builder.SetInsertPoint(RevertBB);
 
-    // Fake revert
+    // revert
     std::vector<llvm::Type *> ArgsType;
     ArgsType.push_back(llvm::Type::getInt8PtrTy(Context));
     ArgsType.push_back(llvm::Type::getInt32Ty(Context));
-    FunctionType *FT =
-      FunctionType::get(llvm::Type::getVoidTy(Context), ArgsType, false);
-    Function *F =
-        Function::Create(FT, Function::ExternalLinkage, "revert", Module);
+    FunctionType *FT = FunctionType::get(llvm::Type::getVoidTy(Context), ArgsType, false);
+    Function *F = Function::Create(FT, Function::ExternalLinkage, "revert", Module);
 
     std::vector<Value *> ArgsV;
     ArgsV.push_back(StrValue);
@@ -210,7 +197,7 @@ void FuncBodyCodeGen::visit(IdentifierType &ID) {
   else if (llvm::Value *Val = findParam(ID.getName()))
     V = Val;
   else {
-    V = Builder.getInt64(7122);
+    V = Builder.getInt64(7122); // TODO: replace this
   }
 
   TempValueTable[&ID] = V;
