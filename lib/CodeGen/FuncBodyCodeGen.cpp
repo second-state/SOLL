@@ -74,8 +74,11 @@ void FuncBodyCodeGen::visit(BreakStmtType &) {
   // TODO
 }
 
-void FuncBodyCodeGen::visit(ReturnStmtType &) {
-  // TODO
+void FuncBodyCodeGen::visit(ReturnStmtType &RS) {
+  // TODO: replace this
+  // this impl assumes return type is uint64
+  RS.getRetValue()->accept(*this);
+  Builder.CreateRet(findTempValue(RS.getRetValue()));
 }
 
 void FuncBodyCodeGen::visit(DeclStmtType &DS) {
