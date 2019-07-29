@@ -76,14 +76,15 @@ void FuncBodyCodeGen::visit(UnaryOperatorType &) {
 }
 
 void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
-  // return;
+  // TODO: replace this temp impl (visit(BinaryOperatorType &BO))
+  // This impl assumes:
+  //   every type is uint64
   llvm::Value *V = nullptr;
   if (BO.isAssignmentOp()) {
     // TODO: replace this temp impl
     // because we havn't properly dealed with lvalue/rvalue
     // This impl assumes:
     //   lhs of assignment operator (=, +=, -=, ...) is a Identifier,
-    //   and its type is uint64
 
     BO.getRHS()->accept(*this);
     if (auto ID = dynamic_cast<const Identifier *>(BO.getLHS())) {
@@ -100,15 +101,58 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
   if (BO.isAdditiveOp()) {
     BO.getLHS()->accept(*this);
     BO.getRHS()->accept(*this);
-    V = Builder.CreateAdd(findTempValue(BO.getLHS()),
-                          findTempValue(BO.getRHS()), "BO_ADD");
-  }
 
+    switch (BO.getOpcode()) {
+    case BinaryOperatorKind::BO_Add:
+      V = Builder.CreateAdd(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_ADD");
+      break;
+    case BinaryOperatorKind::BO_Sub:
+      V = Builder.CreateSub(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_SUB");
+      break;
+    case BinaryOperatorKind::BO_Mul:
+      V = Builder.CreateMul(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_MUL");
+      break;
+    case BinaryOperatorKind::BO_Div:
+      V = Builder.CreateUDiv(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_DIV");
+      break;
+    // TODO: other operators
+    default:
+      ;
+    }
+  }
+  if (BO.isComparisonOp()) {
+    BO.getLHS()->accept(*this);
+    BO.getRHS()->accept(*this);
+    switch (BO.getOpcode()) {
+    case BinaryOperatorKind::BO_GE:
+      V = Builder.CreateICmpUGE(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_UGE");
+      break;
+    case BinaryOperatorKind::BO_GT:
+      V = Builder.CreateICmpUGT(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_UGT");
+      break;
+    case BinaryOperatorKind::BO_LE:
+      V = Builder.CreateICmpULE(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_ULE");
+      break;
+    case BinaryOperatorKind::BO_LT:
+      V = Builder.CreateICmpULT(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_ULT");
+      break;
+    case BinaryOperatorKind::BO_EQ:
+      V = Builder.CreateICmpEQ(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_EQ");
+      break;
+    case BinaryOperatorKind::BO_NE:
+      V = Builder.CreateICmpNE(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_NE");
+      break;
+    // TODO: other operators
+    default:
+      ;
+    }
+  }
   TempValueTable[&BO] = V;
 }
 
-void FuncBodyCodeGen::visit(CallExprType &) {
+void FuncBodyCodeGen::visit(CallExprType &CE) {
   // TODO
+  ConstStmtVisitor::visit(CE);
 }
 
 void FuncBodyCodeGen::visit(IdentifierType &ID) {
@@ -130,8 +174,8 @@ void FuncBodyCodeGen::visit(BooleanLiteralType &) {
   // TODO
 }
 
-void FuncBodyCodeGen::visit(StringLiteralType &) {
-  // TODO
+void FuncBodyCodeGen::visit(StringLiteralType &SL) {
+  TempValueTable[&SL] = Builder.CreateGlobalString(SL.getValue(),"str");
 }
 
 void FuncBodyCodeGen::visit(NumberLiteralType &) {
