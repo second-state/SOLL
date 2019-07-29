@@ -20,10 +20,11 @@ using llvm::IRBuilder;
 int main(int argc, const char **argv) {
   std::vector<std::unique_ptr<Stmt>> stmts;
 
-  std::vector<DeclPtr> Dec;
+  std::vector<VarDeclPtr> VarDecs;
   // VarDecl VarDec(nullptr, "c", nullptr, Decl::Visibility::Default);
-  Dec.emplace_back(std::make_unique<VarDecl>(nullptr, "c", nullptr, Decl::Visibility::Default));
-  stmts.emplace_back(std::make_unique<DeclStmt>(std::move(Dec), nullptr));
+  VarDecs.emplace_back(std::make_unique<VarDecl>(nullptr, "c", nullptr,
+                                                 Decl::Visibility::Default));
+  stmts.emplace_back(std::make_unique<DeclStmt>(std::move(VarDecs), nullptr));
 
   stmts.emplace_back(std::make_unique<BinaryOperator>(
       std::make_unique<Identifier>("c"),

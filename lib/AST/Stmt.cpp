@@ -6,18 +6,18 @@ namespace soll {
 ///
 /// DeclStmt
 ///
-std::vector<const Decl*> DeclStmt::getDecls() const{
-  std::vector<const Decl*> Decls;
-  for (auto &D : this->Decls)
-    Decls.emplace_back(D.get());
-  return Decls;
+std::vector<const VarDecl *> DeclStmt::getVarDecls() const {
+  std::vector<const VarDecl *> VarDecls;
+  for (auto &D : this->VarDecls)
+    VarDecls.emplace_back(D.get());
+  return VarDecls;
 }
 
-std::vector<Decl*> DeclStmt::getDecls() {
-  std::vector<Decl*> Decls;
-  for (auto &D : this->Decls)
-    Decls.emplace_back(D.get());
-  return Decls;
+std::vector<VarDecl *> DeclStmt::getVarDecls() {
+  std::vector<VarDecl *> VarDecls;
+  for (auto &D : this->VarDecls)
+    VarDecls.emplace_back(D.get());
+  return VarDecls;
 }
 
 ///

@@ -16,6 +16,7 @@ class Expr;
 class Type;
 
 using DeclPtr = std::unique_ptr<Decl>;
+using VarDeclPtr = std::unique_ptr<VarDecl>;
 using StmtPtr = std::unique_ptr<Stmt>;
 using ExprPtr = std::unique_ptr<Expr>;
 using TypePtr = std::unique_ptr<Type>;

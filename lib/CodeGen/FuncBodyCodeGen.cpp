@@ -12,7 +12,7 @@ using llvm::BasicBlock;
 void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
   // TODO: replace this temp impl
   // this impl assumes type of functionDecl params is uint64
-  
+
   auto PsSol = FD.getParams()->getParams();
   std::vector<llvm::Type *> Tys;
   for(int i = 0; i < PsSol.size(); i++)
@@ -20,14 +20,14 @@ void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
   llvm::ArrayRef<llvm::Type *> ParamTys(&Tys[0], Tys.size());
   FunctionType *FT = FunctionType::get(llvm::Type::getVoidTy(Context), ParamTys, false);
 	CurFunc = Function::Create(FT, Function::ExternalLinkage, FD.getName(), &Module);
-  
+
   auto PsLLVM = CurFunc->arg_begin();
   for(int i = 0; i < PsSol.size(); i++) {
     llvm::Value *P = PsLLVM++;
     P->setName(PsSol[i]->getName());
     ParamTable[P->getName()] = P;
   }
-  
+
   FD.getBody()->accept(*this);
 }
 
@@ -35,7 +35,7 @@ void FuncBodyCodeGen::visit(BlockType &B) {
   // TODO: the following is just temp demo
   BasicBlock *BB = BasicBlock::Create(Context, "entry", CurFunc);
 	Builder.SetInsertPoint(BB);
-  
+
   ConstStmtVisitor::visit(B);
 }
 
@@ -62,7 +62,7 @@ void FuncBodyCodeGen::visit(ReturnStmtType &) {
 void FuncBodyCodeGen::visit(DeclStmtType &DS) {
   // TODO: replace this temp impl
   // this impl assumes declared variables are uint64
-  for (auto &D : DS.getDecls()){
+  for (auto &D : DS.getVarDecls()) {
     auto *p = Builder.CreateAlloca(llvm::Type::getInt64Ty(Context), nullptr, D->getName()+"_addr");
     LocalVarAddrTable[D->getName()] = p;
   }
@@ -81,7 +81,7 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
     // This impl assumes:
     //   lhs of assignment operator (=, +=, -=, ...) is a Identifier,
     //   and its type is uint64
-    
+
     BO.getRHS()->accept(*this);
     if (auto ID = dynamic_cast<const Identifier *>(BO.getLHS())) {
       if (auto Addr = findLocalVarAddr(ID->getName())) {
@@ -116,7 +116,7 @@ void FuncBodyCodeGen::visit(IdentifierType &ID) {
   else {
     V = Builder.getInt64(7122);
   }
-  
+
   TempValueTable[&ID] = V;
 }
 

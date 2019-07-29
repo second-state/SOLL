@@ -10,21 +10,78 @@ using namespace std;
 
 namespace soll {
 
-// [PrePOC] need a token to binary op mapping table
 static BinaryOperatorKind token2bop(llvm::Optional<Token> Tok) {
   switch (Tok->getKind()) {
-  case tok::caret:
+  case tok::starstar:
     return BO_Exp;
+
   case tok::star:
     return BO_Mul;
   case tok::slash:
     return BO_Div;
+  case tok::percent:
+    return BO_Rem;
+
   case tok::plus:
     return BO_Add;
   case tok::minus:
     return BO_Sub;
+
+  case tok::lessless:
+    return BO_Shl;
+  case tok::greatergreater:
+    return BO_Shr;
+  case tok::amp:
+    return BO_And;
+  case tok::caret:
+    return BO_Xor;
+  case tok::pipe:
+    return BO_Or;
+
+  case tok::greater:
+    return BO_LT;
+  case tok::less:
+    return BO_GT;
+  case tok::lessequal:
+    return BO_LE;
+  case tok::greaterequal:
+    return BO_GE;
+  case tok::equalequal:
+    return BO_EQ;
+  case tok::exclaimequal:
+    return BO_NE;
+  case tok::ampamp:
+    return BO_LAnd;
+  case tok::pipepipe:
+    return BO_LOr;
+
   case tok::equal:
     return BO_Assign;
+  case tok::starequal:
+    return BO_MulAssign;
+  case tok::slashequal:
+    return BO_DivAssign;
+  case tok::percentequal:
+    return BO_RemAssign;
+  case tok::plusequal:
+    return BO_AddAssign;
+  case tok::minusequal:
+    return BO_SubAssign;
+
+  case tok::lesslessequal:
+    return BO_ShlAssign;
+  case tok::greatergreaterequal:
+    return BO_ShrAssign;
+  case tok::ampequal:
+    return BO_AndAssign;
+  case tok::caretequal:
+    return BO_XorAssign;
+  case tok::pipeequal:
+    return BO_OrAssign;
+
+  case tok::comma:
+    return BO_Comma;
+
   default:
     return BO_Undefined;
   }
@@ -33,8 +90,30 @@ static BinaryOperatorKind token2bop(llvm::Optional<Token> Tok) {
 // [PrePOC] need a token to unary op mapping table
 static UnaryOperatorKind token2uop(llvm::Optional<Token> Tok) {
   switch (Tok->getKind()) {
+  /*
+  case tok::exclaim:
+    return UO_PostInc;
+  case tok::exclaim:
+    return UO_PostDec;
+  case tok::exclaim:
+    return UO_PreInc;
+  case tok::exclaim:
+    return UO_PreDec;
+  */
+  case tok::amp:
+    return UO_AddrOf;
+  case tok::star:
+    return UO_Deref;
+  case tok::plus:
+    return UO_Plus;
+  case tok::minus:
+    return UO_Minus;
   case tok::exclaim:
     return UO_Not;
+  /*
+  case tok::exclaim:
+    return UO_LNot;
+  */
   default:
     return UO_Undefined;
   }
@@ -504,7 +583,7 @@ unique_ptr<DeclStmt> Parser::parseVariableDeclarationStatement(
   // with
   // `(`, they are parsed in parseSimpleStatement, because they are hard to
   // distinguish from tuple expressions.
-  vector<unique_ptr<Decl>> Variables;
+  vector<unique_ptr<VarDecl>> Variables;
   unique_ptr<Expr> Value;
   if (!LookAheadArrayType && TheLexer.LookAhead(0)->is(tok::kw_var) &&
       TheLexer.LookAhead(0)->is(tok::l_paren)) {

@@ -16,15 +16,15 @@ public:
 };
 
 class DeclStmt : public Stmt {
-  std::vector<DeclPtr> Decls;
+  std::vector<VarDeclPtr> VarDecls;
   ExprPtr Value;
 
 public:
-  DeclStmt(std::vector<DeclPtr> &&Decls, ExprPtr &&Value)
-      : Decls(std::move(Decls)), Value(std::move(Value)) {}
+  DeclStmt(std::vector<VarDeclPtr> &&VarDecls, ExprPtr &&Value)
+      : VarDecls(std::move(VarDecls)), Value(std::move(Value)) {}
 
-  std::vector<Decl*> getDecls();
-  std::vector<const Decl *> getDecls() const;
+  std::vector<VarDecl *> getVarDecls();
+  std::vector<const VarDecl *> getVarDecls() const;
 
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
