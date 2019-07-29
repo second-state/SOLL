@@ -175,7 +175,7 @@ void FuncBodyCodeGen::visit(CallExprType &CALL) {
     BasicBlock *RevertBB = BasicBlock::Create(Context, "revert", CurFunc);
     BasicBlock *ContBB = BasicBlock::Create(Context, "continue", CurFunc);
 
-    Builder.CreateCondBr(CondV, RevertBB, ContBB);
+    Builder.CreateCondBr(CondV, ContBB, RevertBB);
     Builder.SetInsertPoint(RevertBB);
 
     // revert
