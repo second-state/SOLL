@@ -136,6 +136,9 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
     case BinaryOperatorKind::BO_Div:
       V = Builder.CreateUDiv(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_DIV");
       break;
+    case BinaryOperatorKind::BO_Rem:
+      V = Builder.CreateURem(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_Rem");
+      break;
     case BinaryOperatorKind::BO_GE:
       V = Builder.CreateICmpUGE(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_UGE");
       break;
