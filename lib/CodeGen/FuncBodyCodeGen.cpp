@@ -211,6 +211,6 @@ void FuncBodyCodeGen::visit(StringLiteralType &SL) {
   TempValueTable[&SL] = Builder.CreateGlobalString(SL.getValue(),"str");
 }
 
-void FuncBodyCodeGen::visit(NumberLiteralType &) {
-  // TODO
+void FuncBodyCodeGen::visit(NumberLiteralType &NL) {
+  TempValueTable[&NL] = Builder.getInt64(NL.getValue());
 }
