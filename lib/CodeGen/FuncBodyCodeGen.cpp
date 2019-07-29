@@ -8,6 +8,7 @@ using namespace soll;
 using llvm::BasicBlock;
 using llvm::Function;
 using llvm::FunctionType;
+using llvm::Value;
 
 void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
   // TODO: replace this temp impl
@@ -23,6 +24,9 @@ void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
   CurFunc =
       Function::Create(FT, Function::ExternalLinkage, FD.getName(), &Module);
 
+  BasicBlock *BB = BasicBlock::Create(Context, "entry", CurFunc);
+  Builder.SetInsertPoint(BB);
+
   auto PsLLVM = CurFunc->arg_begin();
   for (int i = 0; i < PsSol.size(); i++) {
     llvm::Value *P = PsLLVM++;
@@ -34,15 +38,28 @@ void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
 }
 
 void FuncBodyCodeGen::visit(BlockType &B) {
-  // TODO: the following is just temp demo
-  BasicBlock *BB = BasicBlock::Create(Context, "entry", CurFunc);
-  Builder.SetInsertPoint(BB);
-
   ConstStmtVisitor::visit(B);
 }
 
-void FuncBodyCodeGen::visit(IfStmtType &) {
-  // TODO
+void FuncBodyCodeGen::visit(IfStmtType & IF) {
+  BasicBlock *ThenBB = BasicBlock::Create(Context, "then", CurFunc);
+  BasicBlock *ElseBB = BasicBlock::Create(Context, "else", CurFunc);
+  BasicBlock *ContBB = BasicBlock::Create(Context, "ifcont", CurFunc);
+
+  IF.getCond()->accept(*this);
+  Value *CondV = findTempValue(IF.getCond());
+  Builder.CreateCondBr(CondV, ThenBB, ElseBB);
+  Builder.SetInsertPoint(ThenBB);
+  IF.getThen()->accept(*this);
+  Builder.CreateBr(ContBB);
+
+  Builder.SetInsertPoint(ElseBB);
+  if (IF.getElse() != nullptr){
+    Builder.SetInsertPoint(ElseBB);
+    IF.getElse()->accept(*this);
+  }
+  Builder.CreateBr(ContBB);
+  Builder.SetInsertPoint(ContBB);
 }
 
 void FuncBodyCodeGen::visit(ForStmtType &) {
@@ -150,9 +167,38 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
   TempValueTable[&BO] = V;
 }
 
-void FuncBodyCodeGen::visit(CallExprType &CE) {
-  // TODO
-  ConstStmtVisitor::visit(CE);
+void FuncBodyCodeGen::visit(CallExprType &CALL) {
+  auto Name = dynamic_cast<const Identifier *>(CALL.getCalleeExpr())->getName();
+  if (Name.compare("require") == 0) {
+    auto Arguments = CALL.getArguments();
+    Arguments[0]->accept(*this);
+    Value *CondV = findTempValue(Arguments[0]);
+    Arguments[1]->accept(*this);
+    Value *StrValue = findTempValue(Arguments[1]);
+    Value *Length = llvm::ConstantInt::get(Context, llvm::APInt(32, dynamic_cast<const StringLiteral *>(Arguments[1])->getValue().length() + 1, true));
+    BasicBlock *RevertBB = BasicBlock::Create(Context, "revert", CurFunc);
+    BasicBlock *ContBB = BasicBlock::Create(Context, "continue", CurFunc);
+
+    Builder.CreateCondBr(CondV, RevertBB, ContBB);
+    Builder.SetInsertPoint(RevertBB);
+
+    // Fake revert
+    std::vector<llvm::Type *> ArgsType;
+    ArgsType.push_back(llvm::Type::getInt8PtrTy(Context));
+    ArgsType.push_back(llvm::Type::getInt32Ty(Context));
+    FunctionType *FT =
+      FunctionType::get(llvm::Type::getVoidTy(Context), ArgsType, false);
+    Function *F =
+        Function::Create(FT, Function::ExternalLinkage, "revert", Module);
+
+    std::vector<Value *> ArgsV;
+    ArgsV.push_back(StrValue);
+    ArgsV.push_back(Length);
+    Builder.CreateCall(F, ArgsV, "calltmp");
+    Builder.CreateUnreachable();
+
+    Builder.SetInsertPoint(ContBB);
+  }
 }
 
 void FuncBodyCodeGen::visit(IdentifierType &ID) {
