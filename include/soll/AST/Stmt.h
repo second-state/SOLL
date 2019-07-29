@@ -26,6 +26,8 @@ public:
   std::vector<VarDecl *> getVarDecls();
   std::vector<const VarDecl *> getVarDecls() const;
 
+  const Expr *getValue() const { return Value.get(); }
+
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
 };

@@ -89,6 +89,13 @@ void FuncBodyCodeGen::visit(DeclStmtType &DS) {
                                    D->getName() + "_addr");
     LocalVarAddrTable[D->getName()] = p;
   }
+  // TODO: replace this
+  // this impl. assumes no tuple expression;
+  if (DS.getValue() != nullptr) {
+    DS.getValue()->accept(*this);
+    Builder.CreateStore(findTempValue(DS.getValue()), 
+                        findLocalVarAddr(DS.getVarDecls()[0]->getName()));
+  }
 }
 
 void FuncBodyCodeGen::visit(UnaryOperatorType &) {
