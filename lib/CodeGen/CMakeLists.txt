@@ -10,4 +10,5 @@ target_link_libraries(sollCodeGen
   sollAST
   sollBasic
   sollFrontend
+  SHA3
   )

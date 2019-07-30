@@ -28,6 +28,7 @@ option(SOLL_INCLUDE_TESTS
 
 add_subdirectory(lib)
 add_subdirectory(tools)
+add_subdirectory(utils)
 
 if(SOLL_INCLUDE_TESTS)
   add_subdirectory(test)

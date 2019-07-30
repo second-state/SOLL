@@ -7,6 +7,13 @@
 #include "soll/AST/StmtVisitor.h"
 #include <iostream>
 
+#include "../utils/SHA-3/stdafx.h"
+#include "../utils/SHA-3/Keccak.h"
+#include "../utils/SHA-3/CommandParser.h"
+
+#include "../utils/SHA-3/Endian.h"
+#include "../utils/SHA-3/Rotation.h"
+
 namespace {
 using namespace soll;
 class CodeGeneratorImpl : public CodeGenerator,
@@ -54,6 +61,14 @@ public:
     }
     signature += ')';
     std::cout << signature << std::endl;
+    {
+      Keccak h(256);
+      h.addData((uint8_t*)signature.c_str(),0,signature.length());
+      std::vector<unsigned char> op = h.digest();
+      for(int i = 0; i < 4; i++)
+        printf("%02x", op[i]);
+      printf("\n");
+    }
     llvm::IRBuilder<llvm::NoFolder> IRBuilder(M->getContext());
     FuncBodyCodeGen(M->getContext(), IRBuilder, *GetModule()).compile(F);
   }

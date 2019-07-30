@@ -1,0 +1,60 @@
+
+This is a C++ implementation of the SHA-3 family of hash functions, based on 
+the documentation found at 
+http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
+Download binaries at: http://www.danielhorne.co.uk/Projects/SHA-3/SHA3.html
+
+Usage: sha3sum [command]* file*
+
+ where command is an optional parameter that can set either the algorithm, as
+ there is a slight difference between the bare keccak function and the SHA-3
+ variant.
+ 
+ Algorithm 
+ 
+ -a=s   :  Set algorithm to SHA-3 (default).
+ -a=k   :  Set algotithm to Keccak.
+ -a=h   :  Set algorithm to SHAKE
+ 
+ Size
+ 
+ -w=224 :  Set width to 224 bits.
+ -w=256 :  Set width to 256 bits.
+ -w=384 :  Set width to 384 bits.
+ -w=512 :  Set width to 512 bits (default).
+ 
+ Digest size (SHAKE)
+ 
+ -d=number : Set the SHAKE digest size. Should be less than or equal to the hash size.
+       Should be multiple of 8
+       Only relevant for SHAKE - For SHA-3 and keccak, digest size is equal to sponge size.
+ 
+Any number of files can be specified. Files will be processed with the most
+recently specified options - for example:
+
+  sha3sum test.txt -a=k -w=384 test.txt -a=s -w=256 text.txt
+
+will hash "test.txt" three times - First with 512-bit SHA-3, then with 384-bit
+keccak, then finally with 256-bit SHA-3.
+
+
+
+The intent with this implementation is to make a performant implementation in 
+pure C++, following modern idioms: Favouring inline functions over macros, 
+leaning on the compiler's optimiser instead of resorting to inline assembly,
+for example. 
+
+ToDo:
+
+- Add command option to set the chunk size for reading.
+
+- Attempt formal proof of important aspects of this implementation. 
+
+Bugs:
+
+- Any bugs, please either add them to the github repo 
+  (https://github.com/DuSTman31/SHA-3/issues), or e-mail me at
+  d-.-h-o-r-n-e-@-d-a-n-i-e-l-h-o-r-n-e-.-c-o-.-u-k (remove "-"s).
+  
+- Will document the design and verification on www.danielhorne.co.uk when I 
+  get round to it.
