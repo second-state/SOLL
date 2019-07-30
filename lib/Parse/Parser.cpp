@@ -39,9 +39,9 @@ static BinaryOperatorKind token2bop(llvm::Optional<Token> Tok) {
   case tok::pipe:
     return BO_Or;
 
-  case tok::greater:
-    return BO_LT;
   case tok::less:
+    return BO_LT;
+  case tok::greater:
     return BO_GT;
   case tok::lessequal:
     return BO_LE;
