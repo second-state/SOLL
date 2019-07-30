@@ -181,17 +181,10 @@ void FuncBodyCodeGen::visit(CallExprType &CALL) {
     Builder.CreateCondBr(CondV, ContBB, RevertBB);
     Builder.SetInsertPoint(RevertBB);
 
-    // revert
-    std::vector<llvm::Type *> ArgsType;
-    ArgsType.push_back(llvm::Type::getInt8PtrTy(Context));
-    ArgsType.push_back(llvm::Type::getInt32Ty(Context));
-    FunctionType *FT = FunctionType::get(llvm::Type::getVoidTy(Context), ArgsType, false);
-    Function *F = Function::Create(FT, Function::ExternalLinkage, "revert", Module);
-
     std::vector<Value *> ArgsV;
     ArgsV.push_back(StrValue);
     ArgsV.push_back(Length);
-    Builder.CreateCall(F, ArgsV, "calltmp");
+    Builder.CreateCall(Module.getFunction("revert"), ArgsV, "calltmp");
     Builder.CreateUnreachable();
 
     Builder.SetInsertPoint(ContBB);

@@ -49,6 +49,43 @@ public:
     S.accept(*this);
   }
 
+  void visit(ContractDeclType &CD) override {
+    std::vector<llvm::Type *> ArgsType;
+    llvm::LLVMContext &Context = M->getContext();
+    llvm::FunctionType *FT = nullptr;
+
+    // CallDataCopy
+    ArgsType.clear();
+    ArgsType.push_back(llvm::Type::getInt8PtrTy(Context));
+    ArgsType.push_back(llvm::Type::getInt32Ty(Context));
+    ArgsType.push_back(llvm::Type::getInt32Ty(Context));    
+    FT = llvm::FunctionType::get(llvm::Type::getVoidTy(Context), ArgsType, false);
+    llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "callDataCopy", *M);
+
+    // finish
+    ArgsType.clear();
+    ArgsType.push_back(llvm::Type::getInt8PtrTy(Context));
+    ArgsType.push_back(llvm::Type::getInt32Ty(Context));
+    FT = llvm::FunctionType::get(llvm::Type::getVoidTy(Context), ArgsType, false);
+    llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "finish", *M);
+
+    // revert
+    ArgsType.clear();
+    ArgsType.push_back(llvm::Type::getInt8PtrTy(Context));
+    ArgsType.push_back(llvm::Type::getInt32Ty(Context));
+    FT = llvm::FunctionType::get(llvm::Type::getVoidTy(Context), ArgsType, false);
+    llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "revert", *M);
+
+    // main
+    ArgsType.clear();
+    FT = llvm::FunctionType::get(llvm::Type::getVoidTy(Context), ArgsType, false);
+    llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "main", *M);
+
+    for (auto F : CD.getSubNodes()) {
+      F->accept(*this);
+    }
+  }
+
   void visit(FunctionDeclType &F) override {
     std::string signature = F.getName().str();
     signature += '(';
