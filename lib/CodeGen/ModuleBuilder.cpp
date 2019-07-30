@@ -1,4 +1,5 @@
 #include "soll/CodeGen/ModuleBuilder.h"
+#include "soll/CodeGen/FuncBodyCodeGen.h"
 #include "CodeGenModule.h"
 #include "soll/AST/Decl.h"
 #include "soll/AST/DeclVisitor.h"
@@ -53,6 +54,8 @@ public:
     }
     signature += ')';
     std::cout << signature << std::endl;
+    llvm::IRBuilder<llvm::NoFolder> IRBuilder(M->getContext());
+    FuncBodyCodeGen(M->getContext(), IRBuilder, *GetModule()).compile(F);
   }
 };
 
