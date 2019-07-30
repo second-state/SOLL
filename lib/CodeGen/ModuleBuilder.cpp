@@ -79,7 +79,46 @@ public:
     // main
     ArgsType.clear();
     FT = llvm::FunctionType::get(llvm::Type::getVoidTy(Context), ArgsType, false);
-    llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "main", *M);
+    llvm::Function *Main = llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "main", *M);
+    llvm::BasicBlock *EntryBB = llvm::BasicBlock::Create(Context, "entry", Main);
+    llvm::IRBuilder<llvm::NoFolder> IRBuilder(Context);
+    
+
+    // two phase codegen
+    llvm::BasicBlock *Default = llvm::BasicBlock::Create(Context, "default", Main);
+    IRBuilder.SetInsertPoint(Default);
+    std::vector<llvm::Value *> ArgsV;
+    ArgsV.push_back(llvm::ConstantPointerNull::get(llvm::Type::getInt8PtrTy(Context)));
+    ArgsV.push_back(IRBuilder.getInt32(0));
+    IRBuilder.CreateCall(M->getFunction("revert"), ArgsV, "callrevert");
+
+    IRBuilder.SetInsertPoint(EntryBB);
+    llvm::Value *FakeCondV = IRBuilder.getInt32(0);
+    llvm::SwitchInst * SI = IRBuilder.CreateSwitch(FakeCondV, Default, CD.getSubNodes().size());
+    for (auto F : CD.getSubNodes()) {
+      std::string signature = F->getName().str();
+      llvm::BasicBlock * CondBB = llvm::BasicBlock::Create(Context, signature, Main);
+      signature += '(';
+      bool first = true;
+      for (const VarDecl *var : dynamic_cast<FunctionDeclType *>(F)->getParams()->getParams()) {
+        if (!first)
+          signature += ',';
+        first = false;
+        signature += "uint256"; // XXX: Implement typename
+      }
+      signature += ')';
+      {
+        Keccak h(256);
+        h.addData((uint8_t*)signature.c_str(),0,signature.length());
+        std::vector<unsigned char> op = h.digest();
+        uint hash = 0;
+        for(int i = 0; i < 4; i++){
+          hash = (hash << 8) | op[i];
+        }
+        SI->addCase (IRBuilder.getInt32(hash), CondBB);
+      }
+      
+    }
 
     for (auto F : CD.getSubNodes()) {
       F->accept(*this);
@@ -87,25 +126,6 @@ public:
   }
 
   void visit(FunctionDeclType &F) override {
-    std::string signature = F.getName().str();
-    signature += '(';
-    bool first = true;
-    for (const VarDecl *var : F.getParams()->getParams()) {
-      if (!first)
-        signature += ',';
-      first = false;
-      signature += "uint256"; // XXX: Implement typename
-    }
-    signature += ')';
-    std::cout << signature << std::endl;
-    {
-      Keccak h(256);
-      h.addData((uint8_t*)signature.c_str(),0,signature.length());
-      std::vector<unsigned char> op = h.digest();
-      for(int i = 0; i < 4; i++)
-        printf("%02x", op[i]);
-      printf("\n");
-    }
     llvm::IRBuilder<llvm::NoFolder> IRBuilder(M->getContext());
     FuncBodyCodeGen(M->getContext(), IRBuilder, *GetModule()).compile(F);
   }

@@ -174,7 +174,7 @@ void FuncBodyCodeGen::visit(CallExprType &CALL) {
     Value *CondV = findTempValue(Arguments[0]);
     Arguments[1]->accept(*this);
     Value *StrValue = findTempValue(Arguments[1]);
-    Value *Length = llvm::ConstantInt::get(Context, llvm::APInt(32, dynamic_cast<const StringLiteral *>(Arguments[1])->getValue().length() + 1, true));
+    Value *Length = Builder.getInt32(dynamic_cast<const StringLiteral *>(Arguments[1])->getValue().length() + 1);
     BasicBlock *RevertBB = BasicBlock::Create(Context, "revert", CurFunc);
     BasicBlock *ContBB = BasicBlock::Create(Context, "continue", CurFunc);
 
