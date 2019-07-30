@@ -1,6 +1,6 @@
-build:
+.build_job_template: &build_job
   stage: build
-  image: yi2nd/ubuntu-soll-build:18.04
+  image: yi2nd/${OS}-soll-build:${VERSION}
   before_script:
     - rm -rf build
     - mkdir build
@@ -9,18 +9,44 @@ build:
     - cmake ..
     - make
   cache:
+    key: ${OS}_${VERSION}
     paths:
       - build
     policy: push
 
-test:
+.test_job_template: &test_job
   stage: test
-  image: yi2nd/ubuntu-soll-build:18.04 # TODO: Create image for testing
+  image: yi2nd/${OS}-soll-build:${VERSION} # TODO: Create image for testing
   before_script:
     - cd build
   script:
     - ./tools/soll/soll ../test/lity/safemath.lity
   cache:
+    key: ${OS}_${VERSION}
     paths:
       - build
     policy: pull
+
+build:ubuntu-gcc:
+  <<: *build_job
+  variables:
+    OS: "ubuntu"
+    VERSION: "18.04-gcc"
+
+build:ubuntu-clang:
+  <<: *build_job
+  variables:
+    OS: "ubuntu"
+    VERSION: "18.04-clang"
+
+test:ubuntu-gcc:
+  <<: *test_job
+  variables:
+    OS: "ubuntu"
+    VERSION: "18.04-gcc"
+
+test:ubuntu-clang:
+  <<: *test_job
+  variables:
+    OS: "ubuntu"
+    VERSION: "18.04-clang"
