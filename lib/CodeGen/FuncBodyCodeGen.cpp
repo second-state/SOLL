@@ -195,10 +195,15 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
     }
   }
 
-  if (BO.isAdditiveOp() || BO.isMultiplicativeOp() || BO.isComparisonOp()) {
-    BO.getLHS()->accept(*this);
-    BO.getRHS()->accept(*this);
-
+  if (BO.isAdditiveOp() || BO.isMultiplicativeOp() || BO.isComparisonOp() || BO.isShiftOp() || BO.isBitwiseOp()) {
+    llvm::Value *lhs = findTempValue(BO.getLHS());
+    llvm::Value *rhs = findTempValue(BO.getRHS());
+    if (BO.getLHS()->isLValue()) {
+      lhs = Builder.CreateLoad(lhs);
+    }
+    if (BO.getRHS()->isLValue()) {
+      rhs = Builder.CreateLoad(rhs);
+    }
     switch (BO.getOpcode()) {
     case BinaryOperatorKind::BO_Add:
       V = Builder.CreateAdd(findTempValue(BO.getLHS()),
@@ -243,6 +248,21 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
     case BinaryOperatorKind::BO_NE:
       V = Builder.CreateICmpNE(findTempValue(BO.getLHS()),
                                findTempValue(BO.getRHS()), "BO_NE");
+      break;
+    case BinaryOperatorKind::BO_Shl:
+      V = Builder.CreateShl(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_Shl");
+      break;
+    case BinaryOperatorKind::BO_Shr:
+      V = Builder.CreateAShr(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_Shr");
+      break;
+    case BinaryOperatorKind::BO_And:
+      V = Builder.CreateAnd(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_And");
+      break;
+    case BinaryOperatorKind::BO_Xor:
+      V = Builder.CreateXor(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_Xor");
+      break;
+    case BinaryOperatorKind::BO_Or: 
+      V = Builder.CreateOr(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_Or");
       break;
     // TODO: other operators
     default:;
