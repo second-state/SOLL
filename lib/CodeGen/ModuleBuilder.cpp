@@ -49,52 +49,69 @@ public:
     S.accept(*this);
   }
 
-  void visit(ContractDeclType &CD) override {
-    std::vector<llvm::Type *> ArgsType;
+  void visit(SourceUnitType &SU) override {
     llvm::LLVMContext &Context = M->getContext();
     llvm::FunctionType *FT = nullptr;
 
     // CallDataCopy
-    ArgsType.clear();
-    ArgsType.push_back(llvm::Type::getInt8PtrTy(Context));
-    ArgsType.push_back(llvm::Type::getInt32Ty(Context));
-    ArgsType.push_back(llvm::Type::getInt32Ty(Context));    
-    FT = llvm::FunctionType::get(llvm::Type::getVoidTy(Context), ArgsType, false);
+    FT = llvm::FunctionType::get(llvm::Type::getVoidTy(Context),
+                                 {llvm::Type::getInt8PtrTy(Context),
+                                  llvm::Type::getInt32Ty(Context),
+                                  llvm::Type::getInt32Ty(Context)},
+                                 false);
     llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "callDataCopy", *M);
 
     // finish
-    ArgsType.clear();
-    ArgsType.push_back(llvm::Type::getInt8PtrTy(Context));
-    ArgsType.push_back(llvm::Type::getInt32Ty(Context));
-    FT = llvm::FunctionType::get(llvm::Type::getVoidTy(Context), ArgsType, false);
+    FT = llvm::FunctionType::get(
+        llvm::Type::getVoidTy(Context),
+        {llvm::Type::getInt8PtrTy(Context), llvm::Type::getInt32Ty(Context)},
+        false);
     llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "finish", *M);
 
     // revert
-    ArgsType.clear();
-    ArgsType.push_back(llvm::Type::getInt8PtrTy(Context));
-    ArgsType.push_back(llvm::Type::getInt32Ty(Context));
-    FT = llvm::FunctionType::get(llvm::Type::getVoidTy(Context), ArgsType, false);
+    FT = llvm::FunctionType::get(
+        llvm::Type::getVoidTy(Context),
+        {llvm::Type::getInt8PtrTy(Context), llvm::Type::getInt32Ty(Context)},
+        false);
     llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "revert", *M);
 
+    for (auto Node : SU.getNodes())
+      Node->accept(*this);
+  }
+
+  void visit(ContractDeclType &CD) override {
+    llvm::LLVMContext &Context = M->getContext();
+    llvm::FunctionType *FT = nullptr;
+
     // main
-    ArgsType.clear();
-    FT = llvm::FunctionType::get(llvm::Type::getVoidTy(Context), ArgsType, false);
+    FT = llvm::FunctionType::get(llvm::Type::getVoidTy(Context), {}, false);
     llvm::Function *Main = llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "main", *M);
     llvm::BasicBlock *EntryBB = llvm::BasicBlock::Create(Context, "entry", Main);
+
     llvm::IRBuilder<llvm::NoFolder> IRBuilder(Context);
-    
+    IRBuilder.SetInsertPoint(EntryBB);
+    auto *p = IRBuilder.CreateAlloca(llvm::Type::getInt32Ty(Context), nullptr,
+                                     "code.ptr");
+    auto *voidptr = IRBuilder.CreateBitCast(
+        p, llvm::Type::getInt8PtrTy(Context), "code.voidptr");
+    IRBuilder.CreateCall(
+        M->getFunction("callDataCopy"),
+        {voidptr, IRBuilder.getInt32(0), IRBuilder.getInt32(4)});
+    auto *CondV =
+        IRBuilder.CreateLoad(llvm::Type::getInt32Ty(Context), voidptr, "hash");
 
     // two phase codegen
     llvm::BasicBlock *Default = llvm::BasicBlock::Create(Context, "default", Main);
     IRBuilder.SetInsertPoint(Default);
-    std::vector<llvm::Value *> ArgsV;
-    ArgsV.push_back(llvm::ConstantPointerNull::get(llvm::Type::getInt8PtrTy(Context)));
-    ArgsV.push_back(IRBuilder.getInt32(0));
-    IRBuilder.CreateCall(M->getFunction("revert"), ArgsV, "callrevert");
+    IRBuilder.CreateCall(
+        M->getFunction("revert"),
+        {llvm::ConstantPointerNull::get(llvm::Type::getInt8PtrTy(Context)),
+         IRBuilder.getInt32(0)});
 
     IRBuilder.SetInsertPoint(EntryBB);
     llvm::Value *FakeCondV = IRBuilder.getInt32(0);
-    llvm::SwitchInst * SI = IRBuilder.CreateSwitch(FakeCondV, Default, CD.getSubNodes().size());
+    llvm::SwitchInst *SI =
+        IRBuilder.CreateSwitch(CondV, Default, CD.getSubNodes().size());
     for (auto F : CD.getSubNodes()) {
       std::string signature = F->getName().str();
       llvm::BasicBlock * CondBB = llvm::BasicBlock::Create(Context, signature, Main);
@@ -117,7 +134,6 @@ public:
         }
         SI->addCase (IRBuilder.getInt32(hash), CondBB);
       }
-      
     }
 
     for (auto F : CD.getSubNodes()) {

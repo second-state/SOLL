@@ -180,11 +180,7 @@ void FuncBodyCodeGen::visit(CallExprType &CALL) {
 
     Builder.CreateCondBr(CondV, ContBB, RevertBB);
     Builder.SetInsertPoint(RevertBB);
-
-    std::vector<Value *> ArgsV;
-    ArgsV.push_back(StrValue);
-    ArgsV.push_back(Length);
-    Builder.CreateCall(Module.getFunction("revert"), ArgsV, "calltmp");
+    Builder.CreateCall(Module.getFunction("revert"), {StrValue, Length});
     Builder.CreateUnreachable();
 
     Builder.SetInsertPoint(ContBB);
