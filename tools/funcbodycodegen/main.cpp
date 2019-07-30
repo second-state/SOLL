@@ -21,41 +21,45 @@ using llvm::LLVMContext;
 
 int main(int argc, const char **argv) {
 
-  std::vector<std::unique_ptr<Stmt>> stmts;
-
-  std::vector<VarDeclPtr> VarDecs;
-  // VarDecl VarDec(nullptr, "c", nullptr, Decl::Visibility::Default);
-  VarDecs.emplace_back(std::make_unique<VarDecl>(nullptr, "c", nullptr,
-                                                 Decl::Visibility::Default));
-  stmts.emplace_back(std::make_unique<DeclStmt>(std::move(VarDecs), nullptr));
-
-  stmts.emplace_back(std::make_unique<BinaryOperator>(
-      std::make_unique<Identifier>("c"),
-      std::make_unique<BinaryOperator>(std::make_unique<Identifier>("a"),
-                                       std::make_unique<Identifier>("b"),
-                                       BinaryOperatorKind::BO_Add),
-      BinaryOperatorKind::BO_Assign));
-
-  stmts.emplace_back(std::make_unique<CallExpr>(std::make_unique<Identifier>("require"),
-                      container<std::vector<std::unique_ptr<Expr>>>::init(
-                       {std::make_unique<BinaryOperator>(
-                            std::make_unique<Identifier>("c"),
-                            std::make_unique<Identifier>("a"),
-                            BinaryOperatorKind::BO_GE),
-                        std::make_unique<StringLiteral>(
-                            "SafeMath: addition overflow")})));
-  
-  std::vector<std::unique_ptr<VarDecl>> params;
-
-  params.emplace_back(std::make_unique<VarDecl>(
-      std::make_unique<Type>(), "a", nullptr, Decl::Visibility::Default));
-  params.emplace_back(std::make_unique<VarDecl>(
-      std::make_unique<Type>(), "b", nullptr, Decl::Visibility::Default));
-
-  std::vector<std::unique_ptr<VarDecl>> retval;
-
-  retval.emplace_back(std::make_unique<VarDecl>(
-      std::make_unique<Type>(), "", nullptr, Decl::Visibility::Default));
+  SourceUnit source(std::move(container<
+                              std::vector<std::unique_ptr<Decl>>>::init({
+      std::make_unique<ContractDecl>(
+          "C", std::vector<std::unique_ptr<InheritanceSpecifier>>(),
+          std::move(container<std::vector<std::unique_ptr<Decl>>>::init(
+              {std::make_unique<FunctionDecl>(
+                  "add", Decl::Visibility::Public, StateMutability::Pure, false,
+                  std::make_unique<ParamList>(std::move(
+                      container<std::vector<std::unique_ptr<VarDecl>>>::init(
+                          {std::make_unique<VarDecl>(std::make_unique<Type>(),
+                                                     "a", nullptr,
+                                                     Decl::Visibility::Default),
+                           std::make_unique<VarDecl>(
+                               std::make_unique<Type>(), "b", nullptr,
+                               Decl::Visibility::Default)}))),
+                  std::vector<std::unique_ptr<ModifierInvocation>>(),
+                  std::make_unique<ParamList>(std::move(
+                      container<std::vector<std::unique_ptr<VarDecl>>>::init(
+                          {std::make_unique<VarDecl>(
+                              std::make_unique<Type>(), "", nullptr,
+                              Decl::Visibility::Default)}))),
+                  std::make_unique<Block>(std::move(
+                      container<std::vector<std::unique_ptr<Stmt>>>::init(
+                          {std::make_unique<DeclStmt>(
+                               std::move(container<std::vector<
+                                             std::unique_ptr<VarDecl>>>::
+                                             init({std::make_unique<VarDecl>(
+                                                 nullptr, "c", nullptr,
+                                                 Decl::Visibility::Default)})),
+                               nullptr),
+                           std::make_unique<BinaryOperator>(
+                               std::make_unique<Identifier>("c"),
+                               std::make_unique<BinaryOperator>(
+                                   std::make_unique<Identifier>("a"),
+                                   std::make_unique<Identifier>("b"),
+                                   BinaryOperatorKind::BO_Add),
+                               BinaryOperatorKind::BO_Assign)}))))})),
+          ContractDecl::ContractKind::Contract),
+  })));
 
   ASTContext *Ctx = new ASTContext();
   auto p = CreateASTPrinter();
