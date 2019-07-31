@@ -3,13 +3,11 @@
 
 enum class HashType { Sha3, Keccak, Shake };
 
-struct options
-{
-	HashType type;
-	unsigned int hashWidth;
-	unsigned int shakeDigestLength;
+struct options {
+  HashType type;
+  unsigned int hashWidth;
+  unsigned int shakeDigestLength;
 };
-
 
 int doFile(const char *fileName, options &opt);
 
@@ -25,4 +23,4 @@ int parseOption(const char *param, const unsigned int pSize, options &opt);
 
 void parseParameter(const char *param, options &opt);
 
-void parseCommandLine(const int argc, char* argv[]);
+void parseCommandLine(const int argc, char *argv[]);

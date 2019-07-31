@@ -196,10 +196,12 @@ class ConstantExpr : public Expr {
 
 class Identifier : public Expr {
   std::string name;
+
 public:
   Identifier(std::string &&Name) : name(Name) {}
   void setName(std::string &&Name) { name = Name; }
   std::string getName() const { return name; }
+
 public:
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
@@ -211,6 +213,7 @@ class ElementaryTypeNameExpr : public Expr {
 
 class BooleanLiteral : public Expr {
   bool value;
+
 public:
   BooleanLiteral(bool val) : value(val) {}
   void setValue(bool val) { value = val; }
@@ -221,6 +224,7 @@ public:
 
 class StringLiteral : public Expr {
   std::string value;
+
 public:
   StringLiteral(std::string &&val) : value(val) {}
   void setValue(std::string &&val) { value = val; }
@@ -230,9 +234,11 @@ public:
   void accept(ConstStmtVisitor &visitor) const override;
 };
 
-// solidity NumberLiteral support 256bit operation, Boost library should be used.
+// solidity NumberLiteral support 256bit operation, Boost library should be
+// used.
 class NumberLiteral : public Expr {
   int value;
+
 public:
   NumberLiteral(int val) : value(val) {}
   void setValue(int val) { value = val; }

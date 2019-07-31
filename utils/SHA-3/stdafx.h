@@ -10,12 +10,12 @@
 #include "targetver.h"
 #endif //_MSC_VER
 
-#include <cstdio>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 
-#include <vector>
 #include <array>
+#include <vector>
 
 #include <iostream>
 #include <sstream>

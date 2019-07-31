@@ -25,7 +25,9 @@ void BreakStmt::accept(ConstStmtVisitor &visitor) const {
 }
 
 void WhileStmt::accept(StmtVisitor &visitor) { visitor.visit(*this); }
-void WhileStmt::accept(ConstStmtVisitor &visitor) const { visitor.visit(*this); }
+void WhileStmt::accept(ConstStmtVisitor &visitor) const {
+  visitor.visit(*this);
+}
 
 void ReturnStmt::accept(StmtVisitor &visitor) { visitor.visit(*this); }
 void ReturnStmt::accept(ConstStmtVisitor &visitor) const {

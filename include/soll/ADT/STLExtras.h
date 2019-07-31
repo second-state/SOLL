@@ -30,4 +30,4 @@ template <class C> struct container {
   }
 };
 
-} // namespace
+} // namespace soll

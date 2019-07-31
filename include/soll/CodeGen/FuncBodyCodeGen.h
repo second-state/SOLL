@@ -5,11 +5,11 @@
 #include "soll/AST/Expr.h"
 #include "soll/AST/StmtVisitor.h"
 
+#include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/NoFolder.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
-#include <llvm/IR/Function.h>
+#include <llvm/IR/NoFolder.h>
 
 #include <map>
 #include <unordered_map>
@@ -67,12 +67,10 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
   }
 
 public:
-
   FuncBodyCodeGen(llvm::LLVMContext &Context,
                   llvm::IRBuilder<llvm::NoFolder> &Builder,
-                  llvm::Module &Module): 
-                    Context(Context), Builder(Builder),
-                    Module(Module) {}
+                  llvm::Module &Module)
+      : Context(Context), Builder(Builder), Module(Module) {}
   // codegen a certain function
   void compile(const soll::FunctionDecl &);
 };

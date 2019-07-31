@@ -66,7 +66,8 @@ private:
   StateMutability parseStateMutability();
   FunctionHeaderParserResult parseFunctionHeader(bool ForceEmptyName,
                                                  bool AllowModifiers);
-  std::unique_ptr<FunctionDecl> parseFunctionDefinitionOrFunctionTypeStateVariable();
+  std::unique_ptr<FunctionDecl>
+  parseFunctionDefinitionOrFunctionTypeStateVariable();
   std::unique_ptr<VarDecl> parseVariableDeclaration(
       VarDeclParserOptions const &Options = {},
       std::unique_ptr<Type> const &LookAheadArrayType = nullptr);
@@ -80,19 +81,21 @@ private:
   std::unique_ptr<IfStmt> parseIfStatement();
   std::unique_ptr<Stmt> parseSimpleStatement();
   std::unique_ptr<DeclStmt> parseVariableDeclarationStatement(
-      std::unique_ptr<Type> const &LookAheadArrayType = std::unique_ptr<Type>());
+      std::unique_ptr<Type> const &LookAheadArrayType =
+          std::unique_ptr<Type>());
   std::unique_ptr<Expr>
   parseExpression(std::unique_ptr<Expr> &&PartiallyParsedExpression = nullptr);
-  std::unique_ptr<Expr>
-  parseBinaryExpression(int MinPrecedence = 4,
-                        std::unique_ptr<Expr> &&PartiallyParsedExpression = nullptr);
-  std::unique_ptr<Expr>
-  parseUnaryExpression(std::unique_ptr<Expr> &&PartiallyParsedExpression = nullptr);
+  std::unique_ptr<Expr> parseBinaryExpression(
+      int MinPrecedence = 4,
+      std::unique_ptr<Expr> &&PartiallyParsedExpression = nullptr);
+  std::unique_ptr<Expr> parseUnaryExpression(
+      std::unique_ptr<Expr> &&PartiallyParsedExpression = nullptr);
   std::unique_ptr<Expr> parseLeftHandSideExpression(
       std::unique_ptr<Expr> &&PartiallyParsedExpression = nullptr);
   std::unique_ptr<Expr> parsePrimaryExpression();
   std::vector<std::unique_ptr<Expr>> parseFunctionCallListArguments();
-  std::pair<std::vector<std::unique_ptr<Expr>>, std::vector<std::unique_ptr<std::string>>>
+  std::pair<std::vector<std::unique_ptr<Expr>>,
+            std::vector<std::unique_ptr<std::string>>>
   parseFunctionCallArguments();
 
   /// Used as return value of @see peekStatementType.

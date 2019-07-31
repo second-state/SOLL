@@ -27,8 +27,7 @@ protected:
 
 protected:
   Decl() {}
-  Decl(llvm::StringRef Name,
-       Visibility vis = Visibility::Default)
+  Decl(llvm::StringRef Name, Visibility vis = Visibility::Default)
       : Name(Name.str()), Vis(vis) {}
 
 public:
@@ -98,9 +97,9 @@ class CallableVarDecl : public Decl {
   std::unique_ptr<ParamList> ReturnParams;
 
 public:
-  CallableVarDecl(llvm::StringRef name,
-      Visibility visibility, std::unique_ptr<ParamList> &&Params,
-      std::unique_ptr<ParamList> &&returnParams = nullptr)
+  CallableVarDecl(llvm::StringRef name, Visibility visibility,
+                  std::unique_ptr<ParamList> &&Params,
+                  std::unique_ptr<ParamList> &&returnParams = nullptr)
       : Decl(name, visibility), Params(std::move(Params)),
         ReturnParams(std::move(returnParams)) {}
 
@@ -124,12 +123,11 @@ class FunctionDecl : public CallableVarDecl {
   bool Implemented;
 
 public:
-  FunctionDecl(llvm::StringRef name,
-      Visibility visibility, StateMutability sm, bool isConstructor,
-      std::unique_ptr<ParamList> &&Params,
-      std::vector<std::unique_ptr<ModifierInvocation>> &&modifiers,
-      std::unique_ptr<ParamList> &&returnParams,
-      std::unique_ptr<Block> &&body)
+  FunctionDecl(llvm::StringRef name, Visibility visibility, StateMutability sm,
+               bool isConstructor, std::unique_ptr<ParamList> &&Params,
+               std::vector<std::unique_ptr<ModifierInvocation>> &&modifiers,
+               std::unique_ptr<ParamList> &&returnParams,
+               std::unique_ptr<Block> &&body)
       : CallableVarDecl(name, visibility, std::move(Params),
                         std::move(returnParams)),
         SM(sm), IsConstructor(isConstructor),

@@ -41,7 +41,8 @@ class Block : public Stmt {
 public:
   Block(std::vector<StmtPtr> &&Stmts) : Stmts(std::move(Stmts)) {}
 
-  /// this setter transfers the ownerships of Stmt from function argument to class instance
+  /// this setter transfers the ownerships of Stmt from function argument to
+  /// class instance
   void setStmts(std::vector<StmtPtr> &&Stmts);
 
   std::vector<Stmt *> getStmts();
@@ -84,7 +85,8 @@ class WhileStmt : public Stmt {
   StmtPtr Body;
 
 public:
-  WhileStmt(ExprPtr Cond, StmtPtr Body) : Cond(std::move(Cond)), Body(std::move(Body)) {}
+  WhileStmt(ExprPtr Cond, StmtPtr Body)
+      : Cond(std::move(Cond)), Body(std::move(Body)) {}
 
   void setCond(ExprPtr &&Cond) { this->Cond = std::move(Cond); }
   void setBody(StmtPtr &&Body) { this->Body = std::move(Body); }
