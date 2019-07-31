@@ -4,6 +4,7 @@
 #include <llvm/IR/Function.h>
 
 #include <iostream>
+#include <cassert>
 
 using namespace soll;
 using llvm::BasicBlock;
@@ -171,8 +172,69 @@ void FuncBodyCodeGen::visit(DeclStmtType &DS) {
   }
 }
 
-void FuncBodyCodeGen::visit(UnaryOperatorType &) {
-  // TODO
+void FuncBodyCodeGen::visit(UnaryOperatorType &UO) {
+  ConstStmtVisitor::visit(UO);
+  llvm::Value *V = nullptr, *subVal = findTempValue(UO.getSubExpr());
+  if (UO.isArithmeticOp()) {
+    // TODO: replace this with "check whether subExpr is lValue"
+    // if (dynamic_cast<const Identifier*>(UO.getSubExpr())) {
+    //   subVal = Builder.CreateLoad(subVal);
+    // }
+    switch (UO.getOpcode()) {
+    case UnaryOperatorKind::UO_Plus: 
+      V = subVal;
+      break;
+    case UnaryOperatorKind::UO_Minus: 
+      V = Builder.CreateNeg(subVal, "UO_Minus");
+      break;
+    case UnaryOperatorKind::UO_Not: 
+      V = Builder.CreateNot(subVal, "UO_Not");
+      break;
+    case UnaryOperatorKind::UO_LNot: 
+      V = Builder.CreateICmpEQ(Builder.getInt64(0), subVal, "UO_LNot");
+      break;
+    defalut:
+      ;
+    }
+  } else {
+    // TODO : the code is dead due to "we havn't properly dealed with lvalue/rvalue"
+    // assume subExpr is a lValue
+    llvm::Value *V = nullptr;
+    llvm::Value *subRef = nullptr;  // this should be the address of subexpr
+    llvm::Value *subVal = nullptr;  // this should be the value of subexpr
+
+    switch (UO.getOpcode()) {
+    case UnaryOperatorKind::UO_PostInc: 
+      subVal = Builder.CreateLoad(subRef);
+      Builder.CreateAdd(subVal, Builder.getInt64(1), "UO_PostInc");
+      V = subVal;
+      break;
+    case UnaryOperatorKind::UO_PostDec:
+      subVal = Builder.CreateLoad(subRef);
+      Builder.CreateSub(subVal, Builder.getInt64(1), "UO_PostDec");
+      V = subVal;
+      break;
+    case UnaryOperatorKind::UO_PreInc:
+      subVal = Builder.CreateLoad(subRef);
+      Builder.CreateAdd(subVal, Builder.getInt64(1), "UO_PreInc");
+      V = subRef;
+      break;
+    case UnaryOperatorKind::UO_PreDec:
+      subVal = Builder.CreateLoad(subRef);
+      Builder.CreateSub(subVal, Builder.getInt64(1), "UO_PreDec");
+      V = subRef;
+      break;
+    case UnaryOperatorKind::UO_AddrOf:
+      V = subRef;
+      break;
+    case UnaryOperatorKind::UO_Deref:
+      V = Builder.CreateLoad(subRef);
+      break;
+    default:
+      ;
+    }
+  }
+  TempValueTable[&UO] = V;
 }
 
 void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
@@ -186,11 +248,50 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
     // This impl assumes:
     //   lhs of assignment operator (=, +=, -=, ...) is a Identifier,
 
+    BO.getLHS()->accept(*this);
     BO.getRHS()->accept(*this);
     if (auto ID = dynamic_cast<const Identifier *>(BO.getLHS())) {
       if (auto Addr = findLocalVarAddr(ID->getName())) {
-        auto *Val = findTempValue(BO.getRHS());
-        Builder.CreateStore(Val, Addr);
+        auto lhsVal = findTempValue(BO.getLHS());
+        auto rhsVal = findTempValue(BO.getRHS());
+        switch(BO.getOpcode()) {
+        case BO_Assign:
+          V = rhsVal;
+          break;
+        case BO_MulAssign:
+          V = Builder.CreateMul(lhsVal, rhsVal, "BO_MulAssign");
+          break;
+        case BO_DivAssign:
+          V = Builder.CreateUDiv(lhsVal, rhsVal, "BO_DivAssign");
+          break;
+        case BO_RemAssign:
+          V = Builder.CreateURem(lhsVal, rhsVal, "BO_RemAssign");
+          break;
+        case BO_AddAssign:
+          V = Builder.CreateAdd(lhsVal, rhsVal, "BO_AddAssign");
+          break;
+        case BO_SubAssign:
+          V = Builder.CreateSub(lhsVal, rhsVal, "BO_SubAssign");
+          break;
+        case BO_ShlAssign:
+          V = Builder.CreateShl(lhsVal, rhsVal, "BO_ShlAssign");
+          break;
+        case BO_ShrAssign:
+          V = Builder.CreateAShr(lhsVal, rhsVal, "BO_ShrAssign");
+          break;
+        case BO_AndAssign:
+          V = Builder.CreateAnd(lhsVal, rhsVal, "BO_AndAssign");
+          break;
+        case BO_XorAssign:
+          V = Builder.CreateXor(lhsVal, rhsVal, "BO_XorAssign");
+          break;
+        case BO_OrAssign:
+          V = Builder.CreateOr(lhsVal, rhsVal, "BO_OrAssign");
+          break;
+        default:
+          ;
+        }
+        Builder.CreateStore(V, Addr);
       }
     }
   }
@@ -316,8 +417,8 @@ void FuncBodyCodeGen::visit(IdentifierType &ID) {
   TempValueTable[&ID] = V;
 }
 
-void FuncBodyCodeGen::visit(BooleanLiteralType &) {
-  // TODO
+void FuncBodyCodeGen::visit(BooleanLiteralType &BL) {
+  TempValueTable[&BL] = Builder.getInt1(BL.getValue());
 }
 
 void FuncBodyCodeGen::visit(StringLiteralType &SL) {
