@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-3-Clause
 #ifndef PARSER_COMMON_H_
 #define PARSER_COMMON_H_
 

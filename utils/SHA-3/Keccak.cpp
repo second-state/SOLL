@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-3-Clause
 #include "stdafx.h"
 #include "Keccak.h"
 #include "CommandParser.h"

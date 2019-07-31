@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-3-Clause
 #ifndef RAII_WRAPPER_H_
 #define RAII_WRAPPER_H_
 

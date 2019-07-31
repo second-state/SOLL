@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 LLOPT=$(command -v opt-8)
 LLOPT=${LLOPT:-$(command -v opt)}

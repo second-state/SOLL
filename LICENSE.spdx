@@ -1,0 +1,31 @@
+## This file states the license of this package and possibly its subpackages
+## in machine and human readable format. The PackageName refers to the package
+## whose license is defined by PackageLicenseConcluded.
+## For more information about this file format visit the SPDX website at
+## https://spdx.org
+
+SPDXVersion: SPDX-2.1
+DataLicense: CC0-1.0
+SPDXID: SPDXRef-DOCUMENT
+DocumentNamespace: https://secondstate.io/soll
+DocumentName: LICENSE.spdx
+
+Creator: Organization: Second State LCC (contact@secondstate.io)
+
+## Package Information
+PackageName: soll
+SPDXID: SPDXRef-soll
+PackageOriginator: Organization: Second State LCC (contact@secondstate.io)
+PackageLicenseDeclared: (Apache-2.0 WITH LLVM-exception)
+FilesAnalyzed: false
+
+PackageName: SHA3
+SPDXID: SPDXRef-SHA3
+PackageFileName: ./utils/SHA-3
+PackageOriginator: Daniel Horne
+PackageHomePage: https://github.com/DuSTman31/SHA-3
+PackageLicenseDeclared: (BSD-3-Clause)
+FilesAnalyzed: false
+
+## Relationships
+Relationship: SPDXRef-soll CONTAINS SPDXRef-SHA3

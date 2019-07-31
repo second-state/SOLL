@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "soll/CodeGen/CodeGenAction.h"
 #include "soll/Basic/SourceManager.h"
 #include "soll/CodeGen/BackendUtil.h"

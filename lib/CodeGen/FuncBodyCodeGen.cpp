@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "soll/CodeGen/FuncBodyCodeGen.h"
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Function.h>

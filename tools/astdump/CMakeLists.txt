@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 set(LLVM_LINK_COMPONENTS
   CodeGen
   )

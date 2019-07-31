@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 add_library(sollBasic
   Diagnostic.cpp
   DiagnosticIDs.cpp

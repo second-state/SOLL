@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 add_library(sollAST
   ASTContext.cpp
   Decl.cpp

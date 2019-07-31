@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: BSD-3-Clause
 #ifndef ROTATION_H_
 #define ROTATION_H_
 

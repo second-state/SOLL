@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "soll/Parse/Parser.h"
 #include "soll/AST/AST.h"
 #include "soll/AST/Decl.h"

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "soll/Basic/DiagnosticIDs.h"
 #include "soll/Basic/AllDiagnostics.h"
 #include "soll/Basic/Diagnostic.h"

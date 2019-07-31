@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #pragma once
 #include "soll/Frontend/FrontendOptions.h"
 #include <llvm/IR/Module.h>

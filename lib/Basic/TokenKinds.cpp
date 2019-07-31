@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "soll/Basic/TokenKinds.h"
 #include <llvm/Support/ErrorHandling.h>
 
