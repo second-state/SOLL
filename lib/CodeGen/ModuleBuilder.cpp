@@ -64,21 +64,28 @@ public:
                                   IRBuilder->getInt32Ty(),
                                   IRBuilder->getInt32Ty()},
                                  false);
-    llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "callDataCopy", *M);
+    llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "callDataCopy",
+                           *M)
+        ->addFnAttr(
+            llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
 
     // finish
     FT = llvm::FunctionType::get(
         IRBuilder->getVoidTy(),
         {IRBuilder->getInt8PtrTy(), IRBuilder->getInt32Ty()},
         false);
-    llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "finish", *M);
+    llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "finish", *M)
+        ->addFnAttr(
+            llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
 
     // revert
     FT = llvm::FunctionType::get(
         IRBuilder->getVoidTy(),
         {IRBuilder->getInt8PtrTy(), IRBuilder->getInt32Ty()},
         false);
-    llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "revert", *M);
+    llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "revert", *M)
+        ->addFnAttr(
+            llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
 
     for (auto Node : SU.getNodes())
       Node->accept(*this);
