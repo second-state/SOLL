@@ -1,12 +1,13 @@
 #!/bin/bash
 
-CLANG=$(command -v clang-8)
-CLANG=${CLANG:-$(command -v clang)}
+LLOPT=$(command -v opt-8)
+LLOPT=${LLOPT:-$(command -v opt)}
+LLC=$(command -v llc-8)
+LLC=${LLC:-$(command -v llc)}
 WASM_LD=$(command -v wasm-ld-8)
 WASM_LD=${WASM_LD:-$(command -v wasm-ld)}
+WASM_OPT=$(command -v wasm-opt)
 
-TARGET="wasm32-unknown-unknown-wasm"
-OUTPUT=()
 VERBOSE=false
 
 while getopts 'vho:' OPT; do
@@ -14,11 +15,8 @@ while getopts 'vho:' OPT; do
         v)
             VERBOSE=true
             ;;
-        o)
-            OUTPUT=(-o "$OPTARG")
-            ;;
         h|?)
-            echo "Usage: $0 [-v] [-o OUTPUT] INPUT"
+            echo "Usage: $0 [-v] INPUT"
             exit 1
             ;;
     esac
@@ -36,4 +34,9 @@ run() {
     "$@"
 }
 
-run "$CLANG" --target="$TARGET" -fuse-ld="$WASM_LD" -nostartfiles -nodefaultlibs -Wl,--allow-undefined,--entry=main -Oz "$@" "${OUTPUT[@]}"
+for INPUT in "$@"; do
+    run "$LLOPT" -Oz "$INPUT" -o "${INPUT%.ll}.bc" && \
+    run "$LLC" -O3 -filetype=obj "${INPUT%.ll}.bc" && \
+    run "$WASM_LD" --entry main --gc-sections --allow-undefined "${INPUT%.ll}.o" -o "${INPUT%.ll}.wasm" && \
+    [ "$WASM_OPT" ] && run "$WASM_OPT" -O4 "${INPUT%.ll}.wasm" -o "${INPUT%.ll}-opt.wasm"
+done
