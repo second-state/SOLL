@@ -25,6 +25,7 @@ class CodeGeneratorImpl : public CodeGenerator,
 protected:
   std::unique_ptr<llvm::Module> M;
   std::unique_ptr<CodeGen::CodeGenModule> Builder;
+  std::unique_ptr<llvm::IRBuilder<llvm::NoFolder>> IRBuilder;
 
 public:
   CodeGeneratorImpl(DiagnosticsEngine &diags, llvm::StringRef ModuleName,
@@ -43,6 +44,7 @@ public:
     // WebAssembly32TargetInfo
     M->setDataLayout(llvm::DataLayout("e-m:e-p:32:32-i64:64-n32:64-S128"));
     Builder.reset(new CodeGen::CodeGenModule(Context, *M, Diags));
+    IRBuilder = std::make_unique<llvm::IRBuilder<llvm::NoFolder>>(M->getContext());
   }
 
   void HandleSourceUnit(ASTContext &C, SourceUnit &S) override {
@@ -54,24 +56,24 @@ public:
     llvm::FunctionType *FT = nullptr;
 
     // CallDataCopy
-    FT = llvm::FunctionType::get(llvm::Type::getVoidTy(Context),
-                                 {llvm::Type::getInt8PtrTy(Context),
-                                  llvm::Type::getInt32Ty(Context),
-                                  llvm::Type::getInt32Ty(Context)},
+    FT = llvm::FunctionType::get(IRBuilder->getVoidTy(),
+                                 {IRBuilder->getInt8PtrTy(),
+                                  IRBuilder->getInt32Ty(),
+                                  IRBuilder->getInt32Ty()},
                                  false);
     llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "callDataCopy", *M);
 
     // finish
     FT = llvm::FunctionType::get(
-        llvm::Type::getVoidTy(Context),
-        {llvm::Type::getInt8PtrTy(Context), llvm::Type::getInt32Ty(Context)},
+        IRBuilder->getVoidTy(),
+        {IRBuilder->getInt8PtrTy(), IRBuilder->getInt32Ty()},
         false);
     llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "finish", *M);
 
     // revert
     FT = llvm::FunctionType::get(
-        llvm::Type::getVoidTy(Context),
-        {llvm::Type::getInt8PtrTy(Context), llvm::Type::getInt32Ty(Context)},
+        IRBuilder->getVoidTy(),
+        {IRBuilder->getInt8PtrTy(), IRBuilder->getInt32Ty()},
         false);
     llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "revert", *M);
 
@@ -84,34 +86,33 @@ public:
     llvm::FunctionType *FT = nullptr;
 
     // main
-    FT = llvm::FunctionType::get(llvm::Type::getVoidTy(Context), {}, false);
+    FT = llvm::FunctionType::get(IRBuilder->getVoidTy(), {}, false);
     llvm::Function *Main = llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "main", *M);
     llvm::BasicBlock *EntryBB = llvm::BasicBlock::Create(Context, "entry", Main);
 
-    llvm::IRBuilder<llvm::NoFolder> IRBuilder(Context);
-    IRBuilder.SetInsertPoint(EntryBB);
-    auto *p = IRBuilder.CreateAlloca(llvm::Type::getInt32Ty(Context), nullptr,
+    IRBuilder->SetInsertPoint(EntryBB);
+    auto *p = IRBuilder->CreateAlloca(IRBuilder->getInt32Ty(), nullptr,
                                      "code.ptr");
-    auto *voidptr = IRBuilder.CreateBitCast(
-        p, llvm::Type::getInt8PtrTy(Context), "code.voidptr");
-    IRBuilder.CreateCall(
+    auto *voidptr = IRBuilder->CreateBitCast(
+        p, IRBuilder->getInt8PtrTy(), "code.voidptr");
+    IRBuilder->CreateCall(
         M->getFunction("callDataCopy"),
-        {voidptr, IRBuilder.getInt32(0), IRBuilder.getInt32(4)});
+        {voidptr, IRBuilder->getInt32(0), IRBuilder->getInt32(4)});
     auto *CondV =
-        IRBuilder.CreateLoad(llvm::Type::getInt32Ty(Context), voidptr, "hash");
+        IRBuilder->CreateLoad(IRBuilder->getInt32Ty(), voidptr, "hash");
 
     // two phase codegen
     llvm::BasicBlock *Default = llvm::BasicBlock::Create(Context, "default", Main);
-    IRBuilder.SetInsertPoint(Default);
-    IRBuilder.CreateCall(
+    IRBuilder->SetInsertPoint(Default);
+    IRBuilder->CreateCall(
         M->getFunction("revert"),
-        {llvm::ConstantPointerNull::get(llvm::Type::getInt8PtrTy(Context)),
-         IRBuilder.getInt32(0)});
+        {llvm::ConstantPointerNull::get(IRBuilder->getInt8PtrTy()),
+         IRBuilder->getInt32(0)});
 
-    IRBuilder.SetInsertPoint(EntryBB);
-    llvm::Value *FakeCondV = IRBuilder.getInt32(0);
+    IRBuilder->SetInsertPoint(EntryBB);
+    llvm::Value *FakeCondV = IRBuilder->getInt32(0);
     llvm::SwitchInst *SI =
-        IRBuilder.CreateSwitch(CondV, Default, CD.getSubNodes().size());
+        IRBuilder->CreateSwitch(CondV, Default, CD.getSubNodes().size());
     for (auto F : CD.getSubNodes()) {
       std::string signature = F->getName().str();
       llvm::BasicBlock * CondBB = llvm::BasicBlock::Create(Context, signature, Main);
@@ -132,7 +133,7 @@ public:
         for(int i = 0; i < 4; i++){
           hash = (hash << 8) | op[i];
         }
-        SI->addCase (IRBuilder.getInt32(hash), CondBB);
+        SI->addCase (IRBuilder->getInt32(hash), CondBB);
       }
     }
 
@@ -142,8 +143,7 @@ public:
   }
 
   void visit(FunctionDeclType &F) override {
-    llvm::IRBuilder<llvm::NoFolder> IRBuilder(M->getContext());
-    FuncBodyCodeGen(M->getContext(), IRBuilder, *GetModule()).compile(F);
+    FuncBodyCodeGen(M->getContext(), *IRBuilder, *GetModule()).compile(F);
   }
 };
 
