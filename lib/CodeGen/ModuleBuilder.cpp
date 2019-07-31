@@ -119,29 +119,13 @@ public:
     llvm::Value *FakeCondV = IRBuilder->getInt32(0);
     llvm::SwitchInst *SI =
         IRBuilder->CreateSwitch(CondV, Default, CD.getSubNodes().size());
-    for (auto F : CD.getSubNodes()) {
-      std::string signature = F->getName().str();
+
+    for (auto Node : CD.getSubNodes()) {
+      const FunctionDecl *F = dynamic_cast<const soll::FunctionDecl *>(Node);
       llvm::BasicBlock * CondBB = llvm::BasicBlock::Create(Context, F->getName(), Main);
       Labels[F->getName()] = CondBB;
-      signature += '(';
-      bool first = true;
-      for (const VarDecl *var : dynamic_cast<FunctionDeclType *>(F)->getParams()->getParams()) {
-        if (!first)
-          signature += ',';
-        first = false;
-        signature += "uint256"; // XXX: Implement typename
-      }
-      signature += ')';
-      {
-        Keccak h(256);
-        h.addData((uint8_t*)signature.c_str(),0,signature.length());
-        std::vector<unsigned char> op = h.digest();
-        uint hash = 0;
-        for(int i = 0; i < 4; i++){
-          hash = (hash << 8) | op[i];
-        }
-        SI->addCase (IRBuilder->getInt32(hash), CondBB);
-      }
+      int hash = funcSignatureHash(*F);
+      SI->addCase(IRBuilder->getInt32(hash), CondBB);
     }
 
     for (auto Node : CD.getSubNodes()) {
@@ -165,12 +149,17 @@ public:
 
     IRBuilder->SetInsertPoint(BB);
     // get arguments from calldata
-    auto *arg_ptr = IRBuilder->CreateAlloca(llvm::ArrayType::get(IRBuilder->getInt64Ty(), 2), 
-                                            nullptr, Fname + "_arg_ptr");
+    auto *arg_ptr = IRBuilder->CreateAlloca(
+        llvm::ArrayType::get(IRBuilder->getInt64Ty(), Fparams.size()), nullptr,
+        Fname + "_arg_ptr");
     auto *arg_vptr = IRBuilder->CreateBitCast(arg_ptr, llvm::PointerType::getUnqual(IRBuilder->getInt8Ty()),
                                               Fname + "_arg_vptr");
-    IRBuilder->CreateCall(M->getFunction("callDataCopy"), {arg_vptr, IRBuilder->getInt32(4), IRBuilder->getInt32(16)});
-    
+    IRBuilder->CreateCall(
+        M->getFunction("callDataCopy"),
+        {arg_vptr, IRBuilder->getInt32(4),
+         IRBuilder->getInt32(IRBuilder->getInt64Ty()->getPrimitiveSizeInBits() /
+                             8 * Fparams.size())});
+
     std::vector<llvm::Value *> ArgsVal;
     std::vector<llvm::Type *> ArgsTy;
     for (int i = 0; i < Fparams.size(); i++) {
@@ -193,10 +182,32 @@ public:
     IRBuilder->CreateStore(r, r_ptr);
     auto *r_vptr = IRBuilder->CreateBitCast(r_ptr, llvm::PointerType::getUnqual(IRBuilder->getInt8Ty()),
                                             Fname + "_r_vptr");
-    IRBuilder->CreateCall(M->getFunction("finish"), {r_vptr, IRBuilder->getInt32(8)});
+    IRBuilder->CreateCall(
+        M->getFunction("finish"),
+        {r_vptr, IRBuilder->getInt32(
+                     IRBuilder->getInt64Ty()->getPrimitiveSizeInBits() / 8)});
     IRBuilder->CreateUnreachable();
   }
 
+  int funcSignatureHash(const FunctionDecl &F) {
+    std::string signature = F.getName().str();
+    signature += '(';
+    bool first = true;
+    for (const VarDecl *var : F.getParams()->getParams()) {
+      if (!first)
+        signature += ',';
+      first = false;
+      signature += "uint256"; // XXX: Implement typename
+    }
+    signature += ')';
+    Keccak h(256);
+    h.addData((uint8_t *)signature.c_str(), 0, signature.length());
+    std::vector<unsigned char> op = h.digest();
+    uint hash = 0;
+    for (int i = 0; i < 4; i++)
+      hash = (hash << 8) | op[i];
+    return hash;
+  }
 };
 
 } // namespace
