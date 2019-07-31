@@ -31,25 +31,33 @@ void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
 
 void FuncBodyCodeGen::visit(BlockType &B) { ConstStmtVisitor::visit(B); }
 
-void FuncBodyCodeGen::visit(IfStmtType &IF) {
-  BasicBlock *ThenBB = BasicBlock::Create(Context, "then", CurFunc);
-  BasicBlock *ElseBB = BasicBlock::Create(Context, "else", CurFunc);
-  BasicBlock *ContBB = BasicBlock::Create(Context, "ifcont", CurFunc);
+void FuncBodyCodeGen::visit(IfStmtType & IF) {
+  const bool Else_exist = ( IF.getElse() != nullptr );
+  BasicBlock *ThenBB, *ElseBB, *EndBB;
+  ThenBB = BasicBlock::Create(Context, "if.then", CurFunc);
+  if (Else_exist) {
+    ElseBB = BasicBlock::Create(Context, "if.else", CurFunc);
+  }
+  EndBB = BasicBlock::Create(Context, "if.end", CurFunc);
 
   IF.getCond()->accept(*this);
-  Value *CondV = findTempValue(IF.getCond());
-  Builder.CreateCondBr(CondV, ThenBB, ElseBB);
+  Builder.CreateCondBr(
+    findTempValue(IF.getCond()),
+    ThenBB,
+    Else_exist ? ElseBB : EndBB
+  );
+
   Builder.SetInsertPoint(ThenBB);
   IF.getThen()->accept(*this);
-  Builder.CreateBr(ContBB);
+  Builder.CreateBr(EndBB);
 
-  Builder.SetInsertPoint(ElseBB);
-  if (IF.getElse() != nullptr) {
+  if (Else_exist) {
     Builder.SetInsertPoint(ElseBB);
     IF.getElse()->accept(*this);
+    Builder.CreateBr(EndBB);
   }
-  Builder.CreateBr(ContBB);
-  Builder.SetInsertPoint(ContBB);
+
+  Builder.SetInsertPoint(EndBB);
 }
 
 void FuncBodyCodeGen::visit(ForStmtType &) {
