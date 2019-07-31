@@ -84,7 +84,7 @@ void FuncBodyCodeGen::visit(DeclStmtType &DS) {
   // this impl. assumes no tuple expression;
   if (DS.getValue() != nullptr) {
     DS.getValue()->accept(*this);
-    Builder.CreateStore(findTempValue(DS.getValue()), 
+    Builder.CreateStore(findTempValue(DS.getValue()),
                         findLocalVarAddr(DS.getVarDecls()[0]->getName()));
   }
 }
@@ -156,7 +156,6 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
       ;
     }
   }
-  
   TempValueTable[&BO] = V;
 }
 
@@ -167,14 +166,16 @@ void FuncBodyCodeGen::visit(CallExprType &CALL) {
     Arguments[0]->accept(*this);
     Value *CondV = findTempValue(Arguments[0]);
     Arguments[1]->accept(*this);
-    Value *StrValue = findTempValue(Arguments[1]);
     Value *Length = Builder.getInt32(dynamic_cast<const StringLiteral *>(Arguments[1])->getValue().length() + 1);
+
     BasicBlock *RevertBB = BasicBlock::Create(Context, "revert", CurFunc);
     BasicBlock *ContBB = BasicBlock::Create(Context, "continue", CurFunc);
 
     Builder.CreateCondBr(CondV, ContBB, RevertBB);
     Builder.SetInsertPoint(RevertBB);
-    Builder.CreateCall(Module.getFunction("revert"), {StrValue, Length});
+    auto *MSG = Builder.CreateInBoundsGEP(
+        findTempValue(Arguments[1]), {Builder.getInt32(0), Length}, "msg.ptr");
+    Builder.CreateCall(Module.getFunction("revert"), {MSG, Length});
     Builder.CreateUnreachable();
 
     Builder.SetInsertPoint(ContBB);

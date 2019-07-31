@@ -101,8 +101,7 @@ public:
     IRBuilder->CreateCall(
         M->getFunction("callDataCopy"),
         {voidptr, IRBuilder->getInt32(0), IRBuilder->getInt32(4)});
-    auto *CondV =
-        IRBuilder->CreateLoad(IRBuilder->getInt32Ty(), voidptr, "hash");
+    auto *CondV = IRBuilder->CreateLoad(IRBuilder->getInt32Ty(), p, "hash");
 
     // two phase codegen
     llvm::BasicBlock *Default = llvm::BasicBlock::Create(Context, "default", Main);
@@ -111,6 +110,7 @@ public:
         M->getFunction("revert"),
         {llvm::ConstantPointerNull::get(IRBuilder->getInt8PtrTy()),
          IRBuilder->getInt32(0)});
+    IRBuilder->CreateUnreachable();
 
     IRBuilder->SetInsertPoint(EntryBB);
 
