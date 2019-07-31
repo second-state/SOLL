@@ -28,11 +28,9 @@ void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
   FD.getBody()->accept(*this);
 }
 
-void FuncBodyCodeGen::visit(BlockType &B) {
-  ConstStmtVisitor::visit(B);
-}
+void FuncBodyCodeGen::visit(BlockType &B) { ConstStmtVisitor::visit(B); }
 
-void FuncBodyCodeGen::visit(IfStmtType & IF) {
+void FuncBodyCodeGen::visit(IfStmtType &IF) {
   BasicBlock *ThenBB = BasicBlock::Create(Context, "then", CurFunc);
   BasicBlock *ElseBB = BasicBlock::Create(Context, "else", CurFunc);
   BasicBlock *ContBB = BasicBlock::Create(Context, "ifcont", CurFunc);
@@ -45,7 +43,7 @@ void FuncBodyCodeGen::visit(IfStmtType & IF) {
   Builder.CreateBr(ContBB);
 
   Builder.SetInsertPoint(ElseBB);
-  if (IF.getElse() != nullptr){
+  if (IF.getElse() != nullptr) {
     Builder.SetInsertPoint(ElseBB);
     IF.getElse()->accept(*this);
   }
@@ -119,41 +117,51 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
 
     switch (BO.getOpcode()) {
     case BinaryOperatorKind::BO_Add:
-      V = Builder.CreateAdd(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_ADD");
+      V = Builder.CreateAdd(findTempValue(BO.getLHS()),
+                            findTempValue(BO.getRHS()), "BO_ADD");
       break;
     case BinaryOperatorKind::BO_Sub:
-      V = Builder.CreateSub(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_SUB");
+      V = Builder.CreateSub(findTempValue(BO.getLHS()),
+                            findTempValue(BO.getRHS()), "BO_SUB");
       break;
     case BinaryOperatorKind::BO_Mul:
-      V = Builder.CreateMul(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_MUL");
+      V = Builder.CreateMul(findTempValue(BO.getLHS()),
+                            findTempValue(BO.getRHS()), "BO_MUL");
       break;
     case BinaryOperatorKind::BO_Div:
-      V = Builder.CreateUDiv(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_DIV");
+      V = Builder.CreateUDiv(findTempValue(BO.getLHS()),
+                             findTempValue(BO.getRHS()), "BO_DIV");
       break;
     case BinaryOperatorKind::BO_Rem:
-      V = Builder.CreateURem(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_Rem");
+      V = Builder.CreateURem(findTempValue(BO.getLHS()),
+                             findTempValue(BO.getRHS()), "BO_Rem");
       break;
     case BinaryOperatorKind::BO_GE:
-      V = Builder.CreateICmpUGE(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_UGE");
+      V = Builder.CreateICmpUGE(findTempValue(BO.getLHS()),
+                                findTempValue(BO.getRHS()), "BO_UGE");
       break;
     case BinaryOperatorKind::BO_GT:
-      V = Builder.CreateICmpUGT(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_UGT");
+      V = Builder.CreateICmpUGT(findTempValue(BO.getLHS()),
+                                findTempValue(BO.getRHS()), "BO_UGT");
       break;
     case BinaryOperatorKind::BO_LE:
-      V = Builder.CreateICmpULE(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_ULE");
+      V = Builder.CreateICmpULE(findTempValue(BO.getLHS()),
+                                findTempValue(BO.getRHS()), "BO_ULE");
       break;
     case BinaryOperatorKind::BO_LT:
-      V = Builder.CreateICmpULT(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_ULT");
+      V = Builder.CreateICmpULT(findTempValue(BO.getLHS()),
+                                findTempValue(BO.getRHS()), "BO_ULT");
       break;
     case BinaryOperatorKind::BO_EQ:
-      V = Builder.CreateICmpEQ(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_EQ");
+      V = Builder.CreateICmpEQ(findTempValue(BO.getLHS()),
+                               findTempValue(BO.getRHS()), "BO_EQ");
       break;
     case BinaryOperatorKind::BO_NE:
-      V = Builder.CreateICmpNE(findTempValue(BO.getLHS()), findTempValue(BO.getRHS()), "BO_NE");
+      V = Builder.CreateICmpNE(findTempValue(BO.getLHS()),
+                               findTempValue(BO.getRHS()), "BO_NE");
       break;
     // TODO: other operators
-    default:
-      ;
+    default:;
     }
   }
   TempValueTable[&BO] = V;
@@ -166,7 +174,9 @@ void FuncBodyCodeGen::visit(CallExprType &CALL) {
     Arguments[0]->accept(*this);
     Value *CondV = findTempValue(Arguments[0]);
     Arguments[1]->accept(*this);
-    Value *Length = Builder.getInt32(dynamic_cast<const StringLiteral *>(Arguments[1])->getValue().length() + 1);
+    Value *Length = Builder.getInt32(
+        dynamic_cast<const StringLiteral *>(Arguments[1])->getValue().length() +
+        1);
 
     BasicBlock *RevertBB = BasicBlock::Create(Context, "revert", CurFunc);
     BasicBlock *ContBB = BasicBlock::Create(Context, "continue", CurFunc);
@@ -202,7 +212,7 @@ void FuncBodyCodeGen::visit(BooleanLiteralType &) {
 }
 
 void FuncBodyCodeGen::visit(StringLiteralType &SL) {
-  TempValueTable[&SL] = Builder.CreateGlobalString(SL.getValue(),"str");
+  TempValueTable[&SL] = Builder.CreateGlobalString(SL.getValue(), "str");
 }
 
 void FuncBodyCodeGen::visit(NumberLiteralType &NL) {

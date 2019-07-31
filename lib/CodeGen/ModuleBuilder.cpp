@@ -1,15 +1,15 @@
 #include "soll/CodeGen/ModuleBuilder.h"
-#include "soll/CodeGen/FuncBodyCodeGen.h"
 #include "CodeGenModule.h"
 #include "soll/AST/Decl.h"
 #include "soll/AST/DeclVisitor.h"
 #include "soll/AST/Expr.h"
 #include "soll/AST/StmtVisitor.h"
+#include "soll/CodeGen/FuncBodyCodeGen.h"
 #include <iostream>
 
-#include "../utils/SHA-3/stdafx.h"
-#include "../utils/SHA-3/Keccak.h"
 #include "../utils/SHA-3/CommandParser.h"
+#include "../utils/SHA-3/Keccak.h"
+#include "../utils/SHA-3/stdafx.h"
 
 #include "../utils/SHA-3/Endian.h"
 #include "../utils/SHA-3/Rotation.h"
@@ -47,7 +47,8 @@ public:
     // WebAssembly32TargetInfo
     M->setDataLayout(llvm::DataLayout("e-m:e-p:32:32-i64:64-n32:64-S128"));
     Builder.reset(new CodeGen::CodeGenModule(Context, *M, Diags));
-    IRBuilder = std::make_unique<llvm::IRBuilder<llvm::NoFolder>>(M->getContext());
+    IRBuilder =
+        std::make_unique<llvm::IRBuilder<llvm::NoFolder>>(M->getContext());
   }
 
   void HandleSourceUnit(ASTContext &C, SourceUnit &S) override {
@@ -72,8 +73,7 @@ public:
     // finish
     FT = llvm::FunctionType::get(
         IRBuilder->getVoidTy(),
-        {IRBuilder->getInt8PtrTy(), IRBuilder->getInt32Ty()},
-        false);
+        {IRBuilder->getInt8PtrTy(), IRBuilder->getInt32Ty()}, false);
     llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "finish", *M)
         ->addFnAttr(
             llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
@@ -81,8 +81,7 @@ public:
     // revert
     FT = llvm::FunctionType::get(
         IRBuilder->getVoidTy(),
-        {IRBuilder->getInt8PtrTy(), IRBuilder->getInt32Ty()},
-        false);
+        {IRBuilder->getInt8PtrTy(), IRBuilder->getInt32Ty()}, false);
     llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "revert", *M)
         ->addFnAttr(
             llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
@@ -97,21 +96,24 @@ public:
 
     // main
     FT = llvm::FunctionType::get(IRBuilder->getVoidTy(), {}, false);
-    llvm::Function *Main = llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "main", *M);
-    llvm::BasicBlock *EntryBB = llvm::BasicBlock::Create(Context, "entry", Main);
+    llvm::Function *Main =
+        llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "main", *M);
+    llvm::BasicBlock *EntryBB =
+        llvm::BasicBlock::Create(Context, "entry", Main);
 
     IRBuilder->SetInsertPoint(EntryBB);
-    auto *p = IRBuilder->CreateAlloca(IRBuilder->getInt32Ty(), nullptr,
-                                     "code.ptr");
-    auto *voidptr = IRBuilder->CreateBitCast(
-        p, IRBuilder->getInt8PtrTy(), "code.voidptr");
+    auto *p =
+        IRBuilder->CreateAlloca(IRBuilder->getInt32Ty(), nullptr, "code.ptr");
+    auto *voidptr =
+        IRBuilder->CreateBitCast(p, IRBuilder->getInt8PtrTy(), "code.voidptr");
     IRBuilder->CreateCall(
         M->getFunction("callDataCopy"),
         {voidptr, IRBuilder->getInt32(0), IRBuilder->getInt32(4)});
     auto *CondV = IRBuilder->CreateLoad(IRBuilder->getInt32Ty(), p, "hash");
 
     // two phase codegen
-    llvm::BasicBlock *Default = llvm::BasicBlock::Create(Context, "default", Main);
+    llvm::BasicBlock *Default =
+        llvm::BasicBlock::Create(Context, "default", Main);
     IRBuilder->SetInsertPoint(Default);
     IRBuilder->CreateCall(
         M->getFunction("revert"),
@@ -129,7 +131,8 @@ public:
 
     for (auto Node : CD.getSubNodes()) {
       const FunctionDecl *F = dynamic_cast<const soll::FunctionDecl *>(Node);
-      llvm::BasicBlock * CondBB = llvm::BasicBlock::Create(Context, F->getName(), Main);
+      llvm::BasicBlock *CondBB =
+          llvm::BasicBlock::Create(Context, F->getName(), Main);
       Labels[F->getName()] = CondBB;
       int hash = funcSignatureHash(*F);
       SI->addCase(IRBuilder->getInt32(hash), CondBB);
@@ -159,8 +162,9 @@ public:
     auto *arg_ptr = IRBuilder->CreateAlloca(
         llvm::ArrayType::get(IRBuilder->getInt64Ty(), Fparams.size()), nullptr,
         Fname + "_arg_ptr");
-    auto *arg_vptr = IRBuilder->CreateBitCast(arg_ptr, llvm::PointerType::getUnqual(IRBuilder->getInt8Ty()),
-                                              Fname + "_arg_vptr");
+    auto *arg_vptr = IRBuilder->CreateBitCast(
+        arg_ptr, llvm::PointerType::getUnqual(IRBuilder->getInt8Ty()),
+        Fname + "_arg_vptr");
     IRBuilder->CreateCall(
         M->getFunction("callDataCopy"),
         {arg_vptr, IRBuilder->getInt32(4),
@@ -171,24 +175,29 @@ public:
     std::vector<llvm::Type *> ArgsTy;
     for (int i = 0; i < Fparams.size(); i++) {
       auto Param = Fparams[i];
-      auto *ptr = IRBuilder->CreateInBoundsGEP(arg_ptr,
-                                               {IRBuilder->getInt32(0),IRBuilder->getInt32(i)},
-                                               Fname + "_" + Param->getName() + "_ptr");
-      auto *val = IRBuilder->CreateLoad(IRBuilder->getInt64Ty(), ptr, Fname + "_" + Param->getName());
+      auto *ptr = IRBuilder->CreateInBoundsGEP(
+          arg_ptr, {IRBuilder->getInt32(0), IRBuilder->getInt32(i)},
+          Fname + "_" + Param->getName() + "_ptr");
+      auto *val = IRBuilder->CreateLoad(IRBuilder->getInt64Ty(), ptr,
+                                        Fname + "_" + Param->getName());
       ArgsVal.push_back(val);
       ArgsTy.push_back(IRBuilder->getInt64Ty());
     }
 
     // Call this function
-    FunctionType *FT = FunctionType::get(IRBuilder->getInt64Ty(), ArgsTy, false);
-    Function *Func = Function::Create(FT, Function::ExternalLinkage, F.getName(), *GetModule());
+    FunctionType *FT =
+        FunctionType::get(IRBuilder->getInt64Ty(), ArgsTy, false);
+    Function *Func = Function::Create(FT, Function::ExternalLinkage,
+                                      F.getName(), *GetModule());
     auto *r = IRBuilder->CreateCall(Func, ArgsVal, Fname + "_r");
 
     // put return value to returndata
-    auto *r_ptr = IRBuilder->CreateAlloca(IRBuilder->getInt64Ty(), nullptr, Fname + "_r_ptr");
+    auto *r_ptr = IRBuilder->CreateAlloca(IRBuilder->getInt64Ty(), nullptr,
+                                          Fname + "_r_ptr");
     IRBuilder->CreateStore(r, r_ptr);
-    auto *r_vptr = IRBuilder->CreateBitCast(r_ptr, llvm::PointerType::getUnqual(IRBuilder->getInt8Ty()),
-                                            Fname + "_r_vptr");
+    auto *r_vptr = IRBuilder->CreateBitCast(
+        r_ptr, llvm::PointerType::getUnqual(IRBuilder->getInt8Ty()),
+        Fname + "_r_vptr");
     IRBuilder->CreateCall(
         M->getFunction("finish"),
         {r_vptr, IRBuilder->getInt32(

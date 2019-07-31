@@ -171,7 +171,7 @@ void ASTPrinter::visit(DeclStmtType &decstmt) {
   ConstStmtVisitor::visit(decstmt);
   for (auto vdecl : decstmt.getVarDecls())
     vdecl->accept(*this);
-  if(decstmt.getValue() != nullptr)
+  if (decstmt.getValue() != nullptr)
     decstmt.getValue()->accept(*this);
   unindent();
 }
