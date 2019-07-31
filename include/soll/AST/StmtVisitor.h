@@ -6,6 +6,7 @@ namespace soll {
 
 class Block;
 class IfStmt;
+class WhileStmt;
 class ForStmt;
 class ContinueStmt;
 class BreakStmt;
@@ -23,6 +24,7 @@ template <bool Const> class StmtVisitorBase {
 protected:
   using BlockType = typename cond_const<Const, Block>::type;
   using IfStmtType = typename cond_const<Const, IfStmt>::type;
+  using WhileStmtType = typename cond_const<Const, WhileStmt>::type;
   using ForStmtType = typename cond_const<Const, ForStmt>::type;
   using ContinueStmtType = typename cond_const<Const, ContinueStmt>::type;
   using BreakStmtType = typename cond_const<Const, BreakStmt>::type;
@@ -40,6 +42,7 @@ public:
   virtual ~StmtVisitorBase() noexcept {}
   virtual void visit(BlockType &);
   virtual void visit(IfStmtType &);
+  virtual void visit(WhileStmtType &);
   virtual void visit(ForStmtType &);
   virtual void visit(ContinueStmtType &);
   virtual void visit(BreakStmtType &);

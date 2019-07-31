@@ -21,6 +21,12 @@ template <bool Const> void StmtVisitorBase<Const>::visit(IfStmtType &stmt) {
     stmt.getElse()->accept(*this);
 }
 
+template<bool Const> void
+StmtVisitorBase<Const>::visit(WhileStmtType &While) {
+  While.getCond()->accept(*this);
+  While.getBody()->accept(*this);
+}
+
 template <bool Const> void StmtVisitorBase<Const>::visit(ForStmtType &) {
   // TODO: implement
 }

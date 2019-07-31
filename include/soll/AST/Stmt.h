@@ -78,6 +78,25 @@ public:
 
 class BreakableStmt : public Stmt {};
 
+class WhileStmt : public Stmt {
+  ExprPtr Cond;
+  StmtPtr Body;
+
+public:
+  WhileStmt(ExprPtr Cond, StmtPtr Body) : Cond(std::move(Cond)), Body(std::move(Body)) {}
+
+  void setCond(ExprPtr &&Cond) { this->Cond = std::move(Cond); }
+  void setBody(StmtPtr &&Body) { this->Body = std::move(Body); }
+
+  Expr *getCond() { return Cond.get(); }
+  const Expr *getCond() const { return Cond.get(); }
+  Stmt *getBody() { return Body.get(); }
+  const Stmt *getBody() const { return Body.get(); }
+
+  void accept(StmtVisitor &visitor) override;
+  void accept(ConstStmtVisitor &visitor) const override;
+};
+
 class ForStmt : public Stmt {
 public:
   void accept(StmtVisitor &visitor) override;
