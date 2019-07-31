@@ -2,3 +2,4 @@
 add_subdirectory(soll)
 add_subdirectory(funcbodycodegen)
 add_subdirectory(stmtcodegen)
+add_subdirectory(expr_testcase)
