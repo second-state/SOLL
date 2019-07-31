@@ -14,13 +14,7 @@ void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
   // TODO: replace this temp impl
   // this impl assumes type of functionDecl params and return is uint64
   auto PsSol = FD.getParams()->getParams();
-  std::vector<llvm::Type *> Tys;
-  for(int i = 0; i < PsSol.size(); i++)
-    Tys.push_back(Builder.getInt64Ty());
-  llvm::ArrayRef<llvm::Type *> ParamTys(&Tys[0], Tys.size());
-  FunctionType *FT = FunctionType::get(Builder.getInt64Ty(), ParamTys, false);
-	CurFunc = Function::Create(FT, Function::ExternalLinkage, FD.getName(), &Module);
-
+  CurFunc = Module.getFunction(FD.getName());
   BasicBlock *BB = BasicBlock::Create(Context, "entry", CurFunc);
   Builder.SetInsertPoint(BB);
 
