@@ -6,6 +6,7 @@
 #include "soll/CodeGen/FuncBodyCodeGen.h"
 #include "soll/Frontend/ASTConsumers.h"
 #include <iostream>
+#include <cstring>
 
 using namespace soll;
 
@@ -20,68 +21,122 @@ using llvm::LLVMContext;
 // using llvm::BasicBlock;
 
 int main(int argc, const char **argv) {
-  SourceUnit source(
-    std::move(container<std::vector<std::unique_ptr<Decl>>>::init({
-      std::make_unique<ContractDecl>(
-        "C", std::vector<std::unique_ptr<InheritanceSpecifier>>(),
-        std::move(container<std::vector<std::unique_ptr<Decl>>>::init({
-          std::make_unique<FunctionDecl>(
-            "test", Decl::Visibility::Public, StateMutability::Pure,
-            false,
-            std::make_unique<ParamList>(
-              std::move(container<std::vector<std::unique_ptr<VarDecl>>>::init({
-                std::make_unique<VarDecl>(
-                  std::make_unique<Type>(),"a", nullptr,
-                  Decl::Visibility::Default),
-                std::make_unique<VarDecl>(
-                  std::make_unique<Type>(),"b", nullptr,
-                  Decl::Visibility::Default)
-            }))),
-            std::vector<std::unique_ptr<ModifierInvocation>>(),
-            std::make_unique<ParamList>(
-              std::move(container<std::vector<std::unique_ptr<VarDecl>>>::init({
-                std::make_unique<VarDecl>(
-                  std::make_unique<Type>(), "", nullptr,
-                  Decl::Visibility::Default
-            )}))),
-            std::make_unique<Block>(
-              std::move(container<std::vector<std::unique_ptr<Stmt>>>::init({
-                std::make_unique<IfStmt>(
-                  std::make_unique<BinaryOperator>(
-                    std::make_unique<Identifier>("a"),
-                    std::make_unique<NumberLiteral>(9),
-                    BinaryOperatorKind::BO_GT
-                  ),
-                  std::make_unique<Block>(
-                    std::move(container<std::vector<std::unique_ptr<Stmt>>>::init({
-                  }))
-                  ),
-                  std::make_unique<Block>(
-                    std::move(container<std::vector<std::unique_ptr<Stmt>>>::init({
-                      std::make_unique<IfStmt>(
+  if(argc==1) return 0;
+  std::unique_ptr<SourceUnit> source;
+  if(!strcmp(argv[1], "IfStmt")) { // IfStmt test
+    source = std::move(std::make_unique<SourceUnit>(
+      std::move(container<std::vector<std::unique_ptr<Decl>>>::init({
+        std::make_unique<ContractDecl>(
+          "C", std::vector<std::unique_ptr<InheritanceSpecifier>>(),
+          std::move(container<std::vector<std::unique_ptr<Decl>>>::init({
+            std::make_unique<FunctionDecl>(
+              "test", Decl::Visibility::Public, StateMutability::Pure,
+              false,
+              std::make_unique<ParamList>(
+                std::move(container<std::vector<std::unique_ptr<VarDecl>>>::init({
+                  std::make_unique<VarDecl>(
+                    std::make_unique<Type>(),"a", nullptr,
+                    Decl::Visibility::Default),
+                  std::make_unique<VarDecl>(
+                    std::make_unique<Type>(),"b", nullptr,
+                    Decl::Visibility::Default)
+              }))),
+              std::vector<std::unique_ptr<ModifierInvocation>>(),
+              std::make_unique<ParamList>(
+                std::move(container<std::vector<std::unique_ptr<VarDecl>>>::init({
+                  std::make_unique<VarDecl>(
+                    std::make_unique<Type>(), "", nullptr,
+                    Decl::Visibility::Default
+              )}))),
+              std::make_unique<Block>(
+                std::move(container<std::vector<std::unique_ptr<Stmt>>>::init({
+                  std::make_unique<IfStmt>(
+                    std::make_unique<BinaryOperator>(
+                      std::make_unique<Identifier>("a"),
+                      std::make_unique<NumberLiteral>(9),
+                      BinaryOperatorKind::BO_GT
+                    ),
+                    std::make_unique<Block>(
+                      std::move(container<std::vector<std::unique_ptr<Stmt>>>::init({
+                    }))
+                    ),
+                    std::make_unique<Block>(
+                      std::move(container<std::vector<std::unique_ptr<Stmt>>>::init({
+                        std::make_unique<IfStmt>(
+                          std::make_unique<BinaryOperator>(
+                            std::make_unique<Identifier>("a"),
+                            std::make_unique<NumberLiteral>(11),
+                            BinaryOperatorKind::BO_GT
+                          ),
+                          std::make_unique<Block>(
+                            std::move(container<std::vector<std::unique_ptr<Stmt>>>::init({
+                          }))),
+                          std::make_unique<Block>(
+                            std::move(container<std::vector<std::unique_ptr<Stmt>>>::init({
+                        })))),
                         std::make_unique<BinaryOperator>(
                           std::make_unique<Identifier>("a"),
-                          std::make_unique<NumberLiteral>(11),
-                          BinaryOperatorKind::BO_GT
-                        ),
-                        std::make_unique<Block>(
-                          std::move(container<std::vector<std::unique_ptr<Stmt>>>::init({
-                        }))),
-                        std::make_unique<Block>(
-                          std::move(container<std::vector<std::unique_ptr<Stmt>>>::init({
-                      })))),
-                      std::make_unique<BinaryOperator>(
-                        std::make_unique<Identifier>("a"),
-                        std::make_unique<Identifier>("b"),
-                        BinaryOperatorKind::BO_Add
-                      )
-        }))))}))))})),
-        ContractDecl::ContractKind::Contract),
-  })));
+                          std::make_unique<Identifier>("b"),
+                          BinaryOperatorKind::BO_Add
+                        )
+          }))))}))))})),
+          ContractDecl::ContractKind::Contract),
+    }))));
+  }
+  else if(!strcmp(argv[1], "WhileStmt")) { // WhileStmt test
+    source = std::move(std::make_unique<SourceUnit>(
+      std::move(container<std::vector<std::unique_ptr<Decl>>>::init({
+        std::make_unique<ContractDecl>(
+          "C", std::vector<std::unique_ptr<InheritanceSpecifier>>(),
+          std::move(container<std::vector<std::unique_ptr<Decl>>>::init({
+            std::make_unique<FunctionDecl>(
+              "test", Decl::Visibility::Public, StateMutability::Pure,
+              false,
+              std::make_unique<ParamList>(
+                std::move(container<std::vector<std::unique_ptr<VarDecl>>>::init({
+                  std::make_unique<VarDecl>(
+                    std::make_unique<Type>(),"a", nullptr,
+                    Decl::Visibility::Default)
+              }))),
+              std::vector<std::unique_ptr<ModifierInvocation>>(),
+              std::make_unique<ParamList>(
+                std::move(container<std::vector<std::unique_ptr<VarDecl>>>::init({
+                  std::make_unique<VarDecl>(
+                    std::make_unique<Type>(), "", nullptr,
+                    Decl::Visibility::Default
+              )}))),
+              std::make_unique<Block>(
+                std::move(container<std::vector<std::unique_ptr<Stmt>>>::init({
+                  std::make_unique<WhileStmt>(
+                    std::make_unique<BinaryOperator>(
+                      std::make_unique<Identifier>("a"),
+                      std::make_unique<NumberLiteral>(10),
+                      BinaryOperatorKind::BO_GT
+                    ),
+                    std::make_unique<Block>(
+                      std::move(container<std::vector<std::unique_ptr<Stmt>>>::init({
+                        std::make_unique<BinaryOperator>(
+                          std::make_unique<Identifier>("a"),
+                          std::make_unique<Identifier>("a"),
+                          BinaryOperatorKind::BO_Add
+                        )
+                      }))
+                    )
+                  ),
+                  std::make_unique<BinaryOperator>(
+                    std::make_unique<NumberLiteral>(10),
+                    std::make_unique<Identifier>("a"),
+                    BinaryOperatorKind::BO_Add
+                  )
+                }))))})),
+          ContractDecl::ContractKind::Contract),
+    }))));
+  }
+  else return 0;
 
   ASTContext *Ctx = new ASTContext();
   auto p = CreateASTPrinter();
-  p->HandleSourceUnit(*Ctx, source);
+  p->HandleSourceUnit(*Ctx, *source);
 
   LLVMContext Context;
   IRBuilder<llvm::NoFolder> Builder(Context);
@@ -89,7 +144,7 @@ int main(int argc, const char **argv) {
   FuncBodyCodeGen FBCG(Context, Builder, Module);
 
   FBCG.compile(*static_cast<const FunctionDecl *>(
-      static_cast<const ContractDecl *>(source.getNodes().front())
+      static_cast<const ContractDecl *>(source->getNodes().front())
           ->getSubNodes()
           .front()));
   Module.print(llvm::errs(), nullptr);
