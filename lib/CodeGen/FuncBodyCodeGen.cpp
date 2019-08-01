@@ -98,8 +98,43 @@ void FuncBodyCodeGen::visit(WhileStmtType &While) {
   Builder.SetInsertPoint(EndBB);
 }
 
-void FuncBodyCodeGen::visit(ForStmtType &) {
-  // TODO
+void FuncBodyCodeGen::visit(ForStmtType &FS) {
+  const bool Init_exist = ( FS.getInit() != nullptr );
+  const bool Cond_exist = ( FS.getCond() != nullptr );
+  const bool Loop_exist = ( FS.getLoop() != nullptr );
+
+  BasicBlock *CondBB = BasicBlock::Create(Context, "for.cond", CurFunc);
+  BasicBlock *BodyBB = BasicBlock::Create(Context, "for.body", CurFunc);
+  BasicBlock *EndBB = BasicBlock::Create(Context, "for.end", CurFunc);
+
+  if ( Init_exist ) {
+    FS.getInit()->accept(*this);
+  }
+  Builder.CreateBr(CondBB);
+
+  Builder.SetInsertPoint(CondBB);
+  if ( Cond_exist ) {
+    FS.getCond()->accept(*this);
+    Value* cond = Builder.CreateICmpNE(
+      findTempValue(FS.getCond()),
+      Builder.getFalse()
+    );
+    Builder.CreateCondBr(
+      cond,
+      BodyBB,
+      EndBB
+    );
+  }
+  else Builder.CreateBr(BodyBB);
+
+  Builder.SetInsertPoint(BodyBB);
+  FS.getBody()->accept(*this);
+  if ( Loop_exist ) {
+    FS.getLoop()->accept(*this);
+  }
+  Builder.CreateBr(CondBB);
+
+  Builder.SetInsertPoint(EndBB);
 }
 
 void FuncBodyCodeGen::visit(ContinueStmtType &) {
