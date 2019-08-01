@@ -101,7 +101,29 @@ public:
 };
 
 class ForStmt : public Stmt {
+  StmtPtr Init; /// optional
+  ExprPtr Cond; /// optional
+  ExprPtr Loop; /// optional
+  StmtPtr Body;
+
 public:
+  ForStmt(StmtPtr Init, ExprPtr Cond, ExprPtr Loop, StmtPtr Body)
+      : Init(std::move(Init)), Cond(std::move(Cond)), Loop(std::move(Loop)), Body(std::move(Body)) {}
+
+  void setInit(StmtPtr &&Init) { this->Init = std::move(Init); }
+  void setCond(ExprPtr &&Cond) { this->Cond = std::move(Cond); }
+  void setLoop(ExprPtr &&Loop) { this->Loop = std::move(Loop); }
+  void setBody(StmtPtr &&Body) { this->Body = std::move(Body); }
+
+  Stmt *getInit() { return Init.get(); }
+  const Stmt *getInit() const { return Init.get(); }
+  Expr *getCond() { return Cond.get(); }
+  const Expr *getCond() const { return Cond.get(); }
+  Expr *getLoop() { return Loop.get(); }
+  const Expr *getLoop() const { return Loop.get(); }
+  Stmt *getBody() { return Body.get(); }
+  const Stmt *getBody() const { return Body.get(); }
+
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
 };

@@ -27,8 +27,14 @@ template <bool Const> void StmtVisitorBase<Const>::visit(WhileStmtType &While) {
   While.getBody()->accept(*this);
 }
 
-template <bool Const> void StmtVisitorBase<Const>::visit(ForStmtType &) {
-  // TODO: implement
+template <bool Const> void StmtVisitorBase<Const>::visit(ForStmtType &stmt) {
+  if (stmt.getInit())
+    stmt.getInit()->accept(*this);
+  if (stmt.getCond())
+    stmt.getCond()->accept(*this);
+  if (stmt.getLoop())
+    stmt.getLoop()->accept(*this);
+  stmt.getBody()->accept(*this);
 }
 
 template <bool Const> void StmtVisitorBase<Const>::visit(ContinueStmtType &) {
