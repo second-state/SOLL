@@ -31,6 +31,7 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
   // codegen LLVM IR in the visit functions
   void visit(BlockType &) override;
   void visit(IfStmtType &) override;
+  void visit(WhileStmtType &) override;
   void visit(ForStmtType &) override;
   void visit(ContinueStmtType &) override;
   void visit(BreakStmtType &) override;

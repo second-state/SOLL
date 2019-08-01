@@ -60,6 +60,27 @@ void FuncBodyCodeGen::visit(IfStmtType & IF) {
   Builder.SetInsertPoint(EndBB);
 }
 
+void FuncBodyCodeGen::visit(WhileStmtType &While) {
+  BasicBlock *CondBB = BasicBlock::Create(Context, "while.cond", CurFunc);
+  BasicBlock *BodyBB = BasicBlock::Create(Context, "while.body", CurFunc);
+  BasicBlock *EndBB = BasicBlock::Create(Context, "while.end", CurFunc);
+
+  Builder.CreateBr(CondBB);
+  Builder.SetInsertPoint(CondBB);
+  While.getCond()->accept(*this);
+  Builder.CreateCondBr(
+    findTempValue(While.getCond()),
+    BodyBB,
+    EndBB
+  );
+
+  Builder.SetInsertPoint(BodyBB);
+  While.getBody()->accept(*this);
+  Builder.CreateBr(CondBB);
+
+  Builder.SetInsertPoint(EndBB);
+}
+
 void FuncBodyCodeGen::visit(ForStmtType &) {
   // TODO
 }
