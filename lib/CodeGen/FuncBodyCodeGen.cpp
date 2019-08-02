@@ -369,6 +369,92 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
     default:;
     }
   }
+
+  if (BO.isLogicalOp()) {
+    if (BO.getOpcode() == BO_LAnd) {
+      llvm::Value *res = Builder.CreateAlloca(Builder.getInt64Ty());
+      BasicBlock *trueBB = BasicBlock::Create(Context, "BO_LAnd.true", CurFunc);
+      BasicBlock *falseBB = BasicBlock::Create(Context, "BO_LAnd.false", CurFunc);
+      BasicBlock *endBB = BasicBlock::Create(Context, "BO_LAnd.end", CurFunc);
+
+      BO.getLHS()->accept(*this);
+      llvm::Value *isTrueLHS = Builder.CreateICmpNE(
+        findTempValue(BO.getLHS()),
+        Builder.getInt64(0)
+      );
+      llvm::Value *truncLHS = Builder.CreateTrunc(
+        isTrueLHS,
+        Builder.getInt1Ty(),
+        "trunc"
+      );
+      Builder.CreateCondBr(
+        truncLHS,
+        trueBB,
+        falseBB
+      );
+
+      Builder.SetInsertPoint(trueBB);
+      BO.getRHS()->accept(*this);
+      llvm::Value *isTrueRHS = Builder.CreateICmpNE(
+        findTempValue(BO.getRHS()),
+        Builder.getInt64(0)
+      );
+      Builder.CreateStore(
+        Builder.CreateZExt(isTrueRHS, Builder.getInt64Ty()),
+        res
+      );
+      Builder.CreateBr(endBB);
+
+      Builder.SetInsertPoint(falseBB);
+      Builder.CreateStore(Builder.getInt64(0), res);
+      Builder.CreateBr(endBB);
+
+      Builder.SetInsertPoint(endBB);
+      // in order to store result of LAnd in TempValueTable
+      V = Builder.CreateLoad(res, "BO_LAnd");
+    } else if (BO.getOpcode() == BO_LOr) {
+      llvm::Value *res = Builder.CreateAlloca(Builder.getInt64Ty());
+      BasicBlock *trueBB = BasicBlock::Create(Context, "BO_LOr.true", CurFunc);
+      BasicBlock *falseBB = BasicBlock::Create(Context, "BO_LOr.false", CurFunc);
+      BasicBlock *endBB = BasicBlock::Create(Context, "BO_LOr.end", CurFunc);
+
+      BO.getLHS()->accept(*this);
+      llvm::Value *isTrueLHS = Builder.CreateICmpNE(
+        findTempValue(BO.getLHS()),
+        Builder.getInt64(0)
+      );
+      llvm::Value *trunc = Builder.CreateTrunc(
+        isTrueLHS,
+        Builder.getInt1Ty(),
+        "trunc"
+      );
+      Builder.CreateCondBr(
+        trunc,
+        trueBB,
+        falseBB
+      );
+
+      Builder.SetInsertPoint(trueBB);
+      Builder.CreateStore(Builder.getInt64(1), res);
+      Builder.CreateBr(endBB);
+
+      Builder.SetInsertPoint(falseBB);
+      BO.getRHS()->accept(*this);
+      llvm::Value *isTrueRHS = Builder.CreateICmpNE(
+        findTempValue(BO.getRHS()),
+        Builder.getInt64(0)
+      );
+      Builder.CreateStore(
+        Builder.CreateZExt(isTrueRHS, Builder.getInt64Ty()),
+        res
+      );
+      Builder.CreateBr(endBB);
+
+      Builder.SetInsertPoint(endBB);
+      // in order to store result of LAnd in TempValueTable
+      V = Builder.CreateLoad(res, "BO_LOr");  
+    }
+  }
   TempValueTable[&BO] = V;
 }
 
