@@ -7,4 +7,5 @@ add_library(sollBasic
   SourceLocation.cpp
   SourceManager.cpp
   TokenKinds.cpp
+  OperatorPrecedence.cpp
   )
