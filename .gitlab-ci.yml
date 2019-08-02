@@ -7,7 +7,7 @@
     - cd build
   script:
     - cmake ..
-    - make
+    - make -j2
   cache:
     key: ${OS}_${VERSION}-${COMPILER}
     paths:
