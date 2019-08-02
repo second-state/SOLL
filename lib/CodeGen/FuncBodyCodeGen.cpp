@@ -41,9 +41,9 @@ void FuncBodyCodeGen::visit(IfStmtType & IF) {
   EndBB = BasicBlock::Create(Context, "if.end", CurFunc);
 
   IF.getCond()->accept(*this);
-  Value* cond = Builder.CreateTrunc(
+  Value* cond = Builder.CreateICmpNE(
     findTempValue(IF.getCond()),
-    llvm::Type::getInt1Ty(Context),
+    Builder.getFalse(),
     "cond"
   );
   Builder.CreateCondBr(
@@ -73,9 +73,9 @@ void FuncBodyCodeGen::visit(WhileStmtType &While) {
   Builder.CreateBr(CondBB);
   Builder.SetInsertPoint(CondBB);
   While.getCond()->accept(*this);
-  Value* cond = Builder.CreateTrunc(
+  Value* cond = Builder.CreateICmpNE(
     findTempValue(While.getCond()),
-    llvm::Type::getInt1Ty(Context),
+    Builder.getFalse(),
     "cond"
   );
   Builder.CreateCondBr(
