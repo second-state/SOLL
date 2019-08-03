@@ -5,8 +5,8 @@
 #include "soll/AST/OperationKinds.h"
 #include "soll/AST/Stmt.h"
 #include "soll/AST/Type.h"
+#include "soll/Basic/OperatorPrecedence.h"
 #include "soll/Lex/Lexer.h"
-#include <iostream>
 
 using namespace std;
 
@@ -703,6 +703,7 @@ Parser::parseExpression(unique_ptr<Expr> &&PartiallyParsedExpression) {
   unique_ptr<Expr> Expression =
       parseBinaryExpression(4, std::move(PartiallyParsedExpression));
   if (TheLexer.LookAhead(0)->is(tok::equal)) {
+    TheLexer.CachedLex();
     unique_ptr<Expr> RightHandSide = parseExpression();
     return std::make_unique<BinaryOperator>(std::move(Expression),
                                             std::move(RightHandSide),
@@ -723,16 +724,10 @@ Parser::parseBinaryExpression(int MinPrecedence,
                               unique_ptr<Expr> &&PartiallyParsedExpression) {
   unique_ptr<Expr> Expression =
       parseUnaryExpression(std::move(PartiallyParsedExpression));
-  // [PrePOC] Need op precedence. Now assume all op precedence = 5, little
-  // bigger than default 4
-  if (TheLexer.LookAhead(0)->isOneOf(tok::semi, tok::comma, tok::r_paren))
-    return Expression;
-
-  int Precedence = 5;
+  int Precedence = static_cast<int>(getBinOpPrecedence(TheLexer.LookAhead(0)->getKind()));
   for (; Precedence >= MinPrecedence; --Precedence) {
-    while (
-        !TheLexer.LookAhead(0)->isOneOf(tok::semi, tok::comma, tok::r_paren)) {
-      // [PrePOC] Fix this token recognition method
+    while (getBinOpPrecedence(TheLexer.LookAhead(0)->getKind()) == Precedence) {
+      // [TODO] Fix this token recognition method
       BinaryOperatorKind Op = token2bop(TheLexer.LookAhead(0));
       TheLexer.CachedLex();
       unique_ptr<Expr> RightHandSide = parseBinaryExpression(Precedence + 1);

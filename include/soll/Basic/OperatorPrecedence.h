@@ -29,6 +29,6 @@ namespace prec {
 }
 
 /// Return the precedence of the specified binary operator token.
-prec::Level getBinOpPrecedence(tok::TokenKind Kind, bool GreaterThanIsOperator);
+prec::Level getBinOpPrecedence(tok::TokenKind Kind);
 
 }  // end namespace soll
