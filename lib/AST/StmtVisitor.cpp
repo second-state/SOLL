@@ -46,7 +46,9 @@ template <bool Const> void StmtVisitorBase<Const>::visit(BreakStmtType &) {
 }
 
 template <bool Const> void StmtVisitorBase<Const>::visit(ReturnStmtType &stmt) {
-  stmt.getRetValue()->accept(*this);
+  if (stmt.getRetValue() != nullptr) {
+    stmt.getRetValue()->accept(*this);
+  }
 }
 
 template <bool Const>
