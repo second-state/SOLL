@@ -21,8 +21,10 @@ void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
     std::vector<llvm::Type *> Tys;
     for(int i = 0; i < PsSol.size(); i++)
       Tys.push_back(Builder.getInt64Ty());
-    FunctionType *FT = FunctionType::get(Builder.getInt64Ty(), Tys, false);
-  	CurFunc = Function::Create(FT, Function::ExternalLinkage, FD.getName(), &Module);
+    llvm::ArrayRef<llvm::Type *> ParamTys(&Tys[0], Tys.size());
+    FunctionType *FT = FunctionType::get(Builder.getInt64Ty(), ParamTys, false);
+    CurFunc =
+        Function::Create(FT, Function::ExternalLinkage, FD.getName(), &Module);
   }
   BasicBlock *BB = BasicBlock::Create(Context, "entry", CurFunc);
   Builder.SetInsertPoint(BB);
@@ -248,52 +250,69 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
     // This impl assumes:
     //   lhs of assignment operator (=, +=, -=, ...) is a Identifier,
 
-    BO.getLHS()->accept(*this);
-    BO.getRHS()->accept(*this);
-    if (auto ID = dynamic_cast<const Identifier *>(BO.getLHS())) {
-      if (auto Addr = findLocalVarAddr(ID->getName())) {
-        auto lhsVal = findTempValue(BO.getLHS());
-        auto rhsVal = findTempValue(BO.getRHS());
-        switch(BO.getOpcode()) {
-        case BO_Assign:
-          V = rhsVal;
-          break;
-        case BO_MulAssign:
-          V = Builder.CreateMul(lhsVal, rhsVal, "BO_MulAssign");
-          break;
-        case BO_DivAssign:
-          V = Builder.CreateUDiv(lhsVal, rhsVal, "BO_DivAssign");
-          break;
-        case BO_RemAssign:
-          V = Builder.CreateURem(lhsVal, rhsVal, "BO_RemAssign");
-          break;
-        case BO_AddAssign:
-          V = Builder.CreateAdd(lhsVal, rhsVal, "BO_AddAssign");
-          break;
-        case BO_SubAssign:
-          V = Builder.CreateSub(lhsVal, rhsVal, "BO_SubAssign");
-          break;
-        case BO_ShlAssign:
-          V = Builder.CreateShl(lhsVal, rhsVal, "BO_ShlAssign");
-          break;
-        case BO_ShrAssign:
-          V = Builder.CreateAShr(lhsVal, rhsVal, "BO_ShrAssign");
-          break;
-        case BO_AndAssign:
-          V = Builder.CreateAnd(lhsVal, rhsVal, "BO_AndAssign");
-          break;
-        case BO_XorAssign:
-          V = Builder.CreateXor(lhsVal, rhsVal, "BO_XorAssign");
-          break;
-        case BO_OrAssign:
-          V = Builder.CreateOr(lhsVal, rhsVal, "BO_OrAssign");
-          break;
-        default:
-          ;
-        }
-        Builder.CreateStore(V, Addr);
-      }
+    llvm::Value *lhsAddr = findTempValue(BO.getLHS()); // required lhs as LValue
+    llvm::Value *lhsVal = nullptr;
+    llvm::Value *rhsVal = findTempValue(BO.getRHS());
+    if (BO.getRHS()->isLValue()) {
+      rhsVal = Builder.CreateLoad(rhsVal);
     }
+    switch (BO.getOpcode()) {
+    case BO_Assign:
+      lhsVal = Builder.CreateStore(rhsVal, lhsAddr);
+      break;
+    case BO_MulAssign:
+      lhsVal = Builder.CreateLoad(lhsAddr);
+      lhsVal = Builder.CreateMul(lhsVal, rhsVal, "BO_MulAssign");
+      Builder.CreateStore(lhsVal, lhsAddr);
+      break;
+    case BO_DivAssign:
+      lhsVal = Builder.CreateLoad(lhsAddr);
+      lhsVal = Builder.CreateUDiv(lhsVal, rhsVal, "BO_DivAssign");
+      Builder.CreateStore(lhsVal, lhsAddr);
+      break;
+    case BO_RemAssign:
+      lhsVal = Builder.CreateLoad(lhsAddr);
+      lhsVal = Builder.CreateURem(lhsVal, rhsVal, "BO_RemAssign");
+      Builder.CreateStore(lhsVal, lhsAddr);
+      break;
+    case BO_AddAssign:
+      lhsVal = Builder.CreateLoad(lhsAddr);
+      lhsVal = Builder.CreateAdd(lhsVal, rhsVal, "BO_AddAssign");
+      Builder.CreateStore(lhsVal, lhsAddr);
+      break;
+    case BO_SubAssign:
+      lhsVal = Builder.CreateLoad(lhsAddr);
+      lhsVal = Builder.CreateSub(lhsVal, rhsVal, "BO_SubAssign");
+      Builder.CreateStore(lhsVal, lhsAddr);
+      break;
+    case BO_ShlAssign:
+      lhsVal = Builder.CreateLoad(lhsAddr);
+      lhsVal = Builder.CreateShl(lhsVal, rhsVal, "BO_ShlAssign");
+      Builder.CreateStore(lhsVal, lhsAddr);
+      break;
+    case BO_ShrAssign:
+      lhsVal = Builder.CreateLoad(lhsAddr);
+      lhsVal = Builder.CreateAShr(lhsVal, rhsVal, "BO_ShrAssign");
+      Builder.CreateStore(lhsVal, lhsAddr);
+      break;
+    case BO_AndAssign:
+      lhsVal = Builder.CreateLoad(lhsAddr);
+      lhsVal = Builder.CreateAnd(lhsVal, rhsVal, "BO_AndAssign");
+      Builder.CreateStore(lhsVal, lhsAddr);
+      break;
+    case BO_XorAssign:
+      lhsVal = Builder.CreateLoad(lhsAddr);
+      lhsVal = Builder.CreateXor(lhsVal, rhsVal, "BO_XorAssign");
+      Builder.CreateStore(lhsVal, lhsAddr);
+      break;
+    case BO_OrAssign:
+      lhsVal = Builder.CreateLoad(lhsAddr);
+      lhsVal = Builder.CreateOr(lhsVal, rhsVal, "BO_OrAssign");
+      Builder.CreateStore(lhsVal, lhsAddr);
+      break;
+    default:;
+    }
+    V = rhsVal;
   }
 
   if (BO.isAdditiveOp() || BO.isMultiplicativeOp() || BO.isComparisonOp() || BO.isShiftOp() || BO.isBitwiseOp()) {
@@ -374,35 +393,31 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
     if (BO.getOpcode() == BO_LAnd) {
       llvm::Value *res = Builder.CreateAlloca(Builder.getInt64Ty());
       BasicBlock *trueBB = BasicBlock::Create(Context, "BO_LAnd.true", CurFunc);
-      BasicBlock *falseBB = BasicBlock::Create(Context, "BO_LAnd.false", CurFunc);
+      BasicBlock *falseBB =
+          BasicBlock::Create(Context, "BO_LAnd.false", CurFunc);
       BasicBlock *endBB = BasicBlock::Create(Context, "BO_LAnd.end", CurFunc);
 
       BO.getLHS()->accept(*this);
-      llvm::Value *isTrueLHS = Builder.CreateICmpNE(
-        findTempValue(BO.getLHS()),
-        Builder.getInt64(0)
-      );
-      llvm::Value *truncLHS = Builder.CreateTrunc(
-        isTrueLHS,
-        Builder.getInt1Ty(),
-        "trunc"
-      );
-      Builder.CreateCondBr(
-        truncLHS,
-        trueBB,
-        falseBB
-      );
+      llvm::Value *lhs = findTempValue(BO.getLHS());
+      if (BO.getLHS()->isLValue()) {
+        lhs = Builder.CreateLoad(lhs);
+      }
+      llvm::Value *isTrueLHS =
+          Builder.CreateICmpNE(findTempValue(BO.getLHS()), Builder.getInt64(0));
+      llvm::Value *truncLHS =
+          Builder.CreateTrunc(isTrueLHS, Builder.getInt1Ty(), "trunc");
+      Builder.CreateCondBr(truncLHS, trueBB, falseBB);
 
       Builder.SetInsertPoint(trueBB);
       BO.getRHS()->accept(*this);
-      llvm::Value *isTrueRHS = Builder.CreateICmpNE(
-        findTempValue(BO.getRHS()),
-        Builder.getInt64(0)
-      );
-      Builder.CreateStore(
-        Builder.CreateZExt(isTrueRHS, Builder.getInt64Ty()),
-        res
-      );
+      llvm::Value *rhs = findTempValue(BO.getRHS());
+      if (BO.getRHS()->isLValue()) {
+        rhs = Builder.CreateLoad(rhs);
+      }
+      llvm::Value *isTrueRHS =
+          Builder.CreateICmpNE(findTempValue(BO.getRHS()), Builder.getInt64(0));
+      Builder.CreateStore(Builder.CreateZExt(isTrueRHS, Builder.getInt64Ty()),
+                          res);
       Builder.CreateBr(endBB);
 
       Builder.SetInsertPoint(falseBB);
@@ -415,24 +430,20 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
     } else if (BO.getOpcode() == BO_LOr) {
       llvm::Value *res = Builder.CreateAlloca(Builder.getInt64Ty());
       BasicBlock *trueBB = BasicBlock::Create(Context, "BO_LOr.true", CurFunc);
-      BasicBlock *falseBB = BasicBlock::Create(Context, "BO_LOr.false", CurFunc);
+      BasicBlock *falseBB =
+          BasicBlock::Create(Context, "BO_LOr.false", CurFunc);
       BasicBlock *endBB = BasicBlock::Create(Context, "BO_LOr.end", CurFunc);
 
       BO.getLHS()->accept(*this);
-      llvm::Value *isTrueLHS = Builder.CreateICmpNE(
-        findTempValue(BO.getLHS()),
-        Builder.getInt64(0)
-      );
-      llvm::Value *trunc = Builder.CreateTrunc(
-        isTrueLHS,
-        Builder.getInt1Ty(),
-        "trunc"
-      );
-      Builder.CreateCondBr(
-        trunc,
-        trueBB,
-        falseBB
-      );
+      llvm::Value *lhs = findTempValue(BO.getLHS());
+      if (BO.getLHS()->isLValue()) {
+        lhs = Builder.CreateLoad(lhs);
+      }
+      llvm::Value *isTrueLHS =
+          Builder.CreateICmpNE(findTempValue(BO.getLHS()), Builder.getInt64(0));
+      llvm::Value *trunc =
+          Builder.CreateTrunc(isTrueLHS, Builder.getInt1Ty(), "trunc");
+      Builder.CreateCondBr(trunc, trueBB, falseBB);
 
       Builder.SetInsertPoint(trueBB);
       Builder.CreateStore(Builder.getInt64(1), res);
@@ -440,19 +451,19 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
 
       Builder.SetInsertPoint(falseBB);
       BO.getRHS()->accept(*this);
-      llvm::Value *isTrueRHS = Builder.CreateICmpNE(
-        findTempValue(BO.getRHS()),
-        Builder.getInt64(0)
-      );
-      Builder.CreateStore(
-        Builder.CreateZExt(isTrueRHS, Builder.getInt64Ty()),
-        res
-      );
+      llvm::Value *rhs = findTempValue(BO.getRHS());
+      if (BO.getRHS()->isLValue()) {
+        rhs = Builder.CreateLoad(rhs);
+      }
+      llvm::Value *isTrueRHS =
+          Builder.CreateICmpNE(findTempValue(BO.getRHS()), Builder.getInt64(0));
+      Builder.CreateStore(Builder.CreateZExt(isTrueRHS, Builder.getInt64Ty()),
+                          res);
       Builder.CreateBr(endBB);
 
       Builder.SetInsertPoint(endBB);
       // in order to store result of LAnd in TempValueTable
-      V = Builder.CreateLoad(res, "BO_LOr");  
+      V = Builder.CreateLoad(res, "BO_LOr");
     }
   }
   TempValueTable[&BO] = V;
@@ -490,14 +501,14 @@ void FuncBodyCodeGen::visit(ParenExprType &P) {
 
 void FuncBodyCodeGen::visit(IdentifierType &ID) {
   // TODO: replace this temp impl
-  // this impl assumes visited Identifier is rvalue
-  llvm::Value *V;
-  if (llvm::Value *Addr = findLocalVarAddr(ID.getName()))
-    V = Builder.CreateLoad(llvm::Type::getInt64Ty(Context), Addr, ID.getName());
-  else if (llvm::Value *Val = findParam(ID.getName()))
-    V = Val;
-  else {
-    V = Builder.getInt64(7122); // TODO: replace this
+  // this impl assumes visited Identifier is lvalue
+  llvm::Value *V = nullptr;
+  if (llvm::Value *Addr = findLocalVarAddr(ID.getName())) {
+    V = Addr;
+  } else if (llvm::Value *Val = findParam(ID.getName())) {
+    // V = Address of the found param;
+  } else {
+    // V = Builder.getInt64(7122); // TODO: replace this
   }
 
   TempValueTable[&ID] = V;

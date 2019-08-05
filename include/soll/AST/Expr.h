@@ -9,7 +9,20 @@
 
 namespace soll {
 
-class Expr : public ExprStmt {};
+enum class ValueKind { VK_LValue, VK_RValue };
+
+class Expr : public ExprStmt {
+  // add interface to check whether an expr is an LValue or RValue
+  // TODO : override isLValue() and is RValue() for each derived class
+  ValueKind exprValueKind;
+
+public:
+  Expr(ValueKind vk) : exprValueKind(vk) {}
+  ValueKind getValueKind() const { return exprValueKind; }
+  void setValueKind(ValueKind vk) { exprValueKind = vk; }
+  bool isLValue() const { return getValueKind() == ValueKind::VK_LValue; }
+  bool isRValue() const { return getValueKind() == ValueKind::VK_RValue; }
+};
 
 class TupleExpr {
   // TODO
@@ -21,8 +34,9 @@ class UnaryOperator : public Expr {
 
 public:
   typedef UnaryOperatorKind Opcode;
-
-  UnaryOperator(ExprPtr &&val, Opcode opc) : Val(std::move(val)), Opc(opc) {}
+  // TODO: set value kind in another pass
+  UnaryOperator(ExprPtr &&val, Opcode opc)
+      : Expr(ValueKind::VK_RValue), Val(std::move(val)), Opc(opc) {}
 
   void setOpcode(Opcode Opc) { this->Opc = Opc; }
   void setSubExpr(ExprPtr &&E) { Val = std::move(E); }
@@ -69,8 +83,9 @@ class BinaryOperator : public Expr {
 
 public:
   typedef BinaryOperatorKind Opcode;
-
-  BinaryOperator(ExprPtr &&lhs, ExprPtr &&rhs, Opcode opc) : Opc(opc) {
+  // TODO: set value kind in another pass
+  BinaryOperator(ExprPtr &&lhs, ExprPtr &&rhs, Opcode opc)
+      : Expr(ValueKind::VK_RValue), Opc(opc) {
     SubExprs[LHS] = std::move(lhs);
     SubExprs[RHS] = std::move(rhs);
   }
@@ -142,12 +157,14 @@ class CallExpr : public Expr {
   std::optional<std::vector<std::string>> Names;
 
 public:
+  // TODO: set value kind in another pass
   CallExpr(ExprPtr &&CalleeExpr, std::vector<ExprPtr> &&Arguments)
-      : CalleeExpr(std::move(CalleeExpr)), Arguments(std::move(Arguments)) {}
+      : Expr(ValueKind::VK_RValue), CalleeExpr(std::move(CalleeExpr)),
+        Arguments(std::move(Arguments)) {}
   CallExpr(ExprPtr &&CalleeExpr, std::vector<ExprPtr> &&Arguments,
            std::vector<std::string> &&Names)
-      : CalleeExpr(std::move(CalleeExpr)), Arguments(std::move(Arguments)),
-        Names(std::move(Names)) {}
+      : Expr(ValueKind::VK_RValue), CalleeExpr(std::move(CalleeExpr)),
+        Arguments(std::move(Arguments)), Names(std::move(Names)) {}
 
   Expr *getCalleeExpr() { return CalleeExpr.get(); }
   const Expr *getCalleeExpr() const { return CalleeExpr.get(); }
@@ -168,29 +185,45 @@ public:
 
 class ImplicitCastExpr : public Expr {
   // TODO
+public:
+  // TODO: set value kind in another pass
+  ImplicitCastExpr() : Expr(ValueKind::VK_RValue) {}
 };
 
 class ExplicitCastExpr : public Expr {
   // TODO
+public:
+  // TODO: set value kind in another pass
+  ExplicitCastExpr() : Expr(ValueKind::VK_RValue) {}
 };
 
 class NewExpr : public Expr {
   // TODO
+public:
+  // TODO: set value kind in another pass
+  NewExpr() : Expr(ValueKind::VK_RValue) {}
 };
 
 class MemberExpr : public Expr {
   // TODO
+public:
+  // TODO: set value kind in another pass
+  MemberExpr() : Expr(ValueKind::VK_LValue) {}
 };
 
 class IndexAccess : public Expr {
   // TODO
+public:
+  // TODO: set value kind in another pass
+  IndexAccess() : Expr(ValueKind::VK_LValue) {}
 };
 
 class ParenExpr : public Expr {
   ExprPtr Val;
 
 public:
-  ParenExpr(ExprPtr &&Val) : Val(std::move(Val)) {}
+  // TODO: set value kind in another pass
+  ParenExpr(ExprPtr &&Val) : Expr(ValueKind::VK_RValue), Val(std::move(Val)) {}
 
   Expr *getSubExpr() { return Val.get(); }
   const Stmt *getSubExpr() const { return Val.get(); }
@@ -201,13 +234,17 @@ public:
 
 class ConstantExpr : public Expr {
   // TODO
+public:
+  // TODO: set value kind in another pass
+  ConstantExpr() : Expr(ValueKind::VK_RValue) {}
 };
 
 class Identifier : public Expr {
   std::string name;
 
 public:
-  Identifier(std::string &&Name) : name(Name) {}
+  // TODO: set value kind in another pass
+  Identifier(std::string &&Name) : Expr(ValueKind::VK_LValue), name(Name) {}
   void setName(std::string &&Name) { name = Name; }
   std::string getName() const { return name; }
 
@@ -218,13 +255,17 @@ public:
 
 class ElementaryTypeNameExpr : public Expr {
   // TODO
+public:
+  // TODO: set value kind in another pass
+  ElementaryTypeNameExpr() : Expr(ValueKind::VK_LValue) {}
 };
 
 class BooleanLiteral : public Expr {
   bool value;
 
 public:
-  BooleanLiteral(bool val) : value(val) {}
+  // TODO: set value kind in another pass
+  BooleanLiteral(bool val) : Expr(ValueKind::VK_RValue), value(val) {}
   void setValue(bool val) { value = val; }
   bool getValue() const { return value; }
   void accept(StmtVisitor &visitor) override;
@@ -235,7 +276,8 @@ class StringLiteral : public Expr {
   std::string value;
 
 public:
-  StringLiteral(std::string &&val) : value(val) {}
+  // TODO: set value kind in another pass
+  StringLiteral(std::string &&val) : Expr(ValueKind::VK_RValue), value(val) {}
   void setValue(std::string &&val) { value = val; }
   std::string getValue() const { return value; }
 
@@ -249,7 +291,8 @@ class NumberLiteral : public Expr {
   int value;
 
 public:
-  NumberLiteral(int val) : value(val) {}
+  // TODO: set value kind in another pass
+  NumberLiteral(int val) : Expr(ValueKind::VK_RValue), value(val) {}
   void setValue(int val) { value = val; }
   int getValue() const { return value; }
   void accept(StmtVisitor &visitor) override;
