@@ -194,6 +194,38 @@ int main(int argc, const char **argv) {
           ContractDecl::ContractKind::Contract),
     }))));
   }
+  
+  else if(!strcmp(argv[1], "ReturnStmt")) { // ReturnStmt test
+    source = std::move(std::make_unique<SourceUnit>(
+      std::move(container<std::vector<std::unique_ptr<Decl>>>::init({
+        std::make_unique<ContractDecl>(
+          "C", std::vector<std::unique_ptr<InheritanceSpecifier>>(),
+          std::move(container<std::vector<std::unique_ptr<Decl>>>::init({
+            std::make_unique<FunctionDecl>(
+              "test", Decl::Visibility::Public, StateMutability::Pure,
+              false,
+              std::make_unique<ParamList>(
+                std::move(container<std::vector<std::unique_ptr<VarDecl>>>::init({
+                  std::make_unique<VarDecl>(
+                    std::make_unique<Type>(),"a", nullptr,
+                    Decl::Visibility::Default)
+              }))),
+              std::vector<std::unique_ptr<ModifierInvocation>>(),
+              std::make_unique<ParamList>(
+                std::move(container<std::vector<std::unique_ptr<VarDecl>>>::init({
+                  std::make_unique<VarDecl>(
+                    std::make_unique<Type>(), "", nullptr,
+                    Decl::Visibility::Default
+              )}))),
+              std::make_unique<Block>(
+                std::move(container<std::vector<std::unique_ptr<Stmt>>>::init({
+                  std::make_unique<ReturnStmt>(
+                    std::make_unique<NumberLiteral>(7122)
+                  )
+                }))))})),
+          ContractDecl::ContractKind::Contract),
+    }))));
+  }
   else return 0;
 
   ASTContext *Ctx = new ASTContext();
