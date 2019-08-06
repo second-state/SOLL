@@ -27,6 +27,8 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
   // LocalVarAddrTable stores the addresses NOT values
   std::unordered_map<std::string, llvm::Value *> LocalVarAddrTable;
   // TempValueTable stores temperary values
+  // assume LValue will store address in TempValueTable
+  // assume RValue will store value in TempValueTable
   std::unordered_map<const soll::Stmt *, llvm::Value *> TempValueTable;
   // codegen LLVM IR in the visit functions
   void visit(BlockType &) override;

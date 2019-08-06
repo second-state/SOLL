@@ -88,6 +88,12 @@ public:
       : Expr(ValueKind::VK_RValue), Opc(opc) {
     SubExprs[LHS] = std::move(lhs);
     SubExprs[RHS] = std::move(rhs);
+    // TODO: move setValueKind to another pass
+    if (isAssignmentOp()) {
+      setValueKind(ValueKind::VK_LValue);
+    } else {
+      setValueKind(ValueKind::VK_RValue);
+    }
   }
 
   void setOpcode(Opcode Opc) { this->Opc = Opc; }
