@@ -16,6 +16,7 @@ class DeclStmt;
 class UnaryOperator;
 class BinaryOperator;
 class CallExpr;
+class ParenExpr;
 class Identifier;
 class BooleanLiteral;
 class StringLiteral;
@@ -34,6 +35,7 @@ protected:
   using UnaryOperatorType = typename cond_const<Const, UnaryOperator>::type;
   using BinaryOperatorType = typename cond_const<Const, BinaryOperator>::type;
   using CallExprType = typename cond_const<Const, CallExpr>::type;
+  using ParenExprType = typename cond_const<Const, ParenExpr>::type;
   using IdentifierType = typename cond_const<Const, Identifier>::type;
   using BooleanLiteralType = typename cond_const<Const, BooleanLiteral>::type;
   using StringLiteralType = typename cond_const<Const, StringLiteral>::type;
@@ -52,6 +54,7 @@ public:
   virtual void visit(UnaryOperatorType &);
   virtual void visit(BinaryOperatorType &);
   virtual void visit(CallExprType &);
+  virtual void visit(ParenExprType &);
   virtual void visit(IdentifierType &);
   virtual void visit(BooleanLiteralType &);
   virtual void visit(StringLiteralType &);

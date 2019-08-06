@@ -187,7 +187,16 @@ class IndexAccess : public Expr {
 };
 
 class ParenExpr : public Expr {
-  ExprPtr Val;
+  ExprPtr Exprs;
+
+public:
+  ParenExpr(ExprPtr &&Exprs) : Exprs(std::move(Exprs)) {}
+
+  Expr *getExprs() { return Exprs.get(); }
+  const Stmt *getExprs() const { return Exprs.get(); }
+
+  void accept(StmtVisitor &visitor) override;
+  void accept(ConstStmtVisitor &visitor) const override;
 };
 
 class ConstantExpr : public Expr {

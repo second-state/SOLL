@@ -560,22 +560,30 @@ unique_ptr<Stmt> Parser::parseSimpleStatement() {
   llvm::Optional<Token> CurTok;
   LookAheadInfo StatementType;
   IndexAccessedPath Iap;
+  unique_ptr<Expr> Expression;
+
+  bool IsParenExpr = false;
   if (TheLexer.LookAhead(0)->is(tok::l_paren)) {
-    // [TODO] parseSimpleStatement a simple statement begin with '{'
-  } else {
-    tie(StatementType, Iap) = tryParseIndexAccessedPath();
-    switch (StatementType) {
-    case LookAheadInfo::VariableDeclaration:
-      return parseVariableDeclarationStatement(
-          typeNameFromIndexAccessStructure(Iap));
-    case LookAheadInfo::Expression:
-      return std::move(
-          parseExpression(std::move(expressionFromIndexAccessStructure(Iap))));
-    default:
-      assert(false && "Unhandle statement.");
-    }
+    IsParenExpr = true;
+    TheLexer.CachedLex(); // (
   }
-  return nullptr;
+
+  tie(StatementType, Iap) = tryParseIndexAccessedPath();
+  switch (StatementType) {
+  case LookAheadInfo::VariableDeclaration:
+    return parseVariableDeclarationStatement(
+        std::move(typeNameFromIndexAccessStructure(Iap)));
+  case LookAheadInfo::Expression:
+    Expression =
+        parseExpression(std::move(expressionFromIndexAccessStructure(Iap)));
+  default:
+    assert(false && "Unhandle statement.");
+  }
+  if (IsParenExpr) {
+    TheLexer.CachedLex(); // )
+    return parseExpression(std::make_unique<ParenExpr>(std::move(Expression)));
+  }
+  return Expression;
 }
 
 unique_ptr<DeclStmt> Parser::parseVariableDeclarationStatement(
@@ -603,10 +611,7 @@ unique_ptr<DeclStmt> Parser::parseVariableDeclarationStatement(
     Value = parseExpression();
   }
 
-  // [TEMP] Need fix.
-  // return std::move(std::make_unique<DeclStmt>());
-  return std::move(
-      std::make_unique<DeclStmt>(std::move(Variables), std::move(Value)));
+  return std::make_unique<DeclStmt>(std::move(Variables), std::move(Value));
 }
 
 pair<Parser::LookAheadInfo, Parser::IndexAccessedPath>
@@ -835,40 +840,18 @@ unique_ptr<Expr> Parser::parsePrimaryExpression() {
   }
   case tok::kw_type:
     // [TODO] Type expression is globally-avariable function
-    TheLexer.CachedLex();
+    assert(false && "Type not support right now\n");
     break;
   case tok::l_paren:
   case tok::l_square: {
-    // [TODO] Tuple case
+    // [TODO] Tuple/Array case
     // Tuple/parenthesized expression or inline array/bracketed expression.
     // Special cases: ()/[] is empty tuple/array type, (x) is not a real tuple,
     // (x,) is one-dimensional tuple, elements in arrays cannot be left out,
     // only in tuples.
     TheLexer.CachedLex();
-    vector<unique_ptr<Expr>> Components;
-    tok::TokenKind OppositeToken =
-        (CurTok->is(tok::l_paren) ? tok::r_paren : tok::r_square);
-    bool IsArray = (OppositeToken == tok::l_square);
-
-    if (TheLexer.LookAhead(0)->isNot(OppositeToken))
-
-      while (true) {
-        if (!TheLexer.LookAhead(0)->isOneOf(tok::comma, OppositeToken)) {
-          Components.push_back(parseExpression());
-        } else if (IsArray)
-          assert(
-              false &&
-              "Expected expression (inline array elements cannot be omitted).");
-        else
-          Components.push_back(nullptr);
-
-        if (TheLexer.LookAhead(0)->is(OppositeToken)) {
-          break;
-        }
-        TheLexer.CachedLex();
-      }
+    Exps = std::make_unique<ParenExpr>(std::move(parseExpression()));
     TheLexer.CachedLex();
-    // [AST] Create TupleExpression
     break;
   }
   case tok::unknown:
@@ -876,21 +859,6 @@ unique_ptr<Expr> Parser::parsePrimaryExpression() {
     break;
   default:
     // [TODO] Type MxN case
-    /*
-    if (CurTok->isElementaryTypeName())
-    {
-      //used for casts
-      unsigned FirstSize;
-      unsigned SecondSize;
-      tie(FirstSize, SecondSize) = m_scanner->currentTokenInfo();
-      ElementaryTypeNameToken elementaryExpression(m_scanner->currentToken(),
-    firstSize, secondSize); expression =
-    nodeFactory.createNode<ElementaryTypeNameExpression>(elementaryExpression);
-      m_scanner->next();
-    }
-    else
-      assert(false && "Expected primary expression.");
-    */
     assert(false && "Expected primary expression.");
     break;
   }

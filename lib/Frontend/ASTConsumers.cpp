@@ -129,6 +129,7 @@ public:
   void visit(UnaryOperatorType &) override;
   void visit(BinaryOperatorType &) override;
   void visit(CallExprType &) override;
+  void visit(ParenExprType &) override;
   void visit(IdentifierType &) override;
   void visit(BooleanLiteralType &) override;
   void visit(StringLiteralType &) override;
@@ -223,6 +224,10 @@ void ASTPrinter::visit(DeclStmtType &decstmt) {
   ConstStmtVisitor::visit(decstmt);
   for (auto vdecl : decstmt.getVarDecls())
     vdecl->accept(*this);
+  // [TODO] Debug use, this field should be removed in the furture.
+  // Value will store in ValDecl node.
+  if (decstmt.getValue() != nullptr)
+    decstmt.getValue()->accept(*this);
   unindent();
 }
 
@@ -238,9 +243,15 @@ void ASTPrinter::visit(BinaryOperatorType &op) {
   unindent();
 }
 
-void ASTPrinter::visit(CallExprType &id) {
+void ASTPrinter::visit(CallExprType &call) {
   os() << indent() << "CallExpr\n";
-  ConstStmtVisitor::visit(id);
+  ConstStmtVisitor::visit(call);
+  unindent();
+}
+
+void ASTPrinter::visit(ParenExprType &paren) {
+  os() << indent() << "ParenExpr\n";
+  ConstStmtVisitor::visit(paren);
   unindent();
 }
 

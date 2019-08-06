@@ -50,6 +50,11 @@ void BinaryOperator::accept(ConstStmtVisitor &visitor) const {
 void CallExpr::accept(StmtVisitor &visitor) { visitor.visit(*this); }
 void CallExpr::accept(ConstStmtVisitor &visitor) const { visitor.visit(*this); }
 
+void ParenExpr::accept(StmtVisitor &visitor) { visitor.visit(*this); }
+void ParenExpr::accept(ConstStmtVisitor &visitor) const {
+  visitor.visit(*this);
+}
+
 void Identifier::accept(StmtVisitor &visitor) { visitor.visit(*this); }
 void Identifier::accept(ConstStmtVisitor &visitor) const {
   visitor.visit(*this);

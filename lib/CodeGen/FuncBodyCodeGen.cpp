@@ -276,6 +276,10 @@ void FuncBodyCodeGen::visit(CallExprType &CALL) {
   }
 }
 
+void FuncBodyCodeGen::visit(ParenExprType &P) {
+  // TODO: implement
+}
+
 void FuncBodyCodeGen::visit(IdentifierType &ID) {
   // TODO: replace this temp impl
   // this impl assumes visited Identifier is rvalue
