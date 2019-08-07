@@ -121,7 +121,8 @@ int main(int argc, const char **argv) {
                           BinaryOperatorKind::BO_Add
                         )
                       }))
-                    )
+                    ),
+                    false
                   ),
                   std::make_unique<BinaryOperator>(
                     std::make_unique<NumberLiteral>(10),

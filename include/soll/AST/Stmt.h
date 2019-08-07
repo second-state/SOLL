@@ -83,18 +83,21 @@ class BreakableStmt : public Stmt {};
 class WhileStmt : public Stmt {
   ExprPtr Cond;
   StmtPtr Body;
+  bool DoWhile;
 
 public:
-  WhileStmt(ExprPtr &&Cond, StmtPtr &&Body)
-      : Cond(std::move(Cond)), Body(std::move(Body)) {}
+  WhileStmt(ExprPtr &&Cond, StmtPtr &&Body, bool DoWhile)
+      : Cond(std::move(Cond)), Body(std::move(Body)), DoWhile(DoWhile) {}
 
   void setCond(ExprPtr &&Cond) { this->Cond = std::move(Cond); }
   void setBody(StmtPtr &&Body) { this->Body = std::move(Body); }
+  void setDoWhile(bool DoWhile) { this->DoWhile = DoWhile; }
 
   Expr *getCond() { return Cond.get(); }
   const Expr *getCond() const { return Cond.get(); }
   Stmt *getBody() { return Body.get(); }
   const Stmt *getBody() const { return Body.get(); }
+  const bool isDoWhile() const { return DoWhile; }
 
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
