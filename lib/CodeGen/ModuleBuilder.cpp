@@ -135,7 +135,7 @@ public:
       llvm::BasicBlock *CondBB =
           llvm::BasicBlock::Create(Context, F->getName(), Main);
       Labels[F->getName()] = CondBB;
-      int hash = funcSignatureHash(*F);
+      std::uint32_t hash = funcSignatureHash(*F);
       SI->addCase(IRBuilder->getInt32(hash), CondBB);
     }
 
@@ -206,21 +206,23 @@ public:
     IRBuilder->CreateUnreachable();
   }
 
-  int funcSignatureHash(const FunctionDecl &F) {
-    std::string signature = F.getName().str();
-    signature += '(';
+  std::uint32_t funcSignatureHash(const FunctionDecl &F) {
+    Keccak h(256);
+    h.addData(F.getName().bytes_begin(), 0, F.getName().size());
+    h.addData('(');
     bool first = true;
     for (const VarDecl *var : F.getParams()->getParams()) {
       if (!first)
-        signature += ',';
+        h.addData(',');
       first = false;
-      signature += "uint256"; // XXX: Implement typename
+      // XXX: Implement typename
+      static const std::array<uint8_t, 7> type = {'u', 'i', 'n', 't',
+                                                  '2', '5', '6'};
+      h.addData(type.data(), 0, type.size());
     }
-    signature += ')';
-    Keccak h(256);
-    h.addData((uint8_t *)signature.c_str(), 0, signature.length());
-    std::vector<unsigned char> op = h.digest();
-    uint hash = 0;
+    h.addData(')');
+    const std::vector<std::uint8_t> op = h.digest();
+    std::uint32_t hash = 0;
     for (int i = 0; i < 4; i++)
       hash = (hash << 8) | op[i];
     return hash;
