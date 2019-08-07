@@ -7,4 +7,5 @@ add_library(sollAST
   Stmt.cpp
   StmtAccept.cpp
   StmtVisitor.cpp
+  Type.cpp
   )
