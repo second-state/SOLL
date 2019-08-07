@@ -77,7 +77,7 @@ void FuncBodyCodeGen::visit(WhileStmtType &While) {
   BasicBlock *BodyBB = BasicBlock::Create(Context, "while.body", CurFunc);
   BasicBlock *EndBB = BasicBlock::Create(Context, "while.end", CurFunc);
 
-  Builder.CreateBr(CondBB);
+  Builder.CreateBr(While.isDoWhile() ? BodyBB : CondBB);
   Builder.SetInsertPoint(CondBB);
   While.getCond()->accept(*this);
   Value* cond = Builder.CreateICmpNE(
