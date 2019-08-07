@@ -58,7 +58,7 @@ class IfStmt : public Stmt {
   StmtPtr Else; /// optional
 
 public:
-  IfStmt(ExprPtr Cond, StmtPtr Then, StmtPtr Else)
+  IfStmt(ExprPtr &&Cond, StmtPtr &&Then, StmtPtr &&Else)
       : Cond(std::move(Cond)), Then(std::move(Then)), Else(std::move(Else)) {}
 
   void setCond(ExprPtr &&Cond) { this->Cond = std::move(Cond); }
@@ -85,7 +85,7 @@ class WhileStmt : public Stmt {
   StmtPtr Body;
 
 public:
-  WhileStmt(ExprPtr Cond, StmtPtr Body)
+  WhileStmt(ExprPtr &&Cond, StmtPtr &&Body)
       : Cond(std::move(Cond)), Body(std::move(Body)) {}
 
   void setCond(ExprPtr &&Cond) { this->Cond = std::move(Cond); }
@@ -107,8 +107,9 @@ class ForStmt : public Stmt {
   StmtPtr Body;
 
 public:
-  ForStmt(StmtPtr Init, ExprPtr Cond, ExprPtr Loop, StmtPtr Body)
-      : Init(std::move(Init)), Cond(std::move(Cond)), Loop(std::move(Loop)), Body(std::move(Body)) {}
+  ForStmt(StmtPtr &&Init, ExprPtr &&Cond, ExprPtr &&Loop, StmtPtr &&Body)
+      : Init(std::move(Init)), Cond(std::move(Cond)), Loop(std::move(Loop)),
+        Body(std::move(Body)) {}
 
   void setInit(StmtPtr &&Init) { this->Init = std::move(Init); }
   void setCond(ExprPtr &&Cond) { this->Cond = std::move(Cond); }
@@ -144,7 +145,7 @@ class ReturnStmt : public Stmt {
   ExprPtr RetExpr;
 
 public:
-  ReturnStmt(ExprPtr RetExpr) : RetExpr(std::move(RetExpr)) {}
+  ReturnStmt(ExprPtr &&RetExpr) : RetExpr(std::move(RetExpr)) {}
 
   void setRetValue(ExprPtr &&E) { RetExpr = std::move(E); }
 
