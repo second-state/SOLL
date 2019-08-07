@@ -130,13 +130,31 @@ public:
 };
 
 class ContinueStmt : public Stmt {
+  /// The loop statement that this ContinueStmt is in
+  Stmt *LoopStmt;
+
 public:
+  ContinueStmt(Stmt *LS) : LoopStmt(LS) {}
+
+  void setLoopStmt(Stmt *LS) { LoopStmt = LS; }
+  Stmt *getLoopStmt() { return LoopStmt; }
+  const Stmt *getLoopStmt() const { return LoopStmt; }
+
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
 };
 
 class BreakStmt : public Stmt {
+  /// The loop statement that this BreakStmt is in
+  Stmt *LoopStmt;
+
 public:
+  BreakStmt(Stmt *LS) : LoopStmt(LS) {}
+
+  void setLoopStmt(Stmt *LS) { LoopStmt = LS; }
+  Stmt *getLoopStmt() { return LoopStmt; }
+  const Stmt *getLoopStmt() const { return LoopStmt; }
+
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
 };
