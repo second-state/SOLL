@@ -36,7 +36,8 @@ bool CompilerInvocation::Execute(CompilerInstance &CI) {
   std::unique_ptr<FrontendAction> Action;
   switch (CI.getFrontendOpts().ProgramAction) {
   case ASTDump:
-    return false;
+    Action = std::make_unique<ASTPrintAction>();
+    break;
   case EmitLLVM:
     Action = std::make_unique<EmitLLVMAction>(&Ctx);
     break;
