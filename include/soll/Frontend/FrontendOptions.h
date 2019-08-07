@@ -5,6 +5,8 @@
 
 namespace soll {
 
+enum ActionKind { ASTDump, EmitLLVM };
+
 class FrontendInputFile {
   /// The file name, or "-" to read from standard input.
   std::string File;
@@ -28,6 +30,11 @@ public:
     assert(isBuffer());
     return Buffer;
   }
+};
+
+class FrontendOptions {
+public:
+  ActionKind ProgramAction = EmitLLVM;
 };
 
 } // namespace soll

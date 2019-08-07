@@ -16,6 +16,11 @@ static cl::OptionCategory SollCategory("Soll options");
 static cl::list<std::string> InputFilenames(cl::Positional,
                                             cl::desc("[<file> ...]"),
                                             cl::cat(SollCategory));
+static cl::opt<ActionKind> Action("action", cl::Optional, cl::ValueRequired,
+                                  cl::init(EmitLLVM),
+                                  cl::values(clEnumVal(ASTDump, "")),
+                                  cl::values(clEnumVal(EmitLLVM, "")),
+                                  cl::cat(SollCategory));
 
 void CompilerInvocation::ParseCommandLineOptions(int argc, const char **argv) {
   llvm::cl::ParseCommandLineOptions(argc, argv);
@@ -23,14 +28,22 @@ void CompilerInvocation::ParseCommandLineOptions(int argc, const char **argv) {
   DiagnosticOpts = new DiagnosticOptions();
   DiagRenderer =
       std::make_unique<TextDiagnostic>(llvm::errs(), *DiagnosticOpts);
+  FrontendOpts.ProgramAction = Action;
 }
 
 bool CompilerInvocation::Execute(CompilerInstance &CI) {
   llvm::LLVMContext Ctx;
-  EmitLLVMAction Action(&Ctx);
+  std::unique_ptr<FrontendAction> Action;
+  switch (CI.getFrontendOpts().ProgramAction) {
+  case ASTDump:
+    return false;
+  case EmitLLVM:
+    Action = std::make_unique<EmitLLVMAction>(&Ctx);
+    break;
+  }
   return std::all_of(std::begin(InputFilenames), std::end(InputFilenames),
                      [&Action, &CI](const auto &filename) {
-                       return CI.ExecuteAction(Action, filename);
+                       return CI.ExecuteAction(*Action, filename);
                      });
 }
 

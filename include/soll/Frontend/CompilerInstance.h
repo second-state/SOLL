@@ -58,6 +58,11 @@ public:
     return Invocation->getFileSystemOpts();
   }
 
+  FrontendOptions &getFrontendOpts() { return Invocation->getFrontendOpts(); }
+  const FrontendOptions &getFrontendOpts() const {
+    return Invocation->getFrontendOpts();
+  }
+
   bool hasDiagnostics() const { return Diagnostics != nullptr; }
   DiagnosticsEngine &getDiagnostics() const {
     assert(Diagnostics && "Compiler instance has no diagnostics!");
