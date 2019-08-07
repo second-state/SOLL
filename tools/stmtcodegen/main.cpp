@@ -124,6 +124,23 @@ int main(int argc, const char **argv) {
                     ),
                     false
                   ),
+                  std::make_unique<WhileStmt>(
+                    std::make_unique<BinaryOperator>(
+                      std::make_unique<Identifier>("a"),
+                      std::make_unique<NumberLiteral>(10),
+                      BinaryOperatorKind::BO_GT
+                    ),
+                    std::make_unique<Block>(
+                      std::move(container<std::vector<std::unique_ptr<Stmt>>>::init({
+                        std::make_unique<BinaryOperator>(
+                          std::make_unique<Identifier>("a"),
+                          std::make_unique<Identifier>("a"),
+                          BinaryOperatorKind::BO_Add
+                        )
+                      }))
+                    ),
+                    true
+                  ),
                   std::make_unique<BinaryOperator>(
                     std::make_unique<NumberLiteral>(10),
                     std::make_unique<Identifier>("a"),
