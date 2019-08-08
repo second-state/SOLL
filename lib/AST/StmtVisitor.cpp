@@ -69,7 +69,7 @@ template <bool Const> void StmtVisitorBase<Const>::visit(CallExprType &expr) {
 }
 
 template <bool Const> void StmtVisitorBase<Const>::visit(ParenExprType &expr) {
-  expr.getExprs()->accept(*this);
+  expr.getSubExpr()->accept(*this);
 }
 
 template <bool Const> void StmtVisitorBase<Const>::visit(IdentifierType &) {

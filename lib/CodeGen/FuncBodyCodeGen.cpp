@@ -278,7 +278,7 @@ void FuncBodyCodeGen::visit(CallExprType &CALL) {
 
 void FuncBodyCodeGen::visit(ParenExprType &P) {
   ConstStmtVisitor::visit(P);
-  TempValueTable[&P] = findTempValue(P.getExprs());
+  TempValueTable[&P] = findTempValue(P.getSubExpr());
 }
 
 void FuncBodyCodeGen::visit(IdentifierType &ID) {
