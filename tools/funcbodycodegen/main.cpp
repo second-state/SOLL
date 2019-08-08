@@ -21,46 +21,33 @@ using llvm::LLVMContext;
 // using llvm::BasicBlock;
 
 int main(int argc, const char **argv) {
+  using std::make_unique;
 
-  SourceUnit source(std::move(container<
-                              std::vector<std::unique_ptr<Decl>>>::init({
-      std::make_unique<ContractDecl>(
-          "C", std::vector<std::unique_ptr<InheritanceSpecifier>>(),
-          std::move(container<std::vector<std::unique_ptr<Decl>>>::init(
-              {std::make_unique<FunctionDecl>(
-                  "add", Decl::Visibility::Public, StateMutability::Pure, false,
-                  std::make_unique<ParamList>(std::move(
-                      container<std::vector<std::unique_ptr<VarDecl>>>::init(
-                          {std::make_unique<VarDecl>(std::make_unique<Type>(),
-                                                     "a", nullptr,
-                                                     Decl::Visibility::Default),
-                           std::make_unique<VarDecl>(
-                               std::make_unique<Type>(), "b", nullptr,
-                               Decl::Visibility::Default)}))),
-                  std::vector<std::unique_ptr<ModifierInvocation>>(),
-                  std::make_unique<ParamList>(std::move(
-                      container<std::vector<std::unique_ptr<VarDecl>>>::init(
-                          {std::make_unique<VarDecl>(
-                              std::make_unique<Type>(), "", nullptr,
-                              Decl::Visibility::Default)}))),
-                  std::make_unique<Block>(std::move(
-                      container<std::vector<std::unique_ptr<Stmt>>>::init(
-                          {std::make_unique<DeclStmt>(
-                               std::move(container<std::vector<
-                                             std::unique_ptr<VarDecl>>>::
-                                             init({std::make_unique<VarDecl>(
-                                                 nullptr, "c", nullptr,
-                                                 Decl::Visibility::Default)})),
-                               nullptr),
-                           std::make_unique<BinaryOperator>(
-                               std::make_unique<Identifier>("c"),
-                               std::make_unique<BinaryOperator>(
-                                   std::make_unique<Identifier>("a"),
-                                   std::make_unique<Identifier>("b"),
-                                   BinaryOperatorKind::BO_Add),
-                               BinaryOperatorKind::BO_Assign)}))))})),
-          ContractDecl::ContractKind::Contract),
-  })));
+  SourceUnit source(make_unique_vector<Decl>(make_unique<ContractDecl>(
+      "C", make_unique_vector<InheritanceSpecifier>(),
+      make_unique_vector<Decl>(make_unique<FunctionDecl>(
+          "add", Decl::Visibility::Public, StateMutability::Pure, false,
+          make_unique<ParamList>(make_unique_vector<VarDecl>(
+              make_unique<VarDecl>(make_unique<Type>(), "a", nullptr,
+                                   Decl::Visibility::Default),
+              make_unique<VarDecl>(make_unique<Type>(), "b", nullptr,
+                                   Decl::Visibility::Default))),
+          make_unique_vector<ModifierInvocation>(),
+          make_unique<ParamList>(make_unique_vector<VarDecl>(
+              make_unique<VarDecl>(make_unique<Type>(), "", nullptr,
+                                   Decl::Visibility::Default))),
+          make_unique<Block>(make_unique_vector<Stmt>(
+              make_unique<DeclStmt>(
+                  make_unique_vector<VarDecl>(make_unique<VarDecl>(
+                      nullptr, "c", nullptr, Decl::Visibility::Default)),
+                  nullptr),
+              make_unique<BinaryOperator>(
+                  make_unique<Identifier>("c"),
+                  make_unique<BinaryOperator>(make_unique<Identifier>("a"),
+                                              make_unique<Identifier>("b"),
+                                              BinaryOperatorKind::BO_Add),
+                  BinaryOperatorKind::BO_Assign))))),
+      ContractDecl::ContractKind::Contract)));
 
   ASTContext *Ctx = new ASTContext();
   auto p = CreateASTPrinter();
