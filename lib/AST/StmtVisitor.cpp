@@ -82,6 +82,12 @@ template <bool Const> void StmtVisitorBase<Const>::visit(ParenExprType &expr) {
   expr.getSubExpr()->accept(*this);
 }
 
+template <bool Const>
+void StmtVisitorBase<Const>::visit(IndexAccessType &expr) {
+  expr.getBase()->accept(*this);
+  expr.getIndex()->accept(*this);
+}
+
 template <bool Const> void StmtVisitorBase<Const>::visit(IdentifierType &) {
   // leaf, do nothing
 }

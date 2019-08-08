@@ -19,6 +19,7 @@ class CallExpr;
 class ImplicitCastExpr;
 class ExplicitCastExpr;
 class ParenExpr;
+class IndexAccess;
 class Identifier;
 class BooleanLiteral;
 class StringLiteral;
@@ -42,6 +43,7 @@ protected:
   using ExplicitCastExprType =
       typename cond_const<Const, ExplicitCastExpr>::type;
   using ParenExprType = typename cond_const<Const, ParenExpr>::type;
+  using IndexAccessType = typename cond_const<Const, IndexAccess>::type;
   using IdentifierType = typename cond_const<Const, Identifier>::type;
   using BooleanLiteralType = typename cond_const<Const, BooleanLiteral>::type;
   using StringLiteralType = typename cond_const<Const, StringLiteral>::type;
@@ -63,6 +65,7 @@ public:
   virtual void visit(ImplicitCastExprType &);
   virtual void visit(ExplicitCastExprType &);
   virtual void visit(ParenExprType &);
+  virtual void visit(IndexAccessType &);
   virtual void visit(IdentifierType &);
   virtual void visit(BooleanLiteralType &);
   virtual void visit(StringLiteralType &);

@@ -238,10 +238,24 @@ public:
 };
 
 class IndexAccess : public Expr {
-  // TODO
+  ExprPtr Base;
+  ExprPtr Index;
+
 public:
-  // TODO: set value kind in another pass
-  IndexAccess() : Expr(ValueKind::VK_LValue) {}
+  IndexAccess(ExprPtr &&Base, ExprPtr &&Index)
+      : Expr(ValueKind::VK_LValue), Base(std::move(Base)),
+        Index(std::move(Index)) {}
+
+  void setBase(ExprPtr &&Base) { this->Base = std::move(Base); }
+  void setIndex(ExprPtr &&Index) { this->Index = std::move(Index); }
+
+  Expr *getBase() { return Base.get(); }
+  const Expr *getBase() const { return Base.get(); }
+  Expr *getIndex() { return Index.get(); }
+  const Expr *getIndex() const { return Index.get(); }
+
+  void accept(StmtVisitor &visitor) override;
+  void accept(ConstStmtVisitor &visitor) const override;
 };
 
 class ParenExpr : public Expr {
