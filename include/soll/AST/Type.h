@@ -116,7 +116,7 @@ public:
 
   bool isImplicitlyConvertibleTo(Type const &_other) const override;
   bool isExplicitlyConvertibleTo(Type const &_convertTo) const override;
-  Category category() const { return Category::Integer; }
+  Category category() const override { return Category::Integer; }
 
 private:
   IntKind _intKind;
