@@ -40,9 +40,9 @@ public:
 
 class IntegerType : public Type {
 public:
-  enum IntKind {
-    // unsigned Integer (0 ~ 31)
-    U8 = 0,
+  enum class IntKind {
+    // unsigned Integer
+    U8,
     U16,
     U24,
     U32,
@@ -74,7 +74,7 @@ public:
     U240,
     U248,
     U256,
-    // signed Integer (32 ~ 63)
+    // signed Integer
     I8,
     I16,
     I24,
@@ -111,8 +111,8 @@ public:
 
   IntegerType(IntKind ik) : _intKind(ik) {}
   IntKind getKind() const { return _intKind; }
-  bool isSigned() const { return getKind() >= IntKind::I8; }
-  unsigned int numBits() const { return 8 * (getKind() % 32 + 1); }
+  bool isSigned() const { return static_cast<int>(getKind()) >= static_cast<int>(IntKind::I8); }
+  unsigned int numBits() const { return 8 * (static_cast<int>(getKind()) % 32 + 1); }
 
   bool isImplicitlyConvertibleTo(Type const &_other) const override;
   bool isExplicitlyConvertibleTo(Type const &_convertTo) const override;
