@@ -503,17 +503,14 @@ unique_ptr<Stmt> Parser::parseStatement() {
   case tok::kw_if:
     return parseIfStatement();
   case tok::kw_while:
-    // [TODO] parseStatement kw_while
-    break;
+    return parseWhileStatement();
   case tok::kw_do:
-    // [TODO] parseStatement kw_do
+    return parseDoWhileStatement();
     break;
   case tok::kw_for:
-    // [TODO] parseStatement kw_for
-    break;
+    return parseForStatement();
   case tok::l_brace:
     return parseBlock();
-    break;
   case tok::kw_continue:
     // [TODO] parseStatement kw_continue
     break;
@@ -554,6 +551,53 @@ unique_ptr<IfStmt> Parser::parseIfStatement() {
   }
   return std::make_unique<IfStmt>(std::move(Condition), std::move(TrueBody),
                                   std::move(FalseBody));
+}
+
+unique_ptr<WhileStmt> Parser::parseWhileStatement()
+{
+  TheLexer.CachedLex(); // while
+  TheLexer.CachedLex(); // (
+  unique_ptr<Expr> Condition = parseExpression();
+  TheLexer.CachedLex(); // )
+  unique_ptr<Stmt> Body = parseStatement();
+  return std::make_unique<WhileStmt>(std::move(Condition), std::move(Body), false);
+}
+
+unique_ptr<WhileStmt> Parser::parseDoWhileStatement()
+{
+  TheLexer.CachedLex(); // do
+  unique_ptr<Stmt> Body = parseStatement();
+  TheLexer.CachedLex(); // while
+  TheLexer.CachedLex(); // (
+  unique_ptr<Expr> Condition = parseExpression();
+  TheLexer.CachedLex(); // )
+  TheLexer.CachedLex(); // ;
+  return std::make_unique<WhileStmt>(std::move(Condition), std::move(Body), true);
+}
+
+unique_ptr<ForStmt> Parser::parseForStatement()
+{
+  unique_ptr<Stmt> Init;
+  unique_ptr<Expr> Condition;
+  unique_ptr<Expr> Loop;
+  TheLexer.CachedLex(); // for
+  TheLexer.CachedLex(); // (
+
+  // LTODO: Maybe here have some predicate like peekExpression() instead of checking for semicolon and RParen?
+  if (TheLexer.LookAhead(0)->isNot(tok::semi))
+    Init = parseSimpleStatement();
+  TheLexer.CachedLex(); // ;
+
+  if (TheLexer.LookAhead(0)->isNot(tok::semi))
+    Condition = parseExpression();
+  TheLexer.CachedLex(); // ;
+
+  if (TheLexer.LookAhead(0)->isNot(tok::r_paren))
+    Loop = parseExpression();
+  TheLexer.CachedLex(); // )
+
+  unique_ptr<Stmt> Body = parseStatement();
+  return std::make_unique<ForStmt>(std::move(Init), std::move(Condition), std::move(Loop), std::move(Body));
 }
 
 unique_ptr<Stmt> Parser::parseSimpleStatement() {

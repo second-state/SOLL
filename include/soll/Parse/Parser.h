@@ -79,6 +79,9 @@ private:
   std::unique_ptr<Block> parseBlock();
   std::unique_ptr<Stmt> parseStatement();
   std::unique_ptr<IfStmt> parseIfStatement();
+  std::unique_ptr<WhileStmt> parseWhileStatement();
+  std::unique_ptr<WhileStmt> parseDoWhileStatement();
+  std::unique_ptr<ForStmt> parseForStatement();
   std::unique_ptr<Stmt> parseSimpleStatement();
   std::unique_ptr<DeclStmt> parseVariableDeclarationStatement(
       std::unique_ptr<Type> const &LookAheadArrayType =
