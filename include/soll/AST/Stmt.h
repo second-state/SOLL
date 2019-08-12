@@ -137,7 +137,7 @@ class ContinueStmt : public Stmt {
   Stmt *LoopStmt;
 
 public:
-  ContinueStmt(Stmt *LS) : LoopStmt(LS) {}
+  ContinueStmt(Stmt *LS = nullptr) : LoopStmt(LS) {}
 
   void setLoopStmt(Stmt *LS) { LoopStmt = LS; }
   Stmt *getLoopStmt() { return LoopStmt; }
@@ -152,7 +152,7 @@ class BreakStmt : public Stmt {
   Stmt *LoopStmt;
 
 public:
-  BreakStmt(Stmt *LS) : LoopStmt(LS) {}
+  BreakStmt(Stmt *LS = nullptr) : LoopStmt(LS) {}
 
   void setLoopStmt(Stmt *LS) { LoopStmt = LS; }
   Stmt *getLoopStmt() { return LoopStmt; }

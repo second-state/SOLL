@@ -512,10 +512,12 @@ unique_ptr<Stmt> Parser::parseStatement() {
   case tok::l_brace:
     return parseBlock();
   case tok::kw_continue:
-    // [TODO] parseStatement kw_continue
+    Statement = std::make_unique<ContinueStmt>();
+    TheLexer.CachedLex();
     break;
   case tok::kw_break:
-    // [TODO] parseStatement kw_break
+    Statement = std::make_unique<BreakStmt>();
+    TheLexer.CachedLex();
     break;
   case tok::kw_return:
     TheLexer.CachedLex();
@@ -534,7 +536,7 @@ unique_ptr<Stmt> Parser::parseStatement() {
     Statement = parseSimpleStatement();
     break;
   }
-  TheLexer.CachedLex();
+  TheLexer.CachedLex(); // ;
   return Statement;
 }
 
