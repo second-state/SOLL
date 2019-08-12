@@ -507,8 +507,10 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
 }
 
 void FuncBodyCodeGen::visit(CallExprType &CALL) {
-  auto Name = dynamic_cast<const Identifier *>(CALL.getCalleeExpr())->getName();
-  if (Name.compare("require") == 0) {
+  auto funcName =
+      dynamic_cast<const Identifier *>(CALL.getCalleeExpr())->getName();
+  if (funcName.compare("require") == 0) {
+    // require function
     auto Arguments = CALL.getArguments();
     Arguments[0]->accept(*this);
     Value *CondV = findTempValue(Arguments[0]);
@@ -528,6 +530,69 @@ void FuncBodyCodeGen::visit(CallExprType &CALL) {
     Builder.CreateUnreachable();
 
     Builder.SetInsertPoint(ContBB);
+  } else if (funcName.compare("assert") == 0) {
+    // assert function
+    auto Arguments = CALL.getArguments();
+    Arguments[0]->accept(*this);
+    Value *CondV = findTempValue(Arguments[0]);
+
+    std::string assertFailMsg = "\"Assertion Fail\"";
+    Value *Length = Builder.getInt32(assertFailMsg.length() + 1);
+    Value *errStr = Builder.CreateGlobalString(assertFailMsg, "assertFailMsg");
+    BasicBlock *RevertBB = BasicBlock::Create(Context, "revert", CurFunc);
+    BasicBlock *ContBB = BasicBlock::Create(Context, "continue", CurFunc);
+
+    Builder.CreateCondBr(CondV, ContBB, RevertBB);
+    Builder.SetInsertPoint(RevertBB);
+    Value *MSG = Builder.CreateInBoundsGEP(
+        errStr, {Builder.getInt32(0), Length}, "msg.ptr");
+    Builder.CreateCall(Module.getFunction("revert"), {MSG, Length});
+    Builder.CreateUnreachable();
+
+    Builder.SetInsertPoint(ContBB);
+  } else if (funcName.compare("revert") == 0) {
+    // revert function
+    auto Arguments = CALL.getArguments();
+    Arguments[0]->accept(*this);
+    Value *Length = Builder.getInt32(
+        dynamic_cast<const StringLiteral *>(Arguments[0])->getValue().length() +
+        1);
+
+    BasicBlock *RevertBB = BasicBlock::Create(Context, "revert", CurFunc);
+    Builder.CreateBr(RevertBB);
+    Builder.SetInsertPoint(RevertBB);
+    auto *MSG = Builder.CreateInBoundsGEP(
+        findTempValue(Arguments[0]), {Builder.getInt32(0), Length}, "msg.ptr");
+    Builder.CreateCall(Module.getFunction("revert"), {MSG, Length});
+    Builder.CreateUnreachable();
+  } else {
+    ConstStmtVisitor::visit(CALL);
+    llvm::Value *V = nullptr;
+    auto Arguments = CALL.getArguments();
+    std::vector<llvm::Value *> argsValue(Arguments.size());
+    if (CALL.isNamedCall()) {
+      // named call
+      // TODO: implement getParamDecl()
+      // current AST cannot get the order the params are declared
+      /*
+      std::vector<std::string>> declArgOrder = getParamDecl();  // get the order
+      the params are declared std::vector<std::string>> passedArgOrder =
+      CALL.getNames(); std::map<std::string, llvm::Value*> argName2value; for
+      (size_t i = 0; i < Arguments.size(); i++) {
+        argName2value[passedArgOrder[i]] = findTempValue(Arguments[i]);
+      }
+      for (size_t i = 0; i < Arguments.size(); i++) {
+        argsValue[i] = argName2value[declArgOrder[i]];
+      }
+      */
+    } else {
+      // normal function call
+      for (size_t i = 0; i < Arguments.size(); i++) {
+        argsValue[i] = findTempValue(Arguments[i]);
+      }
+    }
+    V = Builder.CreateCall(Module.getFunction(funcName), argsValue, funcName);
+    TempValueTable[&CALL] = V;
   }
 }
 

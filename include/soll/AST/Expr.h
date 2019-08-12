@@ -188,7 +188,7 @@ public:
     return Names;
   }
 
-  bool isNamedCall() { return Names.has_value(); }
+  bool isNamedCall() const { return Names.has_value(); }
 
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
