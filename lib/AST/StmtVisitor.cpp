@@ -68,6 +68,16 @@ template <bool Const> void StmtVisitorBase<Const>::visit(CallExprType &expr) {
     args->accept(*this);
 }
 
+template <bool Const>
+void StmtVisitorBase<Const>::visit(ImplicitCastExprType &expr) {
+  expr.getTargetValue()->accept(*this);
+}
+
+template <bool Const>
+void StmtVisitorBase<Const>::visit(ExplicitCastExprType &expr) {
+  expr.getTargetValue()->accept(*this);
+}
+
 template <bool Const> void StmtVisitorBase<Const>::visit(ParenExprType &expr) {
   expr.getSubExpr()->accept(*this);
 }

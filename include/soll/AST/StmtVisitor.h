@@ -16,6 +16,8 @@ class DeclStmt;
 class UnaryOperator;
 class BinaryOperator;
 class CallExpr;
+class ImplicitCastExpr;
+class ExplicitCastExpr;
 class ParenExpr;
 class Identifier;
 class BooleanLiteral;
@@ -35,6 +37,10 @@ protected:
   using UnaryOperatorType = typename cond_const<Const, UnaryOperator>::type;
   using BinaryOperatorType = typename cond_const<Const, BinaryOperator>::type;
   using CallExprType = typename cond_const<Const, CallExpr>::type;
+  using ImplicitCastExprType =
+      typename cond_const<Const, ImplicitCastExpr>::type;
+  using ExplicitCastExprType =
+      typename cond_const<Const, ExplicitCastExpr>::type;
   using ParenExprType = typename cond_const<Const, ParenExpr>::type;
   using IdentifierType = typename cond_const<Const, Identifier>::type;
   using BooleanLiteralType = typename cond_const<Const, BooleanLiteral>::type;
@@ -54,6 +60,8 @@ public:
   virtual void visit(UnaryOperatorType &);
   virtual void visit(BinaryOperatorType &);
   virtual void visit(CallExprType &);
+  virtual void visit(ImplicitCastExprType &);
+  virtual void visit(ExplicitCastExprType &);
   virtual void visit(ParenExprType &);
   virtual void visit(IdentifierType &);
   virtual void visit(BooleanLiteralType &);

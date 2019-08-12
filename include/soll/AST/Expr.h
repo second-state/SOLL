@@ -195,17 +195,38 @@ public:
 };
 
 class ImplicitCastExpr : public Expr {
-  // TODO
+  /// target value of casting
+  ExprPtr TargetValue;
+
 public:
   // TODO: set value kind in another pass
-  ImplicitCastExpr() : Expr(ValueKind::VK_RValue) {}
+  ImplicitCastExpr(ExprPtr &&TV)
+      : TargetValue(std::move(TV)), Expr(ValueKind::VK_RValue) {}
+
+  void setTargetValue(ExprPtr &&TV) { TargetValue = std::move(TV); }
+
+  Expr *getTargetValue() { return TargetValue.get(); }
+  const Expr *getTargetValue() const { return TargetValue.get(); }
+
+  void accept(StmtVisitor &visitor) override;
+  void accept(ConstStmtVisitor &visitor) const override;
 };
 
 class ExplicitCastExpr : public Expr {
-  // TODO
+  /// target value of casting
+  ExprPtr TargetValue;
+
 public:
-  // TODO: set value kind in another pass
-  ExplicitCastExpr() : Expr(ValueKind::VK_RValue) {}
+  ExplicitCastExpr(ExprPtr &&TV)
+      : TargetValue(std::move(TV)), Expr(ValueKind::VK_RValue) {}
+
+  void setTargetValue(ExprPtr &&TV) { TargetValue = std::move(TV); }
+
+  Expr *getTargetValue() { return TargetValue.get(); }
+  const Expr *getTargetValue() const { return TargetValue.get(); }
+
+  void accept(StmtVisitor &visitor) override;
+  void accept(ConstStmtVisitor &visitor) const override;
 };
 
 class NewExpr : public Expr {
