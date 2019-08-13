@@ -723,6 +723,25 @@ void FuncBodyCodeGen::visit(IdentifierType &ID) {
   TempValueTable[&ID] = V;
 }
 
+void FuncBodyCodeGen::visit(IndexAccessType &IA) {
+  ConstStmtVisitor::visit(IA);
+  llvm::Value *BaseV = findTempValue(IA.getBase());
+  llvm::Value *IdxV = findTempValue(IA.getIndex());
+  // returns LValue, stores address
+  llvm::Value *V = nullptr;
+
+  if (IA.getBase()->getType().category() == Type::Category::Mapping) {
+    // TODO
+  } else if (IA.getBase()->getType().category() == Type::Category::Array) {
+    // TODO: replace Ty to ArrayType of base
+    llvm::Type *Ty = llvm::ArrayType::get(Builder.getInt64Ty(), 3);
+    V = Builder.CreateInBoundsGEP(Ty, BaseV, {Builder.getIntN(256, 0), IdxV},
+                                  "arrIdxAddr");
+  }
+
+  TempValueTable[&IA] = V;
+}
+
 void FuncBodyCodeGen::visit(BooleanLiteralType &BL) {
   TempValueTable[&BL] = Builder.getInt1(BL.getValue());
 }
