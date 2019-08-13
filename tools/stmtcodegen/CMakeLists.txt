@@ -11,4 +11,5 @@ target_link_libraries(stmtcodegen
   sollBasic
   sollFrontend
   sollCodeGen
+  sollSema
   )

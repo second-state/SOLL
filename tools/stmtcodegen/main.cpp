@@ -6,6 +6,7 @@
 #include "soll/AST/Type.h"
 #include "soll/CodeGen/FuncBodyCodeGen.h"
 #include "soll/Frontend/ASTConsumers.h"
+#include "soll/Sema/BreakableVisitor.h"
 #include <cstring>
 #include <iostream>
 
