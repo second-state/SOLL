@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-#pragma once
 #include "soll/Sema/BreakableVisitor.h"
 #include <cassert>
 #include <vector>
