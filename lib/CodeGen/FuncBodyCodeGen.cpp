@@ -154,7 +154,12 @@ void FuncBodyCodeGen::visit(ReturnStmtType &RS) {
     Builder.CreateRetVoid();
   } else {
     RS.getRetValue()->accept(*this);
-    Builder.CreateRet(findTempValue(RS.getRetValue()));
+    llvm::Value *RetVal = findTempValue(RS.getRetValue());
+    // TODO: move lrvalue cast to another pass
+    if (RS.getRetValue()->isLValue()) {
+      RetVal = Builder.CreateLoad(RetVal);
+    }
+    Builder.CreateRet(RetVal);
   }
 }
 
@@ -180,6 +185,7 @@ void FuncBodyCodeGen::visit(UnaryOperatorType &UO) {
   llvm::Value *V = nullptr;
   if (UO.isArithmeticOp()) {
     llvm::Value *subVal = findTempValue(UO.getSubExpr());
+    // TODO: move lrvalue cast to another pass
     if (UO.getSubExpr()->isLValue()) {
       subVal = Builder.CreateLoad(subVal);
     }
@@ -251,6 +257,7 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
     llvm::Value *lhsAddr = findTempValue(BO.getLHS()); // required lhs as LValue
     llvm::Value *lhsVal = nullptr;
     llvm::Value *rhsVal = findTempValue(BO.getRHS());
+    // TODO: move lrvalue cast to another pass
     if (BO.getRHS()->isLValue()) {
       rhsVal = Builder.CreateLoad(rhsVal);
     }
@@ -316,6 +323,7 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
   if (BO.isAdditiveOp() || BO.isMultiplicativeOp() || BO.isComparisonOp() || BO.isShiftOp() || BO.isBitwiseOp()) {
     llvm::Value *lhs = findTempValue(BO.getLHS());
     llvm::Value *rhs = findTempValue(BO.getRHS());
+    // TODO: move lrvalue cast to another pass
     if (BO.getLHS()->isLValue()) {
       lhs = Builder.CreateLoad(lhs);
     }
@@ -393,6 +401,7 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
 
       BO.getLHS()->accept(*this);
       llvm::Value *lhs = findTempValue(BO.getLHS());
+      // TODO: move lrvalue cast to another pass
       if (BO.getLHS()->isLValue()) {
         lhs = Builder.CreateLoad(lhs);
       }
@@ -405,6 +414,7 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
       Builder.SetInsertPoint(trueBB);
       BO.getRHS()->accept(*this);
       llvm::Value *rhs = findTempValue(BO.getRHS());
+      // TODO: move lrvalue cast to another pass
       if (BO.getRHS()->isLValue()) {
         rhs = Builder.CreateLoad(rhs);
       }
@@ -430,6 +440,7 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
 
       BO.getLHS()->accept(*this);
       llvm::Value *lhs = findTempValue(BO.getLHS());
+      // TODO: move lrvalue cast to another pass
       if (BO.getLHS()->isLValue()) {
         lhs = Builder.CreateLoad(lhs);
       }
@@ -446,6 +457,7 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
       Builder.SetInsertPoint(falseBB);
       BO.getRHS()->accept(*this);
       llvm::Value *rhs = findTempValue(BO.getRHS());
+      // TODO: move lrvalue cast to another pass
       if (BO.getRHS()->isLValue()) {
         rhs = Builder.CreateLoad(rhs);
       }
