@@ -3,6 +3,7 @@
 
 #include "soll/AST/OperationKinds.h"
 #include "soll/AST/Stmt.h"
+#include "soll/AST/Type.h"
 
 #include <optional>
 #include <string>
@@ -15,6 +16,7 @@ class Expr : public ExprStmt {
   // add interface to check whether an expr is an LValue or RValue
   // TODO : override isLValue() and is RValue() for each derived class
   ValueKind exprValueKind;
+  Type Ty;
 
 public:
   Expr(ValueKind vk) : exprValueKind(vk) {}
@@ -22,6 +24,9 @@ public:
   void setValueKind(ValueKind vk) { exprValueKind = vk; }
   bool isLValue() const { return getValueKind() == ValueKind::VK_LValue; }
   bool isRValue() const { return getValueKind() == ValueKind::VK_RValue; }
+  void setType(Type Ty){ this->Ty = Ty; }
+  Type getType() { return Ty; }
+  const Type &getType() const { return Ty; }
 };
 
 class TupleExpr {
