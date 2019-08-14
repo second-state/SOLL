@@ -3,6 +3,8 @@
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Function.h>
 
+#include <iostream>
+
 using namespace soll;
 using llvm::BasicBlock;
 using llvm::Function;
@@ -30,7 +32,9 @@ void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
   for (int i = 0; i < PsSol.size(); i++) {
     llvm::Value *P = PsLLVM++;
     P->setName(PsSol[i]->getName());
-    ParamTable[P->getName()] = P;
+    llvm::Value *paramAddr = Builder.CreateAlloca(Builder.getInt64Ty(), nullptr, P->getName()+".addr");
+    Builder.CreateStore(P, paramAddr);
+    LocalVarAddrTable[P->getName()] = paramAddr;
   }
 
   FD.getBody()->accept(*this);
@@ -495,10 +499,9 @@ void FuncBodyCodeGen::visit(IdentifierType &ID) {
   llvm::Value *V = nullptr;
   if (llvm::Value *Addr = findLocalVarAddr(ID.getName())) {
     V = Addr;
-  } else if (llvm::Value *Val = findParam(ID.getName())) {
-    // V = Address of the found param;
   } else {
     // V = Builder.getInt64(7122); // TODO: replace this
+    assert(false && "undeclared identifier");
   }
 
   TempValueTable[&ID] = V;
