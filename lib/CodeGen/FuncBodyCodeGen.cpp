@@ -37,7 +37,22 @@ void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
     LocalVarAddrTable[P->getName()] = paramAddr;
   }
 
+  EndOfFunc = BasicBlock::Create(Context, "return", CurFunc);
+  // TODO : uncomment this part when Types are done
+  // if (return type is null) {
+  // FD.getBody()->accept(*this);
+  // Builder.CreateRetVoid();
+  // } else {
+  RetVal = Builder.CreateAlloca(Builder.getInt64Ty(), nullptr, "retval");
   FD.getBody()->accept(*this);
+  Builder.CreateBr(EndOfFunc);
+  Builder.SetInsertPoint(EndOfFunc);
+  llvm::Value *V = Builder.CreateLoad(RetVal);
+  Builder.CreateRet(V);
+  // move EndOfFunc to the end of CurFunc
+  EndOfFunc->removeFromParent();
+  EndOfFunc->insertInto(CurFunc);
+  // }
 }
 
 void FuncBodyCodeGen::visit(BlockType &B) { ConstStmtVisitor::visit(B); }
@@ -150,17 +165,17 @@ void FuncBodyCodeGen::visit(BreakStmtType &) {
 }
 
 void FuncBodyCodeGen::visit(ReturnStmtType &RS) {
-  if (RS.getRetValue() == nullptr) {
-    Builder.CreateRetVoid();
-  } else {
+  if (RS.getRetValue() != nullptr) {
     RS.getRetValue()->accept(*this);
-    llvm::Value *RetVal = findTempValue(RS.getRetValue());
-    // TODO: move lrvalue cast to another pass
+    llvm::Value *V = findTempValue(RS.getRetValue());
     if (RS.getRetValue()->isLValue()) {
-      RetVal = Builder.CreateLoad(RetVal, "RetVal");
+      V = Builder.CreateLoad(V);
     }
-    Builder.CreateRet(RetVal);
+    Builder.CreateStore(V, RetVal);
   }
+  BasicBlock *RetBB = BasicBlock::Create(Context, "return.end", CurFunc);
+  Builder.CreateBr(EndOfFunc);
+  Builder.SetInsertPoint(RetBB);
 }
 
 void FuncBodyCodeGen::visit(DeclStmtType &DS) {

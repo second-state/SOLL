@@ -19,6 +19,9 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
   llvm::IRBuilder<llvm::NoFolder> &Builder;
   llvm::Module &Module;
   llvm::Function *CurFunc;
+
+  llvm::BasicBlock *EndOfFunc;
+  llvm::Value *RetVal;
   // TODO: replace this temp impl
   // proper impl is like Decl* -> llvm::Value *
   // but it requires more consideration
