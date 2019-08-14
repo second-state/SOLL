@@ -98,6 +98,39 @@ int main(int argc, const char **argv) {
                                             make_unique<Identifier>("a"),
                                             BinaryOperatorKind::BO_Add))))),
         ContractDecl::ContractKind::Contract)));
+  } else if (!strcmp(argv[1], "ForStmt")) { // ForStmt test
+    source = make_unique<
+        SourceUnit>(make_unique_vector<Decl>(make_unique<ContractDecl>(
+        "C", make_unique_vector<InheritanceSpecifier>(),
+        make_unique_vector<Decl>(make_unique<FunctionDecl>(
+            "test", Decl::Visibility::Public, StateMutability::Pure, false,
+            make_unique<ParamList>(make_unique_vector<VarDecl>(
+                make_unique<VarDecl>(make_unique<Type>(), "a", nullptr,
+                                     Decl::Visibility::Default))),
+            make_unique_vector<ModifierInvocation>(),
+            make_unique<ParamList>(make_unique_vector<VarDecl>(
+                make_unique<VarDecl>(make_unique<Type>(), "", nullptr,
+                                     Decl::Visibility::Default))),
+            make_unique<Block>(make_unique_vector<Stmt>(
+                make_unique<ForStmt>(
+                    make_unique<BinaryOperator>(make_unique<Identifier>("a"),
+                                                make_unique<NumberLiteral>(3),
+                                                BinaryOperatorKind::BO_Add),
+                    make_unique<BinaryOperator>(make_unique<Identifier>("a"),
+                                                make_unique<NumberLiteral>(10),
+                                                BinaryOperatorKind::BO_LT),
+                    make_unique<BinaryOperator>(make_unique<Identifier>("a"),
+                                                make_unique<NumberLiteral>(2),
+                                                BinaryOperatorKind::BO_Sub),
+                    make_unique<Block>(
+                        make_unique_vector<Stmt>(make_unique<BinaryOperator>(
+                            make_unique<Identifier>("a"),
+                            make_unique<Identifier>("a"),
+                            BinaryOperatorKind::BO_Add)))),
+                make_unique<BinaryOperator>(make_unique<NumberLiteral>(10),
+                                            make_unique<Identifier>("a"),
+                                            BinaryOperatorKind::BO_Add))))),
+        ContractDecl::ContractKind::Contract)));
   } else if (!strcmp(argv[1], "ReturnStmt")) { // ReturnStmt test
     source = make_unique<SourceUnit>(
         make_unique_vector<Decl>(make_unique<ContractDecl>(
