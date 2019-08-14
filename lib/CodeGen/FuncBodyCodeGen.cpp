@@ -183,6 +183,7 @@ void FuncBodyCodeGen::visit(BreakStmtType &) {
 void FuncBodyCodeGen::visit(ReturnStmtType &RS) {
   if (RS.getRetValue() != nullptr) {
     RS.getRetValue()->accept(*this);
+    // TODO: move lrvalue cast to another pass
     llvm::Value *V = findTempValue(RS.getRetValue());
     if (RS.getRetValue()->isLValue()) {
       V = Builder.CreateLoad(V);
