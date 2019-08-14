@@ -622,6 +622,7 @@ unique_ptr<Stmt> Parser::parseSimpleStatement() {
   case LookAheadInfo::Expression:
     Expression =
         parseExpression(std::move(expressionFromIndexAccessStructure(Iap)));
+    break;
   default:
     assert(false && "Unhandle statement.");
   }
