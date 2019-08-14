@@ -23,7 +23,7 @@ To get started with our demo, you will need three components at first.
 ## Preparation
 - Pull official docker image to get an already established build/execute environment.
 ```Shell
-docker pull yi2nd/ubuntu-soll-build:18.04
+docker pull yi2nd/ubuntu-soll:v0.0.1
 ```
 
 - Git clone from official gitlab repository.
@@ -53,13 +53,13 @@ Attach shell to container and bind volume with repositorys' path.
 docker run -it --rm \
       -v $(pwd)/ewasm-testbench:/root/ewasm-testbench \
       -v $(pwd)/soll:/root/soll \
-      yi2nd/ubuntu-soll-build:18.04
+      yi2nd/ubuntu-soll:v0.0.1
 ```
 
 ## Phase 1. Use soll generate .ll from test suite
 Build soll first (we use cmake with llvm library).
 ```Shell
-(docker) $ cd ~/soll && mkdir build
+(docker) $ cd ~/soll && mkdir build && cd build
 (docker) $ cmake .. && make
 (docker) $ cd ~/ewasm-testbench
 (docker) $ ../soll/build/tools/soll/soll ../soll/test/lity/safemath.lity > safemath.ll
@@ -75,5 +75,5 @@ Build soll first (we use cmake with llvm library).
 Trigger EWASM smart contract function call inside nativa javascript code.
 ```Shell
 (docker) $ cd ~/ewasm-testbench
-(docker) $ ./index.js safemath.wasm
+(docker) $ ./index.js safemath.wasm div 16 7
 ```
