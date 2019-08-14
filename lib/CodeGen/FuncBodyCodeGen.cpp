@@ -157,7 +157,7 @@ void FuncBodyCodeGen::visit(ReturnStmtType &RS) {
     llvm::Value *RetVal = findTempValue(RS.getRetValue());
     // TODO: move lrvalue cast to another pass
     if (RS.getRetValue()->isLValue()) {
-      RetVal = Builder.CreateLoad(RetVal);
+      RetVal = Builder.CreateLoad(RetVal, "RetVal");
     }
     Builder.CreateRet(RetVal);
   }
@@ -187,7 +187,7 @@ void FuncBodyCodeGen::visit(UnaryOperatorType &UO) {
     llvm::Value *subVal = findTempValue(UO.getSubExpr());
     // TODO: move lrvalue cast to another pass
     if (UO.getSubExpr()->isLValue()) {
-      subVal = Builder.CreateLoad(subVal);
+      subVal = Builder.CreateLoad(subVal, "BO_SubExpr");
     }
     switch (UO.getOpcode()) {
     case UnaryOperatorKind::UO_Plus: 
@@ -212,25 +212,25 @@ void FuncBodyCodeGen::visit(UnaryOperatorType &UO) {
     llvm::Value *tmp = nullptr;
     switch (UO.getOpcode()) {
     case UnaryOperatorKind::UO_PostInc: 
-      subVal = Builder.CreateLoad(subRef);
+      subVal = Builder.CreateLoad(subRef, "BO_Subexpr");
       tmp = Builder.CreateAdd(subVal, Builder.getInt64(1), "UO_PostInc");
       Builder.CreateStore(tmp, subRef);
       V = subVal;
       break;
     case UnaryOperatorKind::UO_PostDec:
-      subVal = Builder.CreateLoad(subRef);
+      subVal = Builder.CreateLoad(subRef, "BO_Subexpr");
       tmp = Builder.CreateSub(subVal, Builder.getInt64(1), "UO_PostDec");
       Builder.CreateStore(tmp, subRef);
       V = subVal;
       break;
     case UnaryOperatorKind::UO_PreInc:
-      subVal = Builder.CreateLoad(subRef);
+      subVal = Builder.CreateLoad(subRef, "BO_Subexpr");
       tmp = Builder.CreateAdd(subVal, Builder.getInt64(1), "UO_PreInc");
       Builder.CreateStore(tmp, subRef);
       V = subRef;
       break;
     case UnaryOperatorKind::UO_PreDec:
-      subVal = Builder.CreateLoad(subRef);
+      subVal = Builder.CreateLoad(subRef, "BO_Subexpr");
       tmp = Builder.CreateSub(subVal, Builder.getInt64(1), "UO_PreDec");
       Builder.CreateStore(tmp, subRef);
       V = subRef;
@@ -259,59 +259,59 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
     llvm::Value *rhsVal = findTempValue(BO.getRHS());
     // TODO: move lrvalue cast to another pass
     if (BO.getRHS()->isLValue()) {
-      rhsVal = Builder.CreateLoad(rhsVal);
+      rhsVal = Builder.CreateLoad(rhsVal, "BO_Rhs");
     }
     switch (BO.getOpcode()) {
     case BO_Assign:
       lhsVal = Builder.CreateStore(rhsVal, lhsAddr);
       break;
     case BO_MulAssign:
-      lhsVal = Builder.CreateLoad(lhsAddr);
+      lhsVal = Builder.CreateLoad(lhsAddr, "BO_Lhs");
       lhsVal = Builder.CreateMul(lhsVal, rhsVal, "BO_MulAssign");
       Builder.CreateStore(lhsVal, lhsAddr);
       break;
     case BO_DivAssign:
-      lhsVal = Builder.CreateLoad(lhsAddr);
+      lhsVal = Builder.CreateLoad(lhsAddr, "BO_Lhs");
       lhsVal = Builder.CreateUDiv(lhsVal, rhsVal, "BO_DivAssign");
       Builder.CreateStore(lhsVal, lhsAddr);
       break;
     case BO_RemAssign:
-      lhsVal = Builder.CreateLoad(lhsAddr);
+      lhsVal = Builder.CreateLoad(lhsAddr, "BO_Lhs");
       lhsVal = Builder.CreateURem(lhsVal, rhsVal, "BO_RemAssign");
       Builder.CreateStore(lhsVal, lhsAddr);
       break;
     case BO_AddAssign:
-      lhsVal = Builder.CreateLoad(lhsAddr);
+      lhsVal = Builder.CreateLoad(lhsAddr, "BO_Lhs");
       lhsVal = Builder.CreateAdd(lhsVal, rhsVal, "BO_AddAssign");
       Builder.CreateStore(lhsVal, lhsAddr);
       break;
     case BO_SubAssign:
-      lhsVal = Builder.CreateLoad(lhsAddr);
+      lhsVal = Builder.CreateLoad(lhsAddr, "BO_Lhs");
       lhsVal = Builder.CreateSub(lhsVal, rhsVal, "BO_SubAssign");
       Builder.CreateStore(lhsVal, lhsAddr);
       break;
     case BO_ShlAssign:
-      lhsVal = Builder.CreateLoad(lhsAddr);
+      lhsVal = Builder.CreateLoad(lhsAddr, "BO_Lhs");
       lhsVal = Builder.CreateShl(lhsVal, rhsVal, "BO_ShlAssign");
       Builder.CreateStore(lhsVal, lhsAddr);
       break;
     case BO_ShrAssign:
-      lhsVal = Builder.CreateLoad(lhsAddr);
+      lhsVal = Builder.CreateLoad(lhsAddr, "BO_Lhs");
       lhsVal = Builder.CreateAShr(lhsVal, rhsVal, "BO_ShrAssign");
       Builder.CreateStore(lhsVal, lhsAddr);
       break;
     case BO_AndAssign:
-      lhsVal = Builder.CreateLoad(lhsAddr);
+      lhsVal = Builder.CreateLoad(lhsAddr, "BO_Lhs");
       lhsVal = Builder.CreateAnd(lhsVal, rhsVal, "BO_AndAssign");
       Builder.CreateStore(lhsVal, lhsAddr);
       break;
     case BO_XorAssign:
-      lhsVal = Builder.CreateLoad(lhsAddr);
+      lhsVal = Builder.CreateLoad(lhsAddr, "BO_Lhs");
       lhsVal = Builder.CreateXor(lhsVal, rhsVal, "BO_XorAssign");
       Builder.CreateStore(lhsVal, lhsAddr);
       break;
     case BO_OrAssign:
-      lhsVal = Builder.CreateLoad(lhsAddr);
+      lhsVal = Builder.CreateLoad(lhsAddr, "BO_Lhs");
       lhsVal = Builder.CreateOr(lhsVal, rhsVal, "BO_OrAssign");
       Builder.CreateStore(lhsVal, lhsAddr);
       break;
@@ -325,10 +325,10 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
     llvm::Value *rhs = findTempValue(BO.getRHS());
     // TODO: move lrvalue cast to another pass
     if (BO.getLHS()->isLValue()) {
-      lhs = Builder.CreateLoad(lhs);
+      lhs = Builder.CreateLoad(lhs, "BO_Lhs");
     }
     if (BO.getRHS()->isLValue()) {
-      rhs = Builder.CreateLoad(rhs);
+      rhs = Builder.CreateLoad(rhs, "BO_Rhs");
     }
     switch (BO.getOpcode()) {
     case BinaryOperatorKind::BO_Add:
@@ -403,7 +403,7 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
       llvm::Value *lhs = findTempValue(BO.getLHS());
       // TODO: move lrvalue cast to another pass
       if (BO.getLHS()->isLValue()) {
-        lhs = Builder.CreateLoad(lhs);
+        lhs = Builder.CreateLoad(lhs, "BO_Lhs");
       }
       llvm::Value *isTrueLHS =
           Builder.CreateICmpNE(lhs, Builder.getInt64(0));
@@ -416,7 +416,7 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
       llvm::Value *rhs = findTempValue(BO.getRHS());
       // TODO: move lrvalue cast to another pass
       if (BO.getRHS()->isLValue()) {
-        rhs = Builder.CreateLoad(rhs);
+        rhs = Builder.CreateLoad(rhs, "BO_Rhs");
       }
       llvm::Value *isTrueRHS =
           Builder.CreateICmpNE(rhs, Builder.getInt64(0));
@@ -442,7 +442,7 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
       llvm::Value *lhs = findTempValue(BO.getLHS());
       // TODO: move lrvalue cast to another pass
       if (BO.getLHS()->isLValue()) {
-        lhs = Builder.CreateLoad(lhs);
+        lhs = Builder.CreateLoad(lhs, "BO_Lhs");
       }
       llvm::Value *isTrueLHS =
           Builder.CreateICmpNE(lhs, Builder.getInt64(0));
@@ -459,7 +459,7 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
       llvm::Value *rhs = findTempValue(BO.getRHS());
       // TODO: move lrvalue cast to another pass
       if (BO.getRHS()->isLValue()) {
-        rhs = Builder.CreateLoad(rhs);
+        rhs = Builder.CreateLoad(rhs, "BO_Rhs");
       }
       llvm::Value *isTrueRHS =
           Builder.CreateICmpNE(rhs, Builder.getInt64(0));
