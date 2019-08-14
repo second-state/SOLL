@@ -1,0 +1,18 @@
+FROM ubuntu:18.04
+
+RUN apt update \
+    && apt install -y \
+        software-properties-common \
+        wget
+RUN wget --quiet -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
+RUN apt-add-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-8 main"
+RUN apt update \
+    && apt install -y \
+        clang-8 \
+        cmake \
+        lld-8 \
+        llvm-8-dev \
+        make
+RUN rm -rf /var/lib/apt/lists/*
+
+ENV CXX=clang++-8
