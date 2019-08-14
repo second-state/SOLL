@@ -474,15 +474,18 @@ Parser::parseParameterList(VarDeclParserOptions const &_Options,
   vector<unique_ptr<VarDecl>> Parameters;
   VarDeclParserOptions Options(_Options);
   Options.AllowEmptyName = true;
-  if (TheLexer.LookAhead(0)->is(tok::l_paren)) {
-    do {
-      TheLexer.CachedLex();
+  TheLexer.CachedLex(); // (
+  if (!AllowEmpty || TheLexer.LookAhead(0)->isNot(tok::r_paren))
+  {
+    Parameters.push_back(parseVariableDeclaration(Options));
+    while(TheLexer.LookAhead(0)->isNot(tok::r_paren))
+    {
+      TheLexer.CachedLex(); // ,
       Parameters.push_back(parseVariableDeclaration(Options));
-    } while (TheLexer.LookAhead(0)->is(tok::comma));
-    TheLexer.CachedLex();
+    }
   }
+  TheLexer.CachedLex(); // )
   return std::make_unique<ParamList>(std::move(Parameters));
-  ;
 }
 
 unique_ptr<Block> Parser::parseBlock() {
