@@ -78,16 +78,19 @@ void FuncBodyCodeGen::visit(IfStmtType & IF) {
     Else_exist ? ElseBB : EndBB
   );
 
+  ThenBB->moveAfter(&CurFunc->back());
   Builder.SetInsertPoint(ThenBB);
   IF.getThen()->accept(*this);
   Builder.CreateBr(EndBB);
 
   if (Else_exist) {
+    ElseBB->moveAfter(&CurFunc->back());
     Builder.SetInsertPoint(ElseBB);
     IF.getElse()->accept(*this);
     Builder.CreateBr(EndBB);
   }
 
+  EndBB->moveAfter(&CurFunc->back());
   Builder.SetInsertPoint(EndBB);
 }
 
@@ -96,24 +99,37 @@ void FuncBodyCodeGen::visit(WhileStmtType &While) {
   BasicBlock *BodyBB = BasicBlock::Create(Context, "while.body", CurFunc);
   BasicBlock *EndBB = BasicBlock::Create(Context, "while.end", CurFunc);
 
-  Builder.CreateBr(While.isDoWhile() ? BodyBB : CondBB);
-  Builder.SetInsertPoint(CondBB);
-  While.getCond()->accept(*this);
-  Value* cond = Builder.CreateICmpNE(
-    findTempValue(While.getCond()),
-    Builder.getFalse(),
-    "cond"
-  );
-  Builder.CreateCondBr(
-    cond,
-    BodyBB,
-    EndBB
-  );
+  if (While.isDoWhile()) {
+    Builder.CreateBr(BodyBB);
 
-  Builder.SetInsertPoint(BodyBB);
-  While.getBody()->accept(*this);
-  Builder.CreateBr(CondBB);
+    BodyBB->moveAfter(&CurFunc->back());
+    Builder.SetInsertPoint(BodyBB);
+    While.getBody()->accept(*this);
+    Builder.CreateBr(CondBB);
 
+    CondBB->moveAfter(&CurFunc->back());
+    Builder.CreateBr(While.isDoWhile() ? BodyBB : CondBB);
+    Builder.SetInsertPoint(CondBB);
+    While.getCond()->accept(*this);
+    Value *cond = Builder.CreateICmpNE(findTempValue(While.getCond()),
+                                       Builder.getFalse(), "cond");
+    Builder.CreateCondBr(cond, BodyBB, EndBB);
+  } else {
+    Builder.CreateBr(CondBB);
+    CondBB->moveAfter(&CurFunc->back());
+    Builder.SetInsertPoint(CondBB);
+    While.getCond()->accept(*this);
+    Value *cond = Builder.CreateICmpNE(findTempValue(While.getCond()),
+                                       Builder.getFalse(), "cond");
+    Builder.CreateCondBr(cond, BodyBB, EndBB);
+
+    BodyBB->moveAfter(&CurFunc->back());
+    Builder.SetInsertPoint(BodyBB);
+    While.getBody()->accept(*this);
+    Builder.CreateBr(CondBB);
+  }
+
+  EndBB->moveAfter(&CurFunc->back());
   Builder.SetInsertPoint(EndBB);
 }
 
@@ -124,6 +140,7 @@ void FuncBodyCodeGen::visit(ForStmtType &FS) {
 
   BasicBlock *CondBB = BasicBlock::Create(Context, "for.cond", CurFunc);
   BasicBlock *BodyBB = BasicBlock::Create(Context, "for.body", CurFunc);
+  BasicBlock *LoopBB = BasicBlock::Create(Context, "for.loop", CurFunc);
   BasicBlock *EndBB = BasicBlock::Create(Context, "for.end", CurFunc);
 
   if ( Init_exist ) {
@@ -131,28 +148,27 @@ void FuncBodyCodeGen::visit(ForStmtType &FS) {
   }
   Builder.CreateBr(CondBB);
 
+  CondBB->moveAfter(&CurFunc->back());
   Builder.SetInsertPoint(CondBB);
   if ( Cond_exist ) {
     FS.getCond()->accept(*this);
-    Value* cond = Builder.CreateICmpNE(
-      findTempValue(FS.getCond()),
-      Builder.getFalse()
-    );
-    Builder.CreateCondBr(
-      cond,
-      BodyBB,
-      EndBB
-    );
-  }
-  else Builder.CreateBr(BodyBB);
+    Value *cond =
+        Builder.CreateICmpNE(findTempValue(FS.getCond()), Builder.getFalse());
+    Builder.CreateCondBr(cond, BodyBB, EndBB);
+  } else
+    Builder.CreateBr(BodyBB);
 
+  BodyBB->moveAfter(&CurFunc->back());
   Builder.SetInsertPoint(BodyBB);
   FS.getBody()->accept(*this);
-  if ( Loop_exist ) {
+  if (Loop_exist) {
+    LoopBB->moveAfter(&CurFunc->back());
+    Builder.SetInsertPoint(LoopBB);
     FS.getLoop()->accept(*this);
   }
   Builder.CreateBr(CondBB);
 
+  EndBB->moveAfter(&CurFunc->back());
   Builder.SetInsertPoint(EndBB);
 }
 
