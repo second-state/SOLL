@@ -90,18 +90,19 @@ static BinaryOperatorKind token2bop(llvm::Optional<Token> Tok) {
 }
 
 // [PrePOC] need a token to unary op mapping table
-static UnaryOperatorKind token2uop(llvm::Optional<Token> Tok) {
+static UnaryOperatorKind token2uop(llvm::Optional<Token> Tok,
+                                   bool IsPreOp = true) {
   switch (Tok->getKind()) {
-  /*
-  case tok::exclaim:
-    return UO_PostInc;
-  case tok::exclaim:
-    return UO_PostDec;
-  case tok::exclaim:
-    return UO_PreInc;
-  case tok::exclaim:
-    return UO_PreDec;
-  */
+  case tok::plusplus:
+    if (IsPreOp)
+      return UO_PreInc;
+    else
+      return UO_PostInc;
+  case tok::minusminus:
+    if (IsPreOp)
+      return UO_PreDec;
+    else
+      return UO_PostDec;
   case tok::amp:
     return UO_AddrOf;
   case tok::star:
@@ -110,12 +111,10 @@ static UnaryOperatorKind token2uop(llvm::Optional<Token> Tok) {
     return UO_Plus;
   case tok::minus:
     return UO_Minus;
-  case tok::exclaim:
+  case tok::tilde:
     return UO_Not;
-  /*
   case tok::exclaim:
     return UO_LNot;
-  */
   default:
     return UO_Undefined;
   }
@@ -757,12 +756,12 @@ unique_ptr<Expr>
 Parser::parseExpression(unique_ptr<Expr> &&PartiallyParsedExpression) {
   unique_ptr<Expr> Expression =
       parseBinaryExpression(4, std::move(PartiallyParsedExpression));
-  if (TheLexer.LookAhead(0)->is(tok::equal)) {
-    TheLexer.CachedLex();
+  if (tok::equal <= TheLexer.LookAhead(0)->getKind() &&
+      TheLexer.LookAhead(0)->getKind() < tok::percentequal) {
+    BinaryOperatorKind Op = token2bop(TheLexer.CachedLex());
     unique_ptr<Expr> RightHandSide = parseExpression();
     return std::make_unique<BinaryOperator>(std::move(Expression),
-                                            std::move(RightHandSide),
-                                            BinaryOperatorKind::BO_Assign);
+                                            std::move(RightHandSide), Op);
   } else if (TheLexer.LookAhead(0)->is(tok::question)) {
     TheLexer.CachedLex();
     unique_ptr<Expr> trueExpression = parseExpression();
@@ -783,8 +782,7 @@ Parser::parseBinaryExpression(int MinPrecedence,
   for (; Precedence >= MinPrecedence; --Precedence) {
     while (getBinOpPrecedence(TheLexer.LookAhead(0)->getKind()) == Precedence) {
       // [TODO] Fix this token recognition method
-      BinaryOperatorKind Op = token2bop(TheLexer.LookAhead(0));
-      TheLexer.CachedLex();
+      BinaryOperatorKind Op = token2bop(TheLexer.CachedLex());
       unique_ptr<Expr> RightHandSide = parseBinaryExpression(Precedence + 1);
       Expression = std::make_unique<BinaryOperator>(
           std::move(Expression), std::move(RightHandSide), Op);
@@ -797,9 +795,7 @@ unique_ptr<Expr>
 Parser::parseUnaryExpression(unique_ptr<Expr> &&PartiallyParsedExpression) {
   UnaryOperatorKind Op = token2uop(TheLexer.LookAhead(0));
 
-  // [PrePOC] Fix this token recognition method
-  // if (!PartiallyParsedExpression && (Op->isUnaryOp() || Op->isCountOp())) {
-  if (!PartiallyParsedExpression && (Op != UnaryOperatorKind::UO_Undefined)) {
+  if (!PartiallyParsedExpression && TheLexer.LookAhead(0)->isUnaryOp()) {
     // prefix expression
     TheLexer.CachedLex();
     unique_ptr<Expr> SubExps = parseUnaryExpression();
@@ -808,7 +804,7 @@ Parser::parseUnaryExpression(unique_ptr<Expr> &&PartiallyParsedExpression) {
     // potential postfix expression
     unique_ptr<Expr> SubExps =
         parseLeftHandSideExpression(std::move(PartiallyParsedExpression));
-    Op = token2uop(TheLexer.LookAhead(0));
+    Op = token2uop(TheLexer.LookAhead(0), false);
     if (!(Op == UnaryOperatorKind::UO_PostInc ||
           Op == UnaryOperatorKind::UO_PostDec))
       return SubExps;

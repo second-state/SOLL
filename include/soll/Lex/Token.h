@@ -48,9 +48,10 @@ public:
   // and OperationKinds.def
   bool isElementaryTypeName() const { return tok::kw_address <= getKind(); }
   bool isUnaryOp() const {
-    return tok::exclaim <= getKind() && getKind() <= tok::minusminus;
+    return (tok::exclaim <= getKind() && getKind() <= tok::minusminus) ||
+           isOneOf(tok::kw_delete, tok::plus, tok::minus);
   }
-  bool isCountOp() const { return isOneOf(tok::plus, tok::minus); }
+  bool isCountOp() const { return isOneOf(tok::plusplus, tok::minusminus); }
 
   SourceLocation getLocation() const {
     return SourceLocation::getFromRawEncoding(Loc);

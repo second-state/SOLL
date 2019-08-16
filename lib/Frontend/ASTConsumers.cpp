@@ -20,6 +20,14 @@ std::string ToString(soll::UnaryOperatorKind op) {
     return "~";
   case soll::UO_LNot:
     return "!";
+  case soll::UO_PreInc:
+    return "(prefix) ++";
+  case soll::UO_PostInc:
+    return "(postfix) ++";
+  case soll::UO_PreDec:
+    return "(prefix) --";
+  case soll::UO_PostDec:
+    return "(postfix) --";
   default:
     return "";
   }
