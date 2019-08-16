@@ -4,20 +4,20 @@
 namespace soll {
 
 bool IntegerType::isImplicitlyConvertibleTo(Type const &_other) const {
-  if (_other.category() == Category::Integer) {
+  if (_other.getCategory() == Category::Integer) {
     IntegerType const &convertTo = dynamic_cast<IntegerType const &>(_other);
-    if (this->numBits() > convertTo.numBits())
+    if (this->getBitNum() > convertTo.getBitNum())
       return false;
     else if (this->isSigned())
       return convertTo.isSigned();
     else
-      return !convertTo.isSigned() || convertTo.numBits() > this->numBits();
+      return !convertTo.isSigned() || convertTo.getBitNum() > this->getBitNum();
   }
   return false;
 }
 
 bool IntegerType::isExplicitlyConvertibleTo(Type const &_convertTo) const {
-  switch (_convertTo.category()) {
+  switch (_convertTo.getCategory()) {
   case Category::Integer:
   case Category::Address:
   case Category::Contract:

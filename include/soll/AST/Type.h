@@ -28,14 +28,12 @@ public:
   };
 
   // TODO: change the following following function to virtual pure function
-  // return nonsense value due CE in some files
-  virtual bool isImplicitlyConvertibleTo(Type const &_other) const {
-    return false;
-  }
-  virtual bool isExplicitlyConvertibleTo(Type const &_convertTo) const {
-    return false;
-  }
-  virtual Category category() const { return Category::Integer; }
+  // return nonsense value due CE in tools/
+  virtual void setBitNum(unsigned) { }
+  virtual unsigned int getBitNum() const { return 0; }
+  virtual bool isImplicitlyConvertibleTo(Type const &_other) const { return false; }
+  virtual bool isExplicitlyConvertibleTo(Type const &_convertTo) const { return false; }
+  virtual Category getCategory() const { return Category::Integer; }
 };
 
 class IntegerType : public Type {
@@ -112,11 +110,12 @@ public:
   IntegerType(IntKind ik) : _intKind(ik) {}
   IntKind getKind() const { return _intKind; }
   bool isSigned() const { return static_cast<int>(getKind()) >= static_cast<int>(IntKind::I8); }
-  unsigned int numBits() const { return 8 * (static_cast<int>(getKind()) % 32 + 1); }
 
+  void setBitNum() = delete;
+  unsigned int getBitNum() const override { return 8 * (static_cast<int>(getKind()) % 32 + 1); }
   bool isImplicitlyConvertibleTo(Type const &_other) const override;
   bool isExplicitlyConvertibleTo(Type const &_convertTo) const override;
-  Category category() const override { return Category::Integer; }
+  Category getCategory() const override { return Category::Integer; }
 
 private:
   IntKind _intKind;
