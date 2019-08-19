@@ -730,15 +730,52 @@ void FuncBodyCodeGen::visit(IndexAccessType &IA) {
   // returns LValue, stores address
   llvm::Value *V = nullptr;
 
-  if (IA.getBase()->getType().category() == Type::Category::Mapping) {
-    // TODO
-  } else if (IA.getBase()->getType().category() == Type::Category::Array) {
+  if (IA.getBase()->getType().getCategory() == Type::Category::Mapping) {
+    // mapping : store i256 hash value in TempValueTable
+    unsigned BaseBitNum = IA.getBase()->getType()->getBitNum();  // always 256 bit
+    unsigned IdxBitNum = IA.getBase()->getType()->getBitNum();
+    unsigned ConcateArrLength = (BaseBitNum + IdxBitNum)/8;
+    llvm::ArrayType *ConcateArrTy = llvm::ArrayType::get(
+      Builder.getInt8Ty(),
+      ConcateArrLength
+    );
+    llvm::Value *ConcateArr = Builder.CreateAlloca(ConcateArrTy, nullptr, "ConcateArr");
+    llvm::Value *Ptr = Builder.CreateAlloca(Builder.getInt8PtrTy(), nullptr, "Ptr");
+    Builder.CreateStore(Builder.CreateInBoundsGEP(ConcateArr, {Builder.getInt32(0), Builder.getInt32(0)}), Ptr);
+    // concate : concate {idx, base} and store into ConcateArr using little
+    // Endian
+    std::vector<unsigned> BitNum {BaseBitNum, IdxBitNum};
+    std::vector<llvm::Value*> Val {BaseV, IdxV};
+    for (int i = 0; i < 2; i++) {
+      llvm::Value *Mask = Builder.getIntN(BitNum[i], (1<<9)-1);
+      llvm::Value *ShiftWidth = Builder.getIntN(BitNum[i], 8);
+      for (unsigned j = 0; j < BitNum[i]/8; j++) {
+        // mask
+        llvm::Value *MaskedV = Builder.CreateAnd(Val[i], Mask, "AndMask");
+        MaskedV = Builder.CreateTrunc(MaskedV, Builder.getInt8Ty(), "Trunc");
+        // store
+        llvm::Value *ArrEntry = Builder.CreateLoad(Ptr);
+        Builder.CreateStore(MaskedV, ArrEntry);
+        // update ptr / val[i]
+        ArrEntry = Builder.CreateLoad(Ptr);
+        llvm::Value *NxtPtr = Builder.CreateInBoundsGEP(Builder.getInt8Ty(), ArrEntry, Builder.getInt8(1), "NxtEntry");
+        Builder.CreateStore(NxtPtr, Ptr);
+        Val[i] = Builder.CreateAShr(Val[i], ShiftWidth, "RShift");
+      }
+    }
+    V = Builder.CreateCall(
+        Module.getFunction("keccak"),
+        {Builder.CreateInBoundsGEP(ConcateArr,
+                                   {Builder.getInt32(0), Builder.getInt32(0)}),
+         Builder.getIntN(256, ConcateArrLength)},
+        "Mapping");
+  } else if (IA.getBase()->getType().getCategory() == Type::Category::Array) {
+    // Fixed size memory array : store array address in TempValueTable
     // TODO: replace Ty to ArrayType of base
     llvm::Type *Ty = llvm::ArrayType::get(Builder.getInt64Ty(), 3);
     V = Builder.CreateInBoundsGEP(Ty, BaseV, {Builder.getIntN(256, 0), IdxV},
                                   "arrIdxAddr");
   }
-
   TempValueTable[&IA] = V;
 }
 
