@@ -276,7 +276,11 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
       // [TODO] contract tok::kw_enum
     } else if (Kind == tok::identifier || Kind == tok::kw_mapping ||
                TheLexer.LookAhead(0)->isElementaryTypeName()) {
-      // [TODO] contract tok::identifier, tok::kw_mapping, tok::/Type keywords/
+      VarDeclParserOptions options;
+      options.IsStateVariable = true;
+      options.AllowInitialValue = true;
+      SubNodes.push_back(parseVariableDeclaration(options));
+      TheLexer.CachedLex(); // ;
     } else if (Kind == tok::kw_modifier) {
       // [TODO] contract tok::kw_modifier
     } else if (Kind == tok::kw_event) {
@@ -449,27 +453,54 @@ unique_ptr<Type> Parser::parseTypeNameSuffix(unique_ptr<Type> T) {
 unique_ptr<Type> Parser::parseTypeName(bool AllowVar) {
   unique_ptr<Type> T;
   bool HaveType = false;
-  llvm::Optional<Token> CurTok = TheLexer.CachedLex();
+  llvm::Optional<Token> CurTok = TheLexer.LookAhead(0);
   tok::TokenKind Kind = CurTok->getKind();
-  if (true) // (TokenTraits::isElementaryTypeName(token))
+  if (CurTok->isElementaryTypeName())
   {
     // [TODO] parseTypeName handle address case
     HaveType = true;
+    TheLexer.CachedLex();
   } else if (Kind == tok::kw_var) {
     // [TODO] parseTypeName tok::kw_var (var is deprecated)
   } else if (Kind == tok::kw_function) {
     // [TODO] parseTypeName tok::kw_function
   } else if (Kind == tok::kw_mapping) {
-    // [TODO] parseTypeName tok::kw_mapping
+    // [TODO] need keep type
+    T = std::move(parseMapping());
   } else if (Kind == tok::identifier) {
     // [TODO] parseTypeName tok::identifier
   } else
     assert(false && "Expected Type Name");
 
-  if (HaveType) {
+  if (T || HaveType) {
     T = parseTypeNameSuffix(move(T));
   }
   return T;
+}
+
+unique_ptr<Type> Parser::parseMapping()
+{
+  TheLexer.CachedLex(); // mapping
+  TheLexer.CachedLex(); // (
+
+  // Need extract elementary type
+  llvm::Optional<Token> CurTok = TheLexer.CachedLex();
+  /*
+  ASTPointer<ElementaryTypeName> keyType;
+  Token token = m_scanner->currentToken();
+  if (!TokenTraits::isElementaryTypeName(token))
+    fatalParserError(string("Expected elementary type name for mapping key type"));
+  unsigned firstSize;
+  unsigned secondSize;
+  tie(firstSize, secondSize) = m_scanner->currentTokenInfo();
+  ElementaryTypeNameToken elemTypeName(token, firstSize, secondSize);
+  keyType = ASTNodeFactory(*this).createNode<ElementaryTypeName>(elemTypeName);
+  */
+  TheLexer.CachedLex(); // =>
+  bool const AllowVar = false;
+  unique_ptr<Type> ValueType = parseTypeName(AllowVar);
+  TheLexer.CachedLex(); // )
+  return std::make_unique<Type>();
 }
 
 unique_ptr<ParamList>

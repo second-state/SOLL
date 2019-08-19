@@ -75,6 +75,7 @@ private:
       std::unique_ptr<Type> const &LookAheadArrayType = nullptr);
   std::unique_ptr<Type> parseTypeNameSuffix(std::unique_ptr<Type> T);
   std::unique_ptr<Type> parseTypeName(bool AllowVar);
+  std::unique_ptr<Type> parseMapping();
   std::unique_ptr<ParamList>
   parseParameterList(VarDeclParserOptions const &Options = {},
                      bool AllowEmpty = true);
