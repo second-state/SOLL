@@ -22,8 +22,10 @@ template <bool Const> void DeclVisitorBase<Const>::visit(ContractDeclType &CD) {
 
 template <bool Const>
 void DeclVisitorBase<Const>::visit(FunctionDeclType &decl) {
-  decl.getParams()->accept(*this);
-  decl.getReturnParams()->accept(*this);
+  if (decl.getParams() != nullptr)
+    decl.getParams()->accept(*this);
+  if (decl.getReturnParams() != nullptr)
+    decl.getReturnParams()->accept(*this);
 }
 
 template <bool Const> void DeclVisitorBase<Const>::visit(ParamListType &decl) {
