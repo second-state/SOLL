@@ -3,6 +3,7 @@
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Function.h>
 
+#include <cassert>
 #include <iostream>
 
 using namespace soll;
@@ -98,6 +99,10 @@ void FuncBodyCodeGen::visit(WhileStmtType &While) {
   BasicBlock *BodyBB = BasicBlock::Create(Context, "while.body", CurFunc);
   BasicBlock *EndBB = BasicBlock::Create(Context, "while.end", CurFunc);
 
+  // TODO: replace this temp impl
+  BasicBlockTable[While.getCond()] = CondBB;
+  BasicBlockTable[&While] = EndBB;
+
   if (While.isDoWhile()) {
     Builder.CreateBr(BodyBB);
 
@@ -142,6 +147,10 @@ void FuncBodyCodeGen::visit(ForStmtType &FS) {
   BasicBlock *LoopBB = BasicBlock::Create(Context, "for.loop", CurFunc);
   BasicBlock *EndBB = BasicBlock::Create(Context, "for.end", CurFunc);
 
+  // TODO: replace this temp impl
+  BasicBlockTable[FS.getCond()] = CondBB;
+  BasicBlockTable[&FS] = EndBB;
+
   if ( Init_exist ) {
     FS.getInit()->accept(*this);
   }
@@ -171,12 +180,26 @@ void FuncBodyCodeGen::visit(ForStmtType &FS) {
   Builder.SetInsertPoint(EndBB);
 }
 
-void FuncBodyCodeGen::visit(ContinueStmtType &) {
-  // TODO
+void FuncBodyCodeGen::visit(ContinueStmtType &CS) {
+  BasicBlock *EndBB = BasicBlock::Create(Context, "cont.end", CurFunc);
+  if (auto dest = dynamic_cast<const WhileStmt *>(CS.getLoopStmt())) {
+    Builder.CreateBr(findBasicBlock(dest->getCond()));
+  } else if (auto dest = dynamic_cast<const ForStmt *>(CS.getLoopStmt())) {
+    Builder.CreateBr(findBasicBlock(dest->getCond()));
+  } else
+    assert(false && "Not a WhileStmt or ForStmt");
+  Builder.SetInsertPoint(EndBB);
 }
 
-void FuncBodyCodeGen::visit(BreakStmtType &) {
-  // TODO
+void FuncBodyCodeGen::visit(BreakStmtType &BS) {
+  BasicBlock *EndBB = BasicBlock::Create(Context, "break.end", CurFunc);
+  if (auto dest = dynamic_cast<const WhileStmt *>(BS.getLoopStmt())) {
+    Builder.CreateBr(findBasicBlock(dest));
+  } else if (auto dest = dynamic_cast<const ForStmt *>(BS.getLoopStmt())) {
+    Builder.CreateBr(findBasicBlock(dest));
+  } else
+    assert(false && "Not a WhileStmt or ForStmt");
+  Builder.SetInsertPoint(EndBB);
 }
 
 void FuncBodyCodeGen::visit(ReturnStmtType &RS) {
