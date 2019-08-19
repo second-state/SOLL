@@ -17,19 +17,16 @@ static BinaryOperatorKind token2bop(llvm::Optional<Token> Tok) {
   switch (Tok->getKind()) {
   case tok::starstar:
     return BO_Exp;
-
   case tok::star:
     return BO_Mul;
   case tok::slash:
     return BO_Div;
   case tok::percent:
     return BO_Rem;
-
   case tok::plus:
     return BO_Add;
   case tok::minus:
     return BO_Sub;
-
   case tok::lessless:
     return BO_Shl;
   case tok::greatergreater:
@@ -40,7 +37,6 @@ static BinaryOperatorKind token2bop(llvm::Optional<Token> Tok) {
     return BO_Xor;
   case tok::pipe:
     return BO_Or;
-
   case tok::less:
     return BO_LT;
   case tok::greater:
@@ -57,7 +53,6 @@ static BinaryOperatorKind token2bop(llvm::Optional<Token> Tok) {
     return BO_LAnd;
   case tok::pipepipe:
     return BO_LOr;
-
   case tok::equal:
     return BO_Assign;
   case tok::starequal:
@@ -70,7 +65,6 @@ static BinaryOperatorKind token2bop(llvm::Optional<Token> Tok) {
     return BO_AddAssign;
   case tok::minusequal:
     return BO_SubAssign;
-
   case tok::lesslessequal:
     return BO_ShlAssign;
   case tok::greatergreaterequal:
@@ -81,16 +75,13 @@ static BinaryOperatorKind token2bop(llvm::Optional<Token> Tok) {
     return BO_XorAssign;
   case tok::pipeequal:
     return BO_OrAssign;
-
   case tok::comma:
     return BO_Comma;
-
   default:
     return BO_Undefined;
   }
 }
 
-// [PrePOC] need a token to unary op mapping table
 static UnaryOperatorKind token2uop(llvm::Optional<Token> Tok,
                                    bool IsPreOp = true) {
   switch (Tok->getKind()) {
@@ -118,6 +109,141 @@ static UnaryOperatorKind token2uop(llvm::Optional<Token> Tok,
     return UO_LNot;
   default:
     return UO_Undefined;
+  }
+}
+
+static IntegerType::IntKind token2inttype(llvm::Optional<Token> Tok) {
+  switch (Tok->getKind()) {
+  case tok::kw_uint8:
+    return IntegerType::IntKind::U8;
+  case tok::kw_uint16:
+    return IntegerType::IntKind::U16;
+  case tok::kw_uint32:
+    return IntegerType::IntKind::U24;
+  case tok::kw_uint40:
+    return IntegerType::IntKind::U32;
+  case tok::kw_uint48:
+    return IntegerType::IntKind::U48;
+  case tok::kw_uint56:
+    return IntegerType::IntKind::U56;
+  case tok::kw_uint64:
+    return IntegerType::IntKind::U64;
+  case tok::kw_uint72:
+    return IntegerType::IntKind::U72;
+  case tok::kw_uint80:
+    return IntegerType::IntKind::U80;
+  case tok::kw_uint88:
+    return IntegerType::IntKind::U88;
+  case tok::kw_uint96:
+    return IntegerType::IntKind::U96;
+  case tok::kw_uint104:
+    return IntegerType::IntKind::U104;
+  case tok::kw_uint112:
+    return IntegerType::IntKind::U112;
+  case tok::kw_uint120:
+    return IntegerType::IntKind::U120;
+  case tok::kw_uint128:
+    return IntegerType::IntKind::U128;
+  case tok::kw_uint136:
+    return IntegerType::IntKind::U136;
+  case tok::kw_uint144:
+    return IntegerType::IntKind::U144;
+  case tok::kw_uint152:
+    return IntegerType::IntKind::U152;
+  case tok::kw_uint160:
+    return IntegerType::IntKind::U160;
+  case tok::kw_uint168:
+    return IntegerType::IntKind::U168;
+  case tok::kw_uint176:
+    return IntegerType::IntKind::U176;
+  case tok::kw_uint184:
+    return IntegerType::IntKind::U184;
+  case tok::kw_uint192:
+    return IntegerType::IntKind::U192;
+  case tok::kw_uint200:
+    return IntegerType::IntKind::U200;
+  case tok::kw_uint208:
+    return IntegerType::IntKind::U208;
+  case tok::kw_uint216:
+    return IntegerType::IntKind::U216;
+  case tok::kw_uint224:
+    return IntegerType::IntKind::U224;
+  case tok::kw_uint232:
+    return IntegerType::IntKind::U232;
+  case tok::kw_uint240:
+    return IntegerType::IntKind::U240;
+  case tok::kw_uint248:
+    return IntegerType::IntKind::U248;
+  case tok::kw_uint256:
+    return IntegerType::IntKind::U256;
+  case tok::kw_uint:
+    return IntegerType::IntKind::U256;
+  case tok::kw_int8:
+    return IntegerType::IntKind::I8;
+  case tok::kw_int16:
+    return IntegerType::IntKind::I16;
+  case tok::kw_int32:
+    return IntegerType::IntKind::I24;
+  case tok::kw_int40:
+    return IntegerType::IntKind::I32;
+  case tok::kw_int48:
+    return IntegerType::IntKind::I48;
+  case tok::kw_int56:
+    return IntegerType::IntKind::I56;
+  case tok::kw_int64:
+    return IntegerType::IntKind::I64;
+  case tok::kw_int72:
+    return IntegerType::IntKind::I72;
+  case tok::kw_int80:
+    return IntegerType::IntKind::I80;
+  case tok::kw_int88:
+    return IntegerType::IntKind::I88;
+  case tok::kw_int96:
+    return IntegerType::IntKind::I96;
+  case tok::kw_int104:
+    return IntegerType::IntKind::I104;
+  case tok::kw_int112:
+    return IntegerType::IntKind::I112;
+  case tok::kw_int120:
+    return IntegerType::IntKind::I120;
+  case tok::kw_int128:
+    return IntegerType::IntKind::I128;
+  case tok::kw_int136:
+    return IntegerType::IntKind::I136;
+  case tok::kw_int144:
+    return IntegerType::IntKind::I144;
+  case tok::kw_int152:
+    return IntegerType::IntKind::I152;
+  case tok::kw_int160:
+    return IntegerType::IntKind::I160;
+  case tok::kw_int168:
+    return IntegerType::IntKind::I168;
+  case tok::kw_int176:
+    return IntegerType::IntKind::I176;
+  case tok::kw_int184:
+    return IntegerType::IntKind::I184;
+  case tok::kw_int192:
+    return IntegerType::IntKind::I192;
+  case tok::kw_int200:
+    return IntegerType::IntKind::I200;
+  case tok::kw_int208:
+    return IntegerType::IntKind::I208;
+  case tok::kw_int216:
+    return IntegerType::IntKind::I216;
+  case tok::kw_int224:
+    return IntegerType::IntKind::I224;
+  case tok::kw_int232:
+    return IntegerType::IntKind::I232;
+  case tok::kw_int240:
+    return IntegerType::IntKind::I240;
+  case tok::kw_int248:
+    return IntegerType::IntKind::I248;
+  case tok::kw_int256:
+    return IntegerType::IntKind::I256;
+  case tok::kw_int:
+    return IntegerType::IntKind::I256;
+  default:
+    assert(false && "Invalid int token.");
   }
 }
 
@@ -457,15 +583,19 @@ unique_ptr<Type> Parser::parseTypeName(bool AllowVar) {
   tok::TokenKind Kind = CurTok->getKind();
   if (CurTok->isElementaryTypeName())
   {
+    if (tok::kw_int <= CurTok->getKind() &&
+        CurTok->getKind() <= tok::kw_uint256) {
+      T = std::make_unique<IntegerType>(token2inttype(CurTok));
+    }
     // [TODO] parseTypeName handle address case
     HaveType = true;
     TheLexer.CachedLex();
   } else if (Kind == tok::kw_var) {
     // [TODO] parseTypeName tok::kw_var (var is deprecated)
+    assert(false && "Expected Type Name");
   } else if (Kind == tok::kw_function) {
     // [TODO] parseTypeName tok::kw_function
   } else if (Kind == tok::kw_mapping) {
-    // [TODO] need keep type
     T = std::move(parseMapping());
   } else if (Kind == tok::identifier) {
     // [TODO] parseTypeName tok::identifier

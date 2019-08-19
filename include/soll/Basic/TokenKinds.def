@@ -131,13 +131,7 @@ KEYWORD(while                   , KEYALL)
 // type keywords
 KEYWORD(address                 , KEYALL)
 KEYWORD(bool                    , KEYALL)
-KEYWORD(byte                    , KEYALL)
-KEYWORD(bytes                   , KEYALL)
-KEYWORD(fixed                   , KEYALL)
-KEYWORD(int                     , KEYALL)
 KEYWORD(string                  , KEYALL)
-KEYWORD(ufixed                  , KEYALL)
-KEYWORD(uint                    , KEYALL)
 
 #ifndef KEYWORD_N
 #define KEYWORD_N(N,X,Y) KEYWORD(X ## N, Y)
@@ -300,11 +294,20 @@ KEYWORD(uint                    , KEYALL)
 #define PARTIAL(N, F1, F2, ...) \
     F1(F2, N, __VA_ARGS__)
 
+KEYWORD(byte                    , KEYALL)
+KEYWORD(bytes                   , KEYALL)
 APPLY_1_32(KEYWORD_N, bytes, KEYALL)
+
+KEYWORD(int                     , KEYALL)
+
 APPLY_8_256(KEYWORD_N, int , KEYALL)
+KEYWORD(uint                    , KEYALL)
 APPLY_8_256(KEYWORD_N, uint, KEYALL)
 
+KEYWORD(fixed                   , KEYALL)
 APPLY_0_80(PARTIAL, APPLY_8_256, KEYWORD_MxN, fixed , KEYALL)
+
+KEYWORD(ufixed                  , KEYALL)
 APPLY_0_80(PARTIAL, APPLY_8_256, KEYWORD_MxN, ufixed, KEYALL)
 
 #undef PARTIAL
