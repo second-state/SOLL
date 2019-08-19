@@ -16,7 +16,6 @@
 #include "../utils/SHA-3/Rotation.h"
 
 using llvm::Function;
-using llvm::FunctionType;
 
 namespace {
 using namespace soll;
@@ -186,8 +185,8 @@ public:
     }
 
     // Call this function
-    FunctionType *FT =
-        FunctionType::get(IRBuilder->getInt64Ty(), ArgsTy, false);
+    llvm::FunctionType *FT =
+        llvm::FunctionType::get(IRBuilder->getInt64Ty(), ArgsTy, false);
     Function *Func = Function::Create(FT, Function::ExternalLinkage,
                                       F.getName(), *GetModule());
     auto *r = IRBuilder->CreateCall(Func, ArgsVal, Fname + "_r");

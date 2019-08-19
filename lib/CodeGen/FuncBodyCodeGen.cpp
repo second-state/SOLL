@@ -8,7 +8,6 @@
 using namespace soll;
 using llvm::BasicBlock;
 using llvm::Function;
-using llvm::FunctionType;
 using llvm::Value;
 
 void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
@@ -21,7 +20,7 @@ void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
     for(int i = 0; i < PsSol.size(); i++)
       Tys.push_back(Builder.getInt64Ty());
     llvm::ArrayRef<llvm::Type *> ParamTys(&Tys[0], Tys.size());
-    FunctionType *FT = FunctionType::get(Builder.getInt64Ty(), ParamTys, false);
+    llvm::FunctionType *FT = llvm::FunctionType::get(Builder.getInt64Ty(), ParamTys, false);
     CurFunc =
         Function::Create(FT, Function::ExternalLinkage, FD.getName(), &Module);
   }

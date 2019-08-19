@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #pragma once
+
+#include <memory>
 namespace soll {
 
 class Type {
@@ -35,6 +37,8 @@ public:
   virtual bool isExplicitlyConvertibleTo(Type const &_convertTo) const { return false; }
   virtual Category getCategory() const { return Category::Integer; }
 };
+
+using TypePtr = std::unique_ptr<Type>;
 
 class IntegerType : public Type {
 public:
@@ -119,6 +123,23 @@ public:
 
 private:
   IntKind _intKind;
+};
+
+class StringType : public Type {
+  // TODO
+};
+
+class MappingType : public Type {
+  TypePtr KeyType;
+  TypePtr ValueType;
+};
+
+class ArrayType : public Type {
+  TypePtr ElementType;
+};
+
+class FunctionType : public Type {
+  // TODO
 };
 
 } // namespace soll
