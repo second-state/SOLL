@@ -723,16 +723,68 @@ void FuncBodyCodeGen::visit(IdentifierType &ID) {
   TempValueTable[&ID] = V;
 }
 
+// concate {idx, base} and store into ConcateArr using little Endian
+void FuncBodyCodeGen::concate(llvm::Value *ConcateArr, unsigned BaseBitNum,
+                              unsigned IdxBitNum, llvm::Value *BaseV,
+                              llvm::Value *IdxV) {
+  llvm::Value *Ptr =
+      Builder.CreateAlloca(Builder.getInt8PtrTy(), nullptr, "Ptr");
+  Builder.CreateStore(
+      Builder.CreateInBoundsGEP(ConcateArr,
+                                {Builder.getInt32(0), Builder.getInt32(0)}),
+      Ptr);
+  std::vector<unsigned> BitNum{BaseBitNum, IdxBitNum};
+  std::vector<llvm::Value *> Val{BaseV, IdxV};
+  for (int i = 0; i < 2; i++) {
+    llvm::Value *Mask = Builder.getIntN(BitNum[i], (1 << 9) - 1);
+    llvm::Value *ShiftWidth = Builder.getIntN(BitNum[i], 8);
+    for (unsigned j = 0; j < BitNum[i] / 8; j++) {
+      // mask
+      llvm::Value *MaskedV = Builder.CreateAnd(Val[i], Mask, "AndMask");
+      MaskedV = Builder.CreateTrunc(MaskedV, Builder.getInt8Ty(), "Trunc");
+      // store
+      llvm::Value *ArrEntry = Builder.CreateLoad(Ptr);
+      Builder.CreateStore(MaskedV, ArrEntry);
+      // update ptr / val[i]
+      ArrEntry = Builder.CreateLoad(Ptr);
+      llvm::Value *NxtPtr = Builder.CreateInBoundsGEP(
+          Builder.getInt8Ty(), ArrEntry, Builder.getInt8(1), "NxtEntry");
+      Builder.CreateStore(NxtPtr, Ptr);
+      Val[i] = Builder.CreateAShr(Val[i], ShiftWidth, "RShift");
+    }
+  }
+}
+
+// codegen for checking whether array idx is out of bound
+void FuncBodyCodeGen::checkArrayOutOfBound(llvm::Value *ArrSz,
+                                           llvm::Value *Idx) {
+  static std::string ErrMsg = "\"Array out of bound\"";
+  static llvm::Value *ErrStr =
+      Builder.CreateGlobalString(ErrMsg, "ExceptionMsg");
+  static llvm::Value *Length = Builder.getInt64(ErrMsg.length() + 1);
+  BasicBlock *RevertBB = BasicBlock::Create(Context, "revert", CurFunc);
+  BasicBlock *ContBB = BasicBlock::Create(Context, "continue", CurFunc);
+
+  llvm::Value *OutOfBound = Builder.CreateICmpUGE(Idx, ArrSz, "BO_GE");
+  Builder.CreateCondBr(OutOfBound, RevertBB, ContBB);
+  Builder.SetInsertPoint(RevertBB);
+  Value *MSG = Builder.CreateInBoundsGEP(ErrStr, {Builder.getInt32(0), Length},
+                                         "msg.ptr");
+  Builder.CreateCall(Module.getFunction("revert"), {MSG, Length});
+  Builder.CreateUnreachable();
+
+  Builder.SetInsertPoint(ContBB);
+}
+
 void FuncBodyCodeGen::visit(IndexAccessType &IA) {
   ConstStmtVisitor::visit(IA);
   llvm::Value *BaseV = findTempValue(IA.getBase());
   llvm::Value *IdxV = findTempValue(IA.getIndex());
-  // returns LValue, stores address
   llvm::Value *V = nullptr;
 
-  if (IA.getBase()->getType().getCategory() == Type::Category::Mapping) {
+  if (IA.getBase()->getType()->getCategory() == Type::Category::Mapping) {
     // mapping : store i256 hash value in TempValueTable
-    unsigned BaseBitNum = IA.getBase()->getType()->getBitNum();  // always 256 bit
+    unsigned BaseBitNum = IA.getBase()->getType()->getBitNum();
     unsigned IdxBitNum = IA.getBase()->getType()->getBitNum();
     unsigned ConcateArrLength = (BaseBitNum + IdxBitNum)/8;
     llvm::ArrayType *ConcateArrTy = llvm::ArrayType::get(
@@ -740,41 +792,46 @@ void FuncBodyCodeGen::visit(IndexAccessType &IA) {
       ConcateArrLength
     );
     llvm::Value *ConcateArr = Builder.CreateAlloca(ConcateArrTy, nullptr, "ConcateArr");
-    llvm::Value *Ptr = Builder.CreateAlloca(Builder.getInt8PtrTy(), nullptr, "Ptr");
-    Builder.CreateStore(Builder.CreateInBoundsGEP(ConcateArr, {Builder.getInt32(0), Builder.getInt32(0)}), Ptr);
-    // concate : concate {idx, base} and store into ConcateArr using little
-    // Endian
-    std::vector<unsigned> BitNum {BaseBitNum, IdxBitNum};
-    std::vector<llvm::Value*> Val {BaseV, IdxV};
-    for (int i = 0; i < 2; i++) {
-      llvm::Value *Mask = Builder.getIntN(BitNum[i], (1<<9)-1);
-      llvm::Value *ShiftWidth = Builder.getIntN(BitNum[i], 8);
-      for (unsigned j = 0; j < BitNum[i]/8; j++) {
-        // mask
-        llvm::Value *MaskedV = Builder.CreateAnd(Val[i], Mask, "AndMask");
-        MaskedV = Builder.CreateTrunc(MaskedV, Builder.getInt8Ty(), "Trunc");
-        // store
-        llvm::Value *ArrEntry = Builder.CreateLoad(Ptr);
-        Builder.CreateStore(MaskedV, ArrEntry);
-        // update ptr / val[i]
-        ArrEntry = Builder.CreateLoad(Ptr);
-        llvm::Value *NxtPtr = Builder.CreateInBoundsGEP(Builder.getInt8Ty(), ArrEntry, Builder.getInt8(1), "NxtEntry");
-        Builder.CreateStore(NxtPtr, Ptr);
-        Val[i] = Builder.CreateAShr(Val[i], ShiftWidth, "RShift");
-      }
-    }
+    concate(ConcateArr, BaseBitNum, IdxBitNum, BaseV, IdxV);
     V = Builder.CreateCall(
         Module.getFunction("keccak"),
         {Builder.CreateInBoundsGEP(ConcateArr,
                                    {Builder.getInt32(0), Builder.getInt32(0)}),
          Builder.getIntN(256, ConcateArrLength)},
         "Mapping");
-  } else if (IA.getBase()->getType().getCategory() == Type::Category::Array) {
-    // Fixed size memory array : store array address in TempValueTable
-    // TODO: replace Ty to ArrayType of base
-    llvm::Type *Ty = llvm::ArrayType::get(Builder.getInt64Ty(), 3);
-    V = Builder.CreateInBoundsGEP(Ty, BaseV, {Builder.getIntN(256, 0), IdxV},
-                                  "arrIdxAddr");
+  } else if (IA.getBase()->getType()->getCategory() == Type::Category::Array) {
+    // Array Type : Fixed Size Mem Array, Fixed Sized Storage Array, Dynamic
+    // Sized Storage Array
+
+    // TODO: replace ArraySize with correct value
+    unsigned ArraySize = IA.getBase()->getType()->getArraySize();
+    checkArrayOutOfBound(Builder.getInt64(ArraySize), IdxV);
+
+    // TODO: update if condition
+    if (isMemoryArray(IA.getBase())) {
+      // Fixed size memory array : store array address in TempValueTable
+      llvm::Type *Ty = llvm::ArrayType::get(Builder.getInt64Ty(), ArraySize);
+      V = Builder.CreateInBoundsGEP(Ty, BaseV, {Builder.getIntN(256, 0), IdxV},
+                                    "arrIdxAddr");
+    } else if (isFixedSizeArray()) {
+      // TODO : Fixed Size Storage Array
+    } else {
+      // Dynamic Storage Array : store hash value in TempValueTable
+      unsigned BaseBitNum = IA.getBase()->getType()->getBitNum();
+      unsigned IdxBitNum = IA.getBase()->getType()->getBitNum();
+      unsigned ConcateArrLength = (BaseBitNum + IdxBitNum) / 8;
+      llvm::ArrayType *ConcateArrTy =
+          llvm::ArrayType::get(Builder.getInt8Ty(), ConcateArrLength);
+      llvm::Value *ConcateArr =
+          Builder.CreateAlloca(ConcateArrTy, nullptr, "ConcateArr");
+      concate(ConcateArr, BaseBitNum, IdxBitNum, BaseV, IdxV);
+      V = Builder.CreateCall(
+          Module.getFunction("keccak"),
+          {Builder.CreateInBoundsGEP(
+               ConcateArr, {Builder.getInt32(0), Builder.getInt32(0)}),
+           Builder.getIntN(256, ConcateArrLength)},
+          "DynArrEntry");
+    }
   }
   TempValueTable[&IA] = V;
 }
