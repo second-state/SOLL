@@ -22,7 +22,6 @@ bool IntegerType::isExplicitlyConvertibleTo(Type const &_convertTo) const {
   case Category::Address:
   case Category::Contract:
   case Category::Enum:
-  case Category::FixedPoint:
     return true;
   case Category::FixedBytes:
     // TODO: FixedBytes not implemented yet

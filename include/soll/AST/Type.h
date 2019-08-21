@@ -1,19 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #pragma once
 
+#include "soll/AST/ASTForward.h"
 #include <memory>
+#include <optional>
+#include <vector>
+#include <cassert>
+
 namespace soll {
+
+enum class DataLocation { Storage, CallData, Memory };
 
 class Type {
 public:
-  // copied from Solitity Types.h
   enum class Category {
     Address,
     Integer,
     RationalNumber,
-    StringLiteral,
+    String,
     Bool,
-    FixedPoint,
     Array,
     FixedBytes,
     Contract,
@@ -22,11 +27,6 @@ public:
     Enum,
     Tuple,
     Mapping,
-    TypeType,
-    Modifier,
-    Magic,
-    Module,
-    InaccessibleDynamic
   };
 
   // TODO: change the following following function to virtual pure function
@@ -38,7 +38,9 @@ public:
   virtual Category getCategory() const { return Category::Integer; }
 };
 
-using TypePtr = std::unique_ptr<Type>;
+class AddressType: public Type {
+
+};
 
 class IntegerType : public Type {
 public:
@@ -126,19 +128,56 @@ private:
 };
 
 class StringType : public Type {
-  // TODO
+  Category getCategory() const override { return Category::String; }
 };
 
-class MappingType : public Type {
+
+class ReferenceType: public Type
+{
+protected:
+	DataLocation Loc;
+	explicit ReferenceType(DataLocation Loc): Loc(Loc) {}
+public:
+	DataLocation location() const { return Loc; }
+};
+
+class MappingType : public ReferenceType {
   TypePtr KeyType;
   TypePtr ValueType;
+  MappingType(TypePtr &&KT, TypePtr &&VT): KeyType(std::move(KT)), ValueType(std::move(VT)), ReferenceType(DataLocation::Storage){}
+  Type *getKeyType() const { return KeyType.get(); }
+  Type *getValueType() const { return ValueType.get(); }
+
+  Category getCategory() const override { return Category::Mapping; }
 };
 
-class ArrayType : public Type {
+class ArrayType : public ReferenceType {
   TypePtr ElementType;
+  std::optional<uint32_t> Length; ///< Length of the array
+public:
+  // dynamic-sized array
+  ArrayType(TypePtr ET, DataLocation Loc): ElementType(ET), ReferenceType(Loc) {}
+  // fix-sized array
+  ArrayType(TypePtr ET, uint32_t L, DataLocation Loc): ElementType(ET), Length(L), ReferenceType(Loc) {}
+  Type *getElementType() const { return ElementType.get(); }
+
+  bool isDynamicSized() const { return Length.has_value();}
+  uint32_t getLength() const {
+    assert(!isDynamicSized());
+    return *Length;
+  }
+  Category getCategory() const override { return Category::Array; }
 };
 
 class FunctionType : public Type {
+  std::vector<TypePtr> ParamTypes;
+  std::vector<TypePtr> ReturnTypes;
+public:
+  const std::vector<TypePtr> &getParamTypes() const { return ParamTypes; }
+  const std::vector<TypePtr> &getReturnTypes() const { return ReturnTypes; }
+};
+
+class StructType: public Type {
   // TODO
 };
 
