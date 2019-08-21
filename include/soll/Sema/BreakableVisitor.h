@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+#pragma once
+
 #include "soll/AST/Stmt.h"
 #include "soll/AST/Decl.h"
 #include "soll/AST/StmtVisitor.h"

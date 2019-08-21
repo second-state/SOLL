@@ -10,7 +10,7 @@
 namespace soll {
 
 void ParseAST(Sema &S, ASTConsumer &C, ASTContext &Ctx, bool PrintStats) {
-  auto P = std::make_unique<Parser>(S.Lex);
+  auto P = std::make_unique<Parser>(S.Lex, S);
   auto root = P->parse();
 
   C.HandleSourceUnit(Ctx, *root);

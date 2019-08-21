@@ -10,4 +10,8 @@ Sema::Sema(Lexer &lexer, ASTContext &ctxt, ASTConsumer &consumer)
     : Lex(lexer), Context(ctxt), Consumer(consumer),
       Diags(Lex.getDiagnostics()), SourceMgr(Lex.getSourceManager()) {}
 
+void Sema::resolveBreak(FunctionDecl &FD) {
+  BreakableVisitor().check(FD);
+}
+
 } // namespace soll

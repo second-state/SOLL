@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #pragma once
 
+#include "soll/Sema/BreakableVisitor.h"
+
 namespace soll {
 
 class Lexer;
@@ -21,6 +23,8 @@ public:
   SourceManager &SourceMgr;
 
   Sema(Lexer &lexer, ASTContext &ctxt, ASTConsumer &consumer);
+
+  void resolveBreak(FunctionDecl &);
 };
 
 } // namespace soll

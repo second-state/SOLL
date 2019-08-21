@@ -7,6 +7,7 @@
 #include "soll/AST/Type.h"
 #include "soll/Basic/OperatorPrecedence.h"
 #include "soll/Lex/Lexer.h"
+#include "soll/Sema/BreakableVisitor.h"
 
 using namespace std;
 
@@ -120,7 +121,7 @@ static UnaryOperatorKind token2uop(llvm::Optional<Token> Tok,
   }
 }
 
-Parser::Parser(Lexer &lexer) : TheLexer(lexer) {}
+Parser::Parser(Lexer &lexer, Sema &sema) : TheLexer(lexer), Actions(sema) {}
 
 unique_ptr<SourceUnit> Parser::parse() {
   llvm::Optional<Token> CurTok;
@@ -353,10 +354,12 @@ Parser::parseFunctionDefinitionOrFunctionTypeStateVariable() {
     if (TheLexer.LookAhead(0)->isNot(tok::semi)) {
       block = parseBlock();
     }
-    return std::make_unique<FunctionDecl>(
+    auto &&FD = std::make_unique<FunctionDecl>(
         Header.Name, Header.Vsblty, Header.SM, Header.IsConstructor,
         std::move(Header.Parameters), std::move(Header.Modifiers),
         std::move(Header.ReturnParameters), std::move(block));
+    Actions.resolveBreak(*FD);
+    return std::move(FD);
   } else {
     // [TODO] State Variable case.
     return nullptr;

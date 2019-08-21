@@ -2,6 +2,7 @@
 #pragma once
 #include "soll/AST/AST.h"
 #include "soll/Basic/SourceManager.h"
+#include "soll/Sema/Sema.h"
 
 namespace soll {
 
@@ -27,9 +28,10 @@ class Expr;
 
 class Parser {
   Lexer &TheLexer;
+  Sema &Actions;
 
 public:
-  Parser(Lexer &);
+  Parser(Lexer &, Sema &);
   std::unique_ptr<SourceUnit> parse();
 
 private:
