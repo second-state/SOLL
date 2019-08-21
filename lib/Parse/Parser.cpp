@@ -586,10 +586,21 @@ unique_ptr<Type> Parser::parseTypeName(bool AllowVar) {
     if (tok::kw_int <= CurTok->getKind() &&
         CurTok->getKind() <= tok::kw_uint256) {
       T = std::make_unique<IntegerType>(token2inttype(CurTok));
+      TheLexer.CachedLex();
+    } else if (CurTok->getKind() == tok::kw_string) {
+      T = std::make_unique<StringType>();
+      TheLexer.CachedLex();
+    } else if (CurTok->getKind() == tok::kw_address) {
+      TheLexer.CachedLex();
+      StateMutability SM = StateMutability::NonPayable;
+      if (TheLexer.LookAhead(1)->isOneOf(tok::kw_constant, tok::kw_pure,
+                                         tok::kw_view, tok::kw_payable)) {
+        SM = parseStateMutability();
+      }
+      T = std::make_unique<AddressType>();
     }
-    // [TODO] parseTypeName handle address case
     HaveType = true;
-    TheLexer.CachedLex();
+
   } else if (Kind == tok::kw_var) {
     // [TODO] parseTypeName tok::kw_var (var is deprecated)
     assert(false && "Expected Type Name");
