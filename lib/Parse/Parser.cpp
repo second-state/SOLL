@@ -849,23 +849,20 @@ Parser::tryParseIndexAccessedPath() {
     break;
   }
 
-  // [TODO] IAP complex case. ex. name[idx], name.name2, typename [3]
-  /*
   // At this point, we have 'Identifier "["' or 'Identifier "." Identifier' or
-  'ElementoryTypeName "["'.
-  // We parse '(Identifier ("." Identifier)* |ElementaryTypeName) ( "["
-  Expression "]" )*'
-  // until we can decide whether to hand this over to ExpressionStatement or
-  create a
+  // 'ElementoryTypeName "["'. We parse '(Identifier ("." Identifier)*
+  // |ElementaryTypeName) ( "[" Expression "]" )*' until we can decide whether
+  // to hand this over to ExpressionStatement or create a
   // VariableDeclarationStatement out of it.
   IndexAccessedPath Iap = parseIndexAccessedPath();
 
-  if (m_scanner->currentToken() == Token::Identifier ||
-  TokenTraits::isLocationSpecifier(m_scanner->currentToken())) return
-  make_pair(LookAheadInfo::VariableDeclaration, move(Iap)); else return
-  make_pair(LookAheadInfo::Expression, move(Iap));
-  */
-  return make_pair(StatementType, IndexAccessedPath());
+  // if (m_scanner->currentToken() == Token::Identifier ||
+  // TokenTraits::isLocationSpecifier(m_scanner->currentToken()))
+  if (TheLexer.LookAhead(0)->isOneOf(tok::identifier, tok::kw_memory,
+                                     tok::kw_storage, tok::kw_calldata))
+    return make_pair(LookAheadInfo::VariableDeclaration, move(Iap));
+  else
+    return make_pair(LookAheadInfo::Expression, move(Iap));
 }
 
 Parser::LookAheadInfo Parser::peekStatementType() const {
@@ -896,8 +893,8 @@ Parser::LookAheadInfo Parser::peekStatementType() const {
         NextTok->isOneOf(tok::kw_pure, tok::kw_view, tok::kw_payable)) {
       return LookAheadInfo::VariableDeclaration;
     }
-    if (NextTok->is(tok::identifier) ||
-        NextTok->isOneOf(tok::kw_memory, tok::kw_storage, tok::kw_calldata)) {
+    if (NextTok->isOneOf(tok::identifier, tok::kw_memory, tok::kw_storage,
+                         tok::kw_calldata)) {
       return LookAheadInfo::VariableDeclaration;
     }
     if (NextTok->isOneOf(tok::l_square, tok::period)) {
@@ -905,6 +902,31 @@ Parser::LookAheadInfo Parser::peekStatementType() const {
     }
   }
   return LookAheadInfo::Expression;
+}
+
+Parser::IndexAccessedPath Parser::parseIndexAccessedPath() {
+  IndexAccessedPath Iap;
+
+  if (TheLexer.LookAhead(0)->is(tok::identifier)) {
+    Iap.Path.push_back(getLiteralAndAdvance(TheLexer.LookAhead(0)));
+    while (TheLexer.LookAhead(0)->is(tok::period)) {
+      TheLexer.CachedLex(); // .
+      Iap.Path.push_back(getLiteralAndAdvance(TheLexer.LookAhead(0)));
+    }
+  } else {
+    // Start with type
+    Iap.Path.push_back(getLiteralAndAdvance(TheLexer.CachedLex()));
+  }
+
+  while (TheLexer.LookAhead(0)->is(tok::l_square)) {
+    TheLexer.CachedLex(); // [
+    unique_ptr<Expr> Index;
+    if (TheLexer.LookAhead(0)->isNot(tok::r_square))
+      Index = parseExpression();
+    Iap.Indices.emplace_back(std::move(Index));
+    TheLexer.CachedLex(); // ]
+  }
+  return Iap;
 }
 
 // [TODO] IAP relative function
@@ -1009,7 +1031,7 @@ unique_ptr<Expr> Parser::parseLeftHandSideExpression(
     case tok::l_paren: {
       TheLexer.CachedLex();
       vector<unique_ptr<Expr>> Arguments;
-      vector<unique_ptr<string>> Names;
+      vector<llvm::StringRef> Names;
       tie(Arguments, Names) = parseFunctionCallArguments();
       TheLexer.CachedLex();
       // [TODO] Fix passs arguments' name fail.
@@ -1088,9 +1110,9 @@ vector<unique_ptr<Expr>> Parser::parseFunctionCallListArguments() {
   return Arguments;
 }
 
-pair<vector<unique_ptr<Expr>>, vector<unique_ptr<string>>>
+pair<vector<unique_ptr<Expr>>, vector<llvm::StringRef>>
 Parser::parseFunctionCallArguments() {
-  pair<vector<unique_ptr<Expr>>, vector<unique_ptr<string>>> Ret;
+  pair<vector<unique_ptr<Expr>>, vector<llvm::StringRef>> Ret;
   if (TheLexer.LookAhead(0)->is(tok::l_brace)) {
     // [TODO] Unverified function parameters case
     // call({arg1 : 1, arg2 : 2 })
@@ -1100,7 +1122,7 @@ Parser::parseFunctionCallArguments() {
       if (!First)
         TheLexer.CachedLex();
 
-      Ret.second.push_back(expectIdentifierToken());
+      Ret.second.push_back(getLiteralAndAdvance(TheLexer.LookAhead(0)));
       TheLexer.CachedLex();
       Ret.first.push_back(parseExpression());
 
@@ -1118,8 +1140,6 @@ Parser::parseFunctionCallArguments() {
 }
 
 unique_ptr<AST> Parser::createEmptyParameterList() { return nullptr; }
-
-unique_ptr<string> Parser::expectIdentifierToken() { return nullptr; }
 
 llvm::StringRef Parser::getLiteralAndAdvance(llvm::Optional<Token> Tok) {
   TheLexer.CachedLex();

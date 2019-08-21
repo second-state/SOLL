@@ -100,8 +100,7 @@ private:
       std::unique_ptr<Expr> &&PartiallyParsedExpression = nullptr);
   std::unique_ptr<Expr> parsePrimaryExpression();
   std::vector<std::unique_ptr<Expr>> parseFunctionCallListArguments();
-  std::pair<std::vector<std::unique_ptr<Expr>>,
-            std::vector<std::unique_ptr<std::string>>>
+  std::pair<std::vector<std::unique_ptr<Expr>>, std::vector<llvm::StringRef>>
   parseFunctionCallArguments();
 
   /// Used as return value of @see peekStatementType.
@@ -115,7 +114,8 @@ private:
   /// expression or to a type name. For this to be valid, path cannot be empty,
   /// but indices can be empty.
   struct IndexAccessedPath {
-    std::vector<std::unique_ptr<AST>> Path;
+    std::vector<llvm::StringRef> Path;
+    std::vector<std::unique_ptr<Expr>> Indices;
   };
 
   std::pair<LookAheadInfo, IndexAccessedPath> tryParseIndexAccessedPath();
@@ -125,7 +125,9 @@ private:
   /// ("IndexAccessStructure"), this is not possible to decide with constant
   /// look-ahead.
   LookAheadInfo peekStatementType() const;
-
+  /// @returns an IndexAccessedPath as a prestage to parsing a variable
+  /// declaration (type name) or an expression;
+  IndexAccessedPath parseIndexAccessedPath();
   /// @returns a typename parsed in look-ahead fashion from something like
   /// "a.b[8][2**70]", or an empty pointer if an empty @a _pathAndIncides has
   /// been supplied.
@@ -136,12 +138,10 @@ private:
   /// been supplied.
   std::unique_ptr<Expr>
   expressionFromIndexAccessStructure(IndexAccessedPath const &PathAndIndices);
-  std::unique_ptr<std::string> expectIdentifierToken();
-  std::unique_ptr<std::string> getLiteralAndAdvance();
+  llvm::StringRef getLiteralAndAdvance(llvm::Optional<Token> Tok);
   /// Creates an empty ParameterList at the current location (used if parameters
   /// can be omitted).
   std::unique_ptr<AST> createEmptyParameterList();
-  llvm::StringRef getLiteralAndAdvance(llvm::Optional<Token> Tok);
 };
 
 } // namespace soll
