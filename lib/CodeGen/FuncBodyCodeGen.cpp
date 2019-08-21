@@ -302,14 +302,13 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
   // TODO: replace this temp impl (visit(BinaryOperatorType &BO))
   // This impl assumes:
   //   every type is uint64
-  ConstStmtVisitor::visit(BO);
   llvm::Value *V = nullptr;
   if (BO.isAssignmentOp()) {
     // TODO: replace this temp impl
     // because we havn't properly dealed with lvalue/rvalue
     // This impl assumes:
     //   lhs of assignment operator (=, +=, -=, ...) is a Identifier,
-
+    ConstStmtVisitor::visit(BO);
     llvm::Value *lhsAddr = findTempValue(BO.getLHS()); // required lhs as LValue
     llvm::Value *lhsVal = nullptr;
     llvm::Value *rhsVal = findTempValue(BO.getRHS());
@@ -372,8 +371,8 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
     V = rhsVal;
   }
 
-  if (BO.isAdditiveOp() || BO.isMultiplicativeOp() || BO.isComparisonOp() ||
-      BO.isShiftOp() || BO.isBitwiseOp()) {
+  if (BO.isAdditiveOp() || BO.isMultiplicativeOp() || BO.isComparisonOp() || BO.isShiftOp() || BO.isBitwiseOp()) {
+    ConstStmtVisitor::visit(BO);
     llvm::Value *lhs = findTempValue(BO.getLHS());
     llvm::Value *rhs = findTempValue(BO.getRHS());
     switch (BO.getOpcode()) {
@@ -430,14 +429,7 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
   }
 
   if (BO.isLogicalOp()) {
-    llvm::Value *lhs = findTempValue(BO.getLHS());
-    llvm::Value *rhs = findTempValue(BO.getRHS());
-    if (BO.getLHS()->isLValue()) {
-      lhs = Builder.CreateLoad(lhs);
-    }
-    if (BO.getRHS()->isRValue()) {
-      rhs = Builder.CreateLoad(rhs);
-    }
+    // TODO : refactor logical op with phi node
     if (BO.getOpcode() == BO_LAnd) {
       llvm::Value *res = Builder.CreateAlloca(Int256Ty);
       BasicBlock *trueBB = BasicBlock::Create(Context, "BO_LAnd.true", CurFunc);
