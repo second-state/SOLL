@@ -612,25 +612,15 @@ unique_ptr<Type> Parser::parseMapping()
 {
   TheLexer.CachedLex(); // mapping
   TheLexer.CachedLex(); // (
-
-  // Need extract elementary type
-  llvm::Optional<Token> CurTok = TheLexer.CachedLex();
-  /*
-  ASTPointer<ElementaryTypeName> keyType;
-  Token token = m_scanner->currentToken();
-  if (!TokenTraits::isElementaryTypeName(token))
-    fatalParserError(string("Expected elementary type name for mapping key type"));
-  unsigned firstSize;
-  unsigned secondSize;
-  tie(firstSize, secondSize) = m_scanner->currentTokenInfo();
-  ElementaryTypeNameToken elemTypeName(token, firstSize, secondSize);
-  keyType = ASTNodeFactory(*this).createNode<ElementaryTypeName>(elemTypeName);
-  */
-  TheLexer.CachedLex(); // =>
   bool const AllowVar = false;
+  unique_ptr<Type> KeyType;
+  if (TheLexer.LookAhead(0)->isElementaryTypeName()){
+    KeyType = parseTypeName(AllowVar);
+  }
+  TheLexer.CachedLex(); // =>
   unique_ptr<Type> ValueType = parseTypeName(AllowVar);
   TheLexer.CachedLex(); // )
-  return std::make_unique<Type>();
+  return std::make_unique<MappingType>(std::move(KeyType), std::move(ValueType));
 }
 
 unique_ptr<ParamList>
