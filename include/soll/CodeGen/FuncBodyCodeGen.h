@@ -129,14 +129,6 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
       return nullptr;
   }
 
-  // for mapping and dynamic storage array codegen
-  // codegen function for concating {idx, base}
-  void concate(llvm::Value *, unsigned, unsigned, llvm::Value *, llvm::Value *);
-
-  // for array codegen
-  // codegen function for checking whether array idx is out of bound
-  void checkArrayOutOfBound(llvm::Value *, llvm::Value *);
-
 public:
   FuncBodyCodeGen(llvm::LLVMContext &Context,
                   llvm::IRBuilder<llvm::NoFolder> &Builder,

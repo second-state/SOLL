@@ -154,12 +154,13 @@ protected:
 
 public:
   DataLocation location() const { return Loc; }
+  // mapping and dynamic storage use a 256-bit integer as numbering
+  unsigned int getBitNum() const override { return 256; }
 };
 
 class MappingType : public ReferenceType {
   TypePtr KeyType;
   TypePtr ValueType;
-
 public:
   MappingType(TypePtr &&KT, TypePtr &&VT)
       : KeyType(std::move(KT)), ValueType(std::move(VT)),

@@ -761,12 +761,13 @@ void FuncBodyCodeGen::checkArrayOutOfBound(llvm::Value *ArrSz,
   static std::string ErrMsg = "\"Array out of bound\"";
   static llvm::Value *ErrStr =
       Builder.CreateGlobalString(ErrMsg, "ExceptionMsg");
-  static llvm::Value *Length = Builder.getInt64(ErrMsg.length() + 1);
-  BasicBlock *RevertBB = BasicBlock::Create(Context, "revert", CurFunc);
+  static llvm::Value *Length = Builder.getInt32(ErrMsg.length() + 1);
+  BasicBlock *RevertBB = BasicBlock::Create(Context, "out_of_bound", CurFunc);
   BasicBlock *ContBB = BasicBlock::Create(Context, "continue", CurFunc);
 
   llvm::Value *OutOfBound = Builder.CreateICmpUGE(Idx, ArrSz, "BO_GE");
   Builder.CreateCondBr(OutOfBound, RevertBB, ContBB);
+
   Builder.SetInsertPoint(RevertBB);
   Value *MSG = Builder.CreateInBoundsGEP(ErrStr, {Builder.getInt32(0), Length},
                                          "msg.ptr");
@@ -781,11 +782,13 @@ void FuncBodyCodeGen::visit(IndexAccessType &IA) {
   llvm::Value *BaseV = findTempValue(IA.getBase());
   llvm::Value *IdxV = findTempValue(IA.getIndex());
   llvm::Value *V = nullptr;
+  const Type *ExprTy = IA.getBase()->getType().get();
 
   if (IA.getBase()->getType()->getCategory() == Type::Category::Mapping) {
     // mapping : store i256 hash value in TempValueTable
-    unsigned BaseBitNum = IA.getBase()->getType()->getBitNum();
-    unsigned IdxBitNum = IA.getBase()->getType()->getBitNum();
+    const MappingType *MapTy = dynamic_cast<const MappingType *>(ExprTy);
+    unsigned BaseBitNum = MapTy->getBitNum(); // const 256
+    unsigned IdxBitNum = MapTy->getKeyType()->getBitNum();
     unsigned ConcateArrLength = (BaseBitNum + IdxBitNum)/8;
     llvm::ArrayType *ConcateArrTy = llvm::ArrayType::get(
       Builder.getInt8Ty(),
@@ -802,23 +805,28 @@ void FuncBodyCodeGen::visit(IndexAccessType &IA) {
   } else if (IA.getBase()->getType()->getCategory() == Type::Category::Array) {
     // Array Type : Fixed Size Mem Array, Fixed Sized Storage Array, Dynamic
     // Sized Storage Array
+    // Require Index to be unsigned 256-bit Int
 
-    // TODO: replace ArraySize with correct value
-    unsigned ArraySize = IA.getBase()->getType()->getArraySize();
-    checkArrayOutOfBound(Builder.getInt64(ArraySize), IdxV);
+    const ArrayType *ArrTy = dynamic_cast<const ArrayType *>(ExprTy);
 
-    // TODO: update if condition
-    if (isMemoryArray(IA.getBase())) {
+    if (ArrTy->location() == DataLocation::Memory) {
       // Fixed size memory array : store array address in TempValueTable
-      llvm::Type *Ty = llvm::ArrayType::get(Builder.getInt64Ty(), ArraySize);
+      // TODO : Assume only Integer Array
+      unsigned ArraySize = ArrTy->getLength();
+      checkArrayOutOfBound(Builder.getIntN(256, ArraySize), IdxV);
+      llvm::ArrayType *Ty = llvm::ArrayType::get(
+          Builder.getIntNTy(ArrTy->getElementType()->getBitNum()), ArraySize);
       V = Builder.CreateInBoundsGEP(Ty, BaseV, {Builder.getIntN(256, 0), IdxV},
                                     "arrIdxAddr");
-    } else if (isFixedSizeArray()) {
-      // TODO : Fixed Size Storage Array
-    } else {
+    } else if (ArrTy->isDynamicSized()) {
       // Dynamic Storage Array : store hash value in TempValueTable
-      unsigned BaseBitNum = IA.getBase()->getType()->getBitNum();
-      unsigned IdxBitNum = IA.getBase()->getType()->getBitNum();
+      // TODO: modify this, dyn array size is stored in memory but currently I
+      // don't know where can I load the correct value
+      unsigned ArraySize = 7122;
+      checkArrayOutOfBound(Builder.getIntN(256, ArraySize), IdxV);
+      unsigned BaseBitNum = ArrTy->getBitNum(); // always 256 bit
+      unsigned IdxBitNum =
+          IA.getIndex()->getType()->getBitNum(); // always 256 bit
       unsigned ConcateArrLength = (BaseBitNum + IdxBitNum) / 8;
       llvm::ArrayType *ConcateArrTy =
           llvm::ArrayType::get(Builder.getInt8Ty(), ConcateArrLength);
@@ -831,6 +839,16 @@ void FuncBodyCodeGen::visit(IndexAccessType &IA) {
                ConcateArr, {Builder.getInt32(0), Builder.getInt32(0)}),
            Builder.getIntN(256, ConcateArrLength)},
           "DynArrEntry");
+    } else {
+      // Fixed Size Storage Array : store storage address of slot the accessed
+      // element belongs to in TempValueTable
+      unsigned ArraySize = ArrTy->getLength();
+      checkArrayOutOfBound(Builder.getIntN(256, ArraySize), IdxV);
+      unsigned BytePerElement = ArrTy->getElementType()->getBitNum() / 8;
+      llvm::Value *Slot =
+          Builder.CreateUDiv(Builder.getIntN(256, 32),
+                             Builder.getIntN(256, BytePerElement), "BO_Div");
+      V = Builder.CreateAdd(BaseV, Builder.CreateUDiv(IdxV, Slot, "BO_Div"));
     }
   }
   TempValueTable[&IA] = V;
