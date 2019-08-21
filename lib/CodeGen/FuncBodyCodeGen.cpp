@@ -302,6 +302,13 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
   // TODO: replace this temp impl (visit(BinaryOperatorType &BO))
   // This impl assumes:
   //   every type is uint64
+  bool isSigned;
+  if (auto TyNow = dynamic_cast<const IntegerType *>(BO.getType().get()))
+    isSigned = TyNow->isSigned();
+  else if(auto TyNow = dynamic_cast<const BooleanType *>(BO.getType().get()))
+    isSigned = false;
+  else
+    assert(false && "Wrong type in binary operator!");
   llvm::Value *V = nullptr;
   if (BO.isAssignmentOp()) {
     // TODO: replace this temp impl
@@ -323,12 +330,18 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
       break;
     case BO_DivAssign:
       lhsVal = Builder.CreateLoad(lhsAddr, "BO_Lhs");
-      lhsVal = Builder.CreateUDiv(lhsVal, rhsVal, "BO_DivAssign");
+      if (isSigned)
+        lhsVal = Builder.CreateSDiv(lhsVal, rhsVal, "BO_DivAssign");
+      else
+        lhsVal = Builder.CreateUDiv(lhsVal, rhsVal, "BO_DivAssign");
       Builder.CreateStore(lhsVal, lhsAddr);
       break;
     case BO_RemAssign:
       lhsVal = Builder.CreateLoad(lhsAddr, "BO_Lhs");
-      lhsVal = Builder.CreateURem(lhsVal, rhsVal, "BO_RemAssign");
+      if (isSigned)
+        lhsVal = Builder.CreateSRem(lhsVal, rhsVal, "BO_RemAssign");
+      else
+        lhsVal = Builder.CreateURem(lhsVal, rhsVal, "BO_RemAssign");
       Builder.CreateStore(lhsVal, lhsAddr);
       break;
     case BO_AddAssign:
@@ -372,6 +385,7 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
   }
 
   if (BO.isAdditiveOp() || BO.isMultiplicativeOp() || BO.isComparisonOp() || BO.isShiftOp() || BO.isBitwiseOp()) {
+    using Pred = llvm::CmpInst::Predicate;
     ConstStmtVisitor::visit(BO);
     llvm::Value *lhs = findTempValue(BO.getLHS());
     llvm::Value *rhs = findTempValue(BO.getRHS());
@@ -386,22 +400,28 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
       V = Builder.CreateMul(lhs, rhs, "BO_MUL");
       break;
     case BinaryOperatorKind::BO_Div:
-      V = Builder.CreateUDiv(lhs, rhs, "BO_DIV");
+      if (isSigned)
+        V = Builder.CreateSDiv(lhs, rhs, "BO_DIV");
+      else
+        V = Builder.CreateUDiv(lhs, rhs, "BO_DIV");
       break;
     case BinaryOperatorKind::BO_Rem:
-      V = Builder.CreateURem(lhs, rhs, "BO_Rem");
+      if (isSigned)
+        V = Builder.CreateSRem(lhs, rhs, "BO_Rem");
+      else
+        V = Builder.CreateURem(lhs, rhs, "BO_Rem");
       break;
     case BinaryOperatorKind::BO_GE:
-      V = Builder.CreateICmpUGE(lhs, rhs, "BO_UGE");
+      V = Builder.CreateICmp(Pred(Pred::ICMP_UGE+(isSigned<<2)), lhs, rhs, "BO_GE");
       break;
     case BinaryOperatorKind::BO_GT:
-      V = Builder.CreateICmpUGT(lhs, rhs, "BO_UGT");
+      V = Builder.CreateICmp(Pred(Pred::ICMP_UGT+(isSigned<<2)), lhs, rhs, "BO_GT");
       break;
     case BinaryOperatorKind::BO_LE:
-      V = Builder.CreateICmpULE(lhs, rhs, "BO_ULE");
+      V = Builder.CreateICmp(Pred(Pred::ICMP_ULE+(isSigned<<2)), lhs, rhs, "BO_LE");
       break;
     case BinaryOperatorKind::BO_LT:
-      V = Builder.CreateICmpULT(lhs, rhs, "BO_ULT");
+      V = Builder.CreateICmp(Pred(Pred::ICMP_ULT+(isSigned<<2)), lhs, rhs, "BO_LT");
       break;
     case BinaryOperatorKind::BO_EQ:
       V = Builder.CreateICmpEQ(lhs, rhs, "BO_EQ");
