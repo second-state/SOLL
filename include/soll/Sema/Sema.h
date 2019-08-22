@@ -24,6 +24,17 @@ public:
 
   Sema(Lexer &lexer, ASTContext &ctxt, ASTConsumer &consumer);
 
+  ExprPtr CreateBinOp(BinaryOperatorKind Opc, ExprPtr &&LHS, ExprPtr &&RHS);
+
+  /// type checking binary operators (subroutines of CreateBinOp)
+  /// this may add type casting
+  TypePtr CheckAdditionOperands(ExprPtr &LHS, ExprPtr &RHS, BinaryOperatorKind Opc, TypePtr CompLHSTy = nullptr);
+  TypePtr UsualArithmeticConversions(ExprPtr &LHS, ExprPtr &RHS, bool IsCompAssign);
+
+  ExprPtr UsualUnaryConversions(ExprPtr &&E);
+
+  ExprPtr DefaultLvalueConversion(ExprPtr &&E);
+
   void resolveBreak(FunctionDecl &);
 };
 
