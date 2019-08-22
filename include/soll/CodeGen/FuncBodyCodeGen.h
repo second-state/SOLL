@@ -53,13 +53,13 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
   void visit(UnaryOperatorType &) override;
   void visit(BinaryOperatorType &) override;
   void visit(CallExprType &) override;
+  void visit(ImplicitCastExprType &) override;
+  void visit(ExplicitCastExprType &) override;
   void visit(ParenExprType &) override;
   void visit(IdentifierType &) override;
   void visit(BooleanLiteralType &) override;
   void visit(StringLiteralType &) override;
   void visit(NumberLiteralType &) override;
-  void visit(ImplicitCastExprType &IC) override;
-  void visit(ExplicitCastExprType &IC) override;
 
   void emitCast(const soll::CastExpr &Cast);
 

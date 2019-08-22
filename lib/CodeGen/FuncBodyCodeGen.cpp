@@ -607,6 +607,67 @@ void FuncBodyCodeGen::visit(CallExprType &CALL) {
   }
 }
 
+void FuncBodyCodeGen::visit(ImplicitCastExprType &IC) {
+  ConstStmtVisitor::visit(IC);
+  emitCast(IC);
+}
+
+void FuncBodyCodeGen::visit(ExplicitCastExprType &EC) {
+  ConstStmtVisitor::visit(EC);
+  emitCast(EC);
+}
+
+#define TargetTy(x) TargetTy = dynamic_cast<const x *>(Cast.getType().get())
+#define BaseTy(x)                                                              \
+  BaseTy = dynamic_cast<const x *>(Cast.getTargetValue()->getType().get())
+void FuncBodyCodeGen::emitCast(const CastExpr &Cast) {
+  Value *result = nullptr;
+  switch (Cast.getCastKind()) {
+  case CastKind::LValueToRValue: {
+    // TODO: emit load instruction
+    // current impl. just let visit(Identifier&) emit load
+    // which does not work for general cases
+    result = Builder.CreateLoad(findTempValue(Cast.getTargetValue()));
+    break;
+  }
+  case CastKind::IntegralCast: {
+    auto BaseCategory = Cast.getTargetValue()->getType()->getCategory();
+    switch (Cast.getType()->getCategory()) {
+    case Type::Category::Integer: {
+      auto TargetTy(IntegerType);
+      switch (BaseCategory) {
+      // Cast int type to int type
+      case Type::Category::Integer: {
+        auto BaseTy(IntegerType);
+        if (BaseTy->isSigned())
+          result = Builder.CreateSExt(findTempValue(Cast.getTargetValue()),
+                                      Builder.getIntNTy(TargetTy->getBitNum()));
+        else
+          result = Builder.CreateZExt(findTempValue(Cast.getTargetValue()),
+                                      Builder.getIntNTy(TargetTy->getBitNum()));
+        break;
+      }
+      case Type::Category::RationalNumber: {
+        // TODO: Cast NumberLiteral type to int type
+        break;
+      }
+      default:
+        assert(false);
+      }
+      break;
+    }
+    // TODO: many other type conversions
+    default:
+      assert(false);
+    }
+    break;
+  }
+  }
+  TempValueTable[&Cast] = result;
+}
+#undef TargetTy
+#undef BaseTy
+
 void FuncBodyCodeGen::visit(ParenExprType &P) {
   ConstStmtVisitor::visit(P);
   TempValueTable[&P] = findTempValue(P.getSubExpr());
@@ -635,30 +696,4 @@ void FuncBodyCodeGen::visit(StringLiteralType &SL) {
 
 void FuncBodyCodeGen::visit(NumberLiteralType &NL) {
   TempValueTable[&NL] = Builder.getIntN(256, NL.getValue());
-}
-
-void FuncBodyCodeGen::visit(ImplicitCastExprType &IC) {
-  ConstStmtVisitor::visit(IC);
-  emitCast(IC);
-}
-
-void FuncBodyCodeGen::visit(ExplicitCastExprType &EC) {
-  ConstStmtVisitor::visit(EC);
-  emitCast(EC);
-}
-
-void FuncBodyCodeGen::emitCast(const CastExpr &Cast) {
-  switch (Cast.getCastKind()) {
-  case CastKind::LValueToRValue: {
-    // TODO: emit load instruction
-    // current impl. just let visit(Identifier&) emit load
-    // which does not work for general cases
-    Value *Val = Builder.CreateLoad(findTempValue(Cast.getTargetValue()));
-    TempValueTable[&Cast] = Val;
-    return;
-  }
-  case CastKind::IntegralCast:
-    // TODO: int type cast
-    return;
-  }
 }
