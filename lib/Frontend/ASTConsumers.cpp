@@ -142,7 +142,8 @@ public:
   void visit(BooleanLiteralType &) override;
   void visit(StringLiteralType &) override;
   void visit(NumberLiteralType &) override;
-
+  void visit(ImplicitCastExprType &) override;
+  void visit(ExplicitCastExprType &) override;
   llvm::raw_ostream &os() { return Out; }
 
 protected:
@@ -284,6 +285,18 @@ void ASTPrinter::visit(StringLiteralType &literal) {
 void ASTPrinter::visit(NumberLiteralType &literal) {
   os() << indent() << "NumberLiteral \"" << literal.getValue() << "\"\n";
   ConstStmtVisitor::visit(literal);
+  unindent();
+}
+
+void ASTPrinter::visit(ImplicitCastExprType &IC) {
+  os() << indent() << "ImplicitCastExpr\n";
+  ConstStmtVisitor::visit(IC);
+  unindent();
+}
+
+void ASTPrinter::visit(ExplicitCastExprType &EC) {
+  os() << indent() << "ExplicitCastExpr\n";
+  ConstStmtVisitor::visit(EC);
   unindent();
 }
 

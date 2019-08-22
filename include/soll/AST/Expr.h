@@ -202,6 +202,7 @@ protected:
 public:
   Expr *getTargetValue() { return TargetValue.get(); }
   const Expr *getTargetValue() const { return TargetValue.get(); }
+  CastKind getCastKind() const { return CastK; }
 };
 
 class ImplicitCastExpr : public CastExpr {

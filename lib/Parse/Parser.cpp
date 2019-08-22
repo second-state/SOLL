@@ -763,8 +763,7 @@ Parser::parseExpression(unique_ptr<Expr> &&PartiallyParsedExpression) {
       TheLexer.LookAhead(0)->getKind() < tok::percentequal) {
     BinaryOperatorKind Op = token2bop(TheLexer.CachedLex());
     unique_ptr<Expr> RightHandSide = parseExpression();
-    return std::make_unique<BinaryOperator>(std::move(Expression),
-                                            std::move(RightHandSide), Op);
+    return std::move(Actions.CreateBinOp(Op, std::move(Expression), std::move(RightHandSide)));
   } else if (TheLexer.LookAhead(0)->is(tok::question)) {
     TheLexer.CachedLex();
     unique_ptr<Expr> trueExpression = parseExpression();
@@ -787,8 +786,7 @@ Parser::parseBinaryExpression(int MinPrecedence,
       // [TODO] Fix this token recognition method
       BinaryOperatorKind Op = token2bop(TheLexer.CachedLex());
       unique_ptr<Expr> RightHandSide = parseBinaryExpression(Precedence + 1);
-      Expression = std::make_unique<BinaryOperator>(
-          std::move(Expression), std::move(RightHandSide), Op);
+      Expression = std::move(Actions.CreateBinOp(Op, std::move(Expression), std::move(RightHandSide)));
     }
   }
   return Expression;

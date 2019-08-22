@@ -51,6 +51,10 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
   void visit(BooleanLiteralType &) override;
   void visit(StringLiteralType &) override;
   void visit(NumberLiteralType &) override;
+  void visit(ImplicitCastExprType &IC) override;
+  void visit(ExplicitCastExprType &IC) override;
+
+  void emitCast(const soll::CastExpr &Cast);
 
   llvm::Value *findLocalVarAddr(const std::string &S) {
     if (LocalVarAddrTable.count(S))

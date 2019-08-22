@@ -649,3 +649,27 @@ void FuncBodyCodeGen::visit(StringLiteralType &SL) {
 void FuncBodyCodeGen::visit(NumberLiteralType &NL) {
   TempValueTable[&NL] = Builder.getInt64(NL.getValue());
 }
+
+void FuncBodyCodeGen::visit(ImplicitCastExprType &IC) {
+  ConstStmtVisitor::visit(IC);
+  emitCast(IC);
+}
+
+void FuncBodyCodeGen::visit(ExplicitCastExprType &EC) {
+  ConstStmtVisitor::visit(EC);
+  emitCast(EC);
+}
+
+void FuncBodyCodeGen::emitCast(const CastExpr &Cast) {
+  switch (Cast.getCastKind()) {
+  case CastKind::LValueToRValue:
+    // TODO: emit load instruction
+    // current impl. just let visit(Identifier&) emit load
+    // which does not work for general cases
+    TempValueTable[&Cast] = findTempValue(Cast.getTargetValue());
+    return;
+  case CastKind::IntegralCast:
+    // TODO: int type cast
+    return;
+  }
+}
