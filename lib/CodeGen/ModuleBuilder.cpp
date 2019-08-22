@@ -25,6 +25,24 @@ class CodeGeneratorImpl : public CodeGenerator,
   DiagnosticsEngine &Diags;
   ASTContext *Ctx;
 
+  llvm::IntegerType *Int1Ty = nullptr;
+  llvm::IntegerType *Int8Ty = nullptr;
+  llvm::IntegerType *Int32Ty = nullptr;
+  llvm::IntegerType *Int64Ty = nullptr;
+  llvm::IntegerType *Int128Ty = nullptr;
+  llvm::IntegerType *Int256Ty = nullptr;
+  llvm::PointerType *Int8PtrTy = nullptr;
+  llvm::PointerType *Int64PtrTy = nullptr;
+  llvm::PointerType *Int256PtrTy = nullptr;
+  llvm::Type *VoidTy = nullptr;
+
+  llvm::Function *Func_callDataCopy = nullptr;
+  llvm::Function *Func_finish = nullptr;
+  llvm::Function *Func_revert = nullptr;
+  llvm::Function *Func_print32 = nullptr;
+
+  llvm::Function *Func_bswap256 = nullptr;
+
 protected:
   std::unique_ptr<llvm::Module> M;
   std::unique_ptr<CodeGen::CodeGenModule> Builder;
@@ -40,6 +58,92 @@ public:
 
   llvm::Module *GetModule() { return M.get(); }
 
+  void createTypes() {
+    auto &Builder = *IRBuilder;
+    Int1Ty = Builder.getInt1Ty();
+    Int8Ty = Builder.getInt8Ty();
+    Int32Ty = Builder.getInt32Ty();
+    Int64Ty = Builder.getInt64Ty();
+    Int128Ty = Builder.getIntNTy(128);
+    Int256Ty = Builder.getIntNTy(256);
+    Int8PtrTy = Builder.getInt8PtrTy();
+    Int64PtrTy = llvm::PointerType::getUnqual(Int64Ty);
+    Int256PtrTy = llvm::PointerType::getUnqual(Int256Ty);
+    VoidTy = Builder.getVoidTy();
+  }
+
+  void createEEIDeclaration() {
+    llvm::LLVMContext &Context = M->getContext();
+    llvm::FunctionType *FT = nullptr;
+
+    // CallDataCopy
+    FT = llvm::FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty, Int32Ty}, false);
+    Func_callDataCopy = llvm::Function::Create(
+        FT, llvm::Function::ExternalLinkage, "callDataCopy", *M);
+    Func_callDataCopy->addFnAttr(
+        llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
+
+    // finish
+    FT = llvm::FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
+    Func_finish = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                         "finish", *M);
+    Func_finish->addFnAttr(
+        llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
+
+    // revert
+    FT = llvm::FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
+    Func_revert = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                         "revert", *M);
+    Func_revert->addFnAttr(
+        llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
+
+    // debug.print32
+    FT = llvm::FunctionType::get(VoidTy, {Int32Ty}, false);
+    Func_print32 = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                          "print32", *M);
+    Func_print32->addFnAttr(
+        llvm::Attribute::get(Context, "wasm-import-module", "debug"));
+  }
+
+  void createBswapI256() {
+    llvm::LLVMContext &Context = M->getContext();
+    auto *const Arg = Func_bswap256->arg_begin();
+    auto &Builder = *IRBuilder;
+
+    llvm::BasicBlock *Entry =
+        llvm::BasicBlock::Create(Context, "entry", Func_bswap256);
+    Builder.SetInsertPoint(Entry);
+
+    llvm::Value *data[32];
+    for (size_t i = 0; i < 32; ++i) {
+      if (i < 16) {
+        data[i] = Builder.CreateShl(Arg, 248 - i * 16);
+      } else {
+        data[i] = Builder.CreateLShr(Arg, i * 16 - 248);
+      }
+      if (i != 0 && i != 31) {
+        data[i] = Builder.CreateAnd(data[i], llvm::APInt(256, 0xFF, false)
+                                                 << ((31 - i) * 8));
+      }
+    }
+    llvm::Value *result = Builder.CreateOr(data[0], data[1]);
+    for (size_t i = 2; i < 32; ++i) {
+      result = Builder.CreateOr(result, data[i]);
+    }
+
+    Builder.CreateRet(result);
+  }
+
+  void createI256Arithmetic() {
+    llvm::LLVMContext &Context = M->getContext();
+
+    Func_bswap256 = llvm::Function::Create(
+        llvm::FunctionType::get(Int256Ty, {Int256Ty}, false),
+        llvm::Function::InternalLinkage, "__bswapi256", *M);
+
+    createBswapI256();
+  }
+
   void Initialize(ASTContext &Context) override {
     Ctx = &Context;
 
@@ -49,6 +153,9 @@ public:
     Builder.reset(new CodeGen::CodeGenModule(Context, *M, Diags));
     IRBuilder =
         std::make_unique<llvm::IRBuilder<llvm::NoFolder>>(M->getContext());
+    createTypes();
+    createEEIDeclaration();
+    createI256Arithmetic();
   }
 
   void HandleSourceUnit(ASTContext &C, SourceUnit &S) override {
@@ -56,36 +163,6 @@ public:
   }
 
   void visit(SourceUnitType &SU) override {
-    llvm::LLVMContext &Context = M->getContext();
-    llvm::FunctionType *FT = nullptr;
-
-    // CallDataCopy
-    FT = llvm::FunctionType::get(IRBuilder->getVoidTy(),
-                                 {IRBuilder->getInt8PtrTy(),
-                                  IRBuilder->getInt32Ty(),
-                                  IRBuilder->getInt32Ty()},
-                                 false);
-    llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "callDataCopy",
-                           *M)
-        ->addFnAttr(
-            llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
-
-    // finish
-    FT = llvm::FunctionType::get(
-        IRBuilder->getVoidTy(),
-        {IRBuilder->getInt8PtrTy(), IRBuilder->getInt32Ty()}, false);
-    llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "finish", *M)
-        ->addFnAttr(
-            llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
-
-    // revert
-    FT = llvm::FunctionType::get(
-        IRBuilder->getVoidTy(),
-        {IRBuilder->getInt8PtrTy(), IRBuilder->getInt32Ty()}, false);
-    llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "revert", *M)
-        ->addFnAttr(
-            llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
-
     for (auto Node : SU.getNodes())
       Node->accept(*this);
   }
@@ -95,30 +172,26 @@ public:
     llvm::FunctionType *FT = nullptr;
 
     // main
-    FT = llvm::FunctionType::get(IRBuilder->getVoidTy(), {}, false);
+    FT = llvm::FunctionType::get(VoidTy, {}, false);
     llvm::Function *Main =
         llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "main", *M);
     llvm::BasicBlock *EntryBB =
         llvm::BasicBlock::Create(Context, "entry", Main);
 
     IRBuilder->SetInsertPoint(EntryBB);
-    auto *p =
-        IRBuilder->CreateAlloca(IRBuilder->getInt32Ty(), nullptr, "code.ptr");
-    auto *voidptr =
-        IRBuilder->CreateBitCast(p, IRBuilder->getInt8PtrTy(), "code.voidptr");
-    IRBuilder->CreateCall(
-        M->getFunction("callDataCopy"),
-        {voidptr, IRBuilder->getInt32(0), IRBuilder->getInt32(4)});
-    auto *CondV = IRBuilder->CreateLoad(IRBuilder->getInt32Ty(), p, "hash");
+    auto *p = IRBuilder->CreateAlloca(Int32Ty, nullptr, "code.ptr");
+    auto *voidptr = IRBuilder->CreateBitCast(p, Int8PtrTy, "code.voidptr");
+    IRBuilder->CreateCall(Func_callDataCopy, {voidptr, IRBuilder->getInt32(0),
+                                              IRBuilder->getInt32(4)});
+    auto *CondV = IRBuilder->CreateLoad(Int32Ty, p, "hash");
 
     // two phase codegen
     llvm::BasicBlock *Default =
         llvm::BasicBlock::Create(Context, "default", Main);
     IRBuilder->SetInsertPoint(Default);
     IRBuilder->CreateCall(
-        M->getFunction("revert"),
-        {llvm::ConstantPointerNull::get(IRBuilder->getInt8PtrTy()),
-         IRBuilder->getInt32(0)});
+        Func_revert,
+        {llvm::ConstantPointerNull::get(Int8PtrTy), IRBuilder->getInt32(0)});
     IRBuilder->CreateUnreachable();
 
     IRBuilder->SetInsertPoint(EntryBB);
@@ -151,57 +224,65 @@ public:
     FuncBodyCodeGen(M->getContext(), *IRBuilder, *GetModule()).compile(F);
   }
 
+  size_t getABISize(const std::vector<const VarDecl *> &params) const {
+    // TODO: get real size
+    return params.size() * 32;
+  }
+
+  size_t getABIOffset(const std::vector<const VarDecl *> &params,
+                      size_t i) const {
+    // TODO: get real offset
+    return i * 32;
+  }
+
   void genABI(FunctionDeclType &F, llvm::BasicBlock *BB) {
     // TODO: refactor this
     // this impl. assumes all types are uint64
     const std::string &Fname = F.getName();
-    auto Fparams = F.getParams()->getParams();
+    const auto &Fparams = F.getParams()->getParams();
 
     IRBuilder->SetInsertPoint(BB);
     // get arguments from calldata
-    auto *arg_ptr = IRBuilder->CreateAlloca(
-        llvm::ArrayType::get(IRBuilder->getInt64Ty(), Fparams.size()), nullptr,
-        Fname + "_arg_ptr");
-    auto *arg_vptr = IRBuilder->CreateBitCast(
-        arg_ptr, llvm::PointerType::getUnqual(IRBuilder->getInt8Ty()),
-        Fname + "_arg_vptr");
-    IRBuilder->CreateCall(
-        M->getFunction("callDataCopy"),
-        {arg_vptr, IRBuilder->getInt32(4),
-         IRBuilder->getInt32(IRBuilder->getInt64Ty()->getPrimitiveSizeInBits() /
-                             8 * Fparams.size())});
+    auto *arg_cptr = IRBuilder->CreateAlloca(
+        llvm::ArrayType::get(Int8Ty, getABISize(Fparams)), nullptr,
+        Fname + "_arg_cptr");
+    auto *arg_vptr =
+        IRBuilder->CreateBitCast(arg_cptr, Int8PtrTy, Fname + "_arg_vptr");
+    IRBuilder->CreateCall(Func_callDataCopy,
+                          {arg_vptr, IRBuilder->getInt32(4),
+                           IRBuilder->getInt32(getABISize(Fparams))});
 
     std::vector<llvm::Value *> ArgsVal;
     std::vector<llvm::Type *> ArgsTy;
-    for (int i = 0; i < Fparams.size(); i++) {
-      auto Param = Fparams[i];
-      auto *ptr = IRBuilder->CreateInBoundsGEP(
-          arg_ptr, {IRBuilder->getInt32(0), IRBuilder->getInt32(i)},
-          Fname + "_" + Param->getName() + "_ptr");
-      auto *val = IRBuilder->CreateLoad(IRBuilder->getInt64Ty(), ptr,
-                                        Fname + "_" + Param->getName());
+    for (size_t i = 0; i < Fparams.size(); i++) {
+      std::string param_name = (Fname + "_" + Fparams[i]->getName()).str();
+      auto *cptr = IRBuilder->CreateInBoundsGEP(
+          arg_cptr,
+          {IRBuilder->getInt32(0),
+           IRBuilder->getInt32(getABIOffset(Fparams, i))},
+          param_name + "_cptr");
+      auto *ptr_b =
+          IRBuilder->CreateBitCast(cptr, Int256PtrTy, param_name + "_ptr_b");
+      auto *val_b = IRBuilder->CreateLoad(Int256Ty, ptr_b, param_name + "_b");
+      auto *val = IRBuilder->CreateCall(Func_bswap256, {val_b}, param_name);
       ArgsVal.push_back(val);
-      ArgsTy.push_back(IRBuilder->getInt64Ty());
+      ArgsTy.push_back(Int256Ty);
     }
 
     // Call this function
-    llvm::FunctionType *FT =
-        llvm::FunctionType::get(IRBuilder->getInt64Ty(), ArgsTy, false);
+    llvm::FunctionType *FT = llvm::FunctionType::get(Int256Ty, ArgsTy, false);
     Function *Func = Function::Create(FT, Function::ExternalLinkage,
                                       F.getName(), *GetModule());
     auto *r = IRBuilder->CreateCall(Func, ArgsVal, Fname + "_r");
+    auto *r_b = IRBuilder->CreateCall(Func_bswap256, {r}, Fname + "_r_b");
 
     // put return value to returndata
-    auto *r_ptr = IRBuilder->CreateAlloca(IRBuilder->getInt64Ty(), nullptr,
-                                          Fname + "_r_ptr");
-    IRBuilder->CreateStore(r, r_ptr);
+    auto *r_ptr = IRBuilder->CreateAlloca(Int256Ty, nullptr, Fname + "_r_ptr");
+    IRBuilder->CreateStore(r_b, r_ptr);
     auto *r_vptr = IRBuilder->CreateBitCast(
-        r_ptr, llvm::PointerType::getUnqual(IRBuilder->getInt8Ty()),
-        Fname + "_r_vptr");
-    IRBuilder->CreateCall(
-        M->getFunction("finish"),
-        {r_vptr, IRBuilder->getInt32(
-                     IRBuilder->getInt64Ty()->getPrimitiveSizeInBits() / 8)});
+        r_ptr, llvm::PointerType::getUnqual(Int8Ty), Fname + "_r_vptr");
+    IRBuilder->CreateCall(M->getFunction("finish"),
+                          {r_vptr, IRBuilder->getInt32(256 / 8)});
     IRBuilder->CreateUnreachable();
   }
 
@@ -224,7 +305,7 @@ public:
     std::uint32_t hash = 0;
     for (int i = 0; i < 4; i++)
       hash = (hash << 8) | op[i];
-    return hash;
+    return __builtin_bswap32(hash);
   }
 };
 

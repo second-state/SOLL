@@ -11,17 +11,27 @@ using llvm::BasicBlock;
 using llvm::Function;
 using llvm::Value;
 
+FuncBodyCodeGen::FuncBodyCodeGen(llvm::LLVMContext &Context,
+                                 llvm::IRBuilder<llvm::NoFolder> &Builder,
+                                 llvm::Module &Module)
+    : Context(Context), Builder(Builder), Module(Module) {
+  Int256Ty = Builder.getIntNTy(256);
+  VoidTy = Builder.getVoidTy();
+  Zero256 = Builder.getIntN(256, 0);
+  One256 = Builder.getIntN(256, 1);
+}
+
 void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
   // TODO: replace this temp impl
   // this impl assumes type of functionDecl params and return is uint64
   auto PsSol = FD.getParams()->getParams();
   CurFunc = Module.getFunction(FD.getName());
-  if ( CurFunc == nullptr ) {
+  if (CurFunc == nullptr) {
     std::vector<llvm::Type *> Tys;
-    for(int i = 0; i < PsSol.size(); i++)
-      Tys.push_back(Builder.getInt64Ty());
+    for (int i = 0; i < PsSol.size(); i++)
+      Tys.push_back(Int256Ty);
     llvm::ArrayRef<llvm::Type *> ParamTys(&Tys[0], Tys.size());
-    llvm::FunctionType *FT = llvm::FunctionType::get(Builder.getInt64Ty(), ParamTys, false);
+    llvm::FunctionType *FT = llvm::FunctionType::get(Int256Ty, ParamTys, false);
     CurFunc =
         Function::Create(FT, Function::ExternalLinkage, FD.getName(), &Module);
   }
@@ -32,7 +42,8 @@ void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
   for (int i = 0; i < PsSol.size(); i++) {
     llvm::Value *P = PsLLVM++;
     P->setName(PsSol[i]->getName());
-    llvm::Value *paramAddr = Builder.CreateAlloca(Builder.getInt64Ty(), nullptr, P->getName()+".addr");
+    llvm::Value *paramAddr = Builder.CreateAlloca(Int256Ty, nullptr,
+                                                  P->getName() + ".addr");
     Builder.CreateStore(P, paramAddr);
     LocalVarAddrTable[P->getName()] = paramAddr;
   }
@@ -43,7 +54,7 @@ void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
   // FD.getBody()->accept(*this);
   // Builder.CreateRetVoid();
   // } else {
-  RetVal = Builder.CreateAlloca(Builder.getInt64Ty(), nullptr, "retval");
+  RetVal = Builder.CreateAlloca(Int256Ty, nullptr, "retval");
   FD.getBody()->accept(*this);
   Builder.CreateBr(EndOfFunc);
   Builder.SetInsertPoint(EndOfFunc);
@@ -57,8 +68,8 @@ void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
 
 void FuncBodyCodeGen::visit(BlockType &B) { ConstStmtVisitor::visit(B); }
 
-void FuncBodyCodeGen::visit(IfStmtType & IF) {
-  const bool Else_exist = ( IF.getElse() != nullptr );
+void FuncBodyCodeGen::visit(IfStmtType &IF) {
+  const bool Else_exist = (IF.getElse() != nullptr);
   BasicBlock *ThenBB, *ElseBB, *EndBB;
   ThenBB = BasicBlock::Create(Context, "if.then", CurFunc);
   if (Else_exist) {
@@ -67,16 +78,9 @@ void FuncBodyCodeGen::visit(IfStmtType & IF) {
   EndBB = BasicBlock::Create(Context, "if.end", CurFunc);
 
   IF.getCond()->accept(*this);
-  Value* cond = Builder.CreateICmpNE(
-    findTempValue(IF.getCond()),
-    Builder.getFalse(),
-    "cond"
-  );
-  Builder.CreateCondBr(
-    cond,
-    ThenBB,
-    Else_exist ? ElseBB : EndBB
-  );
+  Value *cond = Builder.CreateICmpNE(findTempValue(IF.getCond()),
+                                     Builder.getFalse(), "cond");
+  Builder.CreateCondBr(cond, ThenBB, Else_exist ? ElseBB : EndBB);
 
   ThenBB->moveAfter(&CurFunc->back());
   Builder.SetInsertPoint(ThenBB);
@@ -138,9 +142,9 @@ void FuncBodyCodeGen::visit(WhileStmtType &While) {
 }
 
 void FuncBodyCodeGen::visit(ForStmtType &FS) {
-  const bool Init_exist = ( FS.getInit() != nullptr );
-  const bool Cond_exist = ( FS.getCond() != nullptr );
-  const bool Loop_exist = ( FS.getLoop() != nullptr );
+  const bool Init_exist = (FS.getInit() != nullptr);
+  const bool Cond_exist = (FS.getCond() != nullptr);
+  const bool Loop_exist = (FS.getLoop() != nullptr);
 
   BasicBlock *CondBB = BasicBlock::Create(Context, "for.cond", CurFunc);
   BasicBlock *BodyBB = BasicBlock::Create(Context, "for.body", CurFunc);
@@ -151,14 +155,14 @@ void FuncBodyCodeGen::visit(ForStmtType &FS) {
   BasicBlockTable[FS.getCond()] = CondBB;
   BasicBlockTable[&FS] = EndBB;
 
-  if ( Init_exist ) {
+  if (Init_exist) {
     FS.getInit()->accept(*this);
   }
   Builder.CreateBr(CondBB);
 
   CondBB->moveAfter(&CurFunc->back());
   Builder.SetInsertPoint(CondBB);
-  if ( Cond_exist ) {
+  if (Cond_exist) {
     FS.getCond()->accept(*this);
     Value *cond =
         Builder.CreateICmpNE(findTempValue(FS.getCond()), Builder.getFalse());
@@ -221,8 +225,7 @@ void FuncBodyCodeGen::visit(DeclStmtType &DS) {
   // TODO: replace this temp impl
   // this impl assumes declared variables are uint64
   for (auto &D : DS.getVarDecls()) {
-    auto *p = Builder.CreateAlloca(llvm::Type::getInt64Ty(Context), nullptr,
-                                   D->getName() + "_addr");
+    auto *p = Builder.CreateAlloca(Int256Ty, nullptr, D->getName() + "_addr");
     LocalVarAddrTable[D->getName()] = p;
   }
   // TODO: replace this
@@ -244,53 +247,52 @@ void FuncBodyCodeGen::visit(UnaryOperatorType &UO) {
       subVal = Builder.CreateLoad(subVal, "BO_SubExpr");
     }
     switch (UO.getOpcode()) {
-    case UnaryOperatorKind::UO_Plus: 
+    case UnaryOperatorKind::UO_Plus:
       V = subVal;
       break;
     case UnaryOperatorKind::UO_Minus:
       V = Builder.CreateNeg(subVal, "UO_Minus");
       break;
-    case UnaryOperatorKind::UO_Not: 
+    case UnaryOperatorKind::UO_Not:
       V = Builder.CreateNot(subVal, "UO_Not");
       break;
-    case UnaryOperatorKind::UO_LNot: 
-      V = Builder.CreateICmpEQ(Builder.getInt64(0), subVal, "UO_LNot");
+    case UnaryOperatorKind::UO_LNot:
+      V = Builder.CreateICmpEQ(Zero256, subVal, "UO_LNot");
       break;
-    default:
-      ;
+    default:;
     }
   } else {
     // assume subExpr is a LValue
-    llvm::Value *subRef = findTempValue(UO.getSubExpr());   // the LValue(address) of subexpr
-    llvm::Value *subVal = nullptr;                          // to store value of subexpr if needed
+    llvm::Value *subRef =
+        findTempValue(UO.getSubExpr()); // the LValue(address) of subexpr
+    llvm::Value *subVal = nullptr;      // to store value of subexpr if needed
     llvm::Value *tmp = nullptr;
     switch (UO.getOpcode()) {
-    case UnaryOperatorKind::UO_PostInc: 
+    case UnaryOperatorKind::UO_PostInc:
       subVal = Builder.CreateLoad(subRef, "BO_Subexpr");
-      tmp = Builder.CreateAdd(subVal, Builder.getInt64(1), "UO_PostInc");
+      tmp = Builder.CreateAdd(subVal, One256, "UO_PostInc");
       Builder.CreateStore(tmp, subRef);
       V = subVal;
       break;
     case UnaryOperatorKind::UO_PostDec:
       subVal = Builder.CreateLoad(subRef, "BO_Subexpr");
-      tmp = Builder.CreateSub(subVal, Builder.getInt64(1), "UO_PostDec");
+      tmp = Builder.CreateSub(subVal, One256, "UO_PostDec");
       Builder.CreateStore(tmp, subRef);
       V = subVal;
       break;
     case UnaryOperatorKind::UO_PreInc:
       subVal = Builder.CreateLoad(subRef, "BO_Subexpr");
-      tmp = Builder.CreateAdd(subVal, Builder.getInt64(1), "UO_PreInc");
+      tmp = Builder.CreateAdd(subVal, One256, "UO_PreInc");
       Builder.CreateStore(tmp, subRef);
       V = subRef;
       break;
     case UnaryOperatorKind::UO_PreDec:
       subVal = Builder.CreateLoad(subRef, "BO_Subexpr");
-      tmp = Builder.CreateSub(subVal, Builder.getInt64(1), "UO_PreDec");
+      tmp = Builder.CreateSub(subVal, One256, "UO_PreDec");
       Builder.CreateStore(tmp, subRef);
       V = subRef;
       break;
-    default:
-      ;
+    default:;
     }
   }
   TempValueTable[&UO] = V;
@@ -370,7 +372,8 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
     V = rhsVal;
   }
 
-  if (BO.isAdditiveOp() || BO.isMultiplicativeOp() || BO.isComparisonOp() || BO.isShiftOp() || BO.isBitwiseOp()) {
+  if (BO.isAdditiveOp() || BO.isMultiplicativeOp() || BO.isComparisonOp() ||
+      BO.isShiftOp() || BO.isBitwiseOp()) {
     llvm::Value *lhs = findTempValue(BO.getLHS());
     llvm::Value *rhs = findTempValue(BO.getRHS());
     switch (BO.getOpcode()) {
@@ -419,7 +422,7 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
     case BinaryOperatorKind::BO_Xor:
       V = Builder.CreateXor(lhs, rhs, "BO_Xor");
       break;
-    case BinaryOperatorKind::BO_Or: 
+    case BinaryOperatorKind::BO_Or:
       V = Builder.CreateOr(lhs, rhs, "BO_Or");
       break;
     default:;
@@ -436,7 +439,7 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
       rhs = Builder.CreateLoad(rhs);
     }
     if (BO.getOpcode() == BO_LAnd) {
-      llvm::Value *res = Builder.CreateAlloca(Builder.getInt64Ty());
+      llvm::Value *res = Builder.CreateAlloca(Int256Ty);
       BasicBlock *trueBB = BasicBlock::Create(Context, "BO_LAnd.true", CurFunc);
       BasicBlock *falseBB =
           BasicBlock::Create(Context, "BO_LAnd.false", CurFunc);
@@ -448,8 +451,7 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
       if (BO.getLHS()->isLValue()) {
         lhs = Builder.CreateLoad(lhs, "BO_Lhs");
       }
-      llvm::Value *isTrueLHS =
-          Builder.CreateICmpNE(lhs, Builder.getInt64(0));
+      llvm::Value *isTrueLHS = Builder.CreateICmpNE(lhs, Zero256);
       llvm::Value *truncLHS =
           Builder.CreateTrunc(isTrueLHS, Builder.getInt1Ty(), "trunc");
       Builder.CreateCondBr(truncLHS, trueBB, falseBB);
@@ -461,21 +463,20 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
       if (BO.getRHS()->isLValue()) {
         rhs = Builder.CreateLoad(rhs, "BO_Rhs");
       }
-      llvm::Value *isTrueRHS =
-          Builder.CreateICmpNE(rhs, Builder.getInt64(0));
-      Builder.CreateStore(Builder.CreateZExt(isTrueRHS, Builder.getInt64Ty()),
+      llvm::Value *isTrueRHS = Builder.CreateICmpNE(rhs, Zero256);
+      Builder.CreateStore(Builder.CreateZExt(isTrueRHS, Int256Ty),
                           res);
       Builder.CreateBr(endBB);
 
       Builder.SetInsertPoint(falseBB);
-      Builder.CreateStore(Builder.getInt64(0), res);
+      Builder.CreateStore(Zero256, res);
       Builder.CreateBr(endBB);
 
       Builder.SetInsertPoint(endBB);
       // in order to store result of LAnd in TempValueTable
       V = Builder.CreateLoad(res, "BO_LAnd");
     } else if (BO.getOpcode() == BO_LOr) {
-      llvm::Value *res = Builder.CreateAlloca(Builder.getInt64Ty());
+      llvm::Value *res = Builder.CreateAlloca(Int256Ty);
       BasicBlock *trueBB = BasicBlock::Create(Context, "BO_LOr.true", CurFunc);
       BasicBlock *falseBB =
           BasicBlock::Create(Context, "BO_LOr.false", CurFunc);
@@ -487,14 +488,13 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
       if (BO.getLHS()->isLValue()) {
         lhs = Builder.CreateLoad(lhs, "BO_Lhs");
       }
-      llvm::Value *isTrueLHS =
-          Builder.CreateICmpNE(lhs, Builder.getInt64(0));
+      llvm::Value *isTrueLHS = Builder.CreateICmpNE(lhs, Zero256);
       llvm::Value *trunc =
           Builder.CreateTrunc(isTrueLHS, Builder.getInt1Ty(), "trunc");
       Builder.CreateCondBr(trunc, trueBB, falseBB);
 
       Builder.SetInsertPoint(trueBB);
-      Builder.CreateStore(Builder.getInt64(1), res);
+      Builder.CreateStore(One256, res);
       Builder.CreateBr(endBB);
 
       Builder.SetInsertPoint(falseBB);
@@ -504,9 +504,8 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
       if (BO.getRHS()->isLValue()) {
         rhs = Builder.CreateLoad(rhs, "BO_Rhs");
       }
-      llvm::Value *isTrueRHS =
-          Builder.CreateICmpNE(rhs, Builder.getInt64(0));
-      Builder.CreateStore(Builder.CreateZExt(isTrueRHS, Builder.getInt64Ty()),
+      llvm::Value *isTrueRHS = Builder.CreateICmpNE(rhs, Zero256);
+      Builder.CreateStore(Builder.CreateZExt(isTrueRHS, Int256Ty),
                           res);
       Builder.CreateBr(endBB);
 
@@ -528,8 +527,7 @@ void FuncBodyCodeGen::visit(CallExprType &CALL) {
     Value *CondV = findTempValue(Arguments[0]);
     Arguments[1]->accept(*this);
     Value *Length = Builder.getInt32(
-        dynamic_cast<const StringLiteral *>(Arguments[1])->getValue().length() +
-        1);
+        dynamic_cast<const StringLiteral *>(Arguments[1])->getValue().length());
 
     BasicBlock *RevertBB = BasicBlock::Create(Context, "revert", CurFunc);
     BasicBlock *ContBB = BasicBlock::Create(Context, "continue", CurFunc);
@@ -537,7 +535,8 @@ void FuncBodyCodeGen::visit(CallExprType &CALL) {
     Builder.CreateCondBr(CondV, ContBB, RevertBB);
     Builder.SetInsertPoint(RevertBB);
     auto *MSG = Builder.CreateInBoundsGEP(
-        findTempValue(Arguments[1]), {Builder.getInt32(0), Length}, "msg.ptr");
+        findTempValue(Arguments[1]), {Builder.getInt32(0), Builder.getInt32(0)},
+        "msg.ptr");
     Builder.CreateCall(Module.getFunction("revert"), {MSG, Length});
     Builder.CreateUnreachable();
 
@@ -620,7 +619,6 @@ void FuncBodyCodeGen::visit(IdentifierType &ID) {
   if (llvm::Value *Addr = findLocalVarAddr(ID.getName())) {
     V = Addr;
   } else {
-    // V = Builder.getInt64(7122); // TODO: replace this
     assert(false && "undeclared identifier");
   }
 
@@ -636,7 +634,7 @@ void FuncBodyCodeGen::visit(StringLiteralType &SL) {
 }
 
 void FuncBodyCodeGen::visit(NumberLiteralType &NL) {
-  TempValueTable[&NL] = Builder.getInt64(NL.getValue());
+  TempValueTable[&NL] = Builder.getIntN(256, NL.getValue());
 }
 
 void FuncBodyCodeGen::visit(ImplicitCastExprType &IC) {

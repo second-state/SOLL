@@ -22,6 +22,12 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
 
   llvm::BasicBlock *EndOfFunc;
   llvm::Value *RetVal;
+
+  llvm::IntegerType *Int256Ty = nullptr;
+  llvm::Type *VoidTy = nullptr;
+  llvm::ConstantInt *Zero256 = nullptr;
+  llvm::ConstantInt *One256 = nullptr;
+
   // TODO: replace this temp impl
   // proper impl is like Decl* -> llvm::Value *
   // but it requires more consideration
@@ -33,6 +39,7 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
   std::unordered_map<const soll::Stmt *, llvm::Value *> TempValueTable;
   // TODO: replace this temp impl
   std::unordered_map<const soll::Stmt *, llvm::BasicBlock *>BasicBlockTable;
+
   // codegen LLVM IR in the visit functions
   void visit(BlockType &) override;
   void visit(IfStmtType &) override;
@@ -80,8 +87,7 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
 public:
   FuncBodyCodeGen(llvm::LLVMContext &Context,
                   llvm::IRBuilder<llvm::NoFolder> &Builder,
-                  llvm::Module &Module)
-      : Context(Context), Builder(Builder), Module(Module) {}
+                  llvm::Module &Module);
   // codegen a certain function
   void compile(const soll::FunctionDecl &);
 };

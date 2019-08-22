@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "soll/CodeGen/BackendUtil.h"
+#include "soll/CodeGen/LoweringInteger.h"
 #include <llvm/ADT/Triple.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/IRPrintingPasses.h>
@@ -50,6 +51,13 @@ void EmitBackendOutput(DiagnosticsEngine &Diags, const llvm::DataLayout &TDesc,
   PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
 
   llvm::ModulePassManager MPM(false);
+
+  MPM.addPass(LoweringInteger());
+
+  if (auto Err = PB.parsePassPipeline(MPM, "default<O0>", false, false)) {
+    llvm::errs() << llvm::toString(std::move(Err)) << '\n';
+    return;
+  }
 
   MPM.addPass(llvm::AlwaysInlinerPass());
 

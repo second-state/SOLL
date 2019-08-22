@@ -4,6 +4,7 @@ add_library(sollCodeGen
   CodeGenAction.cpp
   CodeGenModule.cpp
   FuncBodyCodeGen.cpp
+  LoweringInteger.cpp
   ModuleBuilder.cpp
   )
 
