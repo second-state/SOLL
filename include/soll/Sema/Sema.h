@@ -28,7 +28,10 @@ public:
 
   /// type checking binary operators (subroutines of CreateBinOp)
   /// this may add type casting
-  TypePtr CheckAdditionOperands(ExprPtr &LHS, ExprPtr &RHS, BinaryOperatorKind Opc, TypePtr CompLHSTy = nullptr);
+
+  /// +, -
+  TypePtr CheckAdditiveOperands(ExprPtr &LHS, ExprPtr &RHS, BinaryOperatorKind Opc, TypePtr CompLHSTy = nullptr);
+
   TypePtr UsualArithmeticConversions(ExprPtr &LHS, ExprPtr &RHS, bool IsCompAssign);
 
   ExprPtr UsualUnaryConversions(ExprPtr &&E);

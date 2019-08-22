@@ -14,14 +14,15 @@ ExprPtr Sema::CreateBinOp(BinaryOperatorKind Opc, ExprPtr &&LHS, ExprPtr &&RHS) 
   TypePtr ResultTy;
   switch (Opc) {
   case BO_Add:
-      ResultTy = CheckAdditionOperands(LHS, RHS, Opc);
+  case BO_Sub:
+      ResultTy = CheckAdditiveOperands(LHS, RHS, Opc);
     break;
   // TODO: a lot of binary operations
   }
   return std::move(std::make_unique<BinaryOperator>(std::move(LHS), std::move(RHS), Opc));
 }
 
-TypePtr Sema::CheckAdditionOperands(ExprPtr &LHS, ExprPtr &RHS, BinaryOperatorKind Opc, TypePtr CompLHSTy) {
+TypePtr Sema::CheckAdditiveOperands(ExprPtr &LHS, ExprPtr &RHS, BinaryOperatorKind Opc, TypePtr CompLHSTy) {
   TypePtr compType = UsualArithmeticConversions(LHS, RHS, CompLHSTy != nullptr);
   return std::move(compType);
 }
