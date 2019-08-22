@@ -195,8 +195,9 @@ public:
 
 class CastExpr : public Expr {
   ExprPtr TargetValue;
+  CastKind CastK;
 protected:
-  CastExpr(ExprPtr &&TV) : TargetValue(std::move(TV)), Expr(ValueKind::VK_RValue) {}
+  CastExpr(ExprPtr &&TV, CastKind CK) : TargetValue(std::move(TV)), CastK(CK), Expr(ValueKind::VK_RValue) {}
 public:
   Expr *getTargetValue() { return TargetValue.get(); }
   const Expr *getTargetValue() const { return TargetValue.get(); }
@@ -204,7 +205,7 @@ public:
 
 class ImplicitCastExpr : public CastExpr {
 public:
-  ImplicitCastExpr(ExprPtr &&TV) : CastExpr(std::move(TV)) {}
+  ImplicitCastExpr(ExprPtr &&TV, CastKind CK) : CastExpr(std::move(TV), CK) {}
   
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
@@ -212,7 +213,7 @@ public:
 
 class ExplicitCastExpr : public CastExpr {
 public:
-  ExplicitCastExpr(ExprPtr &&TV) : CastExpr(std::move(TV)) {}
+  ExplicitCastExpr(ExprPtr &&TV, CastKind CK) : CastExpr(std::move(TV), CK) {}
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
 };
