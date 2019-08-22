@@ -145,8 +145,8 @@ class MappingType : public ReferenceType {
   TypePtr KeyType;
   TypePtr ValueType;
   MappingType(TypePtr &&KT, TypePtr &&VT): KeyType(std::move(KT)), ValueType(std::move(VT)), ReferenceType(DataLocation::Storage){}
-  Type *getKeyType() const { return KeyType.get(); }
-  Type *getValueType() const { return ValueType.get(); }
+  TypePtr getKeyType() { return KeyType; }
+  TypePtr getValueType() { return ValueType; }
 
   Category getCategory() const override { return Category::Mapping; }
 };
@@ -159,9 +159,9 @@ public:
   ArrayType(TypePtr ET, DataLocation Loc): ElementType(ET), ReferenceType(Loc) {}
   // fix-sized array
   ArrayType(TypePtr ET, uint32_t L, DataLocation Loc): ElementType(ET), Length(L), ReferenceType(Loc) {}
-  Type *getElementType() const { return ElementType.get(); }
+  TypePtr getElementType() { return ElementType; }
 
-  bool isDynamicSized() const { return Length.has_value();}
+  bool isDynamicSized() const { return !Length.has_value();}
   uint32_t getLength() const {
     assert(!isDynamicSized());
     return *Length;
