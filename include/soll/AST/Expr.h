@@ -26,6 +26,7 @@ public:
   bool isRValue() const { return getValueKind() == ValueKind::VK_RValue; }
   void setType(TypePtr Ty){ this->Ty = Ty; }
   TypePtr getType() { return Ty; }
+  const TypePtr &getType() const { return Ty; }
 };
 
 class TupleExpr {
