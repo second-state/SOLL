@@ -17,8 +17,8 @@ To get started with our demo, you will need three components at first.
 
 > *We provide an image include build and execute environment (recommend). If you don't want to use docker directly you will need below tools (cmake, llvm, node.js).*
 
-- **Soll** [repository](https://gitlab.com/secondstate/compiler/soll)
-- **Test Suit** [repository](https://gitlab.com/secondstate/compiler/ewasm-testbench)
+- **Soll** https://github.com/second-state/soll
+- **Test Suit** https://github.com/second-state/soll-ewasm-testbench
 
 ## Preparation
 - Pull official docker image to get an already established build/execute environment.
@@ -28,8 +28,8 @@ docker pull yi2nd/ubuntu-soll:v0.0.1
 
 - Git clone from official gitlab repository.
 ```Shell
-git clone git@gitlab.com:secondstate/compiler/soll.git
-git clone git@gitlab.com:secondstate/compiler/ewasm-testbench.git
+git clone https://github.com/second-state/soll.git
+git clone https://github.com/second-state/soll-ewasm-testbench.git ewasm-testbench
 ```
 
 
