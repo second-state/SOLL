@@ -16,7 +16,7 @@ class Expr : public ExprStmt {
   // add interface to check whether an expr is an LValue or RValue
   // TODO : override isLValue() and is RValue() for each derived class
   ValueKind exprValueKind;
-  Type *Ty;
+  TypePtr Ty;
 
 public:
   Expr(ValueKind vk) : exprValueKind(vk) {}
@@ -24,9 +24,8 @@ public:
   void setValueKind(ValueKind vk) { exprValueKind = vk; }
   bool isLValue() const { return getValueKind() == ValueKind::VK_LValue; }
   bool isRValue() const { return getValueKind() == ValueKind::VK_RValue; }
-  void setType(Type* Ty){ this->Ty = Ty; }
-  Type* getType() { return Ty; }
-  const Type* getType() const { return Ty; }
+  void setType(TypePtr Ty){ this->Ty = Ty; }
+  TypePtr getType() { return Ty; }
 };
 
 class TupleExpr {
@@ -194,37 +193,26 @@ public:
   void accept(ConstStmtVisitor &visitor) const override;
 };
 
-class ImplicitCastExpr : public Expr {
-  /// target value of casting
+class CastExpr : public Expr {
   ExprPtr TargetValue;
-
+protected:
+  CastExpr(ExprPtr &&TV) : TargetValue(std::move(TV)), Expr(ValueKind::VK_RValue) {}
 public:
-  // TODO: set value kind in another pass
-  ImplicitCastExpr(ExprPtr &&TV)
-      : TargetValue(std::move(TV)), Expr(ValueKind::VK_RValue) {}
-
-  void setTargetValue(ExprPtr &&TV) { TargetValue = std::move(TV); }
-
   Expr *getTargetValue() { return TargetValue.get(); }
   const Expr *getTargetValue() const { return TargetValue.get(); }
+};
 
+class ImplicitCastExpr : public CastExpr {
+public:
+  ImplicitCastExpr(ExprPtr &&TV) : CastExpr(std::move(TV)) {}
+  
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
 };
 
-class ExplicitCastExpr : public Expr {
-  /// target value of casting
-  ExprPtr TargetValue;
-
+class ExplicitCastExpr : public CastExpr {
 public:
-  ExplicitCastExpr(ExprPtr &&TV)
-      : TargetValue(std::move(TV)), Expr(ValueKind::VK_RValue) {}
-
-  void setTargetValue(ExprPtr &&TV) { TargetValue = std::move(TV); }
-
-  Expr *getTargetValue() { return TargetValue.get(); }
-  const Expr *getTargetValue() const { return TargetValue.get(); }
-
+  ExplicitCastExpr(ExprPtr &&TV) : CastExpr(std::move(TV)) {}
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
 };
