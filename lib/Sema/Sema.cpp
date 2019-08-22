@@ -12,19 +12,36 @@ Sema::Sema(Lexer &lexer, ASTContext &ctxt, ASTConsumer &consumer)
 
 ExprPtr Sema::CreateBinOp(BinaryOperatorKind Opc, ExprPtr &&LHS, ExprPtr &&RHS) {
   TypePtr ResultTy;
-  switch (Opc) {
-  case BO_Add:
-  case BO_Sub:
-      ResultTy = CheckAdditiveOperands(LHS, RHS, Opc);
-    break;
-  // TODO: a lot of binary operations
+  if (BinaryOperator::isAdditiveOp(Opc)) {
+    ResultTy = CheckAdditiveOperands(LHS, RHS, Opc);
+  } else if (BinaryOperator::isMultiplicativeOp(Opc)){
+    ResultTy = CheckMultiplicativeOperands(LHS, RHS, Opc);
+  } else if (BinaryOperator::isComparisonOp(Opc)) {
+    ResultTy = CheckCompareOperands(LHS, RHS, Opc);
   }
+  // TODO: a lot of binary operations
   return std::move(std::make_unique<BinaryOperator>(std::move(LHS), std::move(RHS), Opc));
 }
 
 TypePtr Sema::CheckAdditiveOperands(ExprPtr &LHS, ExprPtr &RHS, BinaryOperatorKind Opc, TypePtr CompLHSTy) {
   TypePtr compType = UsualArithmeticConversions(LHS, RHS, CompLHSTy != nullptr);
+  // TODO: Additive Diagonostic
   return std::move(compType);
+}
+
+TypePtr Sema::CheckMultiplicativeOperands(ExprPtr &LHS, ExprPtr &RHS, BinaryOperatorKind Opc, TypePtr CompLHSTy) {
+  TypePtr compType = UsualArithmeticConversions(LHS, RHS, CompLHSTy != nullptr);
+  // TODO: Multiplicative Diagonostic
+  return std::move(compType);
+}
+
+TypePtr Sema::CheckCompareOperands(ExprPtr &LHS, ExprPtr &RHS, BinaryOperatorKind Opc) {
+  // TODO: get common Type
+  LHS = UsualUnaryConversions(std::move(LHS));
+  RHS = UsualUnaryConversions(std::move(RHS));
+  // TODO: Compare Diagonostic
+  // TODO: return BoolType
+  return std::make_shared<IntegerType>(IntegerType::IntKind::U64);
 }
 
 TypePtr Sema::UsualArithmeticConversions(ExprPtr &LHS, ExprPtr &RHS, bool IsCompAssign) {

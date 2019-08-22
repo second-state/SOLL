@@ -31,7 +31,11 @@ public:
 
   /// +, -
   TypePtr CheckAdditiveOperands(ExprPtr &LHS, ExprPtr &RHS, BinaryOperatorKind Opc, TypePtr CompLHSTy = nullptr);
-
+  /// *, /, %
+  TypePtr CheckMultiplicativeOperands(ExprPtr &LHS, ExprPtr &RHS, BinaryOperatorKind Opc, TypePtr CompLHSTy = nullptr);
+  /// <, >, <=, >=, ==
+  TypePtr CheckCompareOperands(ExprPtr &LHS, ExprPtr &RHS, BinaryOperatorKind Opc);
+  
   TypePtr UsualArithmeticConversions(ExprPtr &LHS, ExprPtr &RHS, bool IsCompAssign);
 
   ExprPtr UsualUnaryConversions(ExprPtr &&E);
