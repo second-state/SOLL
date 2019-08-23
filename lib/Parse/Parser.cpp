@@ -428,9 +428,11 @@ Parser::parseVariableDeclaration(VarDeclParserOptions const &Options,
   }
 
   // [TODO] Handle variable with init value
-  return std::make_unique<VarDecl>(std::move(T), Name, nullptr, Vsblty,
+  auto VD = std::make_unique<VarDecl>(std::move(T), Name, nullptr, Vsblty,
                                    Options.IsStateVariable, IsIndexed,
                                    IsDeclaredConst);
+  Actions.addIdentifierDecl(Name, *VD);
+  return std::move(VD);
 }
 
 unique_ptr<Type> Parser::parseTypeNameSuffix(unique_ptr<Type> T) {
@@ -882,7 +884,7 @@ unique_ptr<Expr> Parser::parsePrimaryExpression() {
   }
   case tok::identifier: {
     string Name = getLiteralAndAdvance(CurTok).str();
-    Exps = make_unique<Identifier>(std::move(Name));
+    Exps = make_unique<Identifier>(std::move(Name), Actions.findIdentifierDecl(Name));
     break;
   }
   case tok::kw_type:

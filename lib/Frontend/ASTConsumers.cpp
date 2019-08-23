@@ -222,7 +222,7 @@ void ASTPrinter::visit(ParamListType &param) {
 
 void ASTPrinter::visit(VarDeclType &decl) {
   os() << indent() << "VarDecl \"" << decl.getName() << "\""
-       << ", " << ToString(decl.GetType()) << "\n";
+       << ", " << ToString(decl.GetType()) << " " << &decl << " \n";
   ConstDeclVisitor::visit(decl);
   unindent();
 }
@@ -306,7 +306,9 @@ void ASTPrinter::visit(ParenExprType &paren) {
 }
 
 void ASTPrinter::visit(IdentifierType &id) {
-  os() << indent() << "Identifier \"" << id.getName() << "\"\n";
+  os() << indent() << "Identifier \"" << id.getName() << "\"";
+  if (auto D = id.getCorrespondDecl()) os() << " from " << D;
+  os() << "\n";
   ConstStmtVisitor::visit(id);
   unindent();
 }

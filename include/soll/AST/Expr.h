@@ -267,14 +267,13 @@ public:
 
 class Identifier : public Expr {
   std::string name;
-
+  const Decl *D;
 public:
-  // TODO: set value kind in another pass
-  Identifier(std::string &&Name) : Expr(ValueKind::VK_LValue), name(Name) {}
+  Identifier(std::string &&Name, const Decl *D = nullptr) : Expr(ValueKind::VK_LValue), name(Name), D(D) {}
   void setName(std::string &&Name) { name = Name; }
   std::string getName() const { return name; }
+  const Decl *getCorrespondDecl() const { return D; }
 
-public:
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
 };

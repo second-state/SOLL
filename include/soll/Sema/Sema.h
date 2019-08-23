@@ -2,6 +2,7 @@
 #pragma once
 
 #include "soll/Sema/BreakableVisitor.h"
+#include "soll/AST/ASTContext.h"
 
 namespace soll {
 
@@ -41,6 +42,9 @@ public:
   ExprPtr UsualUnaryConversions(ExprPtr &&E);
 
   ExprPtr DefaultLvalueConversion(ExprPtr &&E);
+
+  void addIdentifierDecl(const std::string &S, const Decl &D) { Context.addIdentifierDecl(S, D); }
+  const Decl *findIdentifierDecl(const std::string &S) { return Context.findIdentifierDecl(S); }
 
   void resolveBreak(FunctionDecl &);
 };
