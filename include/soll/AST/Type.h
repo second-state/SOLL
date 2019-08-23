@@ -28,6 +28,7 @@ public:
     Tuple,
     Mapping,
   };
+  virtual ~Type() noexcept {}
 
   // TODO: change the following following function to virtual pure function
   // return nonsense value due CE in tools/
