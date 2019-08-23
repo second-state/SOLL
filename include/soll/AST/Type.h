@@ -2,10 +2,10 @@
 #pragma once
 
 #include "soll/AST/ASTForward.h"
+#include <cassert>
 #include <memory>
 #include <optional>
 #include <vector>
-#include <cassert>
 
 namespace soll {
 
@@ -31,16 +31,18 @@ public:
 
   // TODO: change the following following function to virtual pure function
   // return nonsense value due CE in tools/
-  virtual void setBitNum(unsigned) { }
+  virtual void setBitNum(unsigned) {}
   virtual unsigned int getBitNum() const { return 0; }
-  virtual bool isImplicitlyConvertibleTo(Type const &_other) const { return false; }
-  virtual bool isExplicitlyConvertibleTo(Type const &_convertTo) const { return false; }
+  virtual bool isImplicitlyConvertibleTo(Type const &_other) const {
+    return false;
+  }
+  virtual bool isExplicitlyConvertibleTo(Type const &_convertTo) const {
+    return false;
+  }
   virtual Category getCategory() const { return Category::Integer; }
 };
 
-class AddressType: public Type {
-
-};
+class AddressType : public Type {};
 
 class IntegerType : public Type {
 public:
@@ -115,10 +117,14 @@ public:
 
   IntegerType(IntKind ik) : _intKind(ik) {}
   IntKind getKind() const { return _intKind; }
-  bool isSigned() const { return static_cast<int>(getKind()) >= static_cast<int>(IntKind::I8); }
+  bool isSigned() const {
+    return static_cast<int>(getKind()) >= static_cast<int>(IntKind::I8);
+  }
 
   void setBitNum() = delete;
-  unsigned int getBitNum() const override { return 8 * (static_cast<int>(getKind()) % 32 + 1); }
+  unsigned int getBitNum() const override {
+    return 8 * (static_cast<int>(getKind()) % 32 + 1);
+  }
   bool isImplicitlyConvertibleTo(Type const &_other) const override;
   bool isExplicitlyConvertibleTo(Type const &_convertTo) const override;
   Category getCategory() const override { return Category::Integer; }
@@ -131,22 +137,26 @@ class StringType : public Type {
   Category getCategory() const override { return Category::String; }
 };
 
-
-class ReferenceType: public Type
-{
+class ReferenceType : public Type {
 protected:
-	DataLocation Loc;
-	explicit ReferenceType(DataLocation Loc): Loc(Loc) {}
+  DataLocation Loc;
+  explicit ReferenceType(DataLocation Loc) : Loc(Loc) {}
+
 public:
-	DataLocation location() const { return Loc; }
+  DataLocation location() const { return Loc; }
 };
 
 class MappingType : public ReferenceType {
   TypePtr KeyType;
   TypePtr ValueType;
-  MappingType(TypePtr &&KT, TypePtr &&VT): KeyType(std::move(KT)), ValueType(std::move(VT)), ReferenceType(DataLocation::Storage){}
-  TypePtr getKeyType() { return KeyType; }
-  TypePtr getValueType() { return ValueType; }
+
+public:
+  MappingType(TypePtr &&KT, TypePtr &&VT)
+      : KeyType(std::move(KT)), ValueType(std::move(VT)),
+        ReferenceType(DataLocation::Storage) {}
+
+  const Type *getKeyType() const { return KeyType.get(); }
+  const Type *getValueType() const { return ValueType.get(); }
 
   Category getCategory() const override { return Category::Mapping; }
 };
@@ -156,12 +166,15 @@ class ArrayType : public ReferenceType {
   std::optional<uint32_t> Length; ///< Length of the array
 public:
   // dynamic-sized array
-  ArrayType(TypePtr ET, DataLocation Loc): ElementType(ET), ReferenceType(Loc) {}
+  ArrayType(TypePtr ET, DataLocation Loc)
+      : ElementType(ET), ReferenceType(Loc) {}
   // fix-sized array
-  ArrayType(TypePtr ET, uint32_t L, DataLocation Loc): ElementType(ET), Length(L), ReferenceType(Loc) {}
-  TypePtr getElementType() { return ElementType; }
+  ArrayType(TypePtr ET, uint32_t L, DataLocation Loc)
+      : ElementType(ET), Length(L), ReferenceType(Loc) {}
 
-  bool isDynamicSized() const { return !Length.has_value();}
+  const Type *getElementType() const { return ElementType.get(); }
+
+  bool isDynamicSized() const { return !Length.has_value(); }
   uint32_t getLength() const {
     assert(!isDynamicSized());
     return *Length;
@@ -172,12 +185,13 @@ public:
 class FunctionType : public Type {
   std::vector<TypePtr> ParamTypes;
   std::vector<TypePtr> ReturnTypes;
+
 public:
   const std::vector<TypePtr> &getParamTypes() const { return ParamTypes; }
   const std::vector<TypePtr> &getReturnTypes() const { return ReturnTypes; }
 };
 
-class StructType: public Type {
+class StructType : public Type {
   // TODO
 };
 

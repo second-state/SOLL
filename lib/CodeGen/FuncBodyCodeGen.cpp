@@ -42,8 +42,8 @@ void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
   for (int i = 0; i < PsSol.size(); i++) {
     llvm::Value *P = PsLLVM++;
     P->setName(PsSol[i]->getName());
-    llvm::Value *paramAddr = Builder.CreateAlloca(Int256Ty, nullptr,
-                                                  P->getName() + ".addr");
+    llvm::Value *paramAddr =
+        Builder.CreateAlloca(Int256Ty, nullptr, P->getName() + ".addr");
     Builder.CreateStore(P, paramAddr);
     LocalVarAddrTable[P->getName()] = paramAddr;
   }
@@ -464,8 +464,7 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
         rhs = Builder.CreateLoad(rhs, "BO_Rhs");
       }
       llvm::Value *isTrueRHS = Builder.CreateICmpNE(rhs, Zero256);
-      Builder.CreateStore(Builder.CreateZExt(isTrueRHS, Int256Ty),
-                          res);
+      Builder.CreateStore(Builder.CreateZExt(isTrueRHS, Int256Ty), res);
       Builder.CreateBr(endBB);
 
       Builder.SetInsertPoint(falseBB);
@@ -505,8 +504,7 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
         rhs = Builder.CreateLoad(rhs, "BO_Rhs");
       }
       llvm::Value *isTrueRHS = Builder.CreateICmpNE(rhs, Zero256);
-      Builder.CreateStore(Builder.CreateZExt(isTrueRHS, Int256Ty),
-                          res);
+      Builder.CreateStore(Builder.CreateZExt(isTrueRHS, Int256Ty), res);
       Builder.CreateBr(endBB);
 
       Builder.SetInsertPoint(endBB);
@@ -617,9 +615,9 @@ void FuncBodyCodeGen::visit(ExplicitCastExprType &EC) {
   emitCast(EC);
 }
 
-#define TargetTy(x) TargetTy = dynamic_cast<const x *>(Cast.getType().get())
+#define TargetTy(x) TargetTy = dynamic_cast<const x *>(Cast.getType())
 #define BaseTy(x)                                                              \
-  BaseTy = dynamic_cast<const x *>(Cast.getTargetValue()->getType().get())
+  BaseTy = dynamic_cast<const x *>(Cast.getTargetValue()->getType())
 void FuncBodyCodeGen::emitCast(const CastExpr &Cast) {
   Value *result = nullptr;
   switch (Cast.getCastKind()) {

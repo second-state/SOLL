@@ -24,9 +24,9 @@ public:
   void setValueKind(ValueKind vk) { exprValueKind = vk; }
   bool isLValue() const { return getValueKind() == ValueKind::VK_LValue; }
   bool isRValue() const { return getValueKind() == ValueKind::VK_RValue; }
-  void setType(TypePtr Ty){ this->Ty = Ty; }
-  TypePtr getType() { return Ty; }
-  const TypePtr &getType() const { return Ty; }
+  void setType(TypePtr Ty) { this->Ty = Ty; }
+  Type *getType() { return Ty.get(); }
+  const Type *getType() const { return Ty.get(); }
 };
 
 class TupleExpr {
@@ -197,8 +197,11 @@ public:
 class CastExpr : public Expr {
   ExprPtr TargetValue;
   CastKind CastK;
+
 protected:
-  CastExpr(ExprPtr &&TV, CastKind CK) : TargetValue(std::move(TV)), CastK(CK), Expr(ValueKind::VK_RValue) {}
+  CastExpr(ExprPtr &&TV, CastKind CK)
+      : TargetValue(std::move(TV)), CastK(CK), Expr(ValueKind::VK_RValue) {}
+
 public:
   Expr *getTargetValue() { return TargetValue.get(); }
   const Expr *getTargetValue() const { return TargetValue.get(); }
@@ -208,7 +211,7 @@ public:
 class ImplicitCastExpr : public CastExpr {
 public:
   ImplicitCastExpr(ExprPtr &&TV, CastKind CK) : CastExpr(std::move(TV), CK) {}
-  
+
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
 };
