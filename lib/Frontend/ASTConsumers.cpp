@@ -6,6 +6,8 @@
 #include "soll/AST/DeclVisitor.h"
 #include "soll/AST/Expr.h"
 #include "soll/AST/StmtVisitor.h"
+#include "soll/AST/Type.h"
+#include <llvm/ADT/Twine.h>
 #include <llvm/Support/raw_ostream.h>
 
 namespace {
@@ -29,7 +31,7 @@ std::string ToString(soll::UnaryOperatorKind op) {
   case soll::UO_PostDec:
     return "(postfix) --";
   default:
-    return "";
+    return "(unknown unary op)";
   }
 }
 
@@ -98,8 +100,31 @@ std::string ToString(soll::BinaryOperatorKind op) {
   case soll::BO_Comma:
     return ",";
   default:
-    return "";
+    return "(unknown binary op)";
   }
+}
+
+std::string ToString(const soll::Type *type) {
+  if (nullptr == type)
+    return "(no type)";
+  soll::Type::Category c = type->getCategory();
+  switch (c) {
+  case soll::Type::Category::Address:
+    return "address";
+  case soll::Type::Category::Integer: {
+    unsigned int kind = static_cast<unsigned int>(
+        static_cast<const soll::IntegerType *>(type)->getKind());
+    bool isUnsigned = kind < 32;
+    unsigned int bits = ((isUnsigned ? kind : (kind - 32)) + 1) << 3;
+    return (llvm::Twine(isUnsigned ? "u" : "") + "int" + llvm::Twine(bits))
+        .str();
+  }
+  case soll::Type::Category::String:
+    return "string";
+  default:
+    return "(unknown type)";
+  }
+  return "";
 }
 
 } // namespace
@@ -181,7 +206,8 @@ void ASTPrinter::visit(ParamListType &param) {
 }
 
 void ASTPrinter::visit(VarDeclType &decl) {
-  os() << indent() << "VarDecl \"" << decl.getName() << "\"\n";
+  os() << indent() << "VarDecl \"" << decl.getName() << "\""
+       << ", " << ToString(decl.GetType()) << "\n";
   ConstDeclVisitor::visit(decl);
   unindent();
 }
