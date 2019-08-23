@@ -121,6 +121,21 @@ std::string ToString(const soll::Type *type) {
   }
   case soll::Type::Category::String:
     return "string";
+  case soll::Type::Category::Bool:
+    return "bool";
+  case soll::Type::Category::Array: {
+    auto at = static_cast<const soll::ArrayType *>(type);
+    return llvm::Twine(
+               ToString(at->getElementType()) + "[" +
+               (at->isDynamicSized() ? "" : llvm::Twine(at->getLength())) + "]")
+        .str();
+  }
+  case soll::Type::Category::Mapping: {
+    auto mt = static_cast<const soll::MappingType *>(type);
+    return (llvm::Twine("mapping(") + ToString(mt->getKeyType()) + " => " +
+            ToString(mt->getValueType()) + ")")
+        .str();
+  }
   default:
     return "(unknown type)";
   }
