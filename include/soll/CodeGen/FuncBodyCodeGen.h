@@ -99,13 +99,23 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
   void checkArrayOutOfBound(llvm::Value *, llvm::Value *);
   
   // ast type -> llvm type ptr
-  // currently support integer ONLY
+  // currently support integer and integer memory array ONLY
   // TODO: add other types
+  llvm::Type* getLLVMTy(const soll::Type* Ty) {
+    if (auto *ArrTy = dynamic_cast<const soll::ArrayType*>(Ty)) {
+      return llvm::ArrayType::get(
+        getLLVMTy(ArrTy->getElementType().get()),
+        ArrTy->getLength()
+      );
+    } else {
+      return Builder.getIntNTy(Ty->getBitNum());
+    }
+  }
   llvm::Type* getLLVMTy(const soll::VarDecl *VD) {
-    return Builder.getIntNTy(VD->GetType()->getBitNum());
+    return getLLVMTy(VD->GetType().get());
   }
   llvm::Type* getLLVMTy(const soll::FunctionDecl &FD) {
-    return Builder.getIntNTy(FD.getType()->getBitNum());
+    return getLLVMTy(FD.getType().get());
   }
 
   llvm::Value *findLocalVarAddr(const std::string &S) {

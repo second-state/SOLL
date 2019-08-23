@@ -310,6 +310,12 @@ Value* FuncBodyCodeGen::loadValue(const Expr* Expr) {
     } else {
       Val = Builder.CreateLoad(Addr);
     }
+  } else if (auto IA = dynamic_cast<const IndexAccess*>(Expr)) {
+    if (IA->isStateVariable()) {
+      Val = Builder.CreateCall(Module.getFunction("sload"), {Addr}, "sload");
+    } else {
+      Val = Builder.CreateLoad(Addr);
+    }
   } else {
     Val = Builder.CreateLoad(Addr);
   }
@@ -321,6 +327,12 @@ void FuncBodyCodeGen::storeValue(const Expr *Expr, Value *Val) {
   if (auto *ID = dynamic_cast<const Identifier*>(Expr)) {
     auto *D = dynamic_cast<const VarDecl*>(ID->getCorrespondDecl());
     if (D->isStateVariable()) {
+      Builder.CreateCall(Module.getFunction("sstore"), {Val, Addr}, "sstore");
+    } else {
+      Builder.CreateStore(Val, Addr);
+    }
+  } else if (auto IA = dynamic_cast<const IndexAccess*>(Expr)) {
+    if (IA->isStateVariable()) {
       Builder.CreateCall(Module.getFunction("sstore"), {Val, Addr}, "sstore");
     } else {
       Builder.CreateStore(Val, Addr);
@@ -809,13 +821,12 @@ void FuncBodyCodeGen::visit(IndexAccessType &IA) {
 
     const ArrayType *ArrTy = dynamic_cast<const ArrayType *>(ExprTy);
 
-    if (ArrTy->location() == DataLocation::Memory) {
+    if (!IA.isStateVariable()) {
       // Fixed size memory array : store array address in TempValueTable
       // TODO : Assume only Integer Array
       unsigned ArraySize = ArrTy->getLength();
       checkArrayOutOfBound(Builder.getIntN(256, ArraySize), IdxV);
-      llvm::ArrayType *Ty = llvm::ArrayType::get(
-          Builder.getIntNTy(ArrTy->getElementType()->getBitNum()), ArraySize);
+      llvm::Type *Ty = getLLVMTy(ArrTy);
       V = Builder.CreateInBoundsGEP(Ty, BaseV, {Builder.getIntN(256, 0), IdxV},
                                     "arrIdxAddr");
     } else if (ArrTy->isDynamicSized()) {

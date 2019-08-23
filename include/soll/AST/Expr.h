@@ -268,6 +268,8 @@ public:
   Expr *getIndex() { return Index.get(); }
   const Expr *getIndex() const { return Index.get(); }
 
+  bool isStateVariable() const;
+
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
 };
