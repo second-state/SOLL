@@ -39,10 +39,12 @@ public:
   virtual bool isExplicitlyConvertibleTo(Type const &_convertTo) const {
     return false;
   }
-  virtual Category getCategory() const { return Category::Integer; }
+  virtual Category getCategory() const = 0;
 };
 
-class AddressType : public Type {};
+class AddressType : public Type {
+  Category getCategory() const override { return Category::Address; }
+};
 
 class IntegerType : public Type {
 public:

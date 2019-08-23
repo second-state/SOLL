@@ -34,13 +34,13 @@ int main(int argc, const char **argv) {
             make_unique_vector<Decl>(make_unique<FunctionDecl>(
                 "test", Decl::Visibility::Public, StateMutability::Pure, false,
                 make_unique<ParamList>(make_unique_vector<VarDecl>(
-                    make_unique<VarDecl>(make_unique<Type>(), "a", nullptr,
+                    make_unique<VarDecl>(make_unique<IntegerType>(IntegerType::IntKind::I64), "a", nullptr,
                                          Decl::Visibility::Default),
-                    make_unique<VarDecl>(make_unique<Type>(), "b", nullptr,
+                    make_unique<VarDecl>(make_unique<IntegerType>(IntegerType::IntKind::I64), "b", nullptr,
                                          Decl::Visibility::Default))),
                 make_unique_vector<ModifierInvocation>(),
                 make_unique<ParamList>(make_unique_vector<VarDecl>(
-                    make_unique<VarDecl>(make_unique<Type>(), "", nullptr,
+                    make_unique<VarDecl>(make_unique<IntegerType>(IntegerType::IntKind::I64), "", nullptr,
                                          Decl::Visibility::Default))),
                 make_unique<Block>(make_unique_vector<Stmt>(make_unique<IfStmt>(
                     make_unique<BinaryOperator>(make_unique<Identifier>("a"),
@@ -67,11 +67,11 @@ int main(int argc, const char **argv) {
         make_unique_vector<Decl>(make_unique<FunctionDecl>(
             "test", Decl::Visibility::Public, StateMutability::Pure, false,
             make_unique<ParamList>(make_unique_vector<VarDecl>(
-                make_unique<VarDecl>(make_unique<Type>(), "a", nullptr,
+                make_unique<VarDecl>(make_unique<IntegerType>(IntegerType::IntKind::I64), "a", nullptr,
                                      Decl::Visibility::Default))),
             make_unique_vector<ModifierInvocation>(),
             make_unique<ParamList>(make_unique_vector<VarDecl>(
-                make_unique<VarDecl>(make_unique<Type>(), "", nullptr,
+                make_unique<VarDecl>(make_unique<IntegerType>(IntegerType::IntKind::I64), "", nullptr,
                                      Decl::Visibility::Default))),
             make_unique<Block>(make_unique_vector<Stmt>(
                 make_unique<WhileStmt>(
@@ -105,11 +105,11 @@ int main(int argc, const char **argv) {
         make_unique_vector<Decl>(make_unique<FunctionDecl>(
             "test", Decl::Visibility::Public, StateMutability::Pure, false,
             make_unique<ParamList>(make_unique_vector<VarDecl>(
-                make_unique<VarDecl>(make_unique<Type>(), "a", nullptr,
+                make_unique<VarDecl>(make_unique<IntegerType>(IntegerType::IntKind::I64), "a", nullptr,
                                      Decl::Visibility::Default))),
             make_unique_vector<ModifierInvocation>(),
             make_unique<ParamList>(make_unique_vector<VarDecl>(
-                make_unique<VarDecl>(make_unique<Type>(), "", nullptr,
+                make_unique<VarDecl>(make_unique<IntegerType>(IntegerType::IntKind::I64), "", nullptr,
                                      Decl::Visibility::Default))),
             make_unique<Block>(make_unique_vector<Stmt>(
                 make_unique<ForStmt>(
@@ -138,11 +138,11 @@ int main(int argc, const char **argv) {
             make_unique_vector<Decl>(make_unique<FunctionDecl>(
                 "test", Decl::Visibility::Public, StateMutability::Pure, false,
                 make_unique<ParamList>(make_unique_vector<VarDecl>(
-                    make_unique<VarDecl>(make_unique<Type>(), "a", nullptr,
+                    make_unique<VarDecl>(make_unique<IntegerType>(IntegerType::IntKind::I64), "a", nullptr,
                                          Decl::Visibility::Default))),
                 make_unique_vector<ModifierInvocation>(),
                 make_unique<ParamList>(make_unique_vector<VarDecl>(
-                    make_unique<VarDecl>(make_unique<Type>(), "", nullptr,
+                    make_unique<VarDecl>(make_unique<IntegerType>(IntegerType::IntKind::I64), "", nullptr,
                                          Decl::Visibility::Default))),
                 make_unique<Block>(
                     make_unique_vector<Stmt>(make_unique<ReturnStmt>(
@@ -155,11 +155,11 @@ int main(int argc, const char **argv) {
         make_unique_vector<Decl>(make_unique<FunctionDecl>(
             "test", Decl::Visibility::Public, StateMutability::Pure, false,
             make_unique<ParamList>(make_unique_vector<VarDecl>(
-                make_unique<VarDecl>(make_unique<Type>(), "a", nullptr,
+                make_unique<VarDecl>(make_unique<IntegerType>(IntegerType::IntKind::I64), "a", nullptr,
                                      Decl::Visibility::Default))),
             make_unique_vector<ModifierInvocation>(),
             make_unique<ParamList>(make_unique_vector<VarDecl>(
-                make_unique<VarDecl>(make_unique<Type>(), "", nullptr,
+                make_unique<VarDecl>(make_unique<IntegerType>(IntegerType::IntKind::I64), "", nullptr,
                                      Decl::Visibility::Default))),
             make_unique<Block>(make_unique_vector<Stmt>(make_unique<WhileStmt>(
                 make_unique<BinaryOperator>(make_unique<Identifier>("a"),
@@ -196,11 +196,11 @@ int main(int argc, const char **argv) {
         make_unique_vector<Decl>(make_unique<FunctionDecl>(
             "test", Decl::Visibility::Public, StateMutability::Pure, false,
             make_unique<ParamList>(make_unique_vector<VarDecl>(
-                make_unique<VarDecl>(make_unique<Type>(), "a", nullptr,
+                make_unique<VarDecl>(make_unique<IntegerType>(IntegerType::IntKind::I64), "a", nullptr,
                                      Decl::Visibility::Default))),
             make_unique_vector<ModifierInvocation>(),
             make_unique<ParamList>(make_unique_vector<VarDecl>(
-                make_unique<VarDecl>(make_unique<Type>(), "", nullptr,
+                make_unique<VarDecl>(make_unique<IntegerType>(IntegerType::IntKind::I64), "", nullptr,
                                      Decl::Visibility::Default))),
             make_unique<Block>(make_unique_vector<Stmt>(make_unique<WhileStmt>(
                 make_unique<BinaryOperator>(make_unique<Identifier>("a"),
