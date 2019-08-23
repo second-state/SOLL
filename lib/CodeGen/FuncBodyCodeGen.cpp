@@ -19,6 +19,7 @@ FuncBodyCodeGen::FuncBodyCodeGen(llvm::LLVMContext &Context,
   VoidTy = Builder.getVoidTy();
   Zero256 = Builder.getIntN(256, 0);
   One256 = Builder.getIntN(256, 1);
+  StoragePosCounter = 0;
 }
 
 void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
@@ -299,6 +300,36 @@ void FuncBodyCodeGen::visit(UnaryOperatorType &UO) {
   TempValueTable[&UO] = V;
 }
 
+Value* FuncBodyCodeGen::loadValue(const Expr* Expr) {
+  Value *Addr = findTempValue(Expr);
+  Value *Val = nullptr;
+  if (auto *ID = dynamic_cast<const Identifier*>(Expr)) {
+    auto *D = dynamic_cast<const VarDecl*>(ID->getCorrespondDecl());
+    if (D->isStateVariable()) {
+      Val = Builder.CreateCall(Module.getFunction("sload"), {Addr}, "sload");
+    } else {
+      Val = Builder.CreateLoad(Addr);
+    }
+  } else {
+    Val = Builder.CreateLoad(Addr);
+  }
+  return Val;
+}
+
+void FuncBodyCodeGen::storeValue(const Expr *Expr, Value *Val) {
+  Value *Addr = findTempValue(Expr);
+  if (auto *ID = dynamic_cast<const Identifier*>(Expr)) {
+    auto *D = dynamic_cast<const VarDecl*>(ID->getCorrespondDecl());
+    if (D->isStateVariable()) {
+      Builder.CreateCall(Module.getFunction("sstore"), {Val, Addr}, "sstore");
+    } else {
+      Builder.CreateStore(Val, Addr);
+    }
+  } else {
+    Builder.CreateStore(Val, Addr);
+  }
+}
+
 void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
   // TODO: replace this temp impl (visit(BinaryOperatorType &BO))
   // This impl assumes:
@@ -318,69 +349,45 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
     //   lhs of assignment operator (=, +=, -=, ...) is a Identifier,
     ConstStmtVisitor::visit(BO);
     llvm::Value *lhsAddr = findTempValue(BO.getLHS()); // required lhs as LValue
-    llvm::Value *lhsVal = nullptr;
     llvm::Value *rhsVal = findTempValue(BO.getRHS());
-    switch (BO.getOpcode()) {
-    case BO_Assign:
-      lhsVal = Builder.CreateStore(rhsVal, lhsAddr);
-      break;
-    case BO_MulAssign:
-      lhsVal = Builder.CreateLoad(lhsAddr, "BO_Lhs");
-      lhsVal = Builder.CreateMul(lhsVal, rhsVal, "BO_MulAssign");
-      Builder.CreateStore(lhsVal, lhsAddr);
-      break;
-    case BO_DivAssign:
-      lhsVal = Builder.CreateLoad(lhsAddr, "BO_Lhs");
-      if (isSigned)
-        lhsVal = Builder.CreateSDiv(lhsVal, rhsVal, "BO_DivAssign");
-      else
+    if (BO.getOpcode() == BO_Assign) {
+      storeValue(BO.getLHS(), rhsVal);
+    } else {
+      Value *lhsVal = loadValue(BO.getLHS());
+      switch (BO.getOpcode()) {
+      case BO_MulAssign:
+        lhsVal = Builder.CreateMul(lhsVal, rhsVal, "BO_MulAssign");
+        break;
+      case BO_DivAssign:
         lhsVal = Builder.CreateUDiv(lhsVal, rhsVal, "BO_DivAssign");
-      Builder.CreateStore(lhsVal, lhsAddr);
-      break;
-    case BO_RemAssign:
-      lhsVal = Builder.CreateLoad(lhsAddr, "BO_Lhs");
-      if (isSigned)
-        lhsVal = Builder.CreateSRem(lhsVal, rhsVal, "BO_RemAssign");
-      else
+        break;
+      case BO_RemAssign:
         lhsVal = Builder.CreateURem(lhsVal, rhsVal, "BO_RemAssign");
-      Builder.CreateStore(lhsVal, lhsAddr);
-      break;
-    case BO_AddAssign:
-      lhsVal = Builder.CreateLoad(lhsAddr, "BO_Lhs");
-      lhsVal = Builder.CreateAdd(lhsVal, rhsVal, "BO_AddAssign");
-      Builder.CreateStore(lhsVal, lhsAddr);
-      break;
-    case BO_SubAssign:
-      lhsVal = Builder.CreateLoad(lhsAddr, "BO_Lhs");
-      lhsVal = Builder.CreateSub(lhsVal, rhsVal, "BO_SubAssign");
-      Builder.CreateStore(lhsVal, lhsAddr);
-      break;
-    case BO_ShlAssign:
-      lhsVal = Builder.CreateLoad(lhsAddr, "BO_Lhs");
-      lhsVal = Builder.CreateShl(lhsVal, rhsVal, "BO_ShlAssign");
-      Builder.CreateStore(lhsVal, lhsAddr);
-      break;
-    case BO_ShrAssign:
-      lhsVal = Builder.CreateLoad(lhsAddr, "BO_Lhs");
-      lhsVal = Builder.CreateAShr(lhsVal, rhsVal, "BO_ShrAssign");
-      Builder.CreateStore(lhsVal, lhsAddr);
-      break;
-    case BO_AndAssign:
-      lhsVal = Builder.CreateLoad(lhsAddr, "BO_Lhs");
-      lhsVal = Builder.CreateAnd(lhsVal, rhsVal, "BO_AndAssign");
-      Builder.CreateStore(lhsVal, lhsAddr);
-      break;
-    case BO_XorAssign:
-      lhsVal = Builder.CreateLoad(lhsAddr, "BO_Lhs");
-      lhsVal = Builder.CreateXor(lhsVal, rhsVal, "BO_XorAssign");
-      Builder.CreateStore(lhsVal, lhsAddr);
-      break;
-    case BO_OrAssign:
-      lhsVal = Builder.CreateLoad(lhsAddr, "BO_Lhs");
-      lhsVal = Builder.CreateOr(lhsVal, rhsVal, "BO_OrAssign");
-      Builder.CreateStore(lhsVal, lhsAddr);
-      break;
-    default:;
+        break;
+      case BO_AddAssign:
+        lhsVal = Builder.CreateAdd(lhsVal, rhsVal, "BO_AddAssign");
+        break;
+      case BO_SubAssign:
+        lhsVal = Builder.CreateSub(lhsVal, rhsVal, "BO_SubAssign");
+        break;
+      case BO_ShlAssign:
+        lhsVal = Builder.CreateShl(lhsVal, rhsVal, "BO_ShlAssign");
+        break;
+      case BO_ShrAssign:
+        lhsVal = Builder.CreateAShr(lhsVal, rhsVal, "BO_ShrAssign");
+        break;
+      case BO_AndAssign:
+        lhsVal = Builder.CreateAnd(lhsVal, rhsVal, "BO_AndAssign");
+        break;
+      case BO_XorAssign:
+        lhsVal = Builder.CreateXor(lhsVal, rhsVal, "BO_XorAssign");
+        break;
+      case BO_OrAssign:
+        lhsVal = Builder.CreateOr(lhsVal, rhsVal, "BO_OrAssign");
+        break;
+      default:;
+      }
+      storeValue(BO.getLHS(), lhsVal);
     }
     V = rhsVal;
   }
@@ -638,7 +645,7 @@ void FuncBodyCodeGen::emitCast(const CastExpr &Cast) {
     // TODO: emit load instruction
     // current impl. just let visit(Identifier&) emit load
     // which does not work for general cases
-    result = Builder.CreateLoad(findTempValue(Cast.getTargetValue()));
+    result = loadValue(Cast.getTargetValue());
     break;
   }
   case CastKind::IntegralCast: {
@@ -690,10 +697,27 @@ void FuncBodyCodeGen::visit(IdentifierType &ID) {
   // TODO: replace this temp impl
   // this impl assumes visited Identifier is lvalue
   llvm::Value *V = nullptr;
-  if (llvm::Value *Addr = findLocalVarAddr(ID.getName())) {
-    V = Addr;
-  } else {
-    assert(false && "undeclared identifier");
+
+  const Decl *D = ID.getCorrespondDecl();
+
+  if (auto *VD = dynamic_cast<const VarDecl*>(D)) {
+    if (VD->isStateVariable()) {
+      // allocate storage position if not allocated
+      int PosInStorage = findStoragePosition(ID.getName());
+      if (PosInStorage == -1) {
+        int Length = 1;
+        if (auto *ArrTy = dynamic_cast<const ArrayType*>(VD->GetType().get())) {
+          Length = (ArrTy->isDynamicSized()? 1 : ArrTy->getLength());
+        }
+        PosInStorage = allocateStorage(ID.getName(), Length);
+      }
+      V = Builder.getIntN(256, PosInStorage);
+    } else {
+      if (llvm::Value *Addr = findLocalVarAddr(ID.getName()))
+        V = Addr;
+      else
+        assert(false && "undeclared identifier");
+    }
   }
 
   TempValueTable[&ID] = V;

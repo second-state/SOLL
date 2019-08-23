@@ -40,6 +40,9 @@ class CodeGeneratorImpl : public CodeGenerator,
   llvm::Function *Func_finish = nullptr;
   llvm::Function *Func_revert = nullptr;
   llvm::Function *Func_print32 = nullptr;
+  llvm::Function *Func_keccak = nullptr;
+  llvm::Function *Func_sstore = nullptr;
+  llvm::Function *Func_sload = nullptr;
 
   llvm::Function *Func_bswap256 = nullptr;
 
@@ -95,6 +98,27 @@ public:
     Func_revert = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
                                          "revert", *M);
     Func_revert->addFnAttr(
+        llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
+
+    // keccak
+    FT = llvm::FunctionType::get(Int256Ty, {Int8PtrTy, Int256Ty}, false);
+    Func_keccak = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                         "keccak", *M);
+    Func_keccak->addFnAttr(
+        llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
+
+    // sload
+    FT = llvm::FunctionType::get(Int256Ty, {Int256Ty}, false);
+    Func_sload = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                         "sload", *M);
+    Func_sload->addFnAttr(
+        llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
+
+    // sstore
+    FT = llvm::FunctionType::get(VoidTy, {Int256Ty, Int256Ty}, false);
+    Func_sstore = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                         "sstore", *M);
+    Func_sstore->addFnAttr(
         llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
 
     // debug.print32

@@ -40,6 +40,11 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
   // TODO: replace this temp impl
   std::unordered_map<const soll::Stmt *, llvm::BasicBlock *> BasicBlockTable;
 
+  // Counter to store which position the next storage item should be stored in
+  int StoragePosCounter;
+  // Storage Item name => Position in Storage
+  std::unordered_map<std::string, int> StorageItemPosTable;
+
   // codegen LLVM IR in the visit functions
   void visit(BlockType &) override;
   void visit(IfStmtType &) override;
@@ -62,6 +67,35 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
   void visit(NumberLiteralType &) override;
 
   void emitCast(const soll::CastExpr &Cast);
+
+  // create load instruction based on DataLocation
+  llvm::Value* loadValue(const soll::Expr *ID);
+  // create store instruction based on DataLocation
+  void storeValue(const soll::Expr *Expr, llvm::Value *Val);
+
+  // return the allocated storage position and update StoragePositionCounter
+  int allocateStorage(const std::string &Name, unsigned Len = 1) {
+    int res = StoragePosCounter;
+    StorageItemPosTable[Name] = StoragePosCounter;
+    StoragePosCounter += Len;
+    return res;
+  }
+
+  // return storage position of given identifier name, -1 if not found
+  int findStoragePosition(const std::string &S) {
+    if (StorageItemPosTable.count(S))
+      return StorageItemPosTable[S];
+    else
+      return -1;
+  } 
+
+  // for mapping and dynamic storage array codegen
+  // codegen function for concating {idx, base}
+  void concate(llvm::Value *, unsigned, unsigned, llvm::Value *, llvm::Value *);
+
+  // for array codegen
+  // codegen function for checking whether array idx is out of bound
+  void checkArrayOutOfBound(llvm::Value *, llvm::Value *);
 
   llvm::Value *findLocalVarAddr(const std::string &S) {
     if (LocalVarAddrTable.count(S))
