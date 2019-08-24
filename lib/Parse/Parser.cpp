@@ -597,8 +597,11 @@ unique_ptr<Type> Parser::parseTypeName(bool AllowVar) {
   tok::TokenKind Kind = CurTok->getKind();
   if (CurTok->isElementaryTypeName())
   {
-    if (tok::kw_int <= CurTok->getKind() &&
-        CurTok->getKind() <= tok::kw_uint256) {
+    if (CurTok->getKind() == tok::kw_bool) {
+      T = std::make_unique<BooleanType>();
+      TheLexer.CachedLex();
+    } else if (tok::kw_int <= CurTok->getKind() &&
+               CurTok->getKind() <= tok::kw_uint256) {
       T = std::make_unique<IntegerType>(token2inttype(CurTok));
       TheLexer.CachedLex();
     } else if (CurTok->getKind() == tok::kw_string) {
@@ -1107,9 +1110,11 @@ unique_ptr<Expr> Parser::parsePrimaryExpression() {
   switch (CurTok->getKind()) {
   case tok::kw_true:
     Expression = std::make_unique<BooleanLiteral>(true);
+    TheLexer.CachedLex();
     break;
   case tok::kw_false:
     Expression = std::make_unique<BooleanLiteral>(false);
+    TheLexer.CachedLex();
     break;
   case tok::numeric_constant: {
     int NumValue;

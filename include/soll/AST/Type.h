@@ -47,6 +47,10 @@ class AddressType : public Type {
   Category getCategory() const override { return Category::Address; }
 };
 
+class BooleanType : public Type {
+  Category getCategory() const override { return Category::Bool; }
+};
+
 class IntegerType : public Type {
 public:
   enum class IntKind {
