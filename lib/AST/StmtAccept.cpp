@@ -64,6 +64,12 @@ void ParenExpr::accept(StmtVisitor &visitor) { visitor.visit(*this); }
 void ParenExpr::accept(ConstStmtVisitor &visitor) const {
   visitor.visit(*this);
 }
+
+void MemberExpr::accept(StmtVisitor &visitor) { visitor.visit(*this); }
+void MemberExpr::accept(ConstStmtVisitor &visitor) const {
+  visitor.visit(*this);
+}
+
 void IndexAccess::accept(StmtVisitor &visitor) { visitor.visit(*this); }
 void IndexAccess::accept(ConstStmtVisitor &visitor) const {
   visitor.visit(*this);

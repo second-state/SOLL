@@ -247,6 +247,19 @@ static IntegerType::IntKind token2inttype(llvm::Optional<Token> Tok) {
   }
 }
 
+static DataLocation getLoc(llvm::Optional<Token> Tok) {
+  switch (Tok->getKind()) {
+  case tok::kw_storage:
+    return DataLocation::Storage;
+  case tok::kw_memory:
+    return DataLocation::Memory;
+  case tok::kw_calldata:
+    return DataLocation::CallData;
+  default:
+    return DataLocation::Storage;
+  }
+}
+
 Parser::Parser(Lexer &lexer, Sema &sema) : TheLexer(lexer), Actions(sema) {}
 
 unique_ptr<SourceUnit> Parser::parse() {
@@ -498,11 +511,10 @@ Parser::parseFunctionDefinitionOrFunctionTypeStateVariable() {
 
 unique_ptr<VarDecl>
 Parser::parseVariableDeclaration(VarDeclParserOptions const &Options,
-                                 unique_ptr<Type> const &LookAheadArrayType) {
+                                 unique_ptr<Type> &&LookAheadArrayType) {
   unique_ptr<Type> T;
   if (LookAheadArrayType) {
-    // [TODO] need bug fix below line
-    // T = LookAheadArrayType;
+    T = std::move(LookAheadArrayType);
   } else {
     T = parseTypeName(Options.AllowVar);
   }
@@ -559,8 +571,8 @@ Parser::parseVariableDeclaration(VarDeclParserOptions const &Options,
 
   // [TODO] Handle variable with init value
   auto VD = std::make_unique<VarDecl>(std::move(T), Name, nullptr, Vsblty,
-                                   Options.IsStateVariable, IsIndexed,
-                                   IsDeclaredConst);
+                                      Options.IsStateVariable, IsIndexed,
+                                      IsDeclaredConst, Loc);
   Actions.addIdentifierDecl(Name, *VD);
   return std::move(VD);
 }
@@ -568,8 +580,10 @@ Parser::parseVariableDeclaration(VarDeclParserOptions const &Options,
 unique_ptr<Type> Parser::parseTypeNameSuffix(unique_ptr<Type> T) {
   while (TheLexer.LookAhead(0)->is(tok::l_square)) {
     TheLexer.CachedLex();
-    unique_ptr<Expr> Length;
-    Length = parseExpression();
+    int NumValue;
+    getLiteralAndAdvance(TheLexer.LookAhead(0)).getAsInteger(0, NumValue);
+    T = make_unique<ArrayType>(std::move(T), NumValue,
+                               getLoc(TheLexer.LookAhead(0)));
     TheLexer.CachedLex();
   }
   return T;
@@ -600,7 +614,6 @@ unique_ptr<Type> Parser::parseTypeName(bool AllowVar) {
       T = std::make_unique<AddressType>();
     }
     HaveType = true;
-
   } else if (Kind == tok::kw_var) {
     // [TODO] parseTypeName tok::kw_var (var is deprecated)
     assert(false && "Expected Type Name");
@@ -803,7 +816,7 @@ unique_ptr<Stmt> Parser::parseSimpleStatement() {
 }
 
 unique_ptr<DeclStmt> Parser::parseVariableDeclarationStatement(
-    unique_ptr<Type> const &LookAheadArrayType) {
+    unique_ptr<Type> &&LookAheadArrayType) {
   // This does not parse multi variable declaration statements starting directly
   // with
   // `(`, they are parsed in parseSimpleStatement, because they are hard to
@@ -820,7 +833,8 @@ unique_ptr<DeclStmt> Parser::parseVariableDeclarationStatement(
     VarDeclParserOptions Options;
     Options.AllowVar = false;
     Options.AllowLocationSpecifier = true;
-    Variables.push_back(parseVariableDeclaration(Options, LookAheadArrayType));
+    Variables.push_back(
+        parseVariableDeclaration(Options, std::move(LookAheadArrayType)));
   }
   if (TheLexer.LookAhead(0)->is(tok::equal)) {
     TheLexer.CachedLex();
@@ -828,6 +842,13 @@ unique_ptr<DeclStmt> Parser::parseVariableDeclarationStatement(
   }
 
   return std::make_unique<DeclStmt>(std::move(Variables), std::move(Value));
+}
+
+bool Parser::IndexAccessedPath::empty() const {
+  if (!Indices.empty()) {
+    assert(!(Path.empty() && ElementaryType) && "");
+  }
+  return Path.empty() && (ElementaryType == nullptr) && Indices.empty();
 }
 
 pair<Parser::LookAheadInfo, Parser::IndexAccessedPath>
@@ -848,7 +869,6 @@ Parser::tryParseIndexAccessedPath() {
   default:
     break;
   }
-
   // At this point, we have 'Identifier "["' or 'Identifier "." Identifier' or
   // 'ElementoryTypeName "["'. We parse '(Identifier ("." Identifier)*
   // |ElementaryTypeName) ( "[" Expression "]" )*' until we can decide whether
@@ -906,39 +926,71 @@ Parser::LookAheadInfo Parser::peekStatementType() const {
 
 Parser::IndexAccessedPath Parser::parseIndexAccessedPath() {
   IndexAccessedPath Iap;
-
   if (TheLexer.LookAhead(0)->is(tok::identifier)) {
-    Iap.Path.push_back(getLiteralAndAdvance(TheLexer.LookAhead(0)));
+    Iap.Path.push_back(make_unique<Identifier>(
+        getLiteralAndAdvance(TheLexer.LookAhead(0)).str()));
     while (TheLexer.LookAhead(0)->is(tok::period)) {
       TheLexer.CachedLex(); // .
-      Iap.Path.push_back(getLiteralAndAdvance(TheLexer.LookAhead(0)));
+      Iap.Path.push_back(make_unique<Identifier>(
+          getLiteralAndAdvance(TheLexer.LookAhead(0)).str()));
     }
   } else {
-    // Start with type
-    Iap.Path.push_back(getLiteralAndAdvance(TheLexer.CachedLex()));
+    Iap.ElementaryType = parseTypeName(false);
   }
 
   while (TheLexer.LookAhead(0)->is(tok::l_square)) {
     TheLexer.CachedLex(); // [
-    unique_ptr<Expr> Index;
-    if (TheLexer.LookAhead(0)->isNot(tok::r_square))
-      Index = parseExpression();
-    Iap.Indices.emplace_back(std::move(Index));
+    Iap.Indices.emplace_back(parseExpression());
     TheLexer.CachedLex(); // ]
   }
+
   return Iap;
 }
 
 // [TODO] IAP relative function
 unique_ptr<Type>
-Parser::typeNameFromIndexAccessStructure(Parser::IndexAccessedPath const &Iap) {
-  return {};
+Parser::typeNameFromIndexAccessStructure(Parser::IndexAccessedPath &Iap) {
+  if (Iap.empty())
+    return {};
+
+  unique_ptr<Type> T;
+
+  if (Iap.ElementaryType != nullptr) {
+    T = std::move(Iap.ElementaryType);
+  } else {
+    vector<std::string> Path;
+    for (auto const &el : Iap.Path)
+      Path.push_back(el->getName());
+    // [TODO] UserDefinedTypeName
+    // T = UserDefinedTypeName with Path
+  }
+  for (auto &Length : Iap.Indices) {
+    T = make_unique<ArrayType>(
+        std::move(T),
+        dynamic_cast<const NumberLiteral *>(Length.get())->getValue(),
+        getLoc(TheLexer.LookAhead(0)));
+  }
+  return T;
 }
 
 // [TODO] IAP relative function
-unique_ptr<Expr> Parser::expressionFromIndexAccessStructure(
-    Parser::IndexAccessedPath const &Iap) {
-  return {};
+unique_ptr<Expr>
+Parser::expressionFromIndexAccessStructure(Parser::IndexAccessedPath &Iap) {
+  if (Iap.empty()) {
+    return {};
+  }
+  unique_ptr<Expr> Expression = std::move(Iap.Path.front());
+  for (size_t i = 1; i < Iap.Path.size(); ++i) {
+    Expression =
+        make_unique<MemberExpr>(std::move(Expression), std::move(Iap.Path[i]));
+  }
+
+  for (auto &Index : Iap.Indices) {
+    // [TODO] assumption idx always is integer
+    Expression =
+        make_unique<IndexAccess>(std::move(Expression), std::move(Index));
+  }
+  return Expression;
 }
 
 unique_ptr<Expr>
@@ -969,7 +1021,6 @@ Parser::parseBinaryExpression(int MinPrecedence,
   int Precedence = static_cast<int>(getBinOpPrecedence(TheLexer.LookAhead(0)->getKind()));
   for (; Precedence >= MinPrecedence; --Precedence) {
     while (getBinOpPrecedence(TheLexer.LookAhead(0)->getKind()) == Precedence) {
-      // [TODO] Fix this token recognition method
       BinaryOperatorKind Op = token2bop(TheLexer.CachedLex());
       unique_ptr<Expr> RightHandSide = parseBinaryExpression(Precedence + 1);
       Expression = std::move(Actions.CreateBinOp(Op, std::move(Expression), std::move(RightHandSide)));
@@ -1002,30 +1053,34 @@ Parser::parseUnaryExpression(unique_ptr<Expr> &&PartiallyParsedExpression) {
 
 unique_ptr<Expr> Parser::parseLeftHandSideExpression(
     unique_ptr<Expr> &&PartiallyParsedExpression) {
-  unique_ptr<Expr> Exps;
+  unique_ptr<Expr> Expression;
   if (PartiallyParsedExpression)
-    Exps = std::move(PartiallyParsedExpression);
+    Expression = std::move(PartiallyParsedExpression);
   else if (TheLexer.LookAhead(0)->is(tok::kw_new)) {
     TheLexer.CachedLex();
     unique_ptr<Type> typeName = parseTypeName(false);
     // [AST] create NewExpression
   } else
-    Exps = std::move(parsePrimaryExpression());
+    Expression = std::move(parsePrimaryExpression());
 
   while (true) {
     switch (TheLexer.LookAhead(0)->getKind()) {
     case tok::l_square: {
-      TheLexer.CachedLex();
+      TheLexer.CachedLex(); // [
       unique_ptr<Expr> Index;
       if (TheLexer.LookAhead(0)->isNot(tok::r_square))
         Index = std::move(parseExpression());
-      TheLexer.CachedLex();
-      // [AST] Create IndexAccess Expression
+      TheLexer.CachedLex(); // ]
+      Expression =
+          make_unique<IndexAccess>(std::move(Expression), std::move(Index));
       break;
     }
     case tok::period: {
       TheLexer.CachedLex();
-      // [AST] Create MemberAccess Expression
+      Expression = make_unique<MemberExpr>(
+          std::move(Expression),
+          make_unique<Identifier>(
+              getLiteralAndAdvance(TheLexer.LookAhead(0)).str()));
       break;
     }
     case tok::l_paren: {
@@ -1035,40 +1090,42 @@ unique_ptr<Expr> Parser::parseLeftHandSideExpression(
       tie(Arguments, Names) = parseFunctionCallArguments();
       TheLexer.CachedLex();
       // [TODO] Fix passs arguments' name fail.
-      Exps = std::make_unique<CallExpr>(std::move(Exps), std::move(Arguments));
+      Expression = std::make_unique<CallExpr>(std::move(Expression),
+                                              std::move(Arguments));
       break;
     }
     default:
-      return Exps;
+      return Expression;
     }
   }
 }
 
 unique_ptr<Expr> Parser::parsePrimaryExpression() {
   llvm::Optional<Token> CurTok = TheLexer.LookAhead(0);
-  unique_ptr<Expr> Exps;
+  unique_ptr<Expr> Expression;
 
   switch (CurTok->getKind()) {
   case tok::kw_true:
-    Exps = std::make_unique<BooleanLiteral>(true);
+    Expression = std::make_unique<BooleanLiteral>(true);
     break;
   case tok::kw_false:
-    Exps = std::make_unique<BooleanLiteral>(false);
+    Expression = std::make_unique<BooleanLiteral>(false);
     break;
   case tok::numeric_constant: {
     int NumValue;
     getLiteralAndAdvance(CurTok).getAsInteger(0, NumValue);
-    Exps = std::make_unique<NumberLiteral>(NumValue);
+    Expression = std::make_unique<NumberLiteral>(NumValue);
     break;
   }
   case tok::string_literal: {
     string StrValue = getLiteralAndAdvance(CurTok).str();
-    Exps = make_unique<StringLiteral>(std::move(StrValue));
+    Expression = make_unique<StringLiteral>(std::move(StrValue));
     break;
   }
   case tok::identifier: {
     string Name = getLiteralAndAdvance(CurTok).str();
-    Exps = make_unique<Identifier>(std::move(Name), Actions.findIdentifierDecl(Name));
+    Expression = make_unique<Identifier>(std::move(Name),
+                                         Actions.findIdentifierDecl(Name));
     break;
   }
   case tok::kw_type:
@@ -1077,25 +1134,35 @@ unique_ptr<Expr> Parser::parsePrimaryExpression() {
     break;
   case tok::l_paren:
   case tok::l_square: {
-    // [TODO] Tuple/Array case
+    // [TODO] Tuple case
+    //
     // Tuple/parenthesized expression or inline array/bracketed expression.
     // Special cases: ()/[] is empty tuple/array type, (x) is not a real tuple,
     // (x,) is one-dimensional tuple, elements in arrays cannot be left out,
     // only in tuples.
-    TheLexer.CachedLex();
-    Exps = std::make_unique<ParenExpr>(std::move(parseExpression()));
+    TheLexer.CachedLex(); // [ | (
+    tok::TokenKind OppositeToken =
+        (CurTok->getKind() == tok::l_paren ? tok::r_paren : tok::r_square);
+    Expression = std::make_unique<ParenExpr>(std::move(parseExpression()));
     TheLexer.CachedLex();
     break;
   }
   case tok::unknown:
     assert(false && "Unknown token");
     break;
+  case tok::kw_address:
+    if (TheLexer.LookAhead(1)->is(tok::l_paren)) {
+      Expression = make_unique<Identifier>(
+          "address", Actions.findIdentifierDecl("address"));
+      TheLexer.CachedLex(); // address
+      break;
+    }
   default:
     // [TODO] Type MxN case
     assert(false && "Expected primary expression.");
     break;
   }
-  return Exps;
+  return Expression;
 }
 
 vector<unique_ptr<Expr>> Parser::parseFunctionCallListArguments() {

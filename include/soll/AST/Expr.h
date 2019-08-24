@@ -231,10 +231,26 @@ public:
 };
 
 class MemberExpr : public Expr {
-  // TODO
+  ExprPtr Base;
+  std::unique_ptr<Identifier> Name;
+
 public:
-  // TODO: set value kind in another pass
-  MemberExpr() : Expr(ValueKind::VK_LValue) {}
+  MemberExpr(ExprPtr &&Base, std::unique_ptr<Identifier> &&Name)
+      : Expr(ValueKind::VK_LValue), Base(std::move(Base)),
+        Name(std::move(Name)) {}
+
+  void setBase(ExprPtr &&Base) { this->Base = std::move(Base); }
+  void setName(std::unique_ptr<Identifier> &&Name) {
+    this->Name = std::move(Name);
+  }
+
+  Expr *getBase() { return Base.get(); }
+  const Expr *getBase() const { return Base.get(); }
+  Identifier *getName() { return Name.get(); }
+  const Identifier *getName() const { return Name.get(); }
+
+  void accept(StmtVisitor &visitor) override;
+  void accept(ConstStmtVisitor &visitor) const override;
 };
 
 class IndexAccess : public Expr {

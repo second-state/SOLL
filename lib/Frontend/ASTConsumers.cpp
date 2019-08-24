@@ -178,6 +178,8 @@ public:
   void visit(BinaryOperatorType &) override;
   void visit(CallExprType &) override;
   void visit(ParenExprType &) override;
+  void visit(MemberExprType &) override;
+  void visit(IndexAccessType &) override;
   void visit(IdentifierType &) override;
   void visit(BooleanLiteralType &) override;
   void visit(StringLiteralType &) override;
@@ -302,6 +304,18 @@ void ASTPrinter::visit(CallExprType &call) {
 void ASTPrinter::visit(ParenExprType &paren) {
   os() << indent() << "ParenExpr\n";
   ConstStmtVisitor::visit(paren);
+  unindent();
+}
+
+void ASTPrinter::visit(MemberExprType &ia) {
+  os() << indent() << "MemberExpr\n";
+  ConstStmtVisitor::visit(ia);
+  unindent();
+}
+
+void ASTPrinter::visit(IndexAccessType &ia) {
+  os() << indent() << "IndexAccess\n";
+  ConstStmtVisitor::visit(ia);
   unindent();
 }
 

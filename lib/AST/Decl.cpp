@@ -31,14 +31,14 @@ std::vector<const Decl *> SourceUnit::getNodes() const {
 std::vector<Decl *> ContractDecl::getSubNodes() {
   std::vector<Decl *> Decls;
   for (auto &Decl : this->SubNodes)
-    Decls.push_back(Decl.get());
+    Decls.emplace_back(Decl.get());
   return Decls;
 }
 
 std::vector<const Decl *> ContractDecl::getSubNodes() const {
   std::vector<const Decl *> Decls;
   for (auto &Decl : this->SubNodes)
-    Decls.push_back(Decl.get());
+    Decls.emplace_back(Decl.get());
   return Decls;
 }
 
