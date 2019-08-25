@@ -290,7 +290,8 @@ void ASTPrinter::visit(UnaryOperatorType &op) {
 }
 
 void ASTPrinter::visit(BinaryOperatorType &op) {
-  os() << indent() << "BinaryOperator \"" << ToString(op.getOpcode()) << "\"\n";
+  os() << indent() << "BinaryOperator \"" << ToString(op.getOpcode()) << "\" "
+       << ToString(op.getType()) << " \n";
   ConstStmtVisitor::visit(op);
   unindent();
 }
@@ -320,8 +321,10 @@ void ASTPrinter::visit(IndexAccessType &ia) {
 }
 
 void ASTPrinter::visit(IdentifierType &id) {
-  os() << indent() << "Identifier \"" << id.getName() << "\"";
-  if (auto D = id.getCorrespondDecl()) os() << " from " << D;
+  os() << indent() << "Identifier \"" << id.getName() << "\" "
+       << ToString(id.getType());
+  if (auto D = id.getCorrespondDecl())
+    os() << " from " << D;
   os() << "\n";
   ConstStmtVisitor::visit(id);
   unindent();
@@ -346,13 +349,13 @@ void ASTPrinter::visit(NumberLiteralType &literal) {
 }
 
 void ASTPrinter::visit(ImplicitCastExprType &IC) {
-  os() << indent() << "ImplicitCastExpr\n";
+  os() << indent() << "ImplicitCastExpr " << ToString(IC.getType()) << "\n";
   ConstStmtVisitor::visit(IC);
   unindent();
 }
 
 void ASTPrinter::visit(ExplicitCastExprType &EC) {
-  os() << indent() << "ExplicitCastExpr\n";
+  os() << indent() << "ExplicitCastExpr " << ToString(EC.getType()) << "\n";
   ConstStmtVisitor::visit(EC);
   unindent();
 }
