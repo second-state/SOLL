@@ -142,6 +142,14 @@ std::string ToString(soll::TypePtr type) {
   return "";
 }
 
+std::string ToString(soll::CastKind CK) {
+  switch (CK) {
+  case soll::CastKind::IntegralCast:
+    return "<IntegralCast>";
+  case soll::CastKind::LValueToRValue:
+    return "<LValueToRValue>";
+  }
+}
 } // namespace
 
 namespace soll {
@@ -349,13 +357,15 @@ void ASTPrinter::visit(NumberLiteralType &literal) {
 }
 
 void ASTPrinter::visit(ImplicitCastExprType &IC) {
-  os() << indent() << "ImplicitCastExpr " << ToString(IC.getType()) << "\n";
+  os() << indent() << "ImplicitCastExpr " << ToString(IC.getType()) << " "
+       << ToString(IC.getCastKind()) << "\n";
   ConstStmtVisitor::visit(IC);
   unindent();
 }
 
 void ASTPrinter::visit(ExplicitCastExprType &EC) {
-  os() << indent() << "ExplicitCastExpr " << ToString(EC.getType()) << "\n";
+  os() << indent() << "ExplicitCastExpr " << ToString(EC.getType()) << " "
+       << ToString(EC.getCastKind()) << "\n";
   ConstStmtVisitor::visit(EC);
   unindent();
 }

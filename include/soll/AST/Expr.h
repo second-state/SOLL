@@ -94,17 +94,8 @@ class BinaryOperator : public Expr {
 public:
   typedef BinaryOperatorKind Opcode;
   // TODO: set value kind in another pass
-  BinaryOperator(ExprPtr &&lhs, ExprPtr &&rhs, Opcode opc)
-      : Expr(ValueKind::VK_RValue), Opc(opc) {
-    SubExprs[LHS] = std::move(lhs);
-    SubExprs[RHS] = std::move(rhs);
-    // TODO: move setValueKind to another pass
-    if (isAssignmentOp()) {
-      setValueKind(ValueKind::VK_LValue);
-    } else {
-      setValueKind(ValueKind::VK_RValue);
-    }
-  }
+  BinaryOperator(ExprPtr &&lhs, ExprPtr &&rhs, Opcode opc,
+                 TypePtr Ty = nullptr);
 
   void setOpcode(Opcode Opc) { this->Opc = Opc; }
   void setLHS(ExprPtr &&E) { SubExprs[LHS] = std::move(E); }

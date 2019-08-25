@@ -136,6 +136,9 @@ public:
   bool isExplicitlyConvertibleTo(Type const &_convertTo) const override;
   Category getCategory() const override { return Category::Integer; }
 
+  static std::shared_ptr<IntegerType> common(const IntegerType &A,
+                                             const IntegerType &B);
+
 private:
   IntKind _intKind;
 };

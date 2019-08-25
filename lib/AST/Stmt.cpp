@@ -22,15 +22,6 @@ std::vector<VarDecl *> DeclStmt::getVarDecls() {
 }
 
 ///
-/// Identifier
-///
-Identifier::Identifier(const std::string &Name, const Decl *D)
-    : Expr(ValueKind::VK_LValue), name(Name), D(D) {
-  if (auto VD = dynamic_cast<const VarDecl *>(D))
-    Ty = VD->GetType();
-}
-
-///
 /// Block
 ///
 void Block::setStmts(std::vector<StmtPtr> &&Stmts) {
@@ -69,4 +60,23 @@ std::vector<const Expr *> CallExpr::getArguments() const {
     Args.emplace_back(Arg.get());
   return Args;
 }
+
+BinaryOperator::BinaryOperator(ExprPtr &&lhs, ExprPtr &&rhs, Opcode opc,
+                               TypePtr Ty)
+    : Expr(ValueKind::VK_RValue, Ty), Opc(opc) {
+  SubExprs[LHS] = std::move(lhs);
+  SubExprs[RHS] = std::move(rhs);
+  if (this->isAssignmentOp())
+    setValueKind(ValueKind::VK_LValue);
+}
+
+///
+/// Identifier
+///
+Identifier::Identifier(const std::string &Name, const Decl *D)
+    : Expr(ValueKind::VK_LValue), name(Name), D(D) {
+  if (auto VD = dynamic_cast<const VarDecl *>(D))
+    Ty = VD->GetType();
+}
+
 } // namespace soll

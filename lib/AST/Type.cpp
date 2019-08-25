@@ -32,4 +32,16 @@ bool IntegerType::isExplicitlyConvertibleTo(Type const &_convertTo) const {
   }
 }
 
+std::shared_ptr<IntegerType> IntegerType::common(const IntegerType &A,
+                                                 const IntegerType &B) {
+  // TODO: replace this
+  // Solidity allows int and uint to have common type
+  // but this temp. impl. does not deal with it
+  // for example;
+  //  common(uint64, int72) ->  int72
+  //  common(uint72, int64) -> uint72
+  //  common(uint64, int64) -> uint72
+  assert(A.isSigned() == B.isSigned());
+  return std::make_shared<IntegerType>(std::max(A.getKind(), B.getKind()));
+}
 } // namespace soll
