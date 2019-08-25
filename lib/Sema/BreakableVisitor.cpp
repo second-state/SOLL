@@ -5,9 +5,7 @@
 
 using namespace soll;
 
-void BreakableVisitor::check(FunctionDecl &FD) {
-  FD.getBody()->accept(*this);
-}
+void BreakableVisitor::check(FunctionDecl &FD) { FD.getBody()->accept(*this); }
 
 void BreakableVisitor::visit(WhileStmtType &While) {
   breakablePath.push_back(&While);

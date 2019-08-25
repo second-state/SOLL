@@ -38,7 +38,7 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
   // assume RValue will store value in TempValueTable
   std::unordered_map<const soll::Stmt *, llvm::Value *> TempValueTable;
   // TODO: replace this temp impl
-  std::unordered_map<const soll::Stmt *, llvm::BasicBlock *>BasicBlockTable;
+  std::unordered_map<const soll::Stmt *, llvm::BasicBlock *> BasicBlockTable;
 
   // codegen LLVM IR in the visit functions
   void visit(BlockType &) override;

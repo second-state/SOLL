@@ -397,12 +397,10 @@ LexNextToken:
     if (Char == '=') {
       Kind = tok::equalequal;
       CurPtr = ConsumeChar(CurPtr, SizeTmp);
-    }
-    else if (Char == '>') {
+    } else if (Char == '>') {
       Kind = tok::equalgreater;
       CurPtr = ConsumeChar(CurPtr, SizeTmp);
-    }
-    else {
+    } else {
       Kind = tok::equal;
     }
     break;

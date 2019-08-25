@@ -410,7 +410,8 @@ llvm::Function *LoweringInteger::GetShlFunction(const unsigned int BitWidth) {
       llvm::FunctionType::get(IntHiTy, {IntHiTy, IntHiTy}, false),
       llvm::Function::InternalLinkage, createName("__shl", BitWidth),
       *TheModule);
-  //Result->addFnAttr(llvm::Attribute::get(Context, llvm::Attribute::NoInline));
+  // Result->addFnAttr(llvm::Attribute::get(Context,
+  // llvm::Attribute::NoInline));
   ShlFunction.try_emplace(BitWidth, Result);
 
   llvm::Argument *In = Result->arg_begin();
@@ -479,7 +480,8 @@ llvm::Function *LoweringInteger::GetLShrFunction(const unsigned int BitWidth) {
       llvm::FunctionType::get(IntHiTy, {IntHiTy, IntHiTy}, false),
       llvm::Function::InternalLinkage, createName("__lshr", BitWidth),
       *TheModule);
-  //Result->addFnAttr(llvm::Attribute::get(Context, llvm::Attribute::NoInline));
+  // Result->addFnAttr(llvm::Attribute::get(Context,
+  // llvm::Attribute::NoInline));
   LShrFunction.try_emplace(BitWidth, Result);
 
   llvm::Argument *In = Result->arg_begin();
@@ -548,7 +550,8 @@ llvm::Function *LoweringInteger::GetAShrFunction(const unsigned int BitWidth) {
       llvm::FunctionType::get(IntHiTy, {IntHiTy, IntHiTy}, false),
       llvm::Function::InternalLinkage, createName("__ashr", BitWidth),
       *TheModule);
-  //Result->addFnAttr(llvm::Attribute::get(Context, llvm::Attribute::NoInline));
+  // Result->addFnAttr(llvm::Attribute::get(Context,
+  // llvm::Attribute::NoInline));
   AShrFunction.try_emplace(BitWidth, Result);
 
   llvm::Argument *In = Result->arg_begin();

@@ -224,7 +224,8 @@ public:
 
 class ExplicitCastExpr : public CastExpr {
 public:
-  ExplicitCastExpr(ExprPtr &&TV, CastKind CK, TypePtr Ty) : CastExpr(std::move(TV), CK, Ty) {}
+  ExplicitCastExpr(ExprPtr &&TV, CastKind CK, TypePtr Ty)
+      : CastExpr(std::move(TV), CK, Ty) {}
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
 };

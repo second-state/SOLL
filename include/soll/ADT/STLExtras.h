@@ -3,9 +3,9 @@
 
 #include <initializer_list>
 #include <iterator>
+#include <memory>
 #include <utility>
 #include <vector>
-#include <memory>
 
 namespace soll {
 
@@ -20,8 +20,7 @@ std::vector<std::unique_ptr<T>> make_unique_vector(Args &&... args) {
 /// Conditional const
 /// cond_const<true,  Type>: const Type
 /// cond_const<false, Type>: Type
-template <bool Const, class Type>
-struct cond_const {
+template <bool Const, class Type> struct cond_const {
   typedef const Type type;
 };
 

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #pragma once
 
-#include "soll/Sema/BreakableVisitor.h"
 #include "soll/AST/ASTContext.h"
+#include "soll/Sema/BreakableVisitor.h"
 
 namespace soll {
 
@@ -31,20 +31,30 @@ public:
   /// this may add type casting
 
   /// +, -
-  TypePtr CheckAdditiveOperands(ExprPtr &LHS, ExprPtr &RHS, BinaryOperatorKind Opc, TypePtr CompLHSTy = nullptr);
+  TypePtr CheckAdditiveOperands(ExprPtr &LHS, ExprPtr &RHS,
+                                BinaryOperatorKind Opc,
+                                TypePtr CompLHSTy = nullptr);
   /// *, /, %
-  TypePtr CheckMultiplicativeOperands(ExprPtr &LHS, ExprPtr &RHS, BinaryOperatorKind Opc, TypePtr CompLHSTy = nullptr);
+  TypePtr CheckMultiplicativeOperands(ExprPtr &LHS, ExprPtr &RHS,
+                                      BinaryOperatorKind Opc,
+                                      TypePtr CompLHSTy = nullptr);
   /// <, >, <=, >=, ==
-  TypePtr CheckCompareOperands(ExprPtr &LHS, ExprPtr &RHS, BinaryOperatorKind Opc);
-  
-  TypePtr UsualArithmeticConversions(ExprPtr &LHS, ExprPtr &RHS, bool IsCompAssign);
+  TypePtr CheckCompareOperands(ExprPtr &LHS, ExprPtr &RHS,
+                               BinaryOperatorKind Opc);
+
+  TypePtr UsualArithmeticConversions(ExprPtr &LHS, ExprPtr &RHS,
+                                     bool IsCompAssign);
 
   ExprPtr UsualUnaryConversions(ExprPtr &&E);
 
   ExprPtr DefaultLvalueConversion(ExprPtr &&E);
 
-  void addIdentifierDecl(const std::string &S, const Decl &D) { Context.addIdentifierDecl(S, D); }
-  const Decl *findIdentifierDecl(const std::string &S) { return Context.findIdentifierDecl(S); }
+  void addIdentifierDecl(const std::string &S, const Decl &D) {
+    Context.addIdentifierDecl(S, D);
+  }
+  const Decl *findIdentifierDecl(const std::string &S) {
+    return Context.findIdentifierDecl(S);
+  }
 
   void resolveBreak(FunctionDecl &);
 };
