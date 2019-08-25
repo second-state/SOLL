@@ -323,7 +323,7 @@ void ASTPrinter::visit(MemberExprType &ia) {
 }
 
 void ASTPrinter::visit(IndexAccessType &ia) {
-  os() << indent() << "IndexAccess\n";
+  os() << indent() << "IndexAccess " << ToString(ia.getType()) << "\n";
   ConstStmtVisitor::visit(ia);
   unindent();
 }

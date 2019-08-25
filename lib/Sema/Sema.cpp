@@ -49,6 +49,23 @@ ExprPtr Sema::CreateBinOp(BinaryOperatorKind Opc, ExprPtr &&LHS,
       std::move(LHS), std::move(RHS), Opc, ResultTy));
 }
 
+ExprPtr Sema::CreateIndexAccess(ExprPtr &&LHS, ExprPtr &&RHS) {
+  LHS = DefaultLvalueConversion(std::move(LHS));
+  RHS = DefaultLvalueConversion(std::move(RHS));
+
+  TypePtr ResultTy;
+  if (auto MT = dynamic_cast<MappingType *>(LHS->getType().get())) {
+    ResultTy = MT->getValueType();
+  } else if (auto AT = dynamic_cast<ArrayType *>(LHS->getType().get())) {
+    // TODO: replace this with Diagonistic
+    assert(RHS->getType()->getCategory() == Type::Category::Integer);
+    ResultTy = AT->getElementType();
+  } else
+    assert(false);
+  return std::make_unique<IndexAccess>(std::move(LHS), std::move(RHS),
+                                       ResultTy);
+}
+
 ExprPtr Sema::CreateIdentifier(const std::string Name) {
   return std::make_unique<Identifier>(Name, findIdentifierDecl(Name));
 }

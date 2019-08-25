@@ -256,8 +256,8 @@ class IndexAccess : public Expr {
   ExprPtr Index;
 
 public:
-  IndexAccess(ExprPtr &&Base, ExprPtr &&Index)
-      : Expr(ValueKind::VK_LValue), Base(std::move(Base)),
+  IndexAccess(ExprPtr &&Base, ExprPtr &&Index, TypePtr Ty = nullptr)
+      : Expr(ValueKind::VK_LValue, Ty), Base(std::move(Base)),
         Index(std::move(Index)) {}
 
   void setBase(ExprPtr &&Base) { this->Base = std::move(Base); }

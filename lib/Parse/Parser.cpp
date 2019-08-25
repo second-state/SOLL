@@ -245,6 +245,7 @@ static IntegerType::IntKind token2inttype(llvm::Optional<Token> Tok) {
   default:
     assert(false && "Invalid int token.");
   }
+  LLVM_BUILTIN_UNREACHABLE;
 }
 
 static DataLocation getLoc(llvm::Optional<Token> Tok) {
@@ -990,7 +991,7 @@ Parser::expressionFromIndexAccessStructure(Parser::IndexAccessedPath &Iap) {
   for (auto &Index : Iap.Indices) {
     // [TODO] assumption idx always is integer
     Expression =
-        make_unique<IndexAccess>(std::move(Expression), std::move(Index));
+        Actions.CreateIndexAccess(std::move(Expression), std::move(Index));
   }
   return Expression;
 }
@@ -1077,7 +1078,7 @@ unique_ptr<Expr> Parser::parseLeftHandSideExpression(
         Index = std::move(parseExpression());
       TheLexer.CachedLex(); // ]
       Expression =
-          make_unique<IndexAccess>(std::move(Expression), std::move(Index));
+          Actions.CreateIndexAccess(std::move(Expression), std::move(Index));
       break;
     }
     case tok::period: {
