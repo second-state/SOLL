@@ -573,6 +573,7 @@ Parser::parseVariableDeclaration(VarDeclParserOptions const &Options,
   auto VD = std::make_unique<VarDecl>(std::move(T), Name, nullptr, Vsblty,
                                       Options.IsStateVariable, IsIndexed,
                                       IsDeclaredConst, Loc);
+
   Actions.addIdentifierDecl(Name, *VD);
   return std::move(VD);
 }
@@ -595,8 +596,7 @@ unique_ptr<Type> Parser::parseTypeName(bool AllowVar) {
   bool HaveType = false;
   llvm::Optional<Token> CurTok = TheLexer.LookAhead(0);
   tok::TokenKind Kind = CurTok->getKind();
-  if (CurTok->isElementaryTypeName())
-  {
+  if (CurTok->isElementaryTypeName()) {
     if (CurTok->getKind() == tok::kw_bool) {
       T = std::make_unique<BooleanType>();
       TheLexer.CachedLex();
@@ -635,19 +635,19 @@ unique_ptr<Type> Parser::parseTypeName(bool AllowVar) {
   return T;
 }
 
-unique_ptr<Type> Parser::parseMapping()
-{
+unique_ptr<Type> Parser::parseMapping() {
   TheLexer.CachedLex(); // mapping
   TheLexer.CachedLex(); // (
   bool const AllowVar = false;
   unique_ptr<Type> KeyType;
-  if (TheLexer.LookAhead(0)->isElementaryTypeName()){
+  if (TheLexer.LookAhead(0)->isElementaryTypeName()) {
     KeyType = parseTypeName(AllowVar);
   }
   TheLexer.CachedLex(); // =>
   unique_ptr<Type> ValueType = parseTypeName(AllowVar);
   TheLexer.CachedLex(); // )
-  return std::make_unique<MappingType>(std::move(KeyType), std::move(ValueType));
+  return std::make_unique<MappingType>(std::move(KeyType),
+                                       std::move(ValueType));
 }
 
 unique_ptr<ParamList>
@@ -657,11 +657,9 @@ Parser::parseParameterList(VarDeclParserOptions const &_Options,
   VarDeclParserOptions Options(_Options);
   Options.AllowEmptyName = true;
   TheLexer.CachedLex(); // (
-  if (!AllowEmpty || TheLexer.LookAhead(0)->isNot(tok::r_paren))
-  {
+  if (!AllowEmpty || TheLexer.LookAhead(0)->isNot(tok::r_paren)) {
     Parameters.push_back(parseVariableDeclaration(Options));
-    while(TheLexer.LookAhead(0)->isNot(tok::r_paren))
-    {
+    while (TheLexer.LookAhead(0)->isNot(tok::r_paren)) {
       TheLexer.CachedLex(); // ,
       Parameters.push_back(parseVariableDeclaration(Options));
     }
@@ -740,18 +738,17 @@ unique_ptr<IfStmt> Parser::parseIfStatement() {
                                   std::move(FalseBody));
 }
 
-unique_ptr<WhileStmt> Parser::parseWhileStatement()
-{
+unique_ptr<WhileStmt> Parser::parseWhileStatement() {
   TheLexer.CachedLex(); // while
   TheLexer.CachedLex(); // (
   unique_ptr<Expr> Condition = parseExpression();
   TheLexer.CachedLex(); // )
   unique_ptr<Stmt> Body = parseStatement();
-  return std::make_unique<WhileStmt>(std::move(Condition), std::move(Body), false);
+  return std::make_unique<WhileStmt>(std::move(Condition), std::move(Body),
+                                     false);
 }
 
-unique_ptr<WhileStmt> Parser::parseDoWhileStatement()
-{
+unique_ptr<WhileStmt> Parser::parseDoWhileStatement() {
   TheLexer.CachedLex(); // do
   unique_ptr<Stmt> Body = parseStatement();
   TheLexer.CachedLex(); // while
@@ -759,18 +756,19 @@ unique_ptr<WhileStmt> Parser::parseDoWhileStatement()
   unique_ptr<Expr> Condition = parseExpression();
   TheLexer.CachedLex(); // )
   TheLexer.CachedLex(); // ;
-  return std::make_unique<WhileStmt>(std::move(Condition), std::move(Body), true);
+  return std::make_unique<WhileStmt>(std::move(Condition), std::move(Body),
+                                     true);
 }
 
-unique_ptr<ForStmt> Parser::parseForStatement()
-{
+unique_ptr<ForStmt> Parser::parseForStatement() {
   unique_ptr<Stmt> Init;
   unique_ptr<Expr> Condition;
   unique_ptr<Expr> Loop;
   TheLexer.CachedLex(); // for
   TheLexer.CachedLex(); // (
 
-  // LTODO: Maybe here have some predicate like peekExpression() instead of checking for semicolon and RParen?
+  // LTODO: Maybe here have some predicate like peekExpression() instead of
+  // checking for semicolon and RParen?
   if (TheLexer.LookAhead(0)->isNot(tok::semi))
     Init = parseSimpleStatement();
   TheLexer.CachedLex(); // ;
@@ -784,7 +782,8 @@ unique_ptr<ForStmt> Parser::parseForStatement()
   TheLexer.CachedLex(); // )
 
   unique_ptr<Stmt> Body = parseStatement();
-  return std::make_unique<ForStmt>(std::move(Init), std::move(Condition), std::move(Loop), std::move(Body));
+  return std::make_unique<ForStmt>(std::move(Init), std::move(Condition),
+                                   std::move(Loop), std::move(Body));
 }
 
 unique_ptr<Stmt> Parser::parseSimpleStatement() {
@@ -1004,7 +1003,8 @@ Parser::parseExpression(unique_ptr<Expr> &&PartiallyParsedExpression) {
       TheLexer.LookAhead(0)->getKind() < tok::percentequal) {
     BinaryOperatorKind Op = token2bop(TheLexer.CachedLex());
     unique_ptr<Expr> RightHandSide = parseExpression();
-    return std::move(Actions.CreateBinOp(Op, std::move(Expression), std::move(RightHandSide)));
+    return std::move(Actions.CreateBinOp(Op, std::move(Expression),
+                                         std::move(RightHandSide)));
   } else if (TheLexer.LookAhead(0)->is(tok::question)) {
     TheLexer.CachedLex();
     unique_ptr<Expr> trueExpression = parseExpression();
@@ -1021,12 +1021,14 @@ Parser::parseBinaryExpression(int MinPrecedence,
                               unique_ptr<Expr> &&PartiallyParsedExpression) {
   unique_ptr<Expr> Expression =
       parseUnaryExpression(std::move(PartiallyParsedExpression));
-  int Precedence = static_cast<int>(getBinOpPrecedence(TheLexer.LookAhead(0)->getKind()));
+  int Precedence =
+      static_cast<int>(getBinOpPrecedence(TheLexer.LookAhead(0)->getKind()));
   for (; Precedence >= MinPrecedence; --Precedence) {
     while (getBinOpPrecedence(TheLexer.LookAhead(0)->getKind()) == Precedence) {
       BinaryOperatorKind Op = token2bop(TheLexer.CachedLex());
       unique_ptr<Expr> RightHandSide = parseBinaryExpression(Precedence + 1);
-      Expression = std::move(Actions.CreateBinOp(Op, std::move(Expression), std::move(RightHandSide)));
+      Expression = std::move(Actions.CreateBinOp(Op, std::move(Expression),
+                                                 std::move(RightHandSide)));
     }
   }
   return Expression;
@@ -1128,9 +1130,7 @@ unique_ptr<Expr> Parser::parsePrimaryExpression() {
     break;
   }
   case tok::identifier: {
-    string Name = getLiteralAndAdvance(CurTok).str();
-    Expression = make_unique<Identifier>(std::move(Name),
-                                         Actions.findIdentifierDecl(Name));
+    Expression = Actions.CreateIdentifier(getLiteralAndAdvance(CurTok).str());
     break;
   }
   case tok::kw_type:

@@ -162,8 +162,8 @@ public:
       : KeyType(std::move(KT)), ValueType(std::move(VT)),
         ReferenceType(DataLocation::Storage) {}
 
-  const Type *getKeyType() const { return KeyType.get(); }
-  const Type *getValueType() const { return ValueType.get(); }
+  TypePtr getKeyType() const { return KeyType; }
+  TypePtr getValueType() const { return ValueType; }
 
   Category getCategory() const override { return Category::Mapping; }
 };
@@ -179,7 +179,7 @@ public:
   ArrayType(TypePtr ET, uint32_t L, DataLocation Loc)
       : ElementType(ET), Length(L), ReferenceType(Loc) {}
 
-  const Type *getElementType() const { return ElementType.get(); }
+  TypePtr getElementType() const { return ElementType; }
 
   bool isDynamicSized() const { return !Length.has_value(); }
   uint32_t getLength() const {

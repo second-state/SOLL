@@ -15,18 +15,23 @@ enum class ValueKind { VK_LValue, VK_RValue };
 class Expr : public ExprStmt {
   // add interface to check whether an expr is an LValue or RValue
   // TODO : override isLValue() and is RValue() for each derived class
-  ValueKind exprValueKind;
+  ValueKind ExprValueKind;
+
+protected:
   TypePtr Ty;
 
 public:
-  Expr(ValueKind vk) : exprValueKind(vk) {}
-  ValueKind getValueKind() const { return exprValueKind; }
-  void setValueKind(ValueKind vk) { exprValueKind = vk; }
+  // TODO: refactor this, should only use Expr(ValueKind vk, TypePtr Ty)
+  // Because current Expr with Type is still working, so let Ty = nullptr for
+  // temp use.
+  Expr(ValueKind vk, TypePtr Ty = nullptr) : ExprValueKind(vk), Ty(Ty) {}
+  ValueKind getValueKind() const { return ExprValueKind; }
+  void setValueKind(ValueKind vk) { ExprValueKind = vk; }
   bool isLValue() const { return getValueKind() == ValueKind::VK_LValue; }
   bool isRValue() const { return getValueKind() == ValueKind::VK_RValue; }
   void setType(TypePtr Ty) { this->Ty = Ty; }
-  Type *getType() { return Ty.get(); }
-  const Type *getType() const { return Ty.get(); }
+  TypePtr getType() { return Ty; }
+  const TypePtr &getType() const { return Ty; }
 };
 
 class TupleExpr {
@@ -298,9 +303,11 @@ public:
 class Identifier : public Expr {
   std::string name;
   const Decl *D;
+
 public:
-  Identifier(std::string &&Name, const Decl *D = nullptr) : Expr(ValueKind::VK_LValue), name(Name), D(D) {}
-  void setName(std::string &&Name) { name = Name; }
+  Identifier(const std::string &Name, const Decl *D = nullptr);
+
+  void setName(const std::string &Name) { name = Name; }
   std::string getName() const { return name; }
   const Decl *getCorrespondDecl() const { return D; }
 

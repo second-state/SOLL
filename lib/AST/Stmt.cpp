@@ -22,6 +22,15 @@ std::vector<VarDecl *> DeclStmt::getVarDecls() {
 }
 
 ///
+/// Identifier
+///
+Identifier::Identifier(const std::string &Name, const Decl *D)
+    : Expr(ValueKind::VK_LValue), name(Name), D(D) {
+  if (auto VD = dynamic_cast<const VarDecl *>(D))
+    Ty = VD->GetType();
+}
+
+///
 /// Block
 ///
 void Block::setStmts(std::vector<StmtPtr> &&Stmts) {

@@ -179,8 +179,8 @@ public:
   void accept(DeclVisitor &visitor) override;
   void accept(ConstDeclVisitor &visitor) const override;
 
-  Type *GetType() { return TypeName.get(); }
-  const Type *GetType() const { return TypeName.get(); }
+  TypePtr GetType() { return TypeName; }
+  const TypePtr &GetType() const { return TypeName; }
 };
 
 class ModifierInvocation {

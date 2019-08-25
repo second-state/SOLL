@@ -104,7 +104,7 @@ std::string ToString(soll::BinaryOperatorKind op) {
   }
 }
 
-std::string ToString(const soll::Type *type) {
+std::string ToString(soll::TypePtr type) {
   if (nullptr == type)
     return "(no type)";
   soll::Type::Category c = type->getCategory();
@@ -113,7 +113,7 @@ std::string ToString(const soll::Type *type) {
     return "address";
   case soll::Type::Category::Integer: {
     unsigned int kind = static_cast<unsigned int>(
-        static_cast<const soll::IntegerType *>(type)->getKind());
+        static_cast<const soll::IntegerType *>(type.get())->getKind());
     bool isUnsigned = kind < 32;
     unsigned int bits = ((isUnsigned ? kind : (kind - 32)) + 1) << 3;
     return (llvm::Twine(isUnsigned ? "u" : "") + "int" + llvm::Twine(bits))
@@ -124,14 +124,14 @@ std::string ToString(const soll::Type *type) {
   case soll::Type::Category::Bool:
     return "bool";
   case soll::Type::Category::Array: {
-    auto at = static_cast<const soll::ArrayType *>(type);
+    auto at = static_cast<const soll::ArrayType *>(type.get());
     return llvm::Twine(
                ToString(at->getElementType()) + "[" +
                (at->isDynamicSized() ? "" : llvm::Twine(at->getLength())) + "]")
         .str();
   }
   case soll::Type::Category::Mapping: {
-    auto mt = static_cast<const soll::MappingType *>(type);
+    auto mt = static_cast<const soll::MappingType *>(type.get());
     return (llvm::Twine("mapping(") + ToString(mt->getKeyType()) + " => " +
             ToString(mt->getValueType()) + ")")
         .str();

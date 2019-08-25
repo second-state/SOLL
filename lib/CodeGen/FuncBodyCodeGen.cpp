@@ -615,9 +615,9 @@ void FuncBodyCodeGen::visit(ExplicitCastExprType &EC) {
   emitCast(EC);
 }
 
-#define TargetTy(x) TargetTy = dynamic_cast<const x *>(Cast.getType())
+#define TargetTy(x) TargetTy = dynamic_cast<const x *>(Cast.getType().get())
 #define BaseTy(x)                                                              \
-  BaseTy = dynamic_cast<const x *>(Cast.getTargetValue()->getType())
+  BaseTy = dynamic_cast<const x *>(Cast.getTargetValue()->getType().get())
 void FuncBodyCodeGen::emitCast(const CastExpr &Cast) {
   Value *result = nullptr;
   switch (Cast.getCastKind()) {
