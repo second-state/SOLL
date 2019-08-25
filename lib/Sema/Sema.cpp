@@ -74,7 +74,7 @@ ExprPtr Sema::DefaultLvalueConversion(ExprPtr &&E) {
     return std::move(E);
 
   auto Res = std::move(std::make_unique<ImplicitCastExpr>(
-      std::move(E), CastKind::LValueToRValue));
+      std::move(E), CastKind::LValueToRValue, E->getType()));
 
   return std::move(Res);
 }
