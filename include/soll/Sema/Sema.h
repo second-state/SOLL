@@ -27,6 +27,8 @@ public:
 
   ExprPtr CreateBinOp(BinaryOperatorKind Opc, ExprPtr &&LHS, ExprPtr &&RHS);
   ExprPtr CreateIndexAccess(ExprPtr &&LHS, ExprPtr &&RHS);
+  ExprPtr CreateCallExpr(ExprPtr &&Func,
+                         std::vector<std::unique_ptr<Expr>> &&Args);
   ExprPtr CreateIdentifier(const std::string Name);
   /// type checking binary operators (subroutines of CreateBinOp)
   /// this may add type casting

@@ -164,12 +164,12 @@ class CallExpr : public Expr {
   std::optional<std::vector<std::string>> Names;
 
 public:
-  // TODO: set value kind in another pass
-  CallExpr(ExprPtr &&CalleeExpr, std::vector<ExprPtr> &&Arguments)
+  CallExpr(ExprPtr &&CalleeExpr, std::vector<ExprPtr> &&Arguments,
+           TypePtr Ty = nullptr)
       : Expr(ValueKind::VK_RValue), CalleeExpr(std::move(CalleeExpr)),
         Arguments(std::move(Arguments)) {}
   CallExpr(ExprPtr &&CalleeExpr, std::vector<ExprPtr> &&Arguments,
-           std::vector<std::string> &&Names)
+           std::vector<std::string> &&Names, TypePtr Ty = nullptr)
       : Expr(ValueKind::VK_RValue), CalleeExpr(std::move(CalleeExpr)),
         Arguments(std::move(Arguments)), Names(std::move(Names)) {}
 

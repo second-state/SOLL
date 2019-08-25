@@ -66,6 +66,12 @@ ExprPtr Sema::CreateIndexAccess(ExprPtr &&LHS, ExprPtr &&RHS) {
                                        ResultTy);
 }
 
+ExprPtr Sema::CreateCallExpr(ExprPtr &&Func, std::vector<ExprPtr> &&Args) {
+  TypePtr ResultTy;
+  // TODO: resolve returnType
+  return std::make_unique<CallExpr>(std::move(Func), std::move(Args), ResultTy);
+}
+
 ExprPtr Sema::CreateIdentifier(const std::string Name) {
   return std::make_unique<Identifier>(Name, findIdentifierDecl(Name));
 }

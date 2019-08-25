@@ -1096,8 +1096,8 @@ unique_ptr<Expr> Parser::parseLeftHandSideExpression(
       tie(Arguments, Names) = parseFunctionCallArguments();
       TheLexer.CachedLex();
       // [TODO] Fix passs arguments' name fail.
-      Expression = std::make_unique<CallExpr>(std::move(Expression),
-                                              std::move(Arguments));
+      Expression =
+          Actions.CreateCallExpr(std::move(Expression), std::move(Arguments));
       break;
     }
     default:
