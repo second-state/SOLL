@@ -118,10 +118,12 @@ static IntegerType::IntKind token2inttype(llvm::Optional<Token> Tok) {
     return IntegerType::IntKind::U8;
   case tok::kw_uint16:
     return IntegerType::IntKind::U16;
-  case tok::kw_uint32:
+  case tok::kw_uint24:
     return IntegerType::IntKind::U24;
-  case tok::kw_uint40:
+  case tok::kw_uint32:
     return IntegerType::IntKind::U32;
+  case tok::kw_uint40:
+    return IntegerType::IntKind::U40;
   case tok::kw_uint48:
     return IntegerType::IntKind::U48;
   case tok::kw_uint56:
@@ -182,10 +184,12 @@ static IntegerType::IntKind token2inttype(llvm::Optional<Token> Tok) {
     return IntegerType::IntKind::I8;
   case tok::kw_int16:
     return IntegerType::IntKind::I16;
-  case tok::kw_int32:
+  case tok::kw_int24:
     return IntegerType::IntKind::I24;
-  case tok::kw_int40:
+  case tok::kw_int32:
     return IntegerType::IntKind::I32;
+  case tok::kw_int40:
+    return IntegerType::IntKind::I40;
   case tok::kw_int48:
     return IntegerType::IntKind::I48;
   case tok::kw_int56:
