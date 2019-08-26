@@ -197,8 +197,13 @@ class FunctionType : public Type {
   std::vector<TypePtr> ReturnTypes;
 
 public:
+  FunctionType(std::vector<TypePtr> &&PTys, std::vector<TypePtr> &&RTys)
+      : ParamTypes(std::move(PTys)), ReturnTypes(std::move(RTys)) {}
+
   const std::vector<TypePtr> &getParamTypes() const { return ParamTypes; }
   const std::vector<TypePtr> &getReturnTypes() const { return ReturnTypes; }
+
+  Category getCategory() const override { return Category::Function; }
 };
 
 class StructType : public Type {

@@ -32,6 +32,18 @@ Sema::Sema(Lexer &lexer, ASTContext &ctxt, ASTConsumer &consumer)
     : Lex(lexer), Context(ctxt), Consumer(consumer),
       Diags(Lex.getDiagnostics()), SourceMgr(Lex.getSourceManager()) {}
 
+std::unique_ptr<FunctionDecl> Sema::CreateFunctionDecl(
+    llvm::StringRef Name, FunctionDecl::Visibility Vis, StateMutability SM,
+    bool IsConstructor, std::unique_ptr<ParamList> &&Params,
+    std::vector<std::unique_ptr<ModifierInvocation>> &&Modifiers,
+    std::unique_ptr<ParamList> &&ReturnParams, std::unique_ptr<Block> &&Body) {
+  auto FD = std::make_unique<FunctionDecl>(
+      Name, Vis, SM, IsConstructor, std::move(Params), std::move(Modifiers),
+      std::move(ReturnParams), std::move(Body));
+  resolveBreak(*FD);
+  return std::move(FD);
+}
+
 ExprPtr Sema::CreateBinOp(BinaryOperatorKind Opc, ExprPtr &&LHS,
                           ExprPtr &&RHS) {
   TypePtr ResultTy;

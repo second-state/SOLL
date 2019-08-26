@@ -136,6 +136,28 @@ std::string ToString(soll::TypePtr type) {
             ToString(mt->getValueType()) + ")")
         .str();
   }
+  case soll::Type::Category::Function: {
+    auto FT = static_cast<const soll::FunctionType *>(type.get());
+    auto &PTys = FT->getParamTypes();
+    auto &RTys = FT->getReturnTypes();
+
+    std::string Res;
+    for (size_t i = 0; i < RTys.size(); i++) {
+      if (i > 0)
+        Res += ',';
+      Res += ToString(RTys[i]);
+    }
+    if (RTys.size() > 1)
+      Res = "(" + Res + ")";
+    Res += "(";
+    for (size_t i = 0; i < PTys.size(); i++) {
+      if (i > 0)
+        Res += ',';
+      Res += ToString(PTys[i]);
+    }
+    Res += ")";
+    return Res;
+  }
   default:
     return "(unknown type)";
   }
@@ -220,7 +242,8 @@ void ASTPrinter::visit(ContractDeclType &decl) {
 }
 
 void ASTPrinter::visit(FunctionDeclType &decl) {
-  os() << indent() << "FunctionDecl \"" << decl.getName() << "\"\n";
+  os() << indent() << "FunctionDecl \"" << decl.getName() << "\" "
+       << ToString(decl.getType()) << " \n";
   ConstDeclVisitor::visit(decl);
   decl.getBody()->accept(*this);
   unindent();

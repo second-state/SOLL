@@ -502,12 +502,10 @@ Parser::parseFunctionDefinitionOrFunctionTypeStateVariable() {
     if (TheLexer.LookAhead(0)->isNot(tok::semi)) {
       block = parseBlock();
     }
-    auto &&FD = std::make_unique<FunctionDecl>(
+    return Actions.CreateFunctionDecl(
         Header.Name, Header.Vsblty, Header.SM, Header.IsConstructor,
         std::move(Header.Parameters), std::move(Header.Modifiers),
         std::move(Header.ReturnParameters), std::move(block));
-    Actions.resolveBreak(*FD);
-    return std::move(FD);
   } else {
     // [TODO] State Variable case.
     return nullptr;

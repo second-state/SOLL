@@ -121,21 +121,18 @@ class FunctionDecl : public CallableVarDecl {
   std::vector<std::unique_ptr<ModifierInvocation>> FunctionModifiers;
   std::unique_ptr<Block> Body;
   bool Implemented;
+  TypePtr FuncTy;
 
 public:
   FunctionDecl(llvm::StringRef name, Visibility visibility, StateMutability sm,
                bool isConstructor, std::unique_ptr<ParamList> &&Params,
                std::vector<std::unique_ptr<ModifierInvocation>> &&modifiers,
                std::unique_ptr<ParamList> &&returnParams,
-               std::unique_ptr<Block> &&body)
-      : CallableVarDecl(name, visibility, std::move(Params),
-                        std::move(returnParams)),
-        SM(sm), IsConstructor(isConstructor),
-        FunctionModifiers(std::move(modifiers)), Body(std::move(body)),
-        Implemented(body != nullptr) {}
+               std::unique_ptr<Block> &&body);
 
   Block *getBody() { return Body.get(); }
   const Block *getBody() const { return Body.get(); }
+  TypePtr getType() const { return FuncTy; }
 
   void accept(DeclVisitor &visitor) override;
   void accept(ConstDeclVisitor &visitor) const override;

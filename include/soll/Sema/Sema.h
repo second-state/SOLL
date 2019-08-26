@@ -25,6 +25,15 @@ public:
 
   Sema(Lexer &lexer, ASTContext &ctxt, ASTConsumer &consumer);
 
+  // Decl
+  std::unique_ptr<FunctionDecl> CreateFunctionDecl(
+      llvm::StringRef name, FunctionDecl::Visibility visibility,
+      StateMutability sm, bool isConstructor,
+      std::unique_ptr<ParamList> &&Params,
+      std::vector<std::unique_ptr<ModifierInvocation>> &&modifiers,
+      std::unique_ptr<ParamList> &&returnParams, std::unique_ptr<Block> &&body);
+
+  // Expr
   ExprPtr CreateBinOp(BinaryOperatorKind Opc, ExprPtr &&LHS, ExprPtr &&RHS);
   ExprPtr CreateIndexAccess(ExprPtr &&LHS, ExprPtr &&RHS);
   ExprPtr CreateCallExpr(ExprPtr &&Func,
