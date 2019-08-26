@@ -50,7 +50,7 @@ ExprPtr Sema::CreateBinOp(BinaryOperatorKind Opc, ExprPtr &&LHS,
 }
 
 ExprPtr Sema::CreateIndexAccess(ExprPtr &&LHS, ExprPtr &&RHS) {
-  LHS = DefaultLvalueConversion(std::move(LHS));
+  // TODO check whether LHS is LValue
   RHS = DefaultLvalueConversion(std::move(RHS));
 
   TypePtr ResultTy;
