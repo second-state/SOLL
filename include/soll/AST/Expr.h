@@ -346,8 +346,15 @@ class NumberLiteral : public Expr {
   int value;
 
 public:
-  // TODO: set value kind in another pass
-  NumberLiteral(int val) : Expr(ValueKind::VK_RValue), value(val) {}
+  // TODO: replace this, current impl. always set uint32
+  // should set proper int type based on value (Solidity's rule)
+  // for example:
+  //   8    -> uint8
+  //   7122 -> uint16
+  //   -123 -> int8
+  NumberLiteral(int val) : Expr(ValueKind::VK_RValue), value(val) {
+     Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U32);
+  }
   void setValue(int val) { value = val; }
   int getValue() const { return value; }
   void accept(StmtVisitor &visitor) override;
