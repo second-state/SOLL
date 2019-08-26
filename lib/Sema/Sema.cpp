@@ -41,6 +41,7 @@ std::unique_ptr<FunctionDecl> Sema::CreateFunctionDecl(
       Name, Vis, SM, IsConstructor, std::move(Params), std::move(Modifiers),
       std::move(ReturnParams), std::move(Body));
   resolveBreak(*FD);
+  addIdentifierDecl(FD->getName(), *FD.get());
   return std::move(FD);
 }
 

@@ -77,6 +77,8 @@ Identifier::Identifier(const std::string &Name, const Decl *D)
     : Expr(ValueKind::VK_LValue), name(Name), D(D) {
   if (auto VD = dynamic_cast<const VarDecl *>(D))
     Ty = VD->GetType();
+  else if (auto FD = dynamic_cast<const FunctionDecl *>(D))
+    Ty = FD->getType();
 }
 
 } // namespace soll
