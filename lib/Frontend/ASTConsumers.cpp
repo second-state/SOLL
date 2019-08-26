@@ -148,6 +148,8 @@ std::string ToString(soll::CastKind CK) {
     return "<IntegralCast>";
   case soll::CastKind::LValueToRValue:
     return "<LValueToRValue>";
+  case soll::CastKind::TypeCast:
+    return "<TypeCast>";
   }
 }
 } // namespace

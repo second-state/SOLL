@@ -1158,9 +1158,10 @@ unique_ptr<Expr> Parser::parsePrimaryExpression() {
     break;
   case tok::kw_address:
     if (TheLexer.LookAhead(1)->is(tok::l_paren)) {
-      Expression = make_unique<Identifier>(
-          "address", Actions.findIdentifierDecl("address"));
       TheLexer.CachedLex(); // address
+      TheLexer.CachedLex(); // (
+      Expression = make_unique<ExplicitCastExpr>(std::move(parseExpression()), CastKind::TypeCast, make_unique<AddressType>());
+      TheLexer.CachedLex(); // )
       break;
     }
   default:

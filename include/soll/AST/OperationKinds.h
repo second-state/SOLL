@@ -70,7 +70,9 @@ enum BinaryOperatorKind {
 enum CastKind {
   IntegralCast,
   // only for ImplicitCast
-  LValueToRValue
+  LValueToRValue,
+  // [TODO] Rename
+  TypeCast
 };
 
 } // namespace soll

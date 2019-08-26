@@ -660,6 +660,8 @@ void FuncBodyCodeGen::emitCast(const CastExpr &Cast) {
     }
     break;
   }
+  default :
+    break;
   }
   TempValueTable[&Cast] = result;
 }
