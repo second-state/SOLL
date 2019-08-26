@@ -708,7 +708,8 @@ unique_ptr<Stmt> Parser::parseStatement() {
   case tok::kw_return:
     TheLexer.CachedLex();
     if (TheLexer.LookAhead(0)->isNot(tok::semi)) {
-      Statement = std::make_unique<ReturnStmt>(std::move(parseExpression()));
+      Statement = std::make_unique<ReturnStmt>(
+          Actions.DefaultLvalueConversion(std::move(parseExpression())));
     }
     break;
   case tok::kw_assembly:
