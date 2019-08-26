@@ -514,8 +514,8 @@ Parser::parseFunctionDefinitionOrFunctionTypeStateVariable() {
 
 unique_ptr<VarDecl>
 Parser::parseVariableDeclaration(VarDeclParserOptions const &Options,
-                                 shared_ptr<Type> &&LookAheadArrayType) {
-  shared_ptr<Type> T;
+                                 TypePtr &&LookAheadArrayType) {
+  TypePtr T;
   if (LookAheadArrayType) {
     T = std::move(LookAheadArrayType);
   } else {
@@ -581,7 +581,7 @@ Parser::parseVariableDeclaration(VarDeclParserOptions const &Options,
   return std::move(VD);
 }
 
-shared_ptr<Type> Parser::parseTypeNameSuffix(shared_ptr<Type> T) {
+TypePtr Parser::parseTypeNameSuffix(TypePtr T) {
   while (TheLexer.LookAhead(0)->is(tok::l_square)) {
     TheLexer.CachedLex();
     int NumValue;
@@ -594,8 +594,8 @@ shared_ptr<Type> Parser::parseTypeNameSuffix(shared_ptr<Type> T) {
 }
 
 // [TODO] < Need complete all Types >
-shared_ptr<Type> Parser::parseTypeName(bool AllowVar) {
-  shared_ptr<Type> T;
+TypePtr Parser::parseTypeName(bool AllowVar) {
+  TypePtr T;
   bool HaveType = false;
   llvm::Optional<Token> CurTok = TheLexer.LookAhead(0);
   tok::TokenKind Kind = CurTok->getKind();
@@ -642,12 +642,12 @@ shared_ptr<MappingType> Parser::parseMapping() {
   TheLexer.CachedLex(); // mapping
   TheLexer.CachedLex(); // (
   bool const AllowVar = false;
-  shared_ptr<Type> KeyType;
+  TypePtr KeyType;
   if (TheLexer.LookAhead(0)->isElementaryTypeName()) {
     KeyType = parseTypeName(AllowVar);
   }
   TheLexer.CachedLex(); // =>
-  shared_ptr<Type> ValueType = parseTypeName(AllowVar);
+  TypePtr ValueType = parseTypeName(AllowVar);
   TheLexer.CachedLex(); // )
   return std::make_shared<MappingType>(std::move(KeyType),
                                        std::move(ValueType));
@@ -708,8 +708,7 @@ unique_ptr<Stmt> Parser::parseStatement() {
   case tok::kw_return:
     TheLexer.CachedLex();
     if (TheLexer.LookAhead(0)->isNot(tok::semi)) {
-      Statement = std::make_unique<ReturnStmt>(
-          Actions.DefaultLvalueConversion(std::move(parseExpression())));
+      Statement = Actions.CreateReturnStmt(std::move(parseExpression()));
     }
     break;
   case tok::kw_assembly:
@@ -821,8 +820,8 @@ unique_ptr<Stmt> Parser::parseSimpleStatement() {
   return Expression;
 }
 
-unique_ptr<DeclStmt> Parser::parseVariableDeclarationStatement(
-    shared_ptr<Type> &&LookAheadArrayType) {
+unique_ptr<DeclStmt>
+Parser::parseVariableDeclarationStatement(TypePtr &&LookAheadArrayType) {
   // This does not parse multi variable declaration statements starting directly
   // with
   // `(`, they are parsed in parseSimpleStatement, because they are hard to
@@ -954,12 +953,12 @@ Parser::IndexAccessedPath Parser::parseIndexAccessedPath() {
 }
 
 // [TODO] IAP relative function
-shared_ptr<Type>
+TypePtr
 Parser::typeNameFromIndexAccessStructure(Parser::IndexAccessedPath &Iap) {
   if (Iap.empty())
     return {};
 
-  shared_ptr<Type> T;
+  TypePtr T;
 
   if (Iap.ElementaryType != nullptr) {
     T = std::move(Iap.ElementaryType);
@@ -1067,7 +1066,7 @@ unique_ptr<Expr> Parser::parseLeftHandSideExpression(
     Expression = std::move(PartiallyParsedExpression);
   else if (TheLexer.LookAhead(0)->is(tok::kw_new)) {
     TheLexer.CachedLex();
-    shared_ptr<Type> typeName = parseTypeName(false);
+    TypePtr typeName = parseTypeName(false);
     // [AST] create NewExpression
   } else
     Expression = std::move(parsePrimaryExpression());

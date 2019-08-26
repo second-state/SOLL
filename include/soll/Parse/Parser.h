@@ -70,11 +70,11 @@ private:
                                                  bool AllowModifiers);
   std::unique_ptr<FunctionDecl>
   parseFunctionDefinitionOrFunctionTypeStateVariable();
-  std::unique_ptr<VarDecl> parseVariableDeclaration(
-      VarDeclParserOptions const &Options = {},
-      std::shared_ptr<Type> &&LookAheadArrayType = nullptr);
-  std::shared_ptr<Type> parseTypeNameSuffix(std::shared_ptr<Type> T);
-  std::shared_ptr<Type> parseTypeName(bool AllowVar);
+  std::unique_ptr<VarDecl>
+  parseVariableDeclaration(VarDeclParserOptions const &Options = {},
+                           TypePtr &&LookAheadArrayType = nullptr);
+  TypePtr parseTypeNameSuffix(TypePtr T);
+  TypePtr parseTypeName(bool AllowVar);
   std::shared_ptr<MappingType> parseMapping();
   std::unique_ptr<ParamList>
   parseParameterList(VarDeclParserOptions const &Options = {},
@@ -86,8 +86,8 @@ private:
   std::unique_ptr<WhileStmt> parseDoWhileStatement();
   std::unique_ptr<ForStmt> parseForStatement();
   std::unique_ptr<Stmt> parseSimpleStatement();
-  std::unique_ptr<DeclStmt> parseVariableDeclarationStatement(
-      std::shared_ptr<Type> &&LookAheadArrayType = nullptr);
+  std::unique_ptr<DeclStmt>
+  parseVariableDeclarationStatement(TypePtr &&LookAheadArrayType = nullptr);
   std::unique_ptr<Expr>
   parseExpression(std::unique_ptr<Expr> &&PartiallyParsedExpression = nullptr);
   std::unique_ptr<Expr> parseBinaryExpression(
@@ -113,7 +113,7 @@ private:
   /// expression or to a type name. For this to be valid, path cannot be empty,
   /// but indices can be empty.
   struct IndexAccessedPath {
-    std::shared_ptr<Type> ElementaryType;
+    TypePtr ElementaryType;
     std::vector<std::unique_ptr<Identifier>> Path;
     std::vector<std::unique_ptr<Expr>> Indices;
     bool empty() const;
@@ -132,8 +132,7 @@ private:
   /// @returns a typename parsed in look-ahead fashion from something like
   /// "a.b[8][2**70]", or an empty pointer if an empty @a _pathAndIncides has
   /// been supplied.
-  std::shared_ptr<Type>
-  typeNameFromIndexAccessStructure(IndexAccessedPath &PathAndIndices);
+  TypePtr typeNameFromIndexAccessStructure(IndexAccessedPath &PathAndIndices);
   /// @returns an expression parsed in look-ahead fashion from something like
   /// "a.b[8][2**70]", or an empty pointer if an empty @a _pathAndIncides has
   /// been supplied.

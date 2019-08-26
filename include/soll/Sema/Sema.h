@@ -42,6 +42,10 @@ public:
   ExprPtr CreateCallExpr(ExprPtr &&Func,
                          std::vector<std::unique_ptr<Expr>> &&Args);
   std::unique_ptr<Identifier> CreateIdentifier(const std::string Name);
+
+  // Stmt
+  StmtPtr CreateReturnStmt(ExprPtr &&Vaule);
+
   /// type checking binary operators (subroutines of CreateBinOp)
   /// this may add type casting
 
