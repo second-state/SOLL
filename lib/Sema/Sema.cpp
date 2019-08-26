@@ -103,8 +103,10 @@ TypePtr Sema::CheckCompareOperands(ExprPtr &LHS, ExprPtr &RHS,
   LHS = UsualUnaryConversions(std::move(LHS));
   RHS = UsualUnaryConversions(std::move(RHS));
   // TODO: replace this, should impl. Compare Diagonostic
-  assert(LHS->getType()->getCategory() == Type::Category::Integer);
-  assert(RHS->getType()->getCategory() == Type::Category::Integer);
+  assert(LHS->getType()->getCategory() == Type::Category::Integer ||
+         LHS->getType()->getCategory() == Type::Category::Address);
+  assert(RHS->getType()->getCategory() == Type::Category::Integer ||
+         RHS->getType()->getCategory() == Type::Category::Address);
 
   return std::make_shared<BooleanType>();
 }
