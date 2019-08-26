@@ -72,10 +72,10 @@ private:
   parseFunctionDefinitionOrFunctionTypeStateVariable();
   std::unique_ptr<VarDecl> parseVariableDeclaration(
       VarDeclParserOptions const &Options = {},
-      std::unique_ptr<Type> &&LookAheadArrayType = nullptr);
-  std::unique_ptr<Type> parseTypeNameSuffix(std::unique_ptr<Type> T);
-  std::unique_ptr<Type> parseTypeName(bool AllowVar);
-  std::unique_ptr<Type> parseMapping();
+      std::shared_ptr<Type> &&LookAheadArrayType = nullptr);
+  std::shared_ptr<Type> parseTypeNameSuffix(std::shared_ptr<Type> T);
+  std::shared_ptr<Type> parseTypeName(bool AllowVar);
+  std::shared_ptr<MappingType> parseMapping();
   std::unique_ptr<ParamList>
   parseParameterList(VarDeclParserOptions const &Options = {},
                      bool AllowEmpty = true);
@@ -87,7 +87,7 @@ private:
   std::unique_ptr<ForStmt> parseForStatement();
   std::unique_ptr<Stmt> parseSimpleStatement();
   std::unique_ptr<DeclStmt> parseVariableDeclarationStatement(
-      std::unique_ptr<Type> &&LookAheadArrayType = nullptr);
+      std::shared_ptr<Type> &&LookAheadArrayType = nullptr);
   std::unique_ptr<Expr>
   parseExpression(std::unique_ptr<Expr> &&PartiallyParsedExpression = nullptr);
   std::unique_ptr<Expr> parseBinaryExpression(
@@ -113,7 +113,7 @@ private:
   /// expression or to a type name. For this to be valid, path cannot be empty,
   /// but indices can be empty.
   struct IndexAccessedPath {
-    std::unique_ptr<Type> ElementaryType;
+    std::shared_ptr<Type> ElementaryType;
     std::vector<std::unique_ptr<Identifier>> Path;
     std::vector<std::unique_ptr<Expr>> Indices;
     bool empty() const;
@@ -132,7 +132,7 @@ private:
   /// @returns a typename parsed in look-ahead fashion from something like
   /// "a.b[8][2**70]", or an empty pointer if an empty @a _pathAndIncides has
   /// been supplied.
-  std::unique_ptr<Type>
+  std::shared_ptr<Type>
   typeNameFromIndexAccessStructure(IndexAccessedPath &PathAndIndices);
   /// @returns an expression parsed in look-ahead fashion from something like
   /// "a.b[8][2**70]", or an empty pointer if an empty @a _pathAndIncides has
