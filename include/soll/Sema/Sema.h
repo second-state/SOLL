@@ -15,6 +15,9 @@ class SourceManager;
 class Sema {
   Sema(const Sema &) = delete;
   Sema &operator=(const Sema &) = delete;
+  // TODO: refactor this
+  // current impl. assumes no name scope
+  std::unordered_map<std::string, const Decl *> ID2DeclTable;
 
 public:
   Lexer &Lex;
@@ -61,12 +64,8 @@ public:
 
   ExprPtr DefaultLvalueConversion(ExprPtr &&E);
 
-  void addIdentifierDecl(const std::string &S, const Decl &D) {
-    Context.addIdentifierDecl(S, D);
-  }
-  const Decl *findIdentifierDecl(const std::string &S) {
-    return Context.findIdentifierDecl(S);
-  }
+  void addIdentifierDecl(const std::string &S, const Decl &D);
+  const Decl *findIdentifierDecl(const std::string &S);
 
   void resolveBreak(FunctionDecl &);
 };

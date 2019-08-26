@@ -150,4 +150,17 @@ ExprPtr Sema::DefaultLvalueConversion(ExprPtr &&E) {
 
 void Sema::resolveBreak(FunctionDecl &FD) { BreakableVisitor().check(FD); }
 
+void Sema::addIdentifierDecl(const std::string &S, const Decl &D) {
+  ID2DeclTable[S] = &D;
+}
+
+// TODO: refactor this
+// current impl. assumes no name scope
+const Decl *Sema::findIdentifierDecl(const std::string &S) {
+  if (ID2DeclTable.count(S))
+    return ID2DeclTable[S];
+  else
+    return nullptr;
+}
+
 } // namespace soll

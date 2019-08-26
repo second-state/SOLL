@@ -5,14 +5,6 @@
 #include <unordered_map>
 namespace soll {
 
-class ASTContext : public llvm::RefCountedBase<ASTContext> {
-  // TODO: refactor this
-  // current impl. assumes no name scope
-  std::unordered_map<std::string, const Decl *> ID2DeclTable;
-
-public:
-  void addIdentifierDecl(const std::string &S, const Decl &D);
-  const Decl *findIdentifierDecl(const std::string &S);
-};
+class ASTContext : public llvm::RefCountedBase<ASTContext> {};
 
 } // namespace soll
