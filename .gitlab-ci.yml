@@ -6,7 +6,7 @@
     - mkdir build
     - cd build
   script:
-    - cmake ..
+    - cmake ..  -DCMAKE_BUILD_TYPE=Debug
     - make -j2
   cache:
     key: ${OS}_${VERSION}-${COMPILER}
