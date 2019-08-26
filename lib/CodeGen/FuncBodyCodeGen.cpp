@@ -708,5 +708,6 @@ void FuncBodyCodeGen::visit(StringLiteralType &SL) {
 }
 
 void FuncBodyCodeGen::visit(NumberLiteralType &NL) {
-  TempValueTable[&NL] = Builder.getIntN(256, NL.getValue());
+  TempValueTable[&NL] =
+      Builder.getIntN(NL.getType()->getBitNum(), NL.getValue());
 }
