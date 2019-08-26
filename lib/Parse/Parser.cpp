@@ -934,11 +934,11 @@ Parser::LookAheadInfo Parser::peekStatementType() const {
 Parser::IndexAccessedPath Parser::parseIndexAccessedPath() {
   IndexAccessedPath Iap;
   if (TheLexer.LookAhead(0)->is(tok::identifier)) {
-    Iap.Path.push_back(make_unique<Identifier>(
+    Iap.Path.push_back(Actions.CreateIdentifier(
         getLiteralAndAdvance(TheLexer.LookAhead(0)).str()));
     while (TheLexer.LookAhead(0)->is(tok::period)) {
       TheLexer.CachedLex(); // .
-      Iap.Path.push_back(make_unique<Identifier>(
+      Iap.Path.push_back(Actions.CreateIdentifier(
           getLiteralAndAdvance(TheLexer.LookAhead(0)).str()));
     }
   } else {
@@ -1089,7 +1089,7 @@ unique_ptr<Expr> Parser::parseLeftHandSideExpression(
       TheLexer.CachedLex();
       Expression = make_unique<MemberExpr>(
           std::move(Expression),
-          make_unique<Identifier>(
+          Actions.CreateIdentifier(
               getLiteralAndAdvance(TheLexer.LookAhead(0)).str()));
       break;
     }
@@ -1164,7 +1164,9 @@ unique_ptr<Expr> Parser::parsePrimaryExpression() {
     if (TheLexer.LookAhead(1)->is(tok::l_paren)) {
       TheLexer.CachedLex(); // address
       TheLexer.CachedLex(); // (
-      Expression = make_unique<ExplicitCastExpr>(std::move(parseExpression()), CastKind::TypeCast, make_unique<AddressType>());
+      Expression = make_unique<ExplicitCastExpr>(std::move(parseExpression()),
+                                                 CastKind::TypeCast,
+                                                 make_unique<AddressType>());
       TheLexer.CachedLex(); // )
       break;
     }

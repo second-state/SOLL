@@ -72,7 +72,7 @@ ExprPtr Sema::CreateCallExpr(ExprPtr &&Func, std::vector<ExprPtr> &&Args) {
   return std::make_unique<CallExpr>(std::move(Func), std::move(Args), ResultTy);
 }
 
-ExprPtr Sema::CreateIdentifier(const std::string Name) {
+std::unique_ptr<Identifier> Sema::CreateIdentifier(const std::string Name) {
   return std::make_unique<Identifier>(Name, findIdentifierDecl(Name));
 }
 
