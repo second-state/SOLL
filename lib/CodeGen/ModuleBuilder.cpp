@@ -200,10 +200,9 @@ public:
 
     llvm::Value *FakeCondV = IRBuilder->getInt32(0);
     llvm::SwitchInst *SI =
-        IRBuilder->CreateSwitch(CondV, Default, CD.getSubNodes().size());
+        IRBuilder->CreateSwitch(CondV, Default, CD.getFuncs().size());
 
-    for (auto Node : CD.getSubNodes()) {
-      const FunctionDecl *F = dynamic_cast<const soll::FunctionDecl *>(Node);
+    for (auto F : CD.getFuncs()) {
       llvm::BasicBlock *CondBB =
           llvm::BasicBlock::Create(Context, F->getName(), Main);
       Labels[F->getName()] = CondBB;
@@ -211,10 +210,8 @@ public:
       SI->addCase(IRBuilder->getInt32(hash), CondBB);
     }
 
-    for (auto Node : CD.getSubNodes()) {
-      const FunctionDecl *F = dynamic_cast<const soll::FunctionDecl *>(Node);
+    for (auto F : CD.getFuncs())
       genABI(*F, Labels[F->getName()]);
-    }
 
     // codegen function body
     ConstDeclVisitor::visit(CD);
@@ -307,7 +304,7 @@ public:
       hash = (hash << 8) | op[i];
     return __builtin_bswap32(hash);
   }
-};
+}; // namespace
 
 } // namespace
 

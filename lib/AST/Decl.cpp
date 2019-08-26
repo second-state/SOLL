@@ -43,6 +43,42 @@ std::vector<const Decl *> ContractDecl::getSubNodes() const {
   return Decls;
 }
 
+std::vector<VarDecl *> ContractDecl::getVars() {
+  std::vector<VarDecl *> Nodes;
+  for (auto &Node : SubNodes) {
+    if (auto VD = dynamic_cast<VarDecl *>(Node.get()))
+      Nodes.emplace_back(VD);
+  }
+  return Nodes;
+}
+
+std::vector<const VarDecl *> ContractDecl::getVars() const {
+  std::vector<const VarDecl *> Nodes;
+  for (auto &Node : SubNodes) {
+    if (auto VD = dynamic_cast<const VarDecl *>(Node.get()))
+      Nodes.emplace_back(VD);
+  }
+  return Nodes;
+}
+
+std::vector<FunctionDecl *> ContractDecl::getFuncs() {
+  std::vector<FunctionDecl *> Nodes;
+  for (auto &Node : SubNodes) {
+    if (auto VD = dynamic_cast<FunctionDecl *>(Node.get()))
+      Nodes.emplace_back(VD);
+  }
+  return Nodes;
+}
+
+std::vector<const FunctionDecl *> ContractDecl::getFuncs() const {
+  std::vector<const FunctionDecl *> Nodes;
+  for (auto &Node : this->SubNodes) {
+    if (auto VD = dynamic_cast<const FunctionDecl *>(Node.get()))
+      Nodes.emplace_back(VD);
+  }
+  return Nodes;
+}
+
 ///
 /// ParamList
 ///

@@ -78,6 +78,12 @@ public:
   std::vector<Decl *> getSubNodes();
   std::vector<const Decl *> getSubNodes() const;
 
+  std::vector<VarDecl *> getVars();
+  std::vector<const VarDecl *> getVars() const;
+
+  std::vector<FunctionDecl *> getFuncs();
+  std::vector<const FunctionDecl *> getFuncs() const;
+
   void accept(DeclVisitor &visitor) override;
   void accept(ConstDeclVisitor &visitor) const override;
 };
