@@ -55,7 +55,16 @@ ExprPtr Sema::CreateBinOp(BinaryOperatorKind Opc, ExprPtr &&LHS,
   } else if (BinaryOperator::isComparisonOp(Opc)) {
     ResultTy = CheckCompareOperands(LHS, RHS, Opc);
   } else if (BinaryOperator::isAssignmentOp(Opc)) {
+    // TODO: get common type
     ResultTy = LHS->getType();
+    switch (Opc) {
+    case BinaryOperatorKind::BO_AddAssign: {
+      CheckAdditiveOperands(LHS, RHS, Opc, ResultTy);
+      break;
+    }
+    default:;
+    }
+    CheckAssignmentOperands(LHS, RHS, ResultTy);
   }
   // TODO: a lot of binary operations
   return std::move(std::make_unique<BinaryOperator>(
@@ -146,6 +155,13 @@ TypePtr Sema::CheckCompareOperands(ExprPtr &LHS, ExprPtr &RHS,
          RHS->getType()->getCategory() == Type::Category::Address);
 
   return std::make_shared<BooleanType>();
+}
+
+TypePtr Sema::CheckAssignmentOperands(ExprPtr &LHS, ExprPtr &RHS,
+                                      TypePtr CompoundType) {
+  // TODO: Type checking
+  RHS = UsualUnaryConversions(std::move(RHS));
+  return LHS->getType();
 }
 
 TypePtr Sema::UsualArithmeticConversions(ExprPtr &LHS, ExprPtr &RHS,

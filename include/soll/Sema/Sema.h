@@ -60,6 +60,8 @@ public:
   /// <, >, <=, >=, ==
   TypePtr CheckCompareOperands(ExprPtr &LHS, ExprPtr &RHS,
                                BinaryOperatorKind Opc);
+  TypePtr CheckAssignmentOperands(ExprPtr &LHS, ExprPtr &RHS,
+                                  TypePtr CompoundType);
 
   TypePtr UsualArithmeticConversions(ExprPtr &LHS, ExprPtr &RHS,
                                      bool IsCompAssign);
