@@ -11,6 +11,7 @@ endif()
 find_package(LLVM REQUIRED HINTS "${LLVM_CMAKE_PATH}")
 list(APPEND CMAKE_MODULE_PATH ${LLVM_DIR})
 include(AddLLVM)
+include(CTest)
 
 include_directories(BEFORE
   ${CMAKE_CURRENT_BINARY_DIR}/include

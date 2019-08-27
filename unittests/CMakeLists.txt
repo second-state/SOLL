@@ -16,3 +16,8 @@ target_link_libraries(unittests
   PRIVATE
   sollAST
   )
+
+add_test(NAME libsoll_unittests
+  COMMAND unittests
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  )

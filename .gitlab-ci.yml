@@ -1,6 +1,6 @@
 .build_job_template: &build_job
   stage: build
-  image: yi2nd/${OS}-soll-build:${VERSION}-${COMPILER}
+  image: yi2nd/soll:${OS}-${COMPILER}
   before_script:
     - rm -rf build
     - mkdir build
@@ -9,23 +9,24 @@
     - cmake .. -DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true
     - make -j2
   cache:
-    key: ${OS}_${VERSION}-${COMPILER}
+    key: ${OS}-${COMPILER}
     paths:
       - build
     policy: push
 
 .test_job_template: &test_job
   stage: test
-  image: yi2nd/${OS}-soll-test:${VERSION}
+  image: yi2nd/soll:${OS}-test
   before_script:
     - cd build
     - cp ../test/release/0-0-1.sol test.sol
   script:
+    - ctest
     - bash -c "./tools/soll/soll test.sol > test.ll"
     - bash -c "../utils/compile -v test.ll || true"
     - bash -c "soll-ewasm-env.js test.wasm div 16 7"
   cache:
-    key: ${OS}_${VERSION}-${COMPILER}
+    key: ${OS}-${COMPILER}
     paths:
       - build
     policy: pull
@@ -34,26 +35,22 @@ build:ubuntu-gcc:
   <<: *build_job
   variables:
     OS: "ubuntu"
-    VERSION: "18.04"
     COMPILER: "gcc"
 
 build:ubuntu-clang:
   <<: *build_job
   variables:
     OS: "ubuntu"
-    VERSION: "18.04"
     COMPILER: "clang"
 
 test:ubuntu-gcc:
   <<: *test_job
   variables:
     OS: "ubuntu"
-    VERSION: "18.04"
     COMPILER: "gcc"
 
 test:ubuntu-clang:
   <<: *test_job
   variables:
     OS: "ubuntu"
-    VERSION: "18.04"
     COMPILER: "clang"
