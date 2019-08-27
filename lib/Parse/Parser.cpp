@@ -485,7 +485,8 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
         parseParameterList(Options, PermitEmptyParameterList);
   } else {
     // [PrePOC] Need return empty parameter list.
-    Result.ReturnParameters = nullptr;
+    Result.ReturnParameters =
+        make_unique<ParamList>(std::vector<std::unique_ptr<VarDecl>>());
   }
 
   return Result;
