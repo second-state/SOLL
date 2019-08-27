@@ -321,7 +321,9 @@ class BooleanLiteral : public Expr {
 
 public:
   // TODO: set value kind in another pass
-  BooleanLiteral(bool val) : Expr(ValueKind::VK_RValue), value(val) {}
+  BooleanLiteral(bool val) : Expr(ValueKind::VK_RValue), value(val) {
+    Ty = std::make_shared<BooleanType>();
+  }
   void setValue(bool val) { value = val; }
   bool getValue() const { return value; }
   void accept(StmtVisitor &visitor) override;
@@ -333,7 +335,9 @@ class StringLiteral : public Expr {
 
 public:
   // TODO: set value kind in another pass
-  StringLiteral(std::string &&val) : Expr(ValueKind::VK_RValue), value(val) {}
+  StringLiteral(std::string &&val) : Expr(ValueKind::VK_RValue), value(val) {
+    Ty = std::make_shared<StringType>();
+  }
   void setValue(std::string &&val) { value = val; }
   std::string getValue() const { return value; }
 
@@ -341,8 +345,8 @@ public:
   void accept(ConstStmtVisitor &visitor) const override;
 };
 
-// solidity NumberLiteral support 256bit operation, Boost library should be
-// used.
+// solidity NumberLiteral support 256-bit operation, should
+// use a 256-bit library.
 class NumberLiteral : public Expr {
   int value;
 
