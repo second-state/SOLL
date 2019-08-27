@@ -63,6 +63,9 @@ public:
   // &&, ||
   TypePtr CheckLogicalOperands(ExprPtr &LHS, ExprPtr &RHS,
                                BinaryOperatorKind Opc);
+  // &, |
+  TypePtr CheckBitwiseOperands(ExprPtr &LHS, ExprPtr &RHS,
+                               BinaryOperatorKind Opc);
   TypePtr CheckAssignmentOperands(ExprPtr &LHS, ExprPtr &RHS,
                                   TypePtr CompoundType);
 
