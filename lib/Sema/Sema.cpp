@@ -58,6 +58,8 @@ ExprPtr Sema::CreateBinOp(BinaryOperatorKind Opc, ExprPtr &&LHS,
     ResultTy = CheckLogicalOperands(LHS, RHS, Opc);
   } else if (BinaryOperator::isBitwiseOp(Opc)) {
     ResultTy = CheckBitwiseOperands(LHS, RHS, Opc);
+  } else if (BinaryOperator::isShiftOp(Opc)) {
+    ResultTy = CheckShiftOperands(LHS, RHS, Opc);
   } else if (BinaryOperator::isAssignmentOp(Opc)) {
     // TODO: get common type
     ResultTy = LHS->getType();
@@ -145,6 +147,19 @@ TypePtr Sema::CheckMultiplicativeOperands(ExprPtr &LHS, ExprPtr &RHS,
   assert(RHS->getType()->getCategory() == Type::Category::Integer);
 
   return std::move(compType);
+}
+
+TypePtr Sema::CheckShiftOperands(ExprPtr &LHS, ExprPtr &RHS,
+                                 BinaryOperatorKind Opc, bool IsCompAssign) {
+  if (!IsCompAssign)
+    LHS = DefaultLvalueConversion(std::move(LHS));
+  RHS = DefaultLvalueConversion(std::move(RHS));
+  // TODO: replace assert with error msg
+  assert(LHS->getType()->getCategory() == Type::Category::Integer &&
+         "LHS is not int.");
+  assert(RHS->getType()->getCategory() == Type::Category::Integer &&
+         "RHS is not int.");
+  return LHS->getType();
 }
 
 TypePtr Sema::CheckCompareOperands(ExprPtr &LHS, ExprPtr &RHS,

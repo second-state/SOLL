@@ -57,6 +57,9 @@ public:
   TypePtr CheckMultiplicativeOperands(ExprPtr &LHS, ExprPtr &RHS,
                                       BinaryOperatorKind Opc,
                                       TypePtr CompLHSTy = nullptr);
+  /// <<, >>, <<=, >>=
+  TypePtr CheckShiftOperands(ExprPtr &LHS, ExprPtr &RHS, BinaryOperatorKind Opc,
+                             bool IsCompAssign = false);
   /// <, >, <=, >=, ==
   TypePtr CheckCompareOperands(ExprPtr &LHS, ExprPtr &RHS,
                                BinaryOperatorKind Opc);
