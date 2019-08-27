@@ -96,6 +96,16 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
   // for array codegen
   // codegen function for checking whether array idx is out of bound
   void checkArrayOutOfBound(llvm::Value *, llvm::Value *);
+  
+  // ast type -> llvm type ptr
+  // currently support integer ONLY
+  // TODO: add other types
+  llvm::Type* getLLVMTy(const soll::VarDecl *VD) {
+    return Builder.getIntNTy(VD->GetType()->getBitNum());
+  }
+  llvm::Type* getLLVMTy(const soll::FunctionDecl &FD) {
+    return Builder.getIntNTy(FD.getType()->getBitNum());
+  }
 
   llvm::Value *findLocalVarAddr(const std::string &S) {
     if (LocalVarAddrTable.count(S))

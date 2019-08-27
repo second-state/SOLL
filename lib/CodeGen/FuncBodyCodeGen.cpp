@@ -29,10 +29,10 @@ void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
   CurFunc = Module.getFunction(FD.getName());
   if (CurFunc == nullptr) {
     std::vector<llvm::Type *> Tys;
-    for (int i = 0; i < PsSol.size(); i++)
-      Tys.push_back(Int256Ty);
+    for (auto *VD : PsSol)
+      Tys.push_back(getLLVMTy(VD));
     llvm::ArrayRef<llvm::Type *> ParamTys(&Tys[0], Tys.size());
-    llvm::FunctionType *FT = llvm::FunctionType::get(Int256Ty, ParamTys, false);
+    llvm::FunctionType *FT = llvm::FunctionType::get(getLLVMTy(FD), ParamTys, false);
     CurFunc =
         Function::Create(FT, Function::ExternalLinkage, FD.getName(), &Module);
   }
@@ -40,22 +40,22 @@ void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
   Builder.SetInsertPoint(BB);
 
   auto PsLLVM = CurFunc->arg_begin();
-  for (int i = 0; i < PsSol.size(); i++) {
+  for (auto *VD :PsSol) {
     llvm::Value *P = PsLLVM++;
-    P->setName(PsSol[i]->getName());
+    P->setName(VD->getName());
     llvm::Value *paramAddr =
-        Builder.CreateAlloca(Int256Ty, nullptr, P->getName() + ".addr");
+        Builder.CreateAlloca(getLLVMTy(VD), nullptr, P->getName() + ".addr");
     Builder.CreateStore(P, paramAddr);
     LocalVarAddrTable[P->getName()] = paramAddr;
   }
 
   EndOfFunc = BasicBlock::Create(Context, "return", CurFunc);
   // TODO : uncomment this part when Types are done
-  // if (return type is null) {
+  // if (return type is void) {
   // FD.getBody()->accept(*this);
   // Builder.CreateRetVoid();
   // } else {
-  RetVal = Builder.CreateAlloca(Int256Ty, nullptr, "retval");
+  RetVal = Builder.CreateAlloca(getLLVMTy(FD), nullptr, "retval");
   FD.getBody()->accept(*this);
   Builder.CreateBr(EndOfFunc);
   Builder.SetInsertPoint(EndOfFunc);
@@ -227,7 +227,7 @@ void FuncBodyCodeGen::visit(DeclStmtType &DS) {
   // TODO: replace this temp impl
   // this impl assumes declared variables are uint64
   for (auto &D : DS.getVarDecls()) {
-    auto *p = Builder.CreateAlloca(Int256Ty, nullptr, D->getName() + "_addr");
+    auto *p = Builder.CreateAlloca(getLLVMTy(D), nullptr, D->getName() + "_addr");
     LocalVarAddrTable[D->getName()] = p;
   }
   // TODO: replace this
