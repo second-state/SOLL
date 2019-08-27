@@ -1113,6 +1113,24 @@ unique_ptr<Expr> Parser::parsePrimaryExpression() {
   llvm::Optional<Token> CurTok = TheLexer.LookAhead(0);
   unique_ptr<Expr> Expression;
 
+  // Explicit Type Casting
+  if (CurTok->isElementaryTypeName() &&
+      TheLexer.LookAhead(1)->is(tok::l_paren)) {
+    TheLexer.CachedLex(); // simple type, ex. address, int
+    TheLexer.CachedLex(); // (
+    if (CurTok->getKind() == tok::kw_address) {
+      Expression = make_unique<ExplicitCastExpr>(std::move(parseExpression()),
+                                                 CastKind::TypeCast,
+                                                 make_shared<AddressType>());
+    } else if (tok::kw_address < CurTok->getKind()) {
+      Expression = make_unique<ExplicitCastExpr>(
+          std::move(parseExpression()), CastKind::TypeCast,
+          make_shared<IntegerType>(token2inttype(CurTok)));
+    }
+    TheLexer.CachedLex(); // )
+    return Expression;
+  }
+
   switch (CurTok->getKind()) {
   case tok::kw_true:
     Expression = std::make_unique<BooleanLiteral>(true);
@@ -1159,16 +1177,6 @@ unique_ptr<Expr> Parser::parsePrimaryExpression() {
   case tok::unknown:
     assert(false && "Unknown token");
     break;
-  case tok::kw_address:
-    if (TheLexer.LookAhead(1)->is(tok::l_paren)) {
-      TheLexer.CachedLex(); // address
-      TheLexer.CachedLex(); // (
-      Expression = make_unique<ExplicitCastExpr>(std::move(parseExpression()),
-                                                 CastKind::TypeCast,
-                                                 make_shared<AddressType>());
-      TheLexer.CachedLex(); // )
-      break;
-    }
   default:
     // [TODO] Type MxN case
     assert(false && "Expected primary expression.");
