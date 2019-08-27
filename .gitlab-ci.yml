@@ -6,7 +6,7 @@
     - mkdir build
     - cd build
   script:
-    - cmake ..  -DCMAKE_BUILD_TYPE=Debug
+    - cmake .. -DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true
     - make -j2
   cache:
     key: ${OS}_${VERSION}-${COMPILER}

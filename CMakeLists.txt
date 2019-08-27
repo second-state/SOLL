@@ -32,5 +32,5 @@ add_subdirectory(tools)
 add_subdirectory(utils)
 
 if(SOLL_INCLUDE_TESTS)
-  add_subdirectory(test)
+  add_subdirectory(unittests)
 endif()
