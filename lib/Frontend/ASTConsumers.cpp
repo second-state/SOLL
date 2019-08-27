@@ -366,7 +366,8 @@ void ASTPrinter::visit(IdentifierType &id) {
 }
 
 void ASTPrinter::visit(BooleanLiteralType &literal) {
-  os() << indent() << "BooleanLiteral \"" << literal.getValue() << "\"\n";
+  os() << indent() << "BooleanLiteral "
+       << (literal.getValue() ? "true" : "false") << "\n ";
   ConstStmtVisitor::visit(literal);
   unindent();
 }
@@ -378,7 +379,7 @@ void ASTPrinter::visit(StringLiteralType &literal) {
 }
 
 void ASTPrinter::visit(NumberLiteralType &literal) {
-  os() << indent() << "NumberLiteral \"" << literal.getValue() << "\"\n";
+  os() << indent() << "NumberLiteral " << literal.getValue() << "\n";
   ConstStmtVisitor::visit(literal);
   unindent();
 }
