@@ -17,7 +17,7 @@ class Sema {
   Sema &operator=(const Sema &) = delete;
   // TODO: refactor this
   // current impl. assumes no name scope
-  std::unordered_map<std::string, const Decl *> ID2DeclTable;
+  std::unordered_map<std::string, Decl *> ID2DeclTable;
 
 public:
   Lexer &Lex;
@@ -39,7 +39,7 @@ public:
   // Expr
   ExprPtr CreateBinOp(BinaryOperatorKind Opc, ExprPtr &&LHS, ExprPtr &&RHS);
   ExprPtr CreateIndexAccess(ExprPtr &&LHS, ExprPtr &&RHS);
-  ExprPtr CreateCallExpr(ExprPtr &&Func,
+  ExprPtr CreateCallExpr(ExprPtr &&Callee,
                          std::vector<std::unique_ptr<Expr>> &&Args);
   std::unique_ptr<Identifier> CreateIdentifier(const std::string Name);
 
@@ -68,10 +68,16 @@ public:
 
   ExprPtr DefaultLvalueConversion(ExprPtr &&E);
 
-  void addIdentifierDecl(const std::string &S, const Decl &D);
-  const Decl *findIdentifierDecl(const std::string &S);
+  void addIdentifierDecl(const std::string &Name, Decl &D);
+  Decl *findIdentifierDecl(const std::string &Name);
 
   void resolveBreak(FunctionDecl &);
+
+  bool isMagicFuncName(const std::string &Name) {
+    // TODO: replace this
+    // check all magic functionName
+    return Name == "require";
+  }
 };
 
 } // namespace soll

@@ -332,7 +332,7 @@ void ASTPrinter::visit(BinaryOperatorType &op) {
 }
 
 void ASTPrinter::visit(CallExprType &call) {
-  os() << indent() << "CallExpr\n";
+  os() << indent() << "CallExpr " << ToString(call.getType()) << "\n";
   ConstStmtVisitor::visit(call);
   unindent();
 }

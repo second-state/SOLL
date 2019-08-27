@@ -73,7 +73,7 @@ BinaryOperator::BinaryOperator(ExprPtr &&lhs, ExprPtr &&rhs, Opcode opc,
 ///
 /// Identifier
 ///
-Identifier::Identifier(const std::string &Name, const Decl *D)
+Identifier::Identifier(const std::string &Name, Decl *D)
     : Expr(ValueKind::VK_LValue), name(Name), D(D) {
   if (auto VD = dynamic_cast<const VarDecl *>(D))
     Ty = VD->GetType();

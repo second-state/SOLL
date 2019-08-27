@@ -79,10 +79,29 @@ ExprPtr Sema::CreateIndexAccess(ExprPtr &&LHS, ExprPtr &&RHS) {
                                        ResultTy);
 }
 
-ExprPtr Sema::CreateCallExpr(ExprPtr &&Func, std::vector<ExprPtr> &&Args) {
-  TypePtr ResultTy;
-  // TODO: resolve returnType
-  return std::make_unique<CallExpr>(std::move(Func), std::move(Args), ResultTy);
+ExprPtr Sema::CreateCallExpr(ExprPtr &&Callee, std::vector<ExprPtr> &&Args) {
+  TypePtr ResultTy = Callee->getType();
+  if (auto CalleeIden = dynamic_cast<Identifier *>(Callee.get())) {
+    if (auto FD =
+            dynamic_cast<FunctionDecl *>(CalleeIden->getCorrespondDecl())) {
+      // TODO: refactor this
+      // This assumes function only returns one value,
+      // because tuple type not impl. yet.
+      auto FDTy = static_cast<FunctionType *>(FD->getType().get());
+      if (auto ReturnTy = FDTy->getReturnTypes(); ReturnTy.size() == 1)
+        ResultTy = ReturnTy[0];
+    } else {
+      assert(isMagicFuncName(CalleeIden->getName()) &&
+             "callee is not FuncDecl");
+    }
+  } else
+    assert(false && "only support Identifier callee");
+
+  for (ExprPtr &Arg : Args) {
+    Arg = DefaultLvalueConversion(std::move(Arg));
+  }
+  return std::make_unique<CallExpr>(std::move(Callee), std::move(Args),
+                                    ResultTy);
 }
 
 StmtPtr Sema::CreateReturnStmt(ExprPtr &&Vaule) {
@@ -156,13 +175,13 @@ ExprPtr Sema::DefaultLvalueConversion(ExprPtr &&E) {
 
 void Sema::resolveBreak(FunctionDecl &FD) { BreakableVisitor().check(FD); }
 
-void Sema::addIdentifierDecl(const std::string &S, const Decl &D) {
+void Sema::addIdentifierDecl(const std::string &S, Decl &D) {
   ID2DeclTable[S] = &D;
 }
 
 // TODO: refactor this
 // current impl. assumes no name scope
-const Decl *Sema::findIdentifierDecl(const std::string &S) {
+Decl *Sema::findIdentifierDecl(const std::string &S) {
   if (ID2DeclTable.count(S))
     return ID2DeclTable[S];
   else

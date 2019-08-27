@@ -166,11 +166,11 @@ class CallExpr : public Expr {
 public:
   CallExpr(ExprPtr &&CalleeExpr, std::vector<ExprPtr> &&Arguments,
            TypePtr Ty = nullptr)
-      : Expr(ValueKind::VK_RValue), CalleeExpr(std::move(CalleeExpr)),
+      : Expr(ValueKind::VK_RValue, Ty), CalleeExpr(std::move(CalleeExpr)),
         Arguments(std::move(Arguments)) {}
   CallExpr(ExprPtr &&CalleeExpr, std::vector<ExprPtr> &&Arguments,
            std::vector<std::string> &&Names, TypePtr Ty = nullptr)
-      : Expr(ValueKind::VK_RValue), CalleeExpr(std::move(CalleeExpr)),
+      : Expr(ValueKind::VK_RValue, Ty), CalleeExpr(std::move(CalleeExpr)),
         Arguments(std::move(Arguments)), Names(std::move(Names)) {}
 
   Expr *getCalleeExpr() { return CalleeExpr.get(); }
@@ -295,13 +295,14 @@ public:
 
 class Identifier : public Expr {
   std::string name;
-  const Decl *D;
+  Decl *D;
 
 public:
-  Identifier(const std::string &Name, const Decl *D = nullptr);
+  Identifier(const std::string &Name, Decl *D = nullptr);
 
   void setName(const std::string &Name) { name = Name; }
   std::string getName() const { return name; }
+  Decl *getCorrespondDecl() { return D; }
   const Decl *getCorrespondDecl() const { return D; }
 
   void accept(StmtVisitor &visitor) override;
@@ -353,7 +354,7 @@ public:
   //   7122 -> uint16
   //   -123 -> int8
   NumberLiteral(int val) : Expr(ValueKind::VK_RValue), value(val) {
-     Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U32);
+    Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U32);
   }
   void setValue(int val) { value = val; }
   int getValue() const { return value; }
