@@ -1,5 +1,5 @@
 # Default ARG will build a clean environment for testing.
-ARG BASE=ubuntu:18.04
+ARG BASE=yi2nd/soll:ubuntu-base
 FROM ${BASE}
 
 RUN apt update \
@@ -14,7 +14,6 @@ RUN wget --quiet -O - https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt
 RUN apt update \
     && apt install -y \
         lld-8 \
-        llvm-8-dev \
         nodejs
 RUN rm -rf /var/lib/apt/lists/*
 

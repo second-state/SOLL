@@ -23,7 +23,7 @@ To get started with our demo, you will need three components at first.
 ## Preparation
 - Pull official docker image to get an already established build/execute environment.
 ```Shell
-docker pull yi2nd/ubuntu-soll:v0.0.1
+docker pull yi2nd/soll:v0.0.1
 ```
 
 - Git clone from official gitlab repository.

@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM yi2nd/soll:ubuntu-base
 
 RUN apt update \
     && apt install -y \
@@ -9,9 +9,7 @@ RUN apt-add-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-8 
 RUN apt update \
     && apt install -y \
         clang-8 \
-        cmake \
         lld-8 \
-        llvm-8-dev \
         make
 RUN rm -rf /var/lib/apt/lists/*
 
