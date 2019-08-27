@@ -60,6 +60,9 @@ public:
   /// <, >, <=, >=, ==
   TypePtr CheckCompareOperands(ExprPtr &LHS, ExprPtr &RHS,
                                BinaryOperatorKind Opc);
+  // &&, ||
+  TypePtr CheckLogicalOperands(ExprPtr &LHS, ExprPtr &RHS,
+                               BinaryOperatorKind Opc);
   TypePtr CheckAssignmentOperands(ExprPtr &LHS, ExprPtr &RHS,
                                   TypePtr CompoundType);
 

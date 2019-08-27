@@ -54,6 +54,8 @@ ExprPtr Sema::CreateBinOp(BinaryOperatorKind Opc, ExprPtr &&LHS,
     ResultTy = CheckMultiplicativeOperands(LHS, RHS, Opc);
   } else if (BinaryOperator::isComparisonOp(Opc)) {
     ResultTy = CheckCompareOperands(LHS, RHS, Opc);
+  } else if (BinaryOperator::isLogicalOp(Opc)) {
+    ResultTy = CheckLogicalOperands(LHS, RHS, Opc);
   } else if (BinaryOperator::isAssignmentOp(Opc)) {
     // TODO: get common type
     ResultTy = LHS->getType();
@@ -154,6 +156,18 @@ TypePtr Sema::CheckCompareOperands(ExprPtr &LHS, ExprPtr &RHS,
   assert(RHS->getType()->getCategory() == Type::Category::Integer ||
          RHS->getType()->getCategory() == Type::Category::Address);
 
+  return std::make_shared<BooleanType>();
+}
+
+TypePtr Sema::CheckLogicalOperands(ExprPtr &LHS, ExprPtr &RHS,
+                                   BinaryOperatorKind Opc) {
+  LHS = DefaultLvalueConversion(std::move(LHS));
+  RHS = DefaultLvalueConversion(std::move(RHS));
+  // TODO: replace assert with error msg
+  assert(LHS->getType()->getCategory() == Type::Category::Bool &&
+         "LHS is not boolean.");
+  assert(RHS->getType()->getCategory() == Type::Category::Bool &&
+         "RHS is not boolean.");
   return std::make_shared<BooleanType>();
 }
 
