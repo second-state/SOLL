@@ -178,6 +178,8 @@ public:
 
   TypePtr GetType() { return TypeName; }
   const TypePtr &GetType() const { return TypeName; }
+  bool isStateVariable() { return IsStateVariable; }
+  bool isStateVariable() const { return IsStateVariable; }
 };
 
 class ModifierInvocation {

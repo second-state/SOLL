@@ -256,7 +256,9 @@ void ASTPrinter::visit(ParamListType &param) {
 }
 
 void ASTPrinter::visit(VarDeclType &decl) {
-  os() << indent() << "VarDecl \"" << decl.getName() << "\""
+  os() << indent() << "VarDecl "
+       << (decl.isStateVariable() ? "(StateVar)" : "(NonStateVar)") << " \""
+       << decl.getName() << "\""
        << ", " << ToString(decl.GetType()) << " " << &decl << " \n";
   ConstDeclVisitor::visit(decl);
   unindent();
