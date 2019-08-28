@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-#include "soll/AST/Decl.h"
-#include "soll/AST/Expr.h"
+#include "soll/AST/AST.h"
 #include "soll/Frontend/CompilerInstance.h"
 #include "soll/Frontend/CompilerInvocation.h"
 #include <llvm/Support/Process.h>

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "soll/Sema/Sema.h"
+#include "soll/AST/AST.h"
 #include "soll/AST/ASTConsumer.h"
-#include "soll/AST/ASTContext.h"
 #include "soll/Lex/Lexer.h"
 
 namespace soll {

@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "soll/CodeGen/ModuleBuilder.h"
 #include "CodeGenModule.h"
-#include "soll/AST/Decl.h"
-#include "soll/AST/DeclVisitor.h"
-#include "soll/AST/Expr.h"
-#include "soll/AST/StmtVisitor.h"
+#include "soll/AST/AST.h"
 #include "soll/CodeGen/FuncBodyCodeGen.h"
 #include <iostream>
 
