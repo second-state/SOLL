@@ -651,10 +651,10 @@ void FuncBodyCodeGen::emitCast(const CastExpr &Cast) {
       case Type::Category::Integer: {
         auto BaseTy(IntegerType);
         if (BaseTy->isSigned())
-          result = Builder.CreateSExt(findTempValue(Cast.getTargetValue()),
+          result = Builder.CreateSExtOrTrunc(findTempValue(Cast.getTargetValue()),
                                       Builder.getIntNTy(TargetTy->getBitNum()));
         else
-          result = Builder.CreateZExt(findTempValue(Cast.getTargetValue()),
+          result = Builder.CreateZExtOrTrunc(findTempValue(Cast.getTargetValue()),
                                       Builder.getIntNTy(TargetTy->getBitNum()));
         break;
       }
