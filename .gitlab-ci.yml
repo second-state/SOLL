@@ -19,9 +19,9 @@
   image: yi2nd/${OS}-soll-test:${VERSION}
   before_script:
     - cd build
-    - cp ../test/lity/safemath.lity test.lity
+    - cp ../test/release/0-0-1.sol test.sol
   script:
-    - bash -c "./tools/soll/soll test.lity > test.ll"
+    - bash -c "./tools/soll/soll test.sol > test.ll"
     - bash -c "../utils/compile -v test.ll || true"
     - bash -c "soll-ewasm-env.js test.wasm div 16 7"
   cache:
