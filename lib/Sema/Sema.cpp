@@ -164,9 +164,7 @@ TypePtr Sema::CheckShiftOperands(ExprPtr &LHS, ExprPtr &RHS,
 
 TypePtr Sema::CheckCompareOperands(ExprPtr &LHS, ExprPtr &RHS,
                                    BinaryOperatorKind Opc) {
-  // TODO: get common Type
-  LHS = UsualUnaryConversions(std::move(LHS));
-  RHS = UsualUnaryConversions(std::move(RHS));
+  UsualArithmeticConversions(LHS, RHS, false);
   // TODO: replace this, should impl. Compare Diagonostic
   assert(LHS->getType()->getCategory() == Type::Category::Integer ||
          LHS->getType()->getCategory() == Type::Category::Address);
