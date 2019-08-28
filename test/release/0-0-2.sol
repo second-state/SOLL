@@ -21,7 +21,7 @@ contract ERC20 {
         // benefit is lost if 'b' is also tested.
         // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522
         if (a == 0) {
-            return 0;
+            return uint256(0);
         }
 
         uint256 c = a * b;

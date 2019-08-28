@@ -15,8 +15,6 @@
 #include "../utils/SHA-3/Endian.h"
 #include "../utils/SHA-3/Rotation.h"
 
-using llvm::Function;
-
 namespace {
 using namespace soll;
 class CodeGeneratorImpl : public CodeGenerator,
@@ -33,13 +31,16 @@ class CodeGeneratorImpl : public CodeGenerator,
   llvm::IntegerType *Int160Ty = nullptr;
   llvm::IntegerType *Int256Ty = nullptr;
   llvm::PointerType *Int8PtrTy = nullptr;
+  llvm::PointerType *Int32PtrTy = nullptr;
   llvm::PointerType *Int64PtrTy = nullptr;
   llvm::PointerType *Int160PtrTy = nullptr;
   llvm::PointerType *Int256PtrTy = nullptr;
   llvm::Type *VoidTy = nullptr;
 
+  llvm::StructType *StringTy = nullptr;
   llvm::StructType *BytesTy = nullptr;
 
+  llvm::Function *Func_getCallDataSize = nullptr;
   llvm::Function *Func_callDataCopy = nullptr;
   llvm::Function *Func_finish = nullptr;
   llvm::Function *Func_revert = nullptr;
@@ -52,6 +53,7 @@ class CodeGeneratorImpl : public CodeGenerator,
   llvm::Function *Func_keccak256 = nullptr;
 
   llvm::Function *Func_bswap256 = nullptr;
+  llvm::Function *Func_memcpy = nullptr;
 
 protected:
   std::unique_ptr<llvm::Module> M;
@@ -78,19 +80,29 @@ public:
     Int160Ty = Builder.getIntNTy(160);
     Int256Ty = Builder.getIntNTy(256);
     Int8PtrTy = Builder.getInt8PtrTy();
+    Int32PtrTy = llvm::PointerType::getUnqual(Int32Ty);
     Int64PtrTy = llvm::PointerType::getUnqual(Int64Ty);
     Int160PtrTy = llvm::PointerType::getUnqual(Int160Ty);
     Int256PtrTy = llvm::PointerType::getUnqual(Int256Ty);
     VoidTy = Builder.getVoidTy();
 
     BytesTy = llvm::StructType::create(M->getContext(), {Int32Ty, Int8PtrTy}, "bytes");
+    StringTy = llvm::StructType::create(M->getContext(), {Int256Ty, Int8PtrTy},
+                                        "string", false);
   }
 
   void createEEIDeclaration() {
     llvm::LLVMContext &Context = M->getContext();
     llvm::FunctionType *FT = nullptr;
 
-    // CallDataCopy
+    // getCallDataSize
+    FT = llvm::FunctionType::get(Int32Ty, {}, false);
+    Func_getCallDataSize = llvm::Function::Create(
+        FT, llvm::Function::ExternalLinkage, "getCallDataSize", *M);
+    Func_getCallDataSize->addFnAttr(
+        llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
+
+    // callDataCopy
     FT = llvm::FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty, Int32Ty}, false);
     Func_callDataCopy = llvm::Function::Create(
         FT, llvm::Function::ExternalLinkage, "callDataCopy", *M);
@@ -150,9 +162,9 @@ public:
   }
 
   void createBswapI256() {
+    auto &Builder = *IRBuilder;
     llvm::LLVMContext &Context = M->getContext();
     auto *const Arg = Func_bswap256->arg_begin();
-    auto &Builder = *IRBuilder;
 
     llvm::BasicBlock *Entry =
         llvm::BasicBlock::Create(Context, "entry", Func_bswap256);
@@ -178,6 +190,56 @@ public:
     Builder.CreateRet(result);
   }
 
+  void createMemcpy() {
+    auto &Builder = *IRBuilder;
+    llvm::LLVMContext &Context = M->getContext();
+    llvm::Argument *const Dst = Func_memcpy->arg_begin();
+    llvm::Argument *const Src = Dst + 1;
+    llvm::Argument *const Length = Src + 1;
+    llvm::ConstantInt *const One = Builder.getInt32(1);
+    Dst->setName("dst");
+    Src->setName("src");
+    Length->setName("length");
+
+    llvm::BasicBlock *Entry =
+        llvm::BasicBlock::Create(Context, "entry", Func_memcpy);
+    llvm::BasicBlock *Loop =
+        llvm::BasicBlock::Create(Context, "loop", Func_memcpy);
+    llvm::BasicBlock *Return =
+        llvm::BasicBlock::Create(Context, "return", Func_memcpy);
+
+    Builder.SetInsertPoint(Entry);
+    llvm::Value *Cmp = Builder.CreateICmpNE(Length, Builder.getInt32(0));
+    Builder.CreateCondBr(Cmp, Loop, Return);
+
+    Builder.SetInsertPoint(Loop);
+    llvm::PHINode *SrcPHI = Builder.CreatePHI(Int8PtrTy, 2);
+    llvm::PHINode *DstPHI = Builder.CreatePHI(Int8PtrTy, 2);
+    llvm::PHINode *LengthPHI = Builder.CreatePHI(Int32Ty, 2);
+
+    Builder.CreateCall(Func_print32, {Builder.CreatePtrToInt(SrcPHI, Int32Ty)});
+    Builder.CreateCall(Func_print32, {Builder.CreatePtrToInt(DstPHI, Int32Ty)});
+    Builder.CreateCall(Func_print32, {LengthPHI});
+
+    llvm::Value *value = Builder.CreateLoad(SrcPHI);
+    Builder.CreateStore(value, DstPHI);
+    llvm::Value *Src2 = Builder.CreateInBoundsGEP(SrcPHI, {One});
+    llvm::Value *Dst2 = Builder.CreateInBoundsGEP(DstPHI, {One});
+    llvm::Value *Length2 = Builder.CreateSub(LengthPHI, One);
+    llvm::Value *Cmp2 = Builder.CreateICmpNE(Length2, Builder.getInt32(0));
+    Builder.CreateCondBr(Cmp2, Loop, Return);
+
+    Builder.SetInsertPoint(Return);
+    Builder.CreateRet(Dst);
+
+    SrcPHI->addIncoming(Src, Entry);
+    SrcPHI->addIncoming(Src2, Loop);
+    DstPHI->addIncoming(Dst, Entry);
+    DstPHI->addIncoming(Dst2, Loop);
+    LengthPHI->addIncoming(Length, Entry);
+    LengthPHI->addIncoming(Length2, Loop);
+  }
+
   void createI256Arithmetic() {
     llvm::LLVMContext &Context = M->getContext();
 
@@ -185,7 +247,13 @@ public:
         llvm::FunctionType::get(Int256Ty, {Int256Ty}, false),
         llvm::Function::InternalLinkage, "__bswapi256", *M);
 
+    Func_memcpy = llvm::Function::Create(
+        llvm::FunctionType::get(Int8PtrTy, {Int8PtrTy, Int8PtrTy, Int32Ty},
+                                false),
+        llvm::Function::InternalLinkage, "__memcpy", *M);
+
     createBswapI256();
+    createMemcpy();
   }
 
   void createKeccak256() {
@@ -260,6 +328,7 @@ public:
   }
 
   void visit(ContractDeclType &CD) override {
+    auto &Builder = *IRBuilder;
     llvm::LLVMContext &Context = M->getContext();
     llvm::FunctionType *FT = nullptr;
 
@@ -267,51 +336,51 @@ public:
     FT = llvm::FunctionType::get(VoidTy, {}, false);
     llvm::Function *Main =
         llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "main", *M);
-    llvm::BasicBlock *EntryBB =
-        llvm::BasicBlock::Create(Context, "entry", Main);
 
-    IRBuilder->SetInsertPoint(EntryBB);
-    auto *p = IRBuilder->CreateAlloca(Int32Ty, nullptr, "code.ptr");
-    auto *voidptr = IRBuilder->CreateBitCast(p, Int8PtrTy, "code.voidptr");
-    IRBuilder->CreateCall(Func_callDataCopy, {voidptr, IRBuilder->getInt32(0),
-                                              IRBuilder->getInt32(4)});
-    auto *CondV = IRBuilder->CreateLoad(Int32Ty, p, "hash");
+    llvm::BasicBlock *Entry = llvm::BasicBlock::Create(Context, "entry", Main);
+    llvm::BasicBlock *Switch =
+        llvm::BasicBlock::Create(Context, "switch", Main);
+    llvm::BasicBlock *Error = llvm::BasicBlock::Create(Context, "error", Main);
+
+    Builder.SetInsertPoint(Entry);
+    llvm::Value *callDataSize =
+        Builder.CreateCall(Func_getCallDataSize, {}, "size");
+    llvm::Value *cmp =
+        Builder.CreateICmpUGE(callDataSize, Builder.getInt32(4), "cmp");
+    Builder.CreateCondBr(cmp, Switch, Error);
 
     // two phase codegen
-    llvm::BasicBlock *Default =
-        llvm::BasicBlock::Create(Context, "default", Main);
-    IRBuilder->SetInsertPoint(Default);
-    IRBuilder->CreateCall(
-        Func_revert,
-        {llvm::ConstantPointerNull::get(Int8PtrTy), IRBuilder->getInt32(0)});
-    IRBuilder->CreateUnreachable();
+    Builder.SetInsertPoint(Error);
+    Builder.CreateCall(Func_revert, {llvm::ConstantPointerNull::get(Int8PtrTy),
+                                     Builder.getInt32(0)});
+    Builder.CreateUnreachable();
 
-    IRBuilder->SetInsertPoint(EntryBB);
+    Builder.SetInsertPoint(Switch);
+    llvm::Value *HashVPtr =
+        Builder.CreateAlloca(Int8Ty, Builder.getInt32(4), "hash.vptr");
+    Builder.CreateCall(Func_callDataCopy,
+                       {HashVPtr, Builder.getInt32(0), Builder.getInt32(4)});
+    llvm::Value *HashPtr =
+        Builder.CreateBitCast(HashVPtr, Int32PtrTy, "hash.ptr");
+    llvm::Value *Hash = Builder.CreateLoad(Int32Ty, HashPtr, "hash");
 
     std::map<std::string, llvm::BasicBlock *> Labels;
 
-    llvm::Value *FakeCondV = IRBuilder->getInt32(0);
-
-    std::vector<const FunctionDecl *> FDs;
-    for (const auto *Node : CD.getSubNodes()) {
-      if (auto FD = dynamic_cast<const FunctionDecl *>(Node)) {
-        FDs.push_back(FD);
-      }
-    }
-
     llvm::SwitchInst *SI =
-        IRBuilder->CreateSwitch(CondV, Default, CD.getFuncs().size());
+        Builder.CreateSwitch(Hash, Error, CD.getFuncs().size());
 
     for (auto F : CD.getFuncs()) {
       llvm::BasicBlock *CondBB =
           llvm::BasicBlock::Create(Context, F->getName(), Main);
       Labels[F->getName()] = CondBB;
       std::uint32_t hash = funcSignatureHash(*F);
-      SI->addCase(IRBuilder->getInt32(hash), CondBB);
+      SI->addCase(Builder.getInt32(hash), CondBB);
     }
 
-    for (auto F : CD.getFuncs())
-      genABI(*F, Labels[F->getName()]);
+    for (auto Node : CD.getFuncs()) {
+      const FunctionDecl *F = dynamic_cast<const soll::FunctionDecl *>(Node);
+      genABI(*F, Labels[F->getName()], Error, callDataSize);
+    }
 
     // codegen function body
     ConstDeclVisitor::visit(CD);
@@ -321,27 +390,45 @@ public:
     FuncBodyCodeGen(M->getContext(), *IRBuilder, *GetModule(), *Ctx).compile(F);
   }
 
-  size_t getABISize(const std::vector<const VarDecl *> &params) const {
-    // TODO: get real size
-    return params.size() * 32;
+  size_t getABIMinSize(const std::vector<const VarDecl *> &params) const {
+    size_t Result = 0;
+    for (const auto &param : params) {
+      const auto &Ty = *param->GetType();
+      Result += Ty.getCalldataEncodedSize();
+    }
+    return Result;
   }
 
-  size_t getABIOffset(const std::vector<const VarDecl *> &params,
-                      size_t i) const {
-    // TODO: get real offset
-    return i * 32;
+  llvm::Type *getLLVMTy(const Type *Ty) {
+    switch (Ty->getCategory()) {
+      case Type::Category::Integer: {
+        const IntegerType *IntTy = dynamic_cast<const IntegerType *>(Ty);
+        return IRBuilder->getIntNTy(IntTy->getBitNum());
+      }
+      case Type::Category::Bool: {
+        return Int1Ty;
+      }
+      case Type::Category::Address: {
+        return IRBuilder->getIntNTy(160);
+      }
+      case Type::Category::String: {
+        return StringTy;
+      }
+      default:
+        assert(false && "unsupported type!");
+    }
   }
-
   llvm::Type *getLLVMTy(const VarDecl *VD) {
-    return IRBuilder->getIntNTy(VD->GetType()->getBitNum());
+    return getLLVMTy(VD->GetType().get());
   }
   llvm::Type *getLLVMTy(const FunctionDeclType &F) {
     auto RetList = F.getReturnParams()->getParams();
     if (RetList.empty()) {
-      return IRBuilder->getVoidTy();
+      return VoidTy;
+    } else if (RetList.size() == 1) {
+      return getLLVMTy(RetList.front()->GetType().get());
     } else {
-      auto *Ty = RetList[0]->GetType().get();
-      return IRBuilder->getIntNTy(Ty->getBitNum());
+      assert(false && "unsupported tuple return!");
     }
   }
   llvm::Value *castToTy(llvm::Value *Val, llvm::Type *TargetTy) {
@@ -351,57 +438,172 @@ public:
     return IRBuilder->CreateZExt(Val, Int256Ty, "zext");
   }
 
-  void genABI(FunctionDeclType &F, llvm::BasicBlock *BB) {
+  void genABI(FunctionDeclType &F, llvm::BasicBlock *Loader,
+              llvm::BasicBlock *Error, llvm::Value *callDataSize) {
+    auto &Builder = *IRBuilder;
     // TODO: refactor this
     // this impl. assumes all types are uint64
     const std::string &Fname = F.getName();
     const auto &Fparams = F.getParams()->getParams();
 
-    IRBuilder->SetInsertPoint(BB);
+    Builder.SetInsertPoint(Loader);
     // get arguments from calldata
-    auto *arg_cptr = IRBuilder->CreateAlloca(
-        llvm::ArrayType::get(Int8Ty, getABISize(Fparams)), nullptr,
-        Fname + "_arg_cptr");
+    const size_t ABIMinSize = getABIMinSize(Fparams);
+    auto *arg_cptr = Builder.CreateAlloca(Int8Ty, Builder.getInt32(ABIMinSize),
+                                          Fname + "_arg_cptr");
     auto *arg_vptr =
-        IRBuilder->CreateBitCast(arg_cptr, Int8PtrTy, Fname + "_arg_vptr");
-    IRBuilder->CreateCall(Func_callDataCopy,
-                          {arg_vptr, IRBuilder->getInt32(4),
-                           IRBuilder->getInt32(getABISize(Fparams))});
+        Builder.CreateBitCast(arg_cptr, Int8PtrTy, Fname + "_arg_vptr");
+    Builder.CreateCall(Func_callDataCopy, {arg_vptr, Builder.getInt32(4),
+                                           Builder.getInt32(ABIMinSize)});
 
+    unsigned offset = 0;
     std::vector<llvm::Value *> ArgsVal;
     std::vector<llvm::Type *> ArgsTy;
+    std::vector<size_t> ArgsDynamic;
     for (size_t i = 0; i < Fparams.size(); i++) {
+      Type &Ty = *Fparams[i]->GetType();
+      switch (Ty.getCategory()) {
+      case Type::Category::String:
+      case Type::Category::Array:
+        ArgsDynamic.push_back(i);
+        break;
+      case Type::Category::Address:
+      case Type::Category::Bool:
+      case Type::Category::Integer:
+        break;
+      default:
+        assert(false && "unsupported type!");
+      }
       std::string param_name = (Fname + "_" + Fparams[i]->getName()).str();
-      auto *cptr = IRBuilder->CreateInBoundsGEP(
-          arg_cptr,
-          {IRBuilder->getInt32(0),
-           IRBuilder->getInt32(getABIOffset(Fparams, i))},
-          param_name + "_cptr");
+      unsigned size = Fparams[i]->GetType()->getCalldataEncodedSize();
+      auto *cptr = Builder.CreateInBoundsGEP(
+          arg_cptr, {Builder.getInt32(offset)}, param_name + "_cptr");
       auto *ptr_b =
-          IRBuilder->CreateBitCast(cptr, Int256PtrTy, param_name + "_ptr_b");
-      auto *val_b = IRBuilder->CreateLoad(Int256Ty, ptr_b, param_name + "_b");
-      auto *val = IRBuilder->CreateCall(Func_bswap256, {val_b}, param_name);
+          Builder.CreateBitCast(cptr, Int256PtrTy, param_name + "_ptr_b");
+      auto *val_b = Builder.CreateLoad(Int256Ty, ptr_b, param_name + "_b");
+      auto *val = Builder.CreateCall(Func_bswap256, {val_b}, param_name);
       ArgsVal.push_back(castToTy(val, getLLVMTy(Fparams[i])));
       ArgsTy.push_back(getLLVMTy(Fparams[i]));
+      offset += size;
+    }
+
+    if (!ArgsDynamic.empty()) {
+      llvm::BasicBlock *DynamicLoader = llvm::BasicBlock::Create(
+          M->getContext(), F.getName() + ".dynamic", Loader->getParent());
+
+      std::vector<llvm::Value *> ArgsOffset;
+      llvm::Value *SizeCheck = Builder.getInt1(true);
+      llvm::Value *DynamicSize = Builder.getInt32(0);
+      for (size_t i : ArgsDynamic) {
+        ArgsOffset.push_back(DynamicSize);
+        SizeCheck = Builder.CreateAnd(
+            SizeCheck, Builder.CreateICmpULE(
+                           ArgsVal[i], Builder.getIntN(256, 0xFFFFFFFFU)));
+        DynamicSize = Builder.CreateAdd(
+            DynamicSize, Builder.CreateTrunc(ArgsVal[i], Int32Ty));
+      }
+      llvm::Value *ExceptedCallDataSize =
+          Builder.CreateAdd(DynamicSize, Builder.getInt32(offset + 4));
+
+      SizeCheck = Builder.CreateAnd(
+          SizeCheck, Builder.CreateICmpEQ(ExceptedCallDataSize, callDataSize));
+      Builder.CreateCondBr(SizeCheck, DynamicLoader, Error);
+
+      Builder.SetInsertPoint(DynamicLoader);
+      llvm::Value *arg_dyn_vptr =
+          Builder.CreateAlloca(Int8Ty, DynamicSize, Fname + "_dyn_vptr");
+      Builder.CreateCall(
+          Func_callDataCopy,
+          {arg_dyn_vptr, Builder.getInt32(offset + 4), DynamicSize});
+
+      for (size_t i : ArgsDynamic) {
+        switch (Fparams[i]->GetType()->getCategory()) {
+        case Type::Category::String:
+        case Type::Category::Array: {
+          llvm::Value *string_data =
+              Builder.CreateInBoundsGEP(arg_dyn_vptr, {ArgsOffset[i]});
+          llvm::Value *string = llvm::ConstantAggregateZero::get(StringTy);
+          string = Builder.CreateInsertValue(string, ArgsVal[i], {0});
+          string = Builder.CreateInsertValue(string, string_data, {1});
+          ArgsVal[i] = string;
+          break;
+        }
+        default:
+          __builtin_unreachable();
+        }
+      }
     }
 
     // Call this function
     llvm::FunctionType *FT =
         llvm::FunctionType::get(getLLVMTy(F), ArgsTy, false);
-    Function *Func = Function::Create(FT, Function::ExternalLinkage,
-                                      F.getName(), *GetModule());
-    auto *r = IRBuilder->CreateCall(Func, ArgsVal, Fname + "_r");
-    auto *ext_r = extTo256(r);
-    auto *r_b = IRBuilder->CreateCall(Func_bswap256, {ext_r}, Fname + "_r_b");
+    llvm::Function *Func = llvm::Function::Create(
+        FT, llvm::Function::ExternalLinkage, F.getName(), *GetModule());
+    const auto &Returns = F.getReturnParams()->getParams();
+    if (Returns.empty()) {
+      Builder.CreateCall(Func, ArgsVal);
+      Builder.CreateCall(
+          M->getFunction("finish"),
+          {llvm::ConstantPointerNull::get(Int8PtrTy), Builder.getInt32(0)});
+    } else if (Returns.size() == 1) {
+      switch (Returns.front()->GetType()->getCategory()) {
+      case Type::Category::Address:
+      case Type::Category::Bool:
+      case Type::Category::Integer: {
+        auto *r = Builder.CreateCall(Func, ArgsVal, Fname + "_r");
+        // XXX: check signed
+        auto *r_b = Builder.CreateCall(Func_bswap256,
+                                       {Builder.CreateZExtOrTrunc(r, Int256Ty)},
+                                       Fname + "_r_b");
 
-    // put return value to returndata
-    auto *r_ptr = IRBuilder->CreateAlloca(Int256Ty, nullptr, Fname + "_r_ptr");
-    IRBuilder->CreateStore(r_b, r_ptr);
-    auto *r_vptr = IRBuilder->CreateBitCast(
-        r_ptr, llvm::PointerType::getUnqual(Int8Ty), Fname + "_r_vptr");
-    IRBuilder->CreateCall(M->getFunction("finish"),
-                          {r_vptr, IRBuilder->getInt32(256 / 8)});
-    IRBuilder->CreateUnreachable();
+        // put return value to returndata
+        auto *r_ptr = Builder.CreateAlloca(Int256Ty, nullptr, Fname + "_r_ptr");
+        Builder.CreateStore(r_b, r_ptr);
+        auto *r_vptr = Builder.CreateBitCast(
+            r_ptr, llvm::PointerType::getUnqual(Int8Ty), Fname + "_r_vptr");
+        Builder.CreateCall(M->getFunction("finish"),
+                           {r_vptr, Builder.getInt32(32)});
+        break;
+      }
+      case Type::Category::String: {
+        auto *r = Builder.CreateCall(Func, ArgsVal, Fname + "_r");
+        auto *r_len = Builder.CreateExtractValue(r, {0}, Fname + "_r_len");
+        auto *r_len_trunc =
+            Builder.CreateTrunc(r_len, Int32Ty, Fname + "_r_len_trunc");
+        auto *r_len_b =
+            Builder.CreateCall(Func_bswap256, {r_len}, Fname + "_r_len_b");
+        auto *r_data = Builder.CreateExtractValue(r, {1}, Fname + "_r_data");
+
+        // put return value to returndata
+        auto *r_size = Builder.CreateAdd(r_len_trunc, Builder.getInt32(32));
+        auto *r_ptr = Builder.CreateAlloca(Int8Ty, r_size, Fname + "_r_ptr");
+        auto *r_len_vptr =
+            Builder.CreateInBoundsGEP(r_ptr, {Builder.getInt32(0)});
+        auto *r_len_ptr = Builder.CreateBitCast(r_len_vptr, Int256PtrTy,
+                                                Fname + "_r_len_ptr");
+        Builder.CreateStore(r_len_b, r_len_ptr);
+        auto *r_data_ptr = Builder.CreateInBoundsGEP(
+            r_ptr, Builder.getInt32(32), Fname + "_r_data_ptr");
+
+        Builder.CreateStore(r_len_b, r_len_ptr);
+
+        Builder.CreateCall(Func_memcpy, {r_data_ptr, r_data, r_len_trunc});
+
+        auto *r_vptr = Builder.CreateBitCast(
+            r_ptr, llvm::PointerType::getUnqual(Int8Ty), Fname + "_r_vptr");
+        Builder.CreateCall(M->getFunction("finish"),
+                           {r_vptr, Builder.CreateTrunc(r_size, Int32Ty)});
+        break;
+      }
+      default:
+        assert(false && "unsupported type!");
+      }
+
+    } else {
+      assert(false && "unsupported tuple return!");
+    }
+
+    Builder.CreateUnreachable();
   }
 
   std::uint32_t funcSignatureHash(const FunctionDecl &F) {
@@ -413,10 +615,9 @@ public:
       if (!first)
         h.addData(',');
       first = false;
-      // XXX: Implement typename
-      static const std::array<uint8_t, 7> type = {'u', 'i', 'n', 't',
-                                                  '2', '5', '6'};
-      h.addData(type.data(), 0, type.size());
+      assert(var->GetType() && "unsupported type!");
+      const std::string &name = var->GetType()->getName();
+      h.addData(reinterpret_cast<const uint8_t *>(name.data()), 0, name.size());
     }
     h.addData(')');
     const std::vector<std::uint8_t> op = h.digest();

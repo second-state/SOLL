@@ -232,7 +232,6 @@ TypePtr Sema::UsualArithmeticConversions(ExprPtr &LHS, ExprPtr &RHS,
   if (!IsCompAssign) {
     LHS = UsualUnaryConversions(std::move(LHS));
   }
-
   RHS = UsualUnaryConversions(std::move(RHS));
 
   return handleIntegerConversion(*this, LHS, RHS, IsCompAssign);

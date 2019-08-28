@@ -488,8 +488,10 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
           std::move(parseFunctionDefinitionOrFunctionTypeStateVariable()));
     } else if (Kind == tok::kw_struct) {
       // [TODO] contract tok::kw_struct
+      assert(false && "struct not implemented");
     } else if (Kind == tok::kw_enum) {
       // [TODO] contract tok::kw_enum
+      assert(false && "enum not implemented");
     } else if (Kind == tok::identifier || Kind == tok::kw_mapping ||
                TheLexer.LookAhead(0)->isElementaryTypeName()) {
       VarDeclParserOptions options;
@@ -499,10 +501,13 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
       TheLexer.CachedLex(); // ;
     } else if (Kind == tok::kw_modifier) {
       // [TODO] contract tok::kw_modifier
+      assert(false && "modifier not implemented");
     } else if (Kind == tok::kw_event) {
       // [TODO] contract tok::kw_event
+      assert(false && "event not implemented");
     } else if (Kind == tok::kw_using) {
       // [TODO] contract tok::kw_using
+      assert(false && "using not implemented");
     } else
       assert(false && "Solidity Error: Function, variable, struct or modifier "
                       "declaration expected.");

@@ -173,6 +173,7 @@ std::string ToString(soll::CastKind CK) {
   case soll::CastKind::TypeCast:
     return "<TypeCast>";
   }
+  assert(false && "unknown cast kind!");
 }
 } // namespace
 

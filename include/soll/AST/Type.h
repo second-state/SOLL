@@ -5,6 +5,8 @@
 #include <cassert>
 #include <memory>
 #include <optional>
+#include <sstream>
+#include <string>
 #include <vector>
 
 namespace soll {
@@ -42,24 +44,30 @@ public:
     return false;
   }
   virtual Category getCategory() const = 0;
+  virtual std::string getName() const = 0;
+  virtual unsigned getCalldataEncodedSize() const = 0;
 };
 
 class AddressType : public Type {
-  Category getCategory() const override { return Category::Address; }
-
+public:
   bool isImplicitlyConvertibleTo(Type const &_other) const override {
     return _other.getCategory() == Category::Address;
   }
   bool isExplicitlyConvertibleTo(Type const &_convertTo) const override {
     return _convertTo.getCategory() == Category::Address;
   }
-
-public:
-  unsigned int getBitNum() const override { return 80; }
+  Category getCategory() const override { return Category::Address; }
+  unsigned int getBitNum() const override { return 160; }
+  std::string getName() const override { return "address"; }
+  unsigned getCalldataEncodedSize() const override { return 32; }
 };
 
 class BooleanType : public Type {
+public:
   Category getCategory() const override { return Category::Bool; }
+  std::string getName() const override { return "bool"; }
+  unsigned getCalldataEncodedSize() const override { return 32; }
+  unsigned int getBitNum() const override { return 1; }
 };
 
 class IntegerType : public Type {
@@ -134,6 +142,12 @@ public:
   };
 
   IntegerType(IntKind ik) : _intKind(ik) {}
+  static IntegerType getIntN(unsigned int BitNum) {
+    return IntegerType(static_cast<IntKind>(BitNum / 8 - 1 + 32));
+  }
+  static IntegerType getUIntN(unsigned int BitNum) {
+    return IntegerType(static_cast<IntKind>(BitNum / 8 - 1));
+  }
   IntKind getKind() const { return _intKind; }
   bool isSigned() const {
     return static_cast<int>(getKind()) >= static_cast<int>(IntKind::I8);
@@ -146,6 +160,17 @@ public:
   bool isImplicitlyConvertibleTo(Type const &_other) const override;
   bool isExplicitlyConvertibleTo(Type const &_convertTo) const override;
   Category getCategory() const override { return Category::Integer; }
+  std::string getName() const override {
+    std::ostringstream oss;
+    if (isSigned()) {
+      oss << "int";
+    } else {
+      oss << "uint";
+    }
+    oss << getBitNum();
+    return oss.str();
+  }
+  unsigned getCalldataEncodedSize() const override { return 32; }
 
   static std::shared_ptr<IntegerType> common(const IntegerType &A,
                                              const IntegerType &B);
@@ -191,7 +216,18 @@ public:
     B32
   };
   FixedBytesType(ByteKind bk) : _byteKind(bk) {}
+  ByteKind getKind() const { return _byteKind; }
+  unsigned int getBitNum() const override {
+    return 8 * (static_cast<int>(getKind()) + 1);
+  }
   Category getCategory() const override { return Category::FixedBytes; }
+  std::string getName() const override {
+    std::ostringstream oss;
+    oss << "bytes";
+    oss << getBitNum() / 8;
+    return oss.str();
+  }
+  unsigned getCalldataEncodedSize() const override { return 32; }
 
 private:
   ByteKind _byteKind;
@@ -199,10 +235,14 @@ private:
 
 class StringType : public Type {
   Category getCategory() const override { return Category::String; }
+  std::string getName() const override { return "string"; }
+  unsigned getCalldataEncodedSize() const override { return 32; }
 };
 
 class BytesType : public Type {
   Category getCategory() const override { return Category::Bytes; }
+  std::string getName() const override { return "bytes"; }
+  unsigned getCalldataEncodedSize() const override { return 32; }
 };
 
 class ReferenceType : public Type {
@@ -229,6 +269,10 @@ public:
   TypePtr getValueType() const { return ValueType; }
 
   Category getCategory() const override { return Category::Mapping; }
+  std::string getName() const override { return "mapping"; }
+  unsigned getCalldataEncodedSize() const override {
+    assert(false && "mapping is not allowed here");
+  }
 };
 
 class ArrayType : public ReferenceType {
@@ -250,6 +294,14 @@ public:
     return *Length;
   }
   Category getCategory() const override { return Category::Array; }
+  std::string getName() const override { return ElementType->getName() + "[]"; }
+  unsigned getCalldataEncodedSize() const override {
+    if (isDynamicSized()) {
+      return 32;
+    } else {
+      return getElementType()->getCalldataEncodedSize() * getLength();
+    }
+  }
 };
 
 class FunctionType : public Type {
@@ -264,6 +316,8 @@ public:
   const std::vector<TypePtr> &getReturnTypes() const { return ReturnTypes; }
 
   Category getCategory() const override { return Category::Function; }
+  std::string getName() const override { return "function"; }
+  unsigned getCalldataEncodedSize() const override { return 32; }
 };
 
 class StructType : public Type {

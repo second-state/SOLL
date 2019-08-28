@@ -26,7 +26,9 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
 
   llvm::IntegerType *Int256Ty = nullptr;
   llvm::Type *VoidTy = nullptr;
+
   llvm::StructType *BytesTy = nullptr;
+  llvm::StructType *StringTy = nullptr;
 
   llvm::ConstantInt *Zero256 = nullptr;
   llvm::ConstantInt *One256 = nullptr;
@@ -129,5 +131,5 @@ public:
                   llvm::IRBuilder<llvm::NoFolder> &Builder,
                   llvm::Module &Module, soll::ASTContext &Ctx);
   // codegen a certain function
-  void compile(const soll::FunctionDecl &);
+  void compile(const soll::FunctionDecl &FD);
 };

@@ -17,30 +17,21 @@ FuncBodyCodeGen::FuncBodyCodeGen(llvm::LLVMContext &Context,
     : Context(Context), Builder(Builder), Module(Module), ASTCtx(Ctx) {
   Int256Ty = Builder.getIntNTy(256);
   VoidTy = Builder.getVoidTy();
+  StringTy = Module.getTypeByName("string");
+  BytesTy = Module.getTypeByName("bytes");
   Zero256 = Builder.getIntN(256, 0);
   One256 = Builder.getIntN(256, 1);
-  BytesTy = Module.getTypeByName("bytes");
 }
 
 void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
-  // TODO: replace this temp impl
-  // this impl assumes type of functionDecl params and return is uint64
-  auto PsSol = FD.getParams()->getParams();
   CurFunc = Module.getFunction(FD.getName());
-  if (CurFunc == nullptr) {
-    std::vector<llvm::Type *> Tys;
-    for (auto *VD : PsSol)
-      Tys.push_back(getLLVMTy(VD));
-    llvm::ArrayRef<llvm::Type *> ParamTys(&Tys[0], Tys.size());
-    llvm::FunctionType *FT =
-        llvm::FunctionType::get(getLLVMTy(FD), ParamTys, false);
-    CurFunc =
-        Function::Create(FT, Function::ExternalLinkage, FD.getName(), &Module);
-  }
+  assert(CurFunc != nullptr);
+
   BasicBlock *BB = BasicBlock::Create(Context, "entry", CurFunc);
   Builder.SetInsertPoint(BB);
 
   auto PsLLVM = CurFunc->arg_begin();
+  auto PsSol = FD.getParams()->getParams();
   for (auto *VD : PsSol) {
     llvm::Value *P = PsLLVM++;
     P->setName(VD->getName());
@@ -52,26 +43,26 @@ void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
 
   EndOfFunc = BasicBlock::Create(Context, "return", CurFunc);
 
-  if (FD.getReturnParams()->getParams().empty()) {
+  const auto &Returns = FD.getReturnParams()->getParams();
+  if (Returns.empty()) {
     // is void function
     FD.getBody()->accept(*this);
     Builder.CreateBr(EndOfFunc);
     Builder.SetInsertPoint(EndOfFunc);
     Builder.CreateRetVoid();
-    // move EndOfFunc to the end of CurFunc
-    EndOfFunc->removeFromParent();
-    EndOfFunc->insertInto(CurFunc);
-  } else {
+  } else if (Returns.size() == 1) {
     RetVal = Builder.CreateAlloca(getLLVMTy(FD), nullptr, "retval");
     FD.getBody()->accept(*this);
     Builder.CreateBr(EndOfFunc);
     Builder.SetInsertPoint(EndOfFunc);
     llvm::Value *V = Builder.CreateLoad(RetVal);
     Builder.CreateRet(V);
-    // move EndOfFunc to the end of CurFunc
-    EndOfFunc->removeFromParent();
-    EndOfFunc->insertInto(CurFunc);
+  } else {
+    assert(false && "tuple return not supported!");
   }
+  // move EndOfFunc to the end of CurFunc
+  EndOfFunc->removeFromParent();
+  EndOfFunc->insertInto(CurFunc);
 }
 
 void FuncBodyCodeGen::visit(BlockType &B) { ConstStmtVisitor::visit(B); }
@@ -371,11 +362,12 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
   // This impl assumes:
   //   every type is uint64
   bool isSigned;
-  if (auto TyNow = dynamic_cast<const IntegerType *>(BO.getType().get()))
+  const Type* Ty = BO.getType().get();
+  if (auto TyNow = dynamic_cast<const IntegerType *>(Ty))
     isSigned = TyNow->isSigned();
-  else if (auto TyNow = dynamic_cast<const BooleanType *>(BO.getType().get()))
+  else if (auto TyNow = dynamic_cast<const BooleanType *>(Ty))
     isSigned = false;
-  else if (auto TyNow = dynamic_cast<const AddressType *>(BO.getType().get()))
+  else if (auto TyNow = dynamic_cast<const AddressType *>(Ty))
     isSigned = false;
   else
     assert(false && "Wrong type in binary operator!");
@@ -663,8 +655,13 @@ void FuncBodyCodeGen::visit(CallExprType &CALL) {
         argsValue[i] = findTempValue(Arguments[i]);
       }
     }
-    V = Builder.CreateCall(Module.getFunction(funcName), argsValue, funcName);
-    TempValueTable[&CALL] = V;
+    llvm::Function *F = Module.getFunction(funcName);
+    if (F->getReturnType()->isVoidTy()) {
+      Builder.CreateCall(F, argsValue);
+    } else {
+      V = Builder.CreateCall(F, argsValue, funcName);
+      TempValueTable[&CALL] = V;
+    }
   }
 }
 
@@ -723,8 +720,6 @@ void FuncBodyCodeGen::emitCast(const CastExpr &Cast) {
       assert(!BaseITy->isSigned() && "Cannot cast from signed to address");
       if (auto CastATy =
               dynamic_cast<const AddressType *>(Cast.getType().get())) {
-        assert(BaseITy->getBitNum() <= CastATy->getBitNum() &&
-               "Integer Type too small");
         result =
             Builder.CreateZExtOrTrunc(findTempValue(Cast.getSubExpr()),
                                       Builder.getIntNTy(CastATy->getBitNum()));
@@ -891,8 +886,9 @@ void FuncBodyCodeGen::visit(IndexAccessType &IA) {
 }
 
 void FuncBodyCodeGen::visit(MemberExprType &ME) {
+  // XXX: need implement msg.sender, msg.data, msg.sig, ...
   ConstStmtVisitor::visit(ME);
-  TempValueTable[&ME] = Builder.getIntN(80, 0);
+  TempValueTable[&ME] = Builder.getIntN(160, 0);
 }
 
 void FuncBodyCodeGen::visit(BooleanLiteralType &BL) {
