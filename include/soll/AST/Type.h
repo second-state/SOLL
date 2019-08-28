@@ -44,6 +44,7 @@ public:
 };
 
 class AddressType : public Type {
+  unsigned int getBitNum() const override { return 80; }
   Category getCategory() const override { return Category::Address; }
 };
 
