@@ -200,8 +200,23 @@ TypePtr Sema::CheckBitwiseOperands(ExprPtr &LHS, ExprPtr &RHS,
 
 TypePtr Sema::CheckAssignmentOperands(ExprPtr &LHS, ExprPtr &RHS,
                                       TypePtr CompoundType) {
-  // TODO: Type checking
   RHS = UsualUnaryConversions(std::move(RHS));
+  auto LTy = LHS->getType();
+  auto RTy = RHS->getType();
+  if (RTy->isImplicitlyConvertibleTo(*LTy)) {
+    if (LTy->getCategory() == Type::Category::Integer &&
+        RTy->getCategory() == Type::Category::Integer) {
+      auto LITy = static_cast<IntegerType *>(LTy.get());
+      auto RITy = static_cast<IntegerType *>(RTy.get());
+      if (LITy->getKind() != RITy->getKind())
+        RHS = std::make_unique<ImplicitCastExpr>(std::move(RHS),
+                                                 CastKind::IntegralCast, LTy);
+      // TODO: signed/unsigned check
+    }
+    // TODO: other type conversion such as address->int
+  } else {
+    assert(false && "no implicit conversion");
+  }
   return LHS->getType();
 }
 
