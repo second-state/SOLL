@@ -25,7 +25,7 @@ static TypePtr handleIntegerConversion(Sema &S, ExprPtr &LHS, ExprPtr &RHS,
   if (commonTy->getKind() != RTy->getKind())
     RHS = std::make_unique<ImplicitCastExpr>(std::move(RHS),
                                              CastKind::IntegralCast, commonTy);
-  return std::make_shared<IntegerType>(IntegerType::IntKind::U64);
+  return commonTy;
 }
 
 Sema::Sema(Lexer &lexer, ASTContext &ctxt, ASTConsumer &consumer)
