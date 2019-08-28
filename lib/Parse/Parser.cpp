@@ -1124,7 +1124,7 @@ unique_ptr<Expr> Parser::parsePrimaryExpression() {
                                                  make_shared<AddressType>());
     } else if (tok::kw_address < CurTok->getKind()) {
       Expression = make_unique<ExplicitCastExpr>(
-          std::move(parseExpression()), CastKind::TypeCast,
+          std::move(parseExpression()), CastKind::IntegralCast,
           make_shared<IntegerType>(token2inttype(CurTok)));
     }
     TheLexer.CachedLex(); // )
