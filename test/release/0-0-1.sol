@@ -17,7 +17,7 @@ contract SafeMath {
 
     function mul(uint64 a, uint64 b) public pure returns (uint64) {
         if (a == 0) {
-            return 0;
+            return uint64(0);
         }
 
         uint64 c = a * b;
