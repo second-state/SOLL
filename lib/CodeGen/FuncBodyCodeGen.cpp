@@ -173,6 +173,7 @@ void FuncBodyCodeGen::visit(ForStmtType &FS) {
   BodyBB->moveAfter(&CurFunc->back());
   Builder.SetInsertPoint(BodyBB);
   FS.getBody()->accept(*this);
+  Builder.CreateBr(LoopBB);
   if (Loop_exist) {
     LoopBB->moveAfter(&CurFunc->back());
     Builder.SetInsertPoint(LoopBB);
