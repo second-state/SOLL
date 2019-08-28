@@ -19,6 +19,7 @@ FuncBodyCodeGen::FuncBodyCodeGen(llvm::LLVMContext &Context,
   VoidTy = Builder.getVoidTy();
   Zero256 = Builder.getIntN(256, 0);
   One256 = Builder.getIntN(256, 1);
+  BytesTy = Module.getTypeByName("bytes");
 }
 
 void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
@@ -313,13 +314,21 @@ Value *FuncBodyCodeGen::loadValue(const Expr *Expr) {
   if (auto *ID = dynamic_cast<const Identifier *>(Expr)) {
     auto *D = dynamic_cast<const VarDecl *>(ID->getCorrespondDecl());
     if (D->isStateVariable()) {
-      Val = Builder.CreateCall(Module.getFunction("sload"), {Addr}, "sload");
+      Value *AddrPtr = Builder.CreateAlloca(Addr->getType(), nullptr);
+      Value *ValPtr = Builder.CreateAlloca(Addr->getType(), nullptr);
+      Builder.CreateStore(Addr, AddrPtr);
+      Builder.CreateCall(Module.getFunction("storageLoad"), {AddrPtr, ValPtr});
+      Val = Builder.CreateLoad(ValPtr);
     } else {
       Val = Builder.CreateLoad(Addr);
     }
   } else if (auto IA = dynamic_cast<const IndexAccess *>(Expr)) {
     if (IA->isStateVariable()) {
-      Val = Builder.CreateCall(Module.getFunction("sload"), {Addr}, "sload");
+      Value *AddrPtr = Builder.CreateAlloca(Addr->getType(), nullptr);
+      Value *ValPtr = Builder.CreateAlloca(Addr->getType(), nullptr);
+      Builder.CreateStore(Addr, AddrPtr);
+      Builder.CreateCall(Module.getFunction("storageLoad"), {AddrPtr, ValPtr});
+      Val = Builder.CreateLoad(ValPtr);
     } else {
       Val = Builder.CreateLoad(Addr);
     }
@@ -334,13 +343,21 @@ void FuncBodyCodeGen::storeValue(const Expr *Expr, Value *Val) {
   if (auto *ID = dynamic_cast<const Identifier *>(Expr)) {
     auto *D = dynamic_cast<const VarDecl *>(ID->getCorrespondDecl());
     if (D->isStateVariable()) {
-      Builder.CreateCall(Module.getFunction("sstore"), {Val, Addr}, "sstore");
+      Value *AddrPtr = Builder.CreateAlloca(Addr->getType(), nullptr);
+      Value *ValPtr = Builder.CreateAlloca(Val->getType(), nullptr);
+      Builder.CreateStore(Addr, AddrPtr);
+      Builder.CreateStore(Val, ValPtr);
+      Builder.CreateCall(Module.getFunction("storageStore"), {AddrPtr, ValPtr});
     } else {
       Builder.CreateStore(Val, Addr);
     }
   } else if (auto IA = dynamic_cast<const IndexAccess *>(Expr)) {
     if (IA->isStateVariable()) {
-      Builder.CreateCall(Module.getFunction("sstore"), {Val, Addr}, "sstore");
+      Value *AddrPtr = Builder.CreateAlloca(Addr->getType(), nullptr);
+      Value *ValPtr = Builder.CreateAlloca(Val->getType(), nullptr);
+      Builder.CreateStore(Addr, AddrPtr);
+      Builder.CreateStore(Val, ValPtr);
+      Builder.CreateCall(Module.getFunction("storageStore"), {AddrPtr, ValPtr});
     } else {
       Builder.CreateStore(Val, Addr);
     }
@@ -805,12 +822,17 @@ void FuncBodyCodeGen::visit(IndexAccessType &IA) {
     llvm::Value *emitConcateArr =
         Builder.CreateAlloca(emitConcateArrTy, nullptr, "emitConcateArr");
     emitConcate(emitConcateArr, BaseBitNum, IdxBitNum, BaseV, IdxV);
-    V = Builder.CreateCall(
-        Module.getFunction("keccak"),
-        {Builder.CreateInBoundsGEP(emitConcateArr,
-                                   {Builder.getInt32(0), Builder.getInt32(0)}),
-         Builder.getIntN(256, emitConcateArrLength)},
-        "Mapping");
+
+    llvm::Value *bytes = llvm::ConstantAggregateZero::get(BytesTy);
+    bytes = Builder.CreateInsertValue(
+        bytes, Builder.getInt32(emitConcateArrLength), {0});
+    bytes = Builder.CreateInsertValue(
+        bytes,
+        Builder.CreateInBoundsGEP(emitConcateArr,
+                                  {Builder.getInt32(0), Builder.getInt32(0)}),
+        {1});
+
+    V = Builder.CreateCall(Module.getFunction("keccak256"), {bytes}, "Mapping");
   } else if (IA.getBase()->getType()->getCategory() == Type::Category::Array) {
     // Array Type : Fixed Size Mem Array, Fixed Sized Storage Array, Dynamic
     // Sized Storage Array
@@ -841,12 +863,18 @@ void FuncBodyCodeGen::visit(IndexAccessType &IA) {
       llvm::Value *emitConcateArr =
           Builder.CreateAlloca(emitConcateArrTy, nullptr, "emitConcateArr");
       emitConcate(emitConcateArr, BaseBitNum, IdxBitNum, BaseV, IdxV);
-      V = Builder.CreateCall(
-          Module.getFunction("keccak"),
-          {Builder.CreateInBoundsGEP(
-               emitConcateArr, {Builder.getInt32(0), Builder.getInt32(0)}),
-           Builder.getIntN(256, emitConcateArrLength)},
-          "DynArrEntry");
+
+      llvm::Value *bytes = llvm::ConstantAggregateZero::get(BytesTy);
+      bytes = Builder.CreateInsertValue(
+          bytes, Builder.getInt32(emitConcateArrLength), {0});
+      bytes = Builder.CreateInsertValue(
+          bytes,
+          Builder.CreateInBoundsGEP(emitConcateArr,
+                                    {Builder.getInt32(0), Builder.getInt32(0)}),
+          {1});
+
+      V = Builder.CreateCall(Module.getFunction("keccak256"), {bytes},
+                             "DynArrEntry");
     } else {
       // Fixed Size Storage Array : store storage address of slot the accessed
       // element belongs to in TempValueTable

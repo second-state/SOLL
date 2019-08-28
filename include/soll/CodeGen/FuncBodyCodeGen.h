@@ -26,6 +26,8 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
 
   llvm::IntegerType *Int256Ty = nullptr;
   llvm::Type *VoidTy = nullptr;
+  llvm::StructType *BytesTy = nullptr;
+
   llvm::ConstantInt *Zero256 = nullptr;
   llvm::ConstantInt *One256 = nullptr;
 

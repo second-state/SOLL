@@ -252,6 +252,78 @@ static IntegerType::IntKind token2inttype(llvm::Optional<Token> Tok) {
   LLVM_BUILTIN_UNREACHABLE;
 }
 
+static FixedBytesType::ByteKind token2bytetype(llvm::Optional<Token> Tok) {
+  switch (Tok->getKind()) {
+  case tok::kw_bytes1:
+    return FixedBytesType::ByteKind::B1;
+  case tok::kw_bytes2:
+    return FixedBytesType::ByteKind::B2;
+  case tok::kw_bytes3:
+    return FixedBytesType::ByteKind::B3;
+  case tok::kw_bytes4:
+    return FixedBytesType::ByteKind::B4;
+  case tok::kw_bytes5:
+    return FixedBytesType::ByteKind::B5;
+  case tok::kw_bytes6:
+    return FixedBytesType::ByteKind::B6;
+  case tok::kw_bytes7:
+    return FixedBytesType::ByteKind::B7;
+  case tok::kw_bytes8:
+    return FixedBytesType::ByteKind::B8;
+  case tok::kw_bytes9:
+    return FixedBytesType::ByteKind::B9;
+  case tok::kw_bytes10:
+    return FixedBytesType::ByteKind::B10;
+  case tok::kw_bytes11:
+    return FixedBytesType::ByteKind::B11;
+  case tok::kw_bytes12:
+    return FixedBytesType::ByteKind::B12;
+  case tok::kw_bytes13:
+    return FixedBytesType::ByteKind::B13;
+  case tok::kw_bytes14:
+    return FixedBytesType::ByteKind::B14;
+  case tok::kw_bytes15:
+    return FixedBytesType::ByteKind::B15;
+  case tok::kw_bytes16:
+    return FixedBytesType::ByteKind::B16;
+  case tok::kw_bytes17:
+    return FixedBytesType::ByteKind::B17;
+  case tok::kw_bytes18:
+    return FixedBytesType::ByteKind::B18;
+  case tok::kw_bytes19:
+    return FixedBytesType::ByteKind::B19;
+  case tok::kw_bytes20:
+    return FixedBytesType::ByteKind::B20;
+  case tok::kw_bytes21:
+    return FixedBytesType::ByteKind::B21;
+  case tok::kw_bytes22:
+    return FixedBytesType::ByteKind::B22;
+  case tok::kw_bytes23:
+    return FixedBytesType::ByteKind::B23;
+  case tok::kw_bytes24:
+    return FixedBytesType::ByteKind::B24;
+  case tok::kw_bytes25:
+    return FixedBytesType::ByteKind::B25;
+  case tok::kw_bytes26:
+    return FixedBytesType::ByteKind::B26;
+  case tok::kw_bytes27:
+    return FixedBytesType::ByteKind::B27;
+  case tok::kw_bytes28:
+    return FixedBytesType::ByteKind::B28;
+  case tok::kw_bytes29:
+    return FixedBytesType::ByteKind::B29;
+  case tok::kw_bytes30:
+    return FixedBytesType::ByteKind::B30;
+  case tok::kw_bytes31:
+    return FixedBytesType::ByteKind::B31;
+  case tok::kw_bytes32:
+    return FixedBytesType::ByteKind::B32;
+  default:
+    assert(false && "Invalid int token.");
+  }
+  LLVM_BUILTIN_UNREACHABLE;
+}
+
 static DataLocation getLoc(llvm::Optional<Token> Tok) {
   switch (Tok->getKind()) {
   case tok::kw_storage:
@@ -608,6 +680,12 @@ TypePtr Parser::parseTypeName(bool AllowVar) {
                CurTok->getKind() <= tok::kw_uint256) {
       T = std::make_shared<IntegerType>(token2inttype(CurTok));
       TheLexer.CachedLex();
+    } else if (tok::kw_bytes1 <= CurTok->getKind() && CurTok->getKind() <= tok::kw_bytes32) {
+      T = std::make_shared<FixedBytesType>(token2bytetype(CurTok));
+      TheLexer.CachedLex();
+    } else if (CurTok->getKind() == tok::kw_bytes) {
+      T = std::make_shared<BytesType>();
+      TheLexer.CachedLex();
     } else if (CurTok->getKind() == tok::kw_string) {
       T = std::make_shared<StringType>();
       TheLexer.CachedLex();
@@ -630,8 +708,9 @@ TypePtr Parser::parseTypeName(bool AllowVar) {
     T = std::move(parseMapping());
   } else if (Kind == tok::identifier) {
     // [TODO] parseTypeName tok::identifier
-  } else
+  } else {
     assert(false && "Expected Type Name");
+  }
 
   if (T || HaveType) {
     T = parseTypeNameSuffix(move(T));

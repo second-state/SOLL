@@ -376,7 +376,7 @@ public:
   //   7122 -> uint16
   //   -123 -> int8
   NumberLiteral(int val) : Expr(ValueKind::VK_RValue), value(val) {
-    Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U32);
+    Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
   }
   void setValue(int val) { value = val; }
   int getValue() const { return value; }

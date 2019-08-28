@@ -30,19 +30,26 @@ class CodeGeneratorImpl : public CodeGenerator,
   llvm::IntegerType *Int32Ty = nullptr;
   llvm::IntegerType *Int64Ty = nullptr;
   llvm::IntegerType *Int128Ty = nullptr;
+  llvm::IntegerType *Int160Ty = nullptr;
   llvm::IntegerType *Int256Ty = nullptr;
   llvm::PointerType *Int8PtrTy = nullptr;
   llvm::PointerType *Int64PtrTy = nullptr;
+  llvm::PointerType *Int160PtrTy = nullptr;
   llvm::PointerType *Int256PtrTy = nullptr;
   llvm::Type *VoidTy = nullptr;
+
+  llvm::StructType *BytesTy = nullptr;
 
   llvm::Function *Func_callDataCopy = nullptr;
   llvm::Function *Func_finish = nullptr;
   llvm::Function *Func_revert = nullptr;
+  llvm::Function *Func_callStatic = nullptr;
+  llvm::Function *Func_returnDataCopy = nullptr;
   llvm::Function *Func_print32 = nullptr;
-  llvm::Function *Func_keccak = nullptr;
-  llvm::Function *Func_sstore = nullptr;
-  llvm::Function *Func_sload = nullptr;
+  llvm::Function *Func_storageLoad = nullptr;
+  llvm::Function *Func_storageStore = nullptr;
+
+  llvm::Function *Func_keccak256 = nullptr;
 
   llvm::Function *Func_bswap256 = nullptr;
 
@@ -68,11 +75,15 @@ public:
     Int32Ty = Builder.getInt32Ty();
     Int64Ty = Builder.getInt64Ty();
     Int128Ty = Builder.getIntNTy(128);
+    Int160Ty = Builder.getIntNTy(160);
     Int256Ty = Builder.getIntNTy(256);
     Int8PtrTy = Builder.getInt8PtrTy();
     Int64PtrTy = llvm::PointerType::getUnqual(Int64Ty);
+    Int160PtrTy = llvm::PointerType::getUnqual(Int160Ty);
     Int256PtrTy = llvm::PointerType::getUnqual(Int256Ty);
     VoidTy = Builder.getVoidTy();
+
+    BytesTy = llvm::StructType::create(M->getContext(), {Int32Ty, Int8PtrTy}, "bytes");
   }
 
   void createEEIDeclaration() {
@@ -100,25 +111,34 @@ public:
     Func_revert->addFnAttr(
         llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
 
-    // keccak
-    FT = llvm::FunctionType::get(Int256Ty, {Int8PtrTy, Int256Ty}, false);
-    Func_keccak = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
-                                         "keccak", *M);
-    Func_keccak->addFnAttr(
+    // storageLoad
+    FT = llvm::FunctionType::get(VoidTy, {Int256PtrTy, Int256PtrTy}, false);
+    Func_storageLoad = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                        "storageLoad", *M);
+    Func_storageLoad->addFnAttr(
         llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
 
-    // sload
-    FT = llvm::FunctionType::get(Int256Ty, {Int256Ty}, false);
-    Func_sload = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
-                                        "sload", *M);
-    Func_sload->addFnAttr(
+    // storageStore
+    FT = llvm::FunctionType::get(VoidTy, {Int256PtrTy, Int256PtrTy}, false);
+    Func_storageStore = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                         "storageStore", *M);
+    Func_storageStore->addFnAttr(
         llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
 
-    // sstore
-    FT = llvm::FunctionType::get(VoidTy, {Int256Ty, Int256Ty}, false);
-    Func_sstore = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
-                                         "sstore", *M);
-    Func_sstore->addFnAttr(
+    // callStatic
+    FT = llvm::FunctionType::get(
+        Int32Ty, {Int32Ty, Int160PtrTy, Int8PtrTy, Int32Ty}, false);
+    Func_callStatic = llvm::Function::Create(
+        FT, llvm::Function::ExternalLinkage, "callStatic", *M);
+    Func_callStatic->addFnAttr(
+        llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
+
+    // returnDataCopy
+    FT = llvm::FunctionType::get(
+        VoidTy, {Int8PtrTy, Int32Ty, Int32Ty}, false);
+    Func_returnDataCopy = llvm::Function::Create(
+        FT, llvm::Function::ExternalLinkage, "returnDataCopy", *M);
+    Func_returnDataCopy->addFnAttr(
         llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
 
     // debug.print32
@@ -168,6 +188,53 @@ public:
     createBswapI256();
   }
 
+  void createKeccak256() {
+    auto &Builder = *IRBuilder;
+    llvm::LLVMContext &Context = M->getContext();
+    llvm::Argument *Memory = Func_keccak256->arg_begin();
+    Memory->setName("memory");
+
+    llvm::BasicBlock *Entry =
+        llvm::BasicBlock::Create(Context, "entry", Func_keccak256);
+    Builder.SetInsertPoint(Entry);
+
+    llvm::Value *Length = Builder.CreateExtractValue(Memory, {0}, "length");
+    llvm::Value *Ptr = Builder.CreateExtractValue(Memory, {1}, "ptr");
+
+    llvm::ConstantInt *BaseFee = Builder.getInt32(60);
+    llvm::ConstantInt *WordFee = Builder.getInt32(12);
+    llvm::Value *PaddedLength =
+        Builder.CreateLShr(Builder.CreateAdd(Length, Builder.getInt32(31)), 5);
+    llvm::Value *Fee =
+        Builder.CreateAdd(Builder.CreateMul(PaddedLength, WordFee), BaseFee);
+    llvm::Value *AddressPtr =
+        Builder.CreateAlloca(Int160Ty, nullptr, "address.ptr");
+    Builder.CreateStore(Builder.getIntN(160, 9), AddressPtr);
+
+    Builder.CreateCall(Func_callStatic, {Fee, AddressPtr, Ptr, Length});
+    llvm::Value *ResultPtr =
+        Builder.CreateAlloca(Int256Ty, nullptr, "result.ptr");
+    llvm::Value *ResultVPtr =
+        Builder.CreateBitCast(ResultPtr, Int8PtrTy, "result.vptr");
+    Builder.CreateCall(Func_returnDataCopy,
+                       {ResultVPtr, Builder.getInt32(0), Builder.getInt32(32)});
+    llvm::Value *Result = Builder.CreateLoad(ResultPtr);
+
+    Builder.CreateRet(Result);
+  }
+
+  void createPrebuiltContract() {
+    llvm::LLVMContext &Context = M->getContext();
+    llvm::FunctionType *FT = nullptr;
+
+    // keccak256
+    FT = llvm::FunctionType::get(Int256Ty, {BytesTy}, false);
+    Func_keccak256 = llvm::Function::Create(FT, llvm::Function::InternalLinkage,
+                                            "keccak256", *M);
+
+    createKeccak256();
+  }
+
   void Initialize(ASTContext &Context) override {
     Ctx = &Context;
 
@@ -180,6 +247,7 @@ public:
     createTypes();
     createEEIDeclaration();
     createI256Arithmetic();
+    createPrebuiltContract();
   }
 
   void HandleSourceUnit(ASTContext &C, SourceUnit &S) override {
@@ -223,6 +291,14 @@ public:
     std::map<std::string, llvm::BasicBlock *> Labels;
 
     llvm::Value *FakeCondV = IRBuilder->getInt32(0);
+
+    std::vector<const FunctionDecl *> FDs;
+    for (const auto *Node : CD.getSubNodes()) {
+      if (auto FD = dynamic_cast<const FunctionDecl *>(Node)) {
+        FDs.push_back(FD);
+      }
+    }
+
     llvm::SwitchInst *SI =
         IRBuilder->CreateSwitch(CondV, Default, CD.getFuncs().size());
 
