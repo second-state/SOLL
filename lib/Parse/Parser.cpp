@@ -662,12 +662,16 @@ Parser::parseVariableDeclaration(VarDeclParserOptions const &Options,
 
 TypePtr Parser::parseTypeNameSuffix(TypePtr T) {
   while (TheLexer.LookAhead(0)->is(tok::l_square)) {
-    TheLexer.CachedLex();
-    int NumValue;
-    getLiteralAndAdvance(TheLexer.LookAhead(0)).getAsInteger(0, NumValue);
-    T = make_shared<ArrayType>(std::move(T), NumValue,
-                               getLoc(TheLexer.LookAhead(0)));
-    TheLexer.CachedLex();
+    TheLexer.CachedLex(); // [
+    if (TheLexer.LookAhead(0)->isNot(tok::r_square)) {
+      int NumValue;
+      getLiteralAndAdvance(TheLexer.LookAhead(0)).getAsInteger(0, NumValue);
+      T = make_shared<ArrayType>(std::move(T), NumValue,
+                                 getLoc(TheLexer.LookAhead(0)));
+    } else {
+      T = make_shared<ArrayType>(std::move(T), getLoc(TheLexer.LookAhead(0)));
+    }
+    TheLexer.CachedLex(); // ]
   }
   return T;
 }
