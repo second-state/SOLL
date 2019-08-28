@@ -295,7 +295,7 @@ class ParenExpr : public Expr {
 
 public:
   // TODO: set value kind in another pass
-  ParenExpr(ExprPtr &&Val) : Expr(ValueKind::VK_RValue), Val(std::move(Val)) {}
+  ParenExpr(ExprPtr &&Val) : Expr(*Val), Val(std::move(Val)) {}
 
   Expr *getSubExpr() { return Val.get(); }
   const Stmt *getSubExpr() const { return Val.get(); }

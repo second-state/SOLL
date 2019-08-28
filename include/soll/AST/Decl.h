@@ -184,6 +184,8 @@ public:
 
   TypePtr GetType() { return TypeName; }
   const TypePtr &GetType() const { return TypeName; }
+  Location getLoc() { return ReferenceLocation; }
+  Location getLoc() const { return ReferenceLocation; }
   bool isStateVariable() { return IsStateVariable; }
   bool isStateVariable() const { return IsStateVariable; }
 };

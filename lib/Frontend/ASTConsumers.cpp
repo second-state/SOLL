@@ -170,6 +170,20 @@ std::string ToString(soll::CastKind CK) {
   }
   assert(false && "unknown cast kind!");
 }
+
+std::string ToString(soll::VarDecl::Location LOC) {
+  switch (LOC) {
+  case soll::VarDecl::Location::Unspecified:
+    return "Unspecified";
+  case soll::VarDecl::Location::Storage:
+    return "Storage";
+  case soll::VarDecl::Location::Memory:
+    return "Memory";
+  case soll::VarDecl::Location::CallData:
+    return "CallData";
+  }
+}
+
 } // namespace
 
 namespace soll {
@@ -253,9 +267,10 @@ void ASTPrinter::visit(ParamListType &param) {
 
 void ASTPrinter::visit(VarDeclType &decl) {
   os() << indent() << "VarDecl "
-       << (decl.isStateVariable() ? "(StateVar)" : "(NonStateVar)") << " \""
-       << decl.getName() << "\""
-       << ", " << ToString(decl.GetType()) << " " << &decl << " \n";
+       << "\"" << decl.getName() << "\""
+       << (decl.isStateVariable() ? " (StateVar) " : " (NonStateVar) ")
+       << ToString(decl.getLoc()) << ", " << ToString(decl.GetType()) << " "
+       << &decl << " \n";
   ConstDeclVisitor::visit(decl);
   unindent();
 }
