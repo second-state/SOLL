@@ -256,6 +256,20 @@ public:
     return i * 32;
   }
 
+  llvm::Type* getLLVMTy(const VarDecl *VD) {
+    return IRBuilder->getIntNTy(VD->GetType()->getBitNum());
+  }
+  llvm::Type* getLLVMTy(const FunctionDeclType &F) {
+    auto *Ty = F.getReturnParams()->getParams()[0]->GetType().get();
+    return IRBuilder->getIntNTy(Ty->getBitNum());
+  }
+  llvm::Value* castToTy(llvm::Value *Val, llvm::Type *TargetTy) {
+    return IRBuilder->CreateTrunc(Val, TargetTy, "trunc");
+  }
+  llvm::Value* extTo256(llvm::Value *Val) {
+    return IRBuilder->CreateZExt(Val, Int256Ty, "zext");
+  }
+
   void genABI(FunctionDeclType &F, llvm::BasicBlock *BB) {
     // TODO: refactor this
     // this impl. assumes all types are uint64
@@ -286,16 +300,17 @@ public:
           IRBuilder->CreateBitCast(cptr, Int256PtrTy, param_name + "_ptr_b");
       auto *val_b = IRBuilder->CreateLoad(Int256Ty, ptr_b, param_name + "_b");
       auto *val = IRBuilder->CreateCall(Func_bswap256, {val_b}, param_name);
-      ArgsVal.push_back(val);
-      ArgsTy.push_back(Int256Ty);
+      ArgsVal.push_back(castToTy(val, getLLVMTy(Fparams[i])));
+      ArgsTy.push_back(getLLVMTy(Fparams[i]));
     }
 
     // Call this function
-    llvm::FunctionType *FT = llvm::FunctionType::get(Int256Ty, ArgsTy, false);
+    llvm::FunctionType *FT = llvm::FunctionType::get(getLLVMTy(F), ArgsTy, false);
     Function *Func = Function::Create(FT, Function::ExternalLinkage,
                                       F.getName(), *GetModule());
     auto *r = IRBuilder->CreateCall(Func, ArgsVal, Fname + "_r");
-    auto *r_b = IRBuilder->CreateCall(Func_bswap256, {r}, Fname + "_r_b");
+    auto *ext_r = extTo256(r);
+    auto *r_b = IRBuilder->CreateCall(Func_bswap256, {ext_r}, Fname + "_r_b");
 
     // put return value to returndata
     auto *r_ptr = IRBuilder->CreateAlloca(Int256Ty, nullptr, Fname + "_r_ptr");

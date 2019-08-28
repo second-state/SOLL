@@ -107,15 +107,18 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
         getLLVMTy(ArrTy->getElementType().get()),
         ArrTy->getLength()
       );
-    } else {
+    } else if (auto Int = dynamic_cast<const soll::IntegerType*>(Ty)) {
       return Builder.getIntNTy(Ty->getBitNum());
+    } else {
+        return Builder.getIntNTy(7122);
     }
   }
   llvm::Type* getLLVMTy(const soll::VarDecl *VD) {
     return getLLVMTy(VD->GetType().get());
   }
   llvm::Type* getLLVMTy(const soll::FunctionDecl &FD) {
-    return getLLVMTy(FD.getType().get());
+    auto *Ty = FD.getReturnParams()->getParams()[0]->GetType().get();
+    return getLLVMTy(Ty);
   }
 
   llvm::Value *findLocalVarAddr(const std::string &S) {
