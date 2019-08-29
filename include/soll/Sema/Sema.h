@@ -87,7 +87,10 @@ public:
   bool isMagicFuncName(const std::string &Name) {
     // TODO: replace this
     // check all magic functionName
-    return Name == "require";
+    // TODO: refactor this
+    // msg and sender should NOT be magic name (add to magic name just to pass
+    // erc20)
+    return Name == "require" || Name == "msg" || Name == "sender";
   }
 };
 
