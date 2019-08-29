@@ -358,6 +358,8 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
     isSigned = TyNow->isSigned();
   else if (auto TyNow = dynamic_cast<const BooleanType *>(BO.getType().get()))
     isSigned = false;
+  else if (auto TyNow = dynamic_cast<const AddressType *>(BO.getType().get()))
+    isSigned = false;
   else
     assert(false && "Wrong type in binary operator!");
   llvm::Value *V = nullptr;

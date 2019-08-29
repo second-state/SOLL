@@ -233,8 +233,9 @@ class MemberExpr : public Expr {
   std::unique_ptr<Identifier> Name;
 
 public:
+  // TODO : set MemberExpr to RValue
   MemberExpr(ExprPtr &&Base, std::unique_ptr<Identifier> &&Name)
-      : Expr(ValueKind::VK_LValue), Base(std::move(Base)),
+      : Expr(ValueKind::VK_RValue), Base(std::move(Base)),
         Name(std::move(Name)) {
     // TODO : refactor this
     // hard code to pass erc20
