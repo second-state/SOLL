@@ -28,9 +28,33 @@ static TypePtr handleIntegerConversion(Sema &S, ExprPtr &LHS, ExprPtr &RHS,
   return commonTy;
 }
 
+static void TryImplicitCast(TypePtr DstTy, ExprPtr &Vaule) {
+  auto SrcTy = Vaule->getType();
+  if (SrcTy->isImplicitlyConvertibleTo(*DstTy)) {
+    if (DstTy->getCategory() == Type::Category::Integer &&
+        SrcTy->getCategory() == Type::Category::Integer) {
+      auto DITy = static_cast<IntegerType *>(DstTy.get());
+      auto SITy = static_cast<IntegerType *>(SrcTy.get());
+      if (SITy->getKind() != DITy->getKind())
+        Vaule = std::make_unique<ImplicitCastExpr>(
+            std::move(Vaule), CastKind::IntegralCast, DstTy);
+      // TODO: signed/unsigned check
+    }
+    // TODO: other type conversion such as address->int
+  } else {
+    assert(false && "no implicit conversion");
+  }
+}
+
 Sema::Sema(Lexer &lexer, ASTContext &ctxt, ASTConsumer &consumer)
     : Lex(lexer), Context(ctxt), Consumer(consumer),
       Diags(Lex.getDiagnostics()), SourceMgr(Lex.getSourceManager()) {}
+
+StmtPtr Sema::CreateReturnStmt(ExprPtr &&Value) {
+  TryImplicitCast(FunRtnTys.front(), Value);
+  return std::make_unique<ReturnStmt>(
+      Sema::DefaultLvalueConversion(std::move(Value)));
+}
 
 std::unique_ptr<FunctionDecl> Sema::CreateFunctionDecl(
     llvm::StringRef Name, FunctionDecl::Visibility Vis, StateMutability SM,
@@ -119,11 +143,6 @@ ExprPtr Sema::CreateCallExpr(ExprPtr &&Callee, std::vector<ExprPtr> &&Args) {
                                     ResultTy);
 }
 
-StmtPtr Sema::CreateReturnStmt(ExprPtr &&Vaule) {
-  return std::make_unique<ReturnStmt>(
-      Sema::DefaultLvalueConversion(std::move(Vaule)));
-}
-
 std::unique_ptr<Identifier> Sema::CreateIdentifier(const std::string Name) {
   return std::make_unique<Identifier>(Name, findIdentifierDecl(Name));
 }
@@ -209,21 +228,7 @@ TypePtr Sema::CheckAssignmentOperands(ExprPtr &LHS, ExprPtr &RHS,
                                       TypePtr CompoundType) {
   RHS = UsualUnaryConversions(std::move(RHS));
   auto LTy = LHS->getType();
-  auto RTy = RHS->getType();
-  if (RTy->isImplicitlyConvertibleTo(*LTy)) {
-    if (LTy->getCategory() == Type::Category::Integer &&
-        RTy->getCategory() == Type::Category::Integer) {
-      auto LITy = static_cast<IntegerType *>(LTy.get());
-      auto RITy = static_cast<IntegerType *>(RTy.get());
-      if (LITy->getKind() != RITy->getKind())
-        RHS = std::make_unique<ImplicitCastExpr>(std::move(RHS),
-                                                 CastKind::IntegralCast, LTy);
-      // TODO: signed/unsigned check
-    }
-    // TODO: other type conversion such as address->int
-  } else {
-    assert(false && "no implicit conversion");
-  }
+  TryImplicitCast(LHS->getType(), RHS);
   return LHS->getType();
 }
 

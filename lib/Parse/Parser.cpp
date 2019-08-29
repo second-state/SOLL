@@ -482,6 +482,7 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
     if (Kind == tok::kw_function) {
       SubNodes.push_back(
           std::move(parseFunctionDefinitionOrFunctionTypeStateVariable()));
+      Actions.EraseFunRtnTys();
     } else if (Kind == tok::kw_struct) {
       // [TODO] contract tok::kw_struct
       assert(false && "struct not implemented");
@@ -556,6 +557,10 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
     TheLexer.CachedLex();
     Result.ReturnParameters =
         parseParameterList(Options, PermitEmptyParameterList);
+    vector<TypePtr> Tys;
+    for (auto &&Return : Result.ReturnParameters->getParams())
+      Tys.push_back(Return->GetType());
+    Actions.SetFunRtnTys(Tys);
   } else {
     // [PrePOC] Need return empty parameter list.
     Result.ReturnParameters =

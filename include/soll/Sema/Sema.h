@@ -18,6 +18,7 @@ class Sema {
   // TODO: refactor this
   // current impl. assumes no name scope
   std::unordered_map<std::string, Decl *> ID2DeclTable;
+  std::vector<TypePtr> FunRtnTys;
 
 public:
   Lexer &Lex;
@@ -27,6 +28,14 @@ public:
   SourceManager &SourceMgr;
 
   Sema(Lexer &lexer, ASTContext &ctxt, ASTConsumer &consumer);
+
+  void SetFunRtnTys(std::vector<TypePtr> Tys) {
+    this->FunRtnTys = std::vector(Tys);
+  }
+  void EraseFunRtnTys() { this->FunRtnTys.clear(); }
+
+  // Stmt
+  StmtPtr CreateReturnStmt(ExprPtr &&Vaule);
 
   // Decl
   std::unique_ptr<FunctionDecl> CreateFunctionDecl(
@@ -42,9 +51,6 @@ public:
   ExprPtr CreateCallExpr(ExprPtr &&Callee,
                          std::vector<std::unique_ptr<Expr>> &&Args);
   std::unique_ptr<Identifier> CreateIdentifier(const std::string Name);
-
-  // Stmt
-  StmtPtr CreateReturnStmt(ExprPtr &&Vaule);
 
   /// type checking binary operators (subroutines of CreateBinOp)
   /// this may add type casting
