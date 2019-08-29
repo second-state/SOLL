@@ -688,6 +688,30 @@ void FuncBodyCodeGen::emitCast(const CastExpr &Cast) {
   }
   case CastKind::TypeCast: {
     // TODO : address to sign
+    if (auto BaseATy = dynamic_cast<const AddressType *>(
+            Cast.getSubExpr()->getType().get())) {
+      if (auto CastITy =
+              dynamic_cast<const IntegerType *>(Cast.getType().get())) {
+        assert(BaseATy->getBitNum() <= CastITy->getBitNum() &&
+               "Integer Type too small");
+        result =
+            Builder.CreateZExtOrTrunc(findTempValue(Cast.getSubExpr()),
+                                      Builder.getIntNTy(CastITy->getBitNum()));
+      }
+    }
+    if (auto BaseITy = dynamic_cast<const IntegerType *>(
+            Cast.getSubExpr()->getType().get())) {
+      assert(!BaseITy->isSigned() && "Cannot cast from signed to address");
+      if (auto CastATy =
+              dynamic_cast<const AddressType *>(Cast.getType().get())) {
+        assert(BaseITy->getBitNum() <= CastATy->getBitNum() &&
+               "Integer Type too small");
+        result =
+            Builder.CreateZExtOrTrunc(findTempValue(Cast.getSubExpr()),
+                                      Builder.getIntNTy(CastATy->getBitNum()));
+      }
+    }
+
     break;
   }
   default:

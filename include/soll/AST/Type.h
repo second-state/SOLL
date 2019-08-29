@@ -44,8 +44,17 @@ public:
 };
 
 class AddressType : public Type {
-  unsigned int getBitNum() const override { return 80; }
   Category getCategory() const override { return Category::Address; }
+
+  bool isImplicitlyConvertibleTo(Type const &_other) const override {
+    return _other.getCategory() == Category::Address;
+  }
+  bool isExplicitlyConvertibleTo(Type const &_convertTo) const override {
+    return _convertTo.getCategory() == Category::Address;
+  }
+
+public:
+  unsigned int getBitNum() const override { return 80; }
 };
 
 class BooleanType : public Type {
