@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #pragma once
 
+#include "soll/AST/ASTContext.h"
 #include "soll/AST/Decl.h"
 #include "soll/AST/Expr.h"
 #include "soll/AST/StmtVisitor.h"
@@ -28,6 +29,8 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
   llvm::ConstantInt *Zero256 = nullptr;
   llvm::ConstantInt *One256 = nullptr;
 
+  soll::ASTContext &ASTCtx;
+
   // TODO: replace this temp impl
   // proper impl is like Decl* -> llvm::Value *
   // but it requires more consideration
@@ -39,11 +42,6 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
   std::unordered_map<const soll::Stmt *, llvm::Value *> TempValueTable;
   // TODO: replace this temp impl
   std::unordered_map<const soll::Stmt *, llvm::BasicBlock *> BasicBlockTable;
-
-  // Counter to store which position the next storage item should be stored in
-  int StoragePosCounter;
-  // Storage Item name => Position in Storage
-  std::unordered_map<std::string, int> StorageItemPosTable;
 
   // codegen LLVM IR in the visit functions
   void visit(BlockType &) override;
@@ -73,18 +71,6 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
   llvm::Value *loadValue(const soll::Expr *ID);
   // create store instruction based on DataLocation
   void storeValue(const soll::Expr *Expr, llvm::Value *Val);
-
-  // return storage position of given identifier name, allocate if not found
-  int findStoragePosition(const std::string &S, unsigned Len = 1) {
-    if (StorageItemPosTable.count(S)) {
-      return StorageItemPosTable[S];
-    } else {
-      int res = StoragePosCounter;
-      StorageItemPosTable[S] = StoragePosCounter;
-      StoragePosCounter += Len;
-      return res;
-    }
-  }
 
   // for mapping and dynamic storage array codegen
   // codegen function for concating {idx, base}
@@ -138,7 +124,7 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
 public:
   FuncBodyCodeGen(llvm::LLVMContext &Context,
                   llvm::IRBuilder<llvm::NoFolder> &Builder,
-                  llvm::Module &Module);
+                  llvm::Module &Module, soll::ASTContext &Ctx);
   // codegen a certain function
   void compile(const soll::FunctionDecl &);
 };

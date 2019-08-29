@@ -57,9 +57,10 @@ int main(int argc, const char **argv) {
   p->HandleSourceUnit(*Ctx, source);
 
   LLVMContext Context;
+  soll::ASTContext ASTCtx;
   IRBuilder<llvm::NoFolder> Builder(Context);
   llvm::Module Module("FuncBodyCGTest", Context);
-  FuncBodyCodeGen FBCG(Context, Builder, Module);
+  FuncBodyCodeGen FBCG(Context, Builder, Module, ASTCtx);
 
   FBCG.compile(*static_cast<const FunctionDecl *>(
       static_cast<const ContractDecl *>(source.getNodes().front())

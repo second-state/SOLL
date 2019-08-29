@@ -110,7 +110,7 @@ public:
     // sload
     FT = llvm::FunctionType::get(Int256Ty, {Int256Ty}, false);
     Func_sload = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
-                                         "sload", *M);
+                                        "sload", *M);
     Func_sload->addFnAttr(
         llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
 
@@ -242,7 +242,7 @@ public:
   }
 
   void visit(FunctionDeclType &F) override {
-    FuncBodyCodeGen(M->getContext(), *IRBuilder, *GetModule()).compile(F);
+    FuncBodyCodeGen(M->getContext(), *IRBuilder, *GetModule(), *Ctx).compile(F);
   }
 
   size_t getABISize(const std::vector<const VarDecl *> &params) const {
@@ -256,17 +256,17 @@ public:
     return i * 32;
   }
 
-  llvm::Type* getLLVMTy(const VarDecl *VD) {
+  llvm::Type *getLLVMTy(const VarDecl *VD) {
     return IRBuilder->getIntNTy(VD->GetType()->getBitNum());
   }
-  llvm::Type* getLLVMTy(const FunctionDeclType &F) {
+  llvm::Type *getLLVMTy(const FunctionDeclType &F) {
     auto *Ty = F.getReturnParams()->getParams()[0]->GetType().get();
     return IRBuilder->getIntNTy(Ty->getBitNum());
   }
-  llvm::Value* castToTy(llvm::Value *Val, llvm::Type *TargetTy) {
+  llvm::Value *castToTy(llvm::Value *Val, llvm::Type *TargetTy) {
     return IRBuilder->CreateTrunc(Val, TargetTy, "trunc");
   }
-  llvm::Value* extTo256(llvm::Value *Val) {
+  llvm::Value *extTo256(llvm::Value *Val) {
     return IRBuilder->CreateZExt(Val, Int256Ty, "zext");
   }
 
@@ -305,7 +305,8 @@ public:
     }
 
     // Call this function
-    llvm::FunctionType *FT = llvm::FunctionType::get(getLLVMTy(F), ArgsTy, false);
+    llvm::FunctionType *FT =
+        llvm::FunctionType::get(getLLVMTy(F), ArgsTy, false);
     Function *Func = Function::Create(FT, Function::ExternalLinkage,
                                       F.getName(), *GetModule());
     auto *r = IRBuilder->CreateCall(Func, ArgsVal, Fname + "_r");

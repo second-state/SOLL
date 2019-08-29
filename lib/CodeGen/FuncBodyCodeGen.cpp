@@ -13,13 +13,12 @@ using llvm::Value;
 
 FuncBodyCodeGen::FuncBodyCodeGen(llvm::LLVMContext &Context,
                                  llvm::IRBuilder<llvm::NoFolder> &Builder,
-                                 llvm::Module &Module)
-    : Context(Context), Builder(Builder), Module(Module) {
+                                 llvm::Module &Module, soll::ASTContext &Ctx)
+    : Context(Context), Builder(Builder), Module(Module), ASTCtx(Ctx) {
   Int256Ty = Builder.getIntNTy(256);
   VoidTy = Builder.getVoidTy();
   Zero256 = Builder.getIntN(256, 0);
   One256 = Builder.getIntN(256, 1);
-  StoragePosCounter = 0;
 }
 
 void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
@@ -724,7 +723,7 @@ void FuncBodyCodeGen::visit(IdentifierType &ID) {
   if (auto *VD = dynamic_cast<const VarDecl *>(D)) {
     if (VD->isStateVariable()) {
       // allocate storage position if not allocated
-      int PosInStorage = findStoragePosition(ID.getName());
+      int PosInStorage = ASTCtx.findStoragePosition(ID.getName());
       V = Builder.getIntN(256, PosInStorage);
     } else {
       if (llvm::Value *Addr = findLocalVarAddr(ID.getName()))

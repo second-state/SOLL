@@ -22,11 +22,11 @@ using llvm::LLVMContext;
 // using llvm::BasicBlock;
 
 int main(int argc, const char **argv) {
-  using std::make_unique;
   using std::make_shared;
+  using std::make_unique;
 
   // should be shared ptr, waiting for merge request
-  
+
   // mapping
   /*
   auto mapping = make_unique<Identifier>("map");
@@ -76,64 +76,46 @@ int main(int argc, const char **argv) {
   val->setType(make_shared<IntegerType>(IntegerType::IntKind::I64));
 
   SourceUnit source(make_unique_vector<Decl>(make_unique<ContractDecl>(
-    "IndexAccess",
-    make_unique_vector<InheritanceSpecifier>(),
-    make_unique_vector<Decl>(
-      make_unique<FunctionDecl>(
-        "main",
-        Decl::Visibility::Public,
-        StateMutability::Pure,
-        false,
-        make_unique<ParamList>(make_unique_vector<VarDecl>()),
-        make_unique_vector<ModifierInvocation>(),
-        make_unique<ParamList>(make_unique_vector<VarDecl>()),
-        make_unique<Block>(make_unique_vector<Stmt>(
-          make_unique<BinaryOperator>(
-            make_unique<IndexAccess>(
-              std::move(arr),
-              std::move(idx)
-            ),
-            std::move(val),
-            BO_Assign
-          )
-        ))
-      )
-    ),
-    ContractDecl::ContractKind::Contract
-  )));
+      "IndexAccess", make_unique_vector<InheritanceSpecifier>(),
+      make_unique_vector<Decl>(make_unique<FunctionDecl>(
+          "main", Decl::Visibility::Public, StateMutability::Pure, false,
+          make_unique<ParamList>(make_unique_vector<VarDecl>()),
+          make_unique_vector<ModifierInvocation>(),
+          make_unique<ParamList>(make_unique_vector<VarDecl>()),
+          make_unique<Block>(
+              make_unique_vector<Stmt>(make_unique<BinaryOperator>(
+                  make_unique<IndexAccess>(std::move(arr), std::move(idx)),
+                  std::move(val), BO_Assign))))),
+      ContractDecl::ContractKind::Contract)));
 
   ASTContext *Ctx = new ASTContext();
   auto p = CreateASTPrinter();
   p->HandleSourceUnit(*Ctx, source);
 
   LLVMContext Context;
+  soll::ASTContext ASTCtx;
   IRBuilder<llvm::NoFolder> Builder(Context);
   llvm::Module Module("FuncBodyCGTest", Context);
-  FuncBodyCodeGen FBCG(Context, Builder, Module);
+  FuncBodyCodeGen FBCG(Context, Builder, Module, ASTCtx);
 
   // revert
   llvm::FunctionType *FT = llvm::FunctionType::get(
-    Builder.getVoidTy(),
-    {Builder.getInt8PtrTy(), Builder.getInt32Ty()}, 
-    false
-  );
+      Builder.getVoidTy(), {Builder.getInt8PtrTy(), Builder.getInt32Ty()},
+      false);
   llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "revert", Module);
 
   // keccak
-  FT = llvm::FunctionType::get(
-    Builder.getIntNTy(256),
-    {Builder.getInt8PtrTy(), Builder.getIntNTy(256)},
-    false
-  );
+  FT = llvm::FunctionType::get(Builder.getIntNTy(256),
+                               {Builder.getInt8PtrTy(), Builder.getIntNTy(256)},
+                               false);
   llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "keccak", Module);
 
   // storage store
-  FT = llvm::FunctionType::get(
-    Builder.getVoidTy(),
-    {Builder.getIntNTy(256), Builder.getIntNTy(256)},
-    false
-  );
-  llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "storageStore", Module);
+  FT = llvm::FunctionType::get(Builder.getVoidTy(),
+                               {Builder.getIntNTy(256), Builder.getIntNTy(256)},
+                               false);
+  llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "storageStore",
+                         Module);
 
   FBCG.compile(*static_cast<const FunctionDecl *>(
       static_cast<const ContractDecl *>(source.getNodes().front())

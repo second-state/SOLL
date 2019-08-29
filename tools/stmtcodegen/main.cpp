@@ -251,9 +251,10 @@ int main(int argc, const char **argv) {
   p->HandleSourceUnit(*Ctx, *source);
 
   LLVMContext Context;
+  soll::ASTContext ASTCtx;
   IRBuilder<llvm::NoFolder> Builder(Context);
   llvm::Module Module("FuncBodyCGTest", Context);
-  FuncBodyCodeGen FBCG(Context, Builder, Module);
+  FuncBodyCodeGen FBCG(Context, Builder, Module, ASTCtx);
   BreakableVisitor BV;
 
   BV.check(*static_cast<FunctionDecl *>(
