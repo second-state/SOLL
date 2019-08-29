@@ -750,35 +750,18 @@ void FuncBodyCodeGen::visit(IdentifierType &ID) {
   TempValueTable[&ID] = V;
 }
 
-// emitConcate {idx, base} and store into emitConcateArr using little Endian
 void FuncBodyCodeGen::emitConcate(llvm::Value *emitConcateArr,
                                   unsigned BaseBitNum, unsigned IdxBitNum,
                                   llvm::Value *BaseV, llvm::Value *IdxV) {
-  llvm::Value *Ptr =
-      Builder.CreateAlloca(Builder.getInt8PtrTy(), nullptr, "Ptr");
-  Builder.CreateStore(
-      Builder.CreateInBoundsGEP(emitConcateArr,
-                                {Builder.getInt32(0), Builder.getInt32(0)}),
-      Ptr);
   std::vector<unsigned> BitNum{BaseBitNum, IdxBitNum};
   std::vector<llvm::Value *> Val{BaseV, IdxV};
-  for (int i = 0; i < 2; i++) {
-    llvm::Value *Mask = Builder.getIntN(BitNum[i], (1 << 9) - 1);
-    llvm::Value *ShiftWidth = Builder.getIntN(BitNum[i], 8);
-    for (unsigned j = 0; j < BitNum[i] / 8; j++) {
-      // mask
-      llvm::Value *MaskedV = Builder.CreateAnd(Val[i], Mask, "AndMask");
-      MaskedV = Builder.CreateTrunc(MaskedV, Builder.getInt8Ty(), "Trunc");
-      // store
-      llvm::Value *ArrEntry = Builder.CreateLoad(Ptr);
-      Builder.CreateStore(MaskedV, ArrEntry);
-      // update ptr / val[i]
-      ArrEntry = Builder.CreateLoad(Ptr);
-      llvm::Value *NxtPtr = Builder.CreateInBoundsGEP(
-          Builder.getInt8Ty(), ArrEntry, Builder.getInt8(1), "NxtEntry");
-      Builder.CreateStore(NxtPtr, Ptr);
-      Val[i] = Builder.CreateAShr(Val[i], ShiftWidth, "RShift");
-    }
+  for (int i = 0, idx = 0; i < 2; i++) {
+    llvm::Value *Ptr = Builder.CreateInBoundsGEP(
+        emitConcateArr, {Builder.getInt32(0), Builder.getInt32(idx)});
+    llvm::Value *CPtr = Builder.CreatePointerCast(
+        Ptr, llvm::Type::getIntNPtrTy(Context, BitNum[i]), "PtrCast");
+    Builder.CreateStore(Val[i], CPtr);
+    idx += BitNum[i] / 8;
   }
 }
 
