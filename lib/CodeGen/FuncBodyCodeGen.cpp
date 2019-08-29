@@ -32,7 +32,8 @@ void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
     for (auto *VD : PsSol)
       Tys.push_back(getLLVMTy(VD));
     llvm::ArrayRef<llvm::Type *> ParamTys(&Tys[0], Tys.size());
-    llvm::FunctionType *FT = llvm::FunctionType::get(getLLVMTy(FD), ParamTys, false);
+    llvm::FunctionType *FT =
+        llvm::FunctionType::get(getLLVMTy(FD), ParamTys, false);
     CurFunc =
         Function::Create(FT, Function::ExternalLinkage, FD.getName(), &Module);
   }
@@ -40,7 +41,7 @@ void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
   Builder.SetInsertPoint(BB);
 
   auto PsLLVM = CurFunc->arg_begin();
-  for (auto *VD :PsSol) {
+  for (auto *VD : PsSol) {
     llvm::Value *P = PsLLVM++;
     P->setName(VD->getName());
     llvm::Value *paramAddr =
@@ -227,7 +228,8 @@ void FuncBodyCodeGen::visit(DeclStmtType &DS) {
   // TODO: replace this temp impl
   // this impl assumes declared variables are uint64
   for (auto &D : DS.getVarDecls()) {
-    auto *p = Builder.CreateAlloca(getLLVMTy(D), nullptr, D->getName() + "_addr");
+    auto *p =
+        Builder.CreateAlloca(getLLVMTy(D), nullptr, D->getName() + "_addr");
     LocalVarAddrTable[D->getName()] = p;
   }
   // TODO: replace this
@@ -300,17 +302,17 @@ void FuncBodyCodeGen::visit(UnaryOperatorType &UO) {
   TempValueTable[&UO] = V;
 }
 
-Value* FuncBodyCodeGen::loadValue(const Expr* Expr) {
+Value *FuncBodyCodeGen::loadValue(const Expr *Expr) {
   Value *Addr = findTempValue(Expr);
   Value *Val = nullptr;
-  if (auto *ID = dynamic_cast<const Identifier*>(Expr)) {
-    auto *D = dynamic_cast<const VarDecl*>(ID->getCorrespondDecl());
+  if (auto *ID = dynamic_cast<const Identifier *>(Expr)) {
+    auto *D = dynamic_cast<const VarDecl *>(ID->getCorrespondDecl());
     if (D->isStateVariable()) {
       Val = Builder.CreateCall(Module.getFunction("sload"), {Addr}, "sload");
     } else {
       Val = Builder.CreateLoad(Addr);
     }
-  } else if (auto IA = dynamic_cast<const IndexAccess*>(Expr)) {
+  } else if (auto IA = dynamic_cast<const IndexAccess *>(Expr)) {
     if (IA->isStateVariable()) {
       Val = Builder.CreateCall(Module.getFunction("sload"), {Addr}, "sload");
     } else {
@@ -324,14 +326,14 @@ Value* FuncBodyCodeGen::loadValue(const Expr* Expr) {
 
 void FuncBodyCodeGen::storeValue(const Expr *Expr, Value *Val) {
   Value *Addr = findTempValue(Expr);
-  if (auto *ID = dynamic_cast<const Identifier*>(Expr)) {
-    auto *D = dynamic_cast<const VarDecl*>(ID->getCorrespondDecl());
+  if (auto *ID = dynamic_cast<const Identifier *>(Expr)) {
+    auto *D = dynamic_cast<const VarDecl *>(ID->getCorrespondDecl());
     if (D->isStateVariable()) {
       Builder.CreateCall(Module.getFunction("sstore"), {Val, Addr}, "sstore");
     } else {
       Builder.CreateStore(Val, Addr);
     }
-  } else if (auto IA = dynamic_cast<const IndexAccess*>(Expr)) {
+  } else if (auto IA = dynamic_cast<const IndexAccess *>(Expr)) {
     if (IA->isStateVariable()) {
       Builder.CreateCall(Module.getFunction("sstore"), {Val, Addr}, "sstore");
     } else {
@@ -349,7 +351,7 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
   bool isSigned;
   if (auto TyNow = dynamic_cast<const IntegerType *>(BO.getType().get()))
     isSigned = TyNow->isSigned();
-  else if(auto TyNow = dynamic_cast<const BooleanType *>(BO.getType().get()))
+  else if (auto TyNow = dynamic_cast<const BooleanType *>(BO.getType().get()))
     isSigned = false;
   else
     assert(false && "Wrong type in binary operator!");
@@ -404,7 +406,8 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
     V = rhsVal;
   }
 
-  if (BO.isAdditiveOp() || BO.isMultiplicativeOp() || BO.isComparisonOp() || BO.isShiftOp() || BO.isBitwiseOp()) {
+  if (BO.isAdditiveOp() || BO.isMultiplicativeOp() || BO.isComparisonOp() ||
+      BO.isShiftOp() || BO.isBitwiseOp()) {
     using Pred = llvm::CmpInst::Predicate;
     ConstStmtVisitor::visit(BO);
     llvm::Value *lhs = findTempValue(BO.getLHS());
@@ -432,16 +435,20 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
         V = Builder.CreateURem(lhs, rhs, "BO_Rem");
       break;
     case BinaryOperatorKind::BO_GE:
-      V = Builder.CreateICmp(Pred(Pred::ICMP_UGE+(isSigned<<2)), lhs, rhs, "BO_GE");
+      V = Builder.CreateICmp(Pred(Pred::ICMP_UGE + (isSigned << 2)), lhs, rhs,
+                             "BO_GE");
       break;
     case BinaryOperatorKind::BO_GT:
-      V = Builder.CreateICmp(Pred(Pred::ICMP_UGT+(isSigned<<2)), lhs, rhs, "BO_GT");
+      V = Builder.CreateICmp(Pred(Pred::ICMP_UGT + (isSigned << 2)), lhs, rhs,
+                             "BO_GT");
       break;
     case BinaryOperatorKind::BO_LE:
-      V = Builder.CreateICmp(Pred(Pred::ICMP_ULE+(isSigned<<2)), lhs, rhs, "BO_LE");
+      V = Builder.CreateICmp(Pred(Pred::ICMP_ULE + (isSigned << 2)), lhs, rhs,
+                             "BO_LE");
       break;
     case BinaryOperatorKind::BO_LT:
-      V = Builder.CreateICmp(Pred(Pred::ICMP_ULT+(isSigned<<2)), lhs, rhs, "BO_LT");
+      V = Builder.CreateICmp(Pred(Pred::ICMP_ULT + (isSigned << 2)), lhs, rhs,
+                             "BO_LT");
       break;
     case BinaryOperatorKind::BO_EQ:
       V = Builder.CreateICmpEQ(lhs, rhs, "BO_EQ");
@@ -670,11 +677,13 @@ void FuncBodyCodeGen::emitCast(const CastExpr &Cast) {
       case Type::Category::Integer: {
         auto BaseTy(IntegerType);
         if (BaseTy->isSigned())
-          result = Builder.CreateSExtOrTrunc(findTempValue(Cast.getTargetValue()),
-                                      Builder.getIntNTy(TargetTy->getBitNum()));
+          result = Builder.CreateSExtOrTrunc(
+              findTempValue(Cast.getTargetValue()),
+              Builder.getIntNTy(TargetTy->getBitNum()));
         else
-          result = Builder.CreateZExtOrTrunc(findTempValue(Cast.getTargetValue()),
-                                      Builder.getIntNTy(TargetTy->getBitNum()));
+          result = Builder.CreateZExtOrTrunc(
+              findTempValue(Cast.getTargetValue()),
+              Builder.getIntNTy(TargetTy->getBitNum()));
         break;
       }
       case Type::Category::RationalNumber: {
@@ -692,7 +701,7 @@ void FuncBodyCodeGen::emitCast(const CastExpr &Cast) {
     }
     break;
   }
-  default :
+  default:
     break;
   }
   TempValueTable[&Cast] = result;
@@ -712,17 +721,10 @@ void FuncBodyCodeGen::visit(IdentifierType &ID) {
 
   const Decl *D = ID.getCorrespondDecl();
 
-  if (auto *VD = dynamic_cast<const VarDecl*>(D)) {
+  if (auto *VD = dynamic_cast<const VarDecl *>(D)) {
     if (VD->isStateVariable()) {
       // allocate storage position if not allocated
       int PosInStorage = findStoragePosition(ID.getName());
-      if (PosInStorage == -1) {
-        int Length = 1;
-        if (auto *ArrTy = dynamic_cast<const ArrayType*>(VD->GetType().get())) {
-          Length = (ArrTy->isDynamicSized()? 1 : ArrTy->getLength());
-        }
-        PosInStorage = allocateStorage(ID.getName(), Length);
-      }
       V = Builder.getIntN(256, PosInStorage);
     } else {
       if (llvm::Value *Addr = findLocalVarAddr(ID.getName()))
@@ -735,14 +737,14 @@ void FuncBodyCodeGen::visit(IdentifierType &ID) {
   TempValueTable[&ID] = V;
 }
 
-// concate {idx, base} and store into ConcateArr using little Endian
-void FuncBodyCodeGen::concate(llvm::Value *ConcateArr, unsigned BaseBitNum,
-                              unsigned IdxBitNum, llvm::Value *BaseV,
-                              llvm::Value *IdxV) {
+// emitConcate {idx, base} and store into emitConcateArr using little Endian
+void FuncBodyCodeGen::emitConcate(llvm::Value *emitConcateArr,
+                                  unsigned BaseBitNum, unsigned IdxBitNum,
+                                  llvm::Value *BaseV, llvm::Value *IdxV) {
   llvm::Value *Ptr =
       Builder.CreateAlloca(Builder.getInt8PtrTy(), nullptr, "Ptr");
   Builder.CreateStore(
-      Builder.CreateInBoundsGEP(ConcateArr,
+      Builder.CreateInBoundsGEP(emitConcateArr,
                                 {Builder.getInt32(0), Builder.getInt32(0)}),
       Ptr);
   std::vector<unsigned> BitNum{BaseBitNum, IdxBitNum};
@@ -768,8 +770,8 @@ void FuncBodyCodeGen::concate(llvm::Value *ConcateArr, unsigned BaseBitNum,
 }
 
 // codegen for checking whether array idx is out of bound
-void FuncBodyCodeGen::checkArrayOutOfBound(llvm::Value *ArrSz,
-                                           llvm::Value *Idx) {
+void FuncBodyCodeGen::emitCheckArrayOutOfBound(llvm::Value *ArrSz,
+                                               llvm::Value *Idx) {
   static std::string ErrMsg = "\"Array out of bound\"";
   static llvm::Value *ErrStr =
       Builder.CreateGlobalString(ErrMsg, "ExceptionMsg");
@@ -801,18 +803,17 @@ void FuncBodyCodeGen::visit(IndexAccessType &IA) {
     const MappingType *MapTy = dynamic_cast<const MappingType *>(ExprTy);
     unsigned BaseBitNum = MapTy->getBitNum(); // const 256
     unsigned IdxBitNum = MapTy->getKeyType()->getBitNum();
-    unsigned ConcateArrLength = (BaseBitNum + IdxBitNum)/8;
-    llvm::ArrayType *ConcateArrTy = llvm::ArrayType::get(
-      Builder.getInt8Ty(),
-      ConcateArrLength
-    );
-    llvm::Value *ConcateArr = Builder.CreateAlloca(ConcateArrTy, nullptr, "ConcateArr");
-    concate(ConcateArr, BaseBitNum, IdxBitNum, BaseV, IdxV);
+    unsigned emitConcateArrLength = (BaseBitNum + IdxBitNum) / 8;
+    llvm::ArrayType *emitConcateArrTy =
+        llvm::ArrayType::get(Builder.getInt8Ty(), emitConcateArrLength);
+    llvm::Value *emitConcateArr =
+        Builder.CreateAlloca(emitConcateArrTy, nullptr, "emitConcateArr");
+    emitConcate(emitConcateArr, BaseBitNum, IdxBitNum, BaseV, IdxV);
     V = Builder.CreateCall(
         Module.getFunction("keccak"),
-        {Builder.CreateInBoundsGEP(ConcateArr,
+        {Builder.CreateInBoundsGEP(emitConcateArr,
                                    {Builder.getInt32(0), Builder.getInt32(0)}),
-         Builder.getIntN(256, ConcateArrLength)},
+         Builder.getIntN(256, emitConcateArrLength)},
         "Mapping");
   } else if (IA.getBase()->getType()->getCategory() == Type::Category::Array) {
     // Array Type : Fixed Size Mem Array, Fixed Sized Storage Array, Dynamic
@@ -825,7 +826,7 @@ void FuncBodyCodeGen::visit(IndexAccessType &IA) {
       // Fixed size memory array : store array address in TempValueTable
       // TODO : Assume only Integer Array
       unsigned ArraySize = ArrTy->getLength();
-      checkArrayOutOfBound(Builder.getIntN(256, ArraySize), IdxV);
+      emitCheckArrayOutOfBound(Builder.getIntN(256, ArraySize), IdxV);
       llvm::Type *Ty = getLLVMTy(ArrTy);
       V = Builder.CreateInBoundsGEP(Ty, BaseV, {Builder.getIntN(256, 0), IdxV},
                                     "arrIdxAddr");
@@ -834,27 +835,27 @@ void FuncBodyCodeGen::visit(IndexAccessType &IA) {
       // TODO: modify this, dyn array size is stored in memory but currently I
       // don't know where can I load the correct value
       unsigned ArraySize = 7122;
-      checkArrayOutOfBound(Builder.getIntN(256, ArraySize), IdxV);
+      emitCheckArrayOutOfBound(Builder.getIntN(256, ArraySize), IdxV);
       unsigned BaseBitNum = ArrTy->getBitNum(); // always 256 bit
       unsigned IdxBitNum =
           IA.getIndex()->getType()->getBitNum(); // always 256 bit
-      unsigned ConcateArrLength = (BaseBitNum + IdxBitNum) / 8;
-      llvm::ArrayType *ConcateArrTy =
-          llvm::ArrayType::get(Builder.getInt8Ty(), ConcateArrLength);
-      llvm::Value *ConcateArr =
-          Builder.CreateAlloca(ConcateArrTy, nullptr, "ConcateArr");
-      concate(ConcateArr, BaseBitNum, IdxBitNum, BaseV, IdxV);
+      unsigned emitConcateArrLength = (BaseBitNum + IdxBitNum) / 8;
+      llvm::ArrayType *emitConcateArrTy =
+          llvm::ArrayType::get(Builder.getInt8Ty(), emitConcateArrLength);
+      llvm::Value *emitConcateArr =
+          Builder.CreateAlloca(emitConcateArrTy, nullptr, "emitConcateArr");
+      emitConcate(emitConcateArr, BaseBitNum, IdxBitNum, BaseV, IdxV);
       V = Builder.CreateCall(
           Module.getFunction("keccak"),
           {Builder.CreateInBoundsGEP(
-               ConcateArr, {Builder.getInt32(0), Builder.getInt32(0)}),
-           Builder.getIntN(256, ConcateArrLength)},
+               emitConcateArr, {Builder.getInt32(0), Builder.getInt32(0)}),
+           Builder.getIntN(256, emitConcateArrLength)},
           "DynArrEntry");
     } else {
       // Fixed Size Storage Array : store storage address of slot the accessed
       // element belongs to in TempValueTable
       unsigned ArraySize = ArrTy->getLength();
-      checkArrayOutOfBound(Builder.getIntN(256, ArraySize), IdxV);
+      emitCheckArrayOutOfBound(Builder.getIntN(256, ArraySize), IdxV);
       unsigned BytePerElement = ArrTy->getElementType()->getBitNum() / 8;
       llvm::Value *Slot =
           Builder.CreateUDiv(Builder.getIntN(256, 32),

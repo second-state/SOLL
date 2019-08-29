@@ -162,6 +162,7 @@ public:
 class MappingType : public ReferenceType {
   TypePtr KeyType;
   TypePtr ValueType;
+
 public:
   MappingType(TypePtr &&KT, TypePtr &&VT)
       : KeyType(std::move(KT)), ValueType(std::move(VT)),

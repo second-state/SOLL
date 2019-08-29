@@ -70,51 +70,46 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
   void emitCast(const soll::CastExpr &Cast);
 
   // create load instruction based on DataLocation
-  llvm::Value* loadValue(const soll::Expr *ID);
+  llvm::Value *loadValue(const soll::Expr *ID);
   // create store instruction based on DataLocation
   void storeValue(const soll::Expr *Expr, llvm::Value *Val);
 
-  // return the allocated storage position and update StoragePositionCounter
-  int allocateStorage(const std::string &Name, unsigned Len = 1) {
-    int res = StoragePosCounter;
-    StorageItemPosTable[Name] = StoragePosCounter;
-    StoragePosCounter += Len;
-    return res;
-  }
-
-  // return storage position of given identifier name, -1 if not found
-  int findStoragePosition(const std::string &S) {
-    if (StorageItemPosTable.count(S))
+  // return storage position of given identifier name, allocate if not found
+  int findStoragePosition(const std::string &S, unsigned Len = 1) {
+    if (StorageItemPosTable.count(S)) {
       return StorageItemPosTable[S];
-    else
-      return -1;
-  } 
+    } else {
+      int res = StoragePosCounter;
+      StorageItemPosTable[S] = StoragePosCounter;
+      StoragePosCounter += Len;
+      return res;
+    }
+  }
 
   // for mapping and dynamic storage array codegen
   // codegen function for concating {idx, base}
-  void concate(llvm::Value *, unsigned, unsigned, llvm::Value *, llvm::Value *);
+  void emitConcate(llvm::Value *, unsigned, unsigned, llvm::Value *,
+                   llvm::Value *);
 
   // for array codegen
   // codegen function for checking whether array idx is out of bound
-  void checkArrayOutOfBound(llvm::Value *, llvm::Value *);
-  
+  void emitCheckArrayOutOfBound(llvm::Value *, llvm::Value *);
+
   // ast type -> llvm type ptr
   // currently support integer and integer memory array ONLY
   // TODO: add other types
-  llvm::Type* getLLVMTy(const soll::Type* Ty) {
-    if (auto *ArrTy = dynamic_cast<const soll::ArrayType*>(Ty)) {
-      return llvm::ArrayType::get(
-        getLLVMTy(ArrTy->getElementType().get()),
-        ArrTy->getLength()
-      );
+  llvm::Type *getLLVMTy(const soll::Type *Ty) {
+    if (auto *ArrTy = dynamic_cast<const soll::ArrayType *>(Ty)) {
+      return llvm::ArrayType::get(getLLVMTy(ArrTy->getElementType().get()),
+                                  ArrTy->getLength());
     } else {
       return Builder.getIntNTy(Ty->getBitNum());
     }
   }
-  llvm::Type* getLLVMTy(const soll::VarDecl *VD) {
+  llvm::Type *getLLVMTy(const soll::VarDecl *VD) {
     return getLLVMTy(VD->GetType().get());
   }
-  llvm::Type* getLLVMTy(const soll::FunctionDecl &FD) {
+  llvm::Type *getLLVMTy(const soll::FunctionDecl &FD) {
     auto *Ty = FD.getReturnParams()->getParams()[0]->GetType().get();
     return getLLVMTy(Ty);
   }
