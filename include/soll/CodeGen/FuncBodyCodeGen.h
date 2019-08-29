@@ -31,6 +31,8 @@ class FuncBodyCodeGen : public ConstStmtVisitor {
 
   llvm::ConstantInt *Zero256 = nullptr;
   llvm::ConstantInt *One256 = nullptr;
+  llvm::ConstantInt *False = nullptr;
+  llvm::ConstantInt *True = nullptr;
 
   ASTContext &ASTCtx;
 

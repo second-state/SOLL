@@ -22,6 +22,8 @@ FuncBodyCodeGen::FuncBodyCodeGen(llvm::LLVMContext &Context,
   BytesTy = Module.getTypeByName("bytes");
   Zero256 = Builder.getIntN(256, 0);
   One256 = Builder.getIntN(256, 1);
+  False = Builder.getFalse();
+  True = Builder.getTrue();
 }
 
 void FuncBodyCodeGen::compile(const FunctionDecl &FD) {
@@ -78,8 +80,8 @@ void FuncBodyCodeGen::visit(IfStmtType &IF) {
   EndBB = BasicBlock::Create(Context, "if.end", CurFunc);
 
   IF.getCond()->accept(*this);
-  Value *cond = Builder.CreateICmpNE(findTempValue(IF.getCond()),
-                                     Builder.getFalse(), "cond");
+  Value *cond =
+      Builder.CreateICmpNE(findTempValue(IF.getCond()), False, "cond");
   Builder.CreateCondBr(cond, ThenBB, Else_exist ? ElseBB : EndBB);
 
   ThenBB->moveAfter(&CurFunc->back());
@@ -119,16 +121,16 @@ void FuncBodyCodeGen::visit(WhileStmtType &While) {
     Builder.CreateBr(While.isDoWhile() ? BodyBB : CondBB);
     Builder.SetInsertPoint(CondBB);
     While.getCond()->accept(*this);
-    Value *cond = Builder.CreateICmpNE(findTempValue(While.getCond()),
-                                       Builder.getFalse(), "cond");
+    Value *cond =
+        Builder.CreateICmpNE(findTempValue(While.getCond()), False, "cond");
     Builder.CreateCondBr(cond, BodyBB, EndBB);
   } else {
     Builder.CreateBr(CondBB);
     CondBB->moveAfter(&CurFunc->back());
     Builder.SetInsertPoint(CondBB);
     While.getCond()->accept(*this);
-    Value *cond = Builder.CreateICmpNE(findTempValue(While.getCond()),
-                                       Builder.getFalse(), "cond");
+    Value *cond =
+        Builder.CreateICmpNE(findTempValue(While.getCond()), False, "cond");
     Builder.CreateCondBr(cond, BodyBB, EndBB);
 
     BodyBB->moveAfter(&CurFunc->back());
@@ -164,8 +166,7 @@ void FuncBodyCodeGen::visit(ForStmtType &FS) {
   Builder.SetInsertPoint(CondBB);
   if (Cond_exist) {
     FS.getCond()->accept(*this);
-    Value *cond =
-        Builder.CreateICmpNE(findTempValue(FS.getCond()), Builder.getFalse());
+    Value *cond = Builder.CreateICmpNE(findTempValue(FS.getCond()), False);
     Builder.CreateCondBr(cond, BodyBB, EndBB);
   } else
     Builder.CreateBr(BodyBB);
@@ -259,7 +260,7 @@ void FuncBodyCodeGen::visit(UnaryOperatorType &UO) {
       V = Builder.CreateNot(subVal, "UO_Not");
       break;
     case UnaryOperatorKind::UO_LNot:
-      V = Builder.CreateICmpEQ(Zero256, subVal, "UO_LNot");
+      V = Builder.CreateICmpEQ(subVal, False, "UO_LNot");
       break;
     default:;
     }
@@ -495,7 +496,7 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
   if (BO.isLogicalOp()) {
     // TODO : refactor logical op with phi node
     if (BO.getOpcode() == BO_LAnd) {
-      llvm::Value *res = Builder.CreateAlloca(Int256Ty);
+      llvm::Value *res = Builder.CreateAlloca(Builder.getIntNTy(1));
       BasicBlock *trueBB = BasicBlock::Create(Context, "BO_LAnd.true", CurFunc);
       BasicBlock *falseBB =
           BasicBlock::Create(Context, "BO_LAnd.false", CurFunc);
@@ -507,10 +508,7 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
       if (BO.getLHS()->isLValue()) {
         lhs = Builder.CreateLoad(lhs, "BO_Lhs");
       }
-      llvm::Value *isTrueLHS = Builder.CreateICmpNE(lhs, Zero256);
-      llvm::Value *truncLHS =
-          Builder.CreateTrunc(isTrueLHS, Builder.getInt1Ty(), "trunc");
-      Builder.CreateCondBr(truncLHS, trueBB, falseBB);
+      Builder.CreateCondBr(Builder.CreateICmpNE(lhs, False), trueBB, falseBB);
 
       Builder.SetInsertPoint(trueBB);
       BO.getRHS()->accept(*this);
@@ -519,19 +517,18 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
       if (BO.getRHS()->isLValue()) {
         rhs = Builder.CreateLoad(rhs, "BO_Rhs");
       }
-      llvm::Value *isTrueRHS = Builder.CreateICmpNE(rhs, Zero256);
-      Builder.CreateStore(Builder.CreateZExt(isTrueRHS, Int256Ty), res);
+      Builder.CreateStore(Builder.CreateICmpNE(rhs, False), res);
       Builder.CreateBr(endBB);
 
       Builder.SetInsertPoint(falseBB);
-      Builder.CreateStore(Zero256, res);
+      Builder.CreateStore(False, res);
       Builder.CreateBr(endBB);
 
       Builder.SetInsertPoint(endBB);
       // in order to store result of LAnd in TempValueTable
       V = Builder.CreateLoad(res, "BO_LAnd");
     } else if (BO.getOpcode() == BO_LOr) {
-      llvm::Value *res = Builder.CreateAlloca(Int256Ty);
+      llvm::Value *res = Builder.CreateAlloca(Builder.getIntNTy(1));
       BasicBlock *trueBB = BasicBlock::Create(Context, "BO_LOr.true", CurFunc);
       BasicBlock *falseBB =
           BasicBlock::Create(Context, "BO_LOr.false", CurFunc);
@@ -543,13 +540,10 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
       if (BO.getLHS()->isLValue()) {
         lhs = Builder.CreateLoad(lhs, "BO_Lhs");
       }
-      llvm::Value *isTrueLHS = Builder.CreateICmpNE(lhs, Zero256);
-      llvm::Value *trunc =
-          Builder.CreateTrunc(isTrueLHS, Builder.getInt1Ty(), "trunc");
-      Builder.CreateCondBr(trunc, trueBB, falseBB);
+      Builder.CreateCondBr(Builder.CreateICmpNE(lhs, False), trueBB, falseBB);
 
       Builder.SetInsertPoint(trueBB);
-      Builder.CreateStore(One256, res);
+      Builder.CreateStore(True, res);
       Builder.CreateBr(endBB);
 
       Builder.SetInsertPoint(falseBB);
@@ -559,8 +553,7 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
       if (BO.getRHS()->isLValue()) {
         rhs = Builder.CreateLoad(rhs, "BO_Rhs");
       }
-      llvm::Value *isTrueRHS = Builder.CreateICmpNE(rhs, Zero256);
-      Builder.CreateStore(Builder.CreateZExt(isTrueRHS, Int256Ty), res);
+      Builder.CreateStore(Builder.CreateICmpNE(rhs, False), res);
       Builder.CreateBr(endBB);
 
       Builder.SetInsertPoint(endBB);
