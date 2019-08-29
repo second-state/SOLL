@@ -61,6 +61,7 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
   void visit(ParenExprType &) override;
   void visit(IdentifierType &) override;
   void visit(IndexAccessType &) override;
+  void visit(MemberExprType &) override;
   void visit(BooleanLiteralType &) override;
   void visit(StringLiteralType &) override;
   void visit(NumberLiteralType &) override;

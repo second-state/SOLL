@@ -191,16 +191,16 @@ public:
 };
 
 class CastExpr : public Expr {
-  ExprPtr TargetValue;
+  ExprPtr SubExpr;
   CastKind CastK;
 
 protected:
-  CastExpr(ExprPtr &&TV, CastKind CK, TypePtr Ty)
-      : TargetValue(std::move(TV)), CastK(CK), Expr(ValueKind::VK_RValue, Ty) {}
+  CastExpr(ExprPtr &&SE, CastKind CK, TypePtr Ty)
+      : SubExpr(std::move(SE)), CastK(CK), Expr(ValueKind::VK_RValue, Ty) {}
 
 public:
-  Expr *getTargetValue() { return TargetValue.get(); }
-  const Expr *getTargetValue() const { return TargetValue.get(); }
+  Expr *getSubExpr() { return SubExpr.get(); }
+  const Expr *getSubExpr() const { return SubExpr.get(); }
   CastKind getCastKind() const { return CastK; }
 };
 
@@ -235,7 +235,11 @@ class MemberExpr : public Expr {
 public:
   MemberExpr(ExprPtr &&Base, std::unique_ptr<Identifier> &&Name)
       : Expr(ValueKind::VK_LValue), Base(std::move(Base)),
-        Name(std::move(Name)) {}
+        Name(std::move(Name)) {
+    // TODO : refactor this
+    // hard code to pass erc20
+    Ty = std::make_shared<AddressType>();
+  }
 
   void setBase(ExprPtr &&Base) { this->Base = std::move(Base); }
   void setName(std::unique_ptr<Identifier> &&Name) {

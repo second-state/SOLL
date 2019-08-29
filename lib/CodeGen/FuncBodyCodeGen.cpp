@@ -50,21 +50,27 @@ void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
   }
 
   EndOfFunc = BasicBlock::Create(Context, "return", CurFunc);
-  // TODO : uncomment this part when Types are done
-  // if (return type is void) {
-  // FD.getBody()->accept(*this);
-  // Builder.CreateRetVoid();
-  // } else {
-  RetVal = Builder.CreateAlloca(getLLVMTy(FD), nullptr, "retval");
-  FD.getBody()->accept(*this);
-  Builder.CreateBr(EndOfFunc);
-  Builder.SetInsertPoint(EndOfFunc);
-  llvm::Value *V = Builder.CreateLoad(RetVal);
-  Builder.CreateRet(V);
-  // move EndOfFunc to the end of CurFunc
-  EndOfFunc->removeFromParent();
-  EndOfFunc->insertInto(CurFunc);
-  // }
+
+  if (FD.getReturnParams()->getParams().empty()) {
+    // is void function
+    FD.getBody()->accept(*this);
+    Builder.CreateBr(EndOfFunc);
+    Builder.SetInsertPoint(EndOfFunc);
+    Builder.CreateRetVoid();
+    // move EndOfFunc to the end of CurFunc
+    EndOfFunc->removeFromParent();
+    EndOfFunc->insertInto(CurFunc);
+  } else {
+    RetVal = Builder.CreateAlloca(getLLVMTy(FD), nullptr, "retval");
+    FD.getBody()->accept(*this);
+    Builder.CreateBr(EndOfFunc);
+    Builder.SetInsertPoint(EndOfFunc);
+    llvm::Value *V = Builder.CreateLoad(RetVal);
+    Builder.CreateRet(V);
+    // move EndOfFunc to the end of CurFunc
+    EndOfFunc->removeFromParent();
+    EndOfFunc->insertInto(CurFunc);
+  }
 }
 
 void FuncBodyCodeGen::visit(BlockType &B) { ConstStmtVisitor::visit(B); }
@@ -653,9 +659,6 @@ void FuncBodyCodeGen::visit(ExplicitCastExprType &EC) {
   emitCast(EC);
 }
 
-#define TargetTy(x) TargetTy = dynamic_cast<const x *>(Cast.getType().get())
-#define BaseTy(x)                                                              \
-  BaseTy = dynamic_cast<const x *>(Cast.getTargetValue()->getType().get())
 void FuncBodyCodeGen::emitCast(const CastExpr &Cast) {
   Value *result = nullptr;
   switch (Cast.getCastKind()) {
@@ -663,41 +666,28 @@ void FuncBodyCodeGen::emitCast(const CastExpr &Cast) {
     // TODO: emit load instruction
     // current impl. just let visit(Identifier&) emit load
     // which does not work for general cases
-    result = loadValue(Cast.getTargetValue());
+    result = loadValue(Cast.getSubExpr());
     break;
   }
   case CastKind::IntegralCast: {
-    auto BaseCategory = Cast.getTargetValue()->getType()->getCategory();
-    switch (Cast.getType()->getCategory()) {
-    case Type::Category::Integer: {
-      auto TargetTy(IntegerType);
-      switch (BaseCategory) {
-      // Cast int type to int type
-      case Type::Category::Integer: {
-        auto BaseTy(IntegerType);
-        if (BaseTy->isSigned())
-          result = Builder.CreateSExtOrTrunc(
-              findTempValue(Cast.getTargetValue()),
-              Builder.getIntNTy(TargetTy->getBitNum()));
-        else
-          result = Builder.CreateZExtOrTrunc(
-              findTempValue(Cast.getTargetValue()),
-              Builder.getIntNTy(TargetTy->getBitNum()));
-        break;
-      }
-      case Type::Category::RationalNumber: {
-        // TODO: Cast NumberLiteral type to int type
-        break;
-      }
-      default:
-        assert(false);
-      }
-      break;
-    }
-    // TODO: many other type conversions
-    default:
-      assert(false);
-    }
+    assert(Cast.getType()->getCategory() == Type::Category::Integer &&
+           Cast.getSubExpr()->getType()->getCategory() ==
+               Type::Category::Integer &&
+           "IntegralCast should have int");
+    auto CastITy = dynamic_cast<const IntegerType *>(Cast.getType().get());
+    auto BaseITy =
+        dynamic_cast<const IntegerType *>(Cast.getSubExpr()->getType().get());
+    if (BaseITy->isSigned())
+      result =
+          Builder.CreateSExtOrTrunc(findTempValue(Cast.getSubExpr()),
+                                    Builder.getIntNTy(CastITy->getBitNum()));
+    else
+      result =
+          Builder.CreateZExtOrTrunc(findTempValue(Cast.getSubExpr()),
+                                    Builder.getIntNTy(CastITy->getBitNum()));
+  }
+  case CastKind::TypeCast: {
+    // TODO : address to sign
     break;
   }
   default:
@@ -705,8 +695,6 @@ void FuncBodyCodeGen::emitCast(const CastExpr &Cast) {
   }
   TempValueTable[&Cast] = result;
 }
-#undef TargetTy
-#undef BaseTy
 
 void FuncBodyCodeGen::visit(ParenExprType &P) {
   ConstStmtVisitor::visit(P);
@@ -863,6 +851,11 @@ void FuncBodyCodeGen::visit(IndexAccessType &IA) {
     }
   }
   TempValueTable[&IA] = V;
+}
+
+void FuncBodyCodeGen::visit(MemberExprType &ME) {
+  ConstStmtVisitor::visit(ME);
+  TempValueTable[&ME] = Builder.getIntN(80, 0);
 }
 
 void FuncBodyCodeGen::visit(BooleanLiteralType &BL) {

@@ -260,8 +260,13 @@ public:
     return IRBuilder->getIntNTy(VD->GetType()->getBitNum());
   }
   llvm::Type *getLLVMTy(const FunctionDeclType &F) {
-    auto *Ty = F.getReturnParams()->getParams()[0]->GetType().get();
-    return IRBuilder->getIntNTy(Ty->getBitNum());
+    auto RetList = F.getReturnParams()->getParams();
+    if (RetList.empty()) {
+      return IRBuilder->getVoidTy();
+    } else {
+      auto *Ty = RetList[0]->GetType().get();
+      return IRBuilder->getIntNTy(Ty->getBitNum());
+    }
   }
   llvm::Value *castToTy(llvm::Value *Val, llvm::Type *TargetTy) {
     return IRBuilder->CreateTrunc(Val, TargetTy, "trunc");
