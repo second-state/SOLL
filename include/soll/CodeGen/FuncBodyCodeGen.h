@@ -107,10 +107,8 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
         getLLVMTy(ArrTy->getElementType().get()),
         ArrTy->getLength()
       );
-    } else if (auto Int = dynamic_cast<const soll::IntegerType*>(Ty)) {
-      return Builder.getIntNTy(Ty->getBitNum());
     } else {
-        return Builder.getIntNTy(7122);
+      return Builder.getIntNTy(Ty->getBitNum());
     }
   }
   llvm::Type* getLLVMTy(const soll::VarDecl *VD) {
