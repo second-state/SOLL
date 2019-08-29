@@ -9,15 +9,11 @@ contract ERC20 {
         return c;
     }
 
-    function subErr(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        require(b <= a, errorMessage);
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        require(b <= a, "SafeMath: subtraction overflow");
         uint256 c = a - b;
 
         return c;
-    }
-
-    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
-        return subErr(a, b, "SafeMath: subtraction overflow");
     }
 
     function mul(uint256 a, uint256 b) internal pure returns (uint256) {
@@ -34,26 +30,18 @@ contract ERC20 {
         return c;
     }
 
-    function divErr(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        require(b > 0, errorMessage);
+    function div(uint256 a, uint256 b) internal pure returns (uint256) {
+        require(b > 0, "SafeMath: division by zero");
         uint256 c = a / b;
         return c;
     }
 
-    function div(uint256 a, uint256 b) internal pure returns (uint256) {
-        return divErr(a, b, "SafeMath: division by zero");
-    }
-
-    function modErr(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        require(b != 0, errorMessage);
+    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
+        require(b != 0, "SafeMath: modulo by zero");
         return a % b;
     }
 
-    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
-        return modErr(a, b, "SafeMath: modulo by zero");
-    }
-
-    // real contract
+    // // real contract
     mapping (address => uint256) private _balances;
 
     mapping (address => mapping (address => uint256)) private _allowances;
@@ -68,11 +56,11 @@ contract ERC20 {
         return _balances[account];
     }
 
-    function _transfer(address sender, address recipient, uint256 amount) internal {
-        require(sender != address(0), "ERC20: transfer from the zero address");
+    function _transfer(address _sender, address recipient, uint256 amount) internal {
+        require(_sender != address(0), "ERC20: transfer from the zero address");
         require(recipient != address(0), "ERC20: transfer to the zero address");
 
-        _balances[sender] = subErr(_balances[sender], amount, "ERC20: transfer amount exceeds balance");
+        _balances[_sender] = sub(_balances[_sender], amount);
         _balances[recipient] = add(_balances[recipient], amount);
     }
 
@@ -97,9 +85,9 @@ contract ERC20 {
         return true;
     }
 
-    function transferFrom(address sender, address recipient, uint256 amount) public returns (bool) {
-        _transfer(sender, recipient, amount);
-        _approve(sender, msg.sender, subErr(_allowances[sender][msg.sender], amount, "ERC20: transfer amount exceeds allowance"));
+    function transferFrom(address _sender, address recipient, uint256 amount) public returns (bool) {
+        _transfer(_sender, recipient, amount);
+        _approve(_sender, msg.sender, sub(_allowances[_sender][msg.sender], amount));
         return true;
     }
 
@@ -109,7 +97,7 @@ contract ERC20 {
     }
 
     function decreaseAllowance(address spender, uint256 subtractedValue) public returns (bool) {
-        _approve(msg.sender, spender, subErr(_allowances[msg.sender][spender], subtractedValue, "ERC20: decreased allowance below zero"));
+        _approve(msg.sender, spender, sub(_allowances[msg.sender][spender], subtractedValue));
         return true;
     }
 
@@ -123,12 +111,13 @@ contract ERC20 {
     function _burn(address account, uint256 value) internal {
         require(account != address(0), "ERC20: burn from the zero address");
 
-        _balances[account] = subErr(_balances[account], value, "ERC20: burn amount exceeds balance");
+        _balances[account] = sub(_balances[account], value);
         _totalSupply = sub(_totalSupply, value);
     }
 
     function _burnFrom(address account, uint256 amount) internal {
         _burn(account, amount);
-        _approve(account, msg.sender, subErr(_allowances[account][msg.sender], amount, "ERC20: burn amount exceeds allowance"));
+        _approve(account, msg.sender, sub(_allowances[account][msg.sender], amount));
     }
+
 }
