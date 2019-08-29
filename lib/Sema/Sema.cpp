@@ -164,12 +164,19 @@ TypePtr Sema::CheckShiftOperands(ExprPtr &LHS, ExprPtr &RHS,
 
 TypePtr Sema::CheckCompareOperands(ExprPtr &LHS, ExprPtr &RHS,
                                    BinaryOperatorKind Opc) {
-  UsualArithmeticConversions(LHS, RHS, false);
-  // TODO: replace this, should impl. Compare Diagonostic
-  assert(LHS->getType()->getCategory() == Type::Category::Integer ||
-         LHS->getType()->getCategory() == Type::Category::Address);
-  assert(RHS->getType()->getCategory() == Type::Category::Integer ||
-         RHS->getType()->getCategory() == Type::Category::Address);
+  auto LTy = LHS->getType();
+  auto RTy = RHS->getType();
+
+  if (LTy->getCategory() == Type::Category::Integer &&
+      RTy->getCategory() == Type::Category::Integer)
+    UsualArithmeticConversions(LHS, RHS, false);
+  else if (LTy->getCategory() == Type::Category::Address &&
+           RTy->getCategory() == Type::Category::Address) {
+    LHS = UsualUnaryConversions(std::move(LHS));
+    RHS = UsualUnaryConversions(std::move(RHS));
+  } else
+    // TODO: replace this, should impl. Compare Diagonostic
+    assert(false && "cannot compare");
 
   return std::make_shared<BooleanType>();
 }
