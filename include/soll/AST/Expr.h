@@ -12,6 +12,7 @@ namespace soll {
 
 enum class ValueKind { VK_LValue, VK_RValue };
 
+/// Expr: Base class for all expressions.
 class Expr : public ExprStmt {
   // add interface to check whether an expr is an LValue or RValue
   // TODO : override isLValue() and is RValue() for each derived class
@@ -34,10 +35,15 @@ public:
   const TypePtr &getType() const { return Ty; }
 };
 
+/// TupleExpr: A type expression such as "(a, b)" or
+/// Note that "(a)" is not a TupleExpr, but a ParenExpr.
+/// (Solc see them both as TupleExpr, which is terrible.)
 class TupleExpr {
   // TODO
 };
 
+/// UnaryOperator: A unary operation such as "++a" or "!a",
+/// The operand should have the proper type already to construct this node.
 class UnaryOperator : public Expr {
   ExprPtr Val;
   UnaryOperatorKind Opc;
@@ -86,6 +92,8 @@ public:
   void accept(ConstStmtVisitor &visitor) const override;
 };
 
+/// BinaryOperator: A binary operation such as "a + b" or "a = b",
+/// The operands should have the proper types already to construct this node.
 class BinaryOperator : public Expr {
   enum { LHS, RHS, END };
   ExprPtr SubExprs[END];
@@ -157,6 +165,7 @@ public:
   void accept(ConstStmtVisitor &visitor) const override;
 };
 
+/// CallExpr: A function call such as "f(a, b)".
 class CallExpr : public Expr {
   ExprPtr CalleeExpr;
   std::vector<ExprPtr> Arguments;
@@ -190,6 +199,8 @@ public:
   void accept(ConstStmtVisitor &visitor) const override;
 };
 
+/// CastExpr: Base class for ImplicitCastExpr and ExplicitCastExpr.
+/// The casted type is store in Ty of class Expr.
 class CastExpr : public Expr {
   ExprPtr SubExpr;
   CastKind CastK;
