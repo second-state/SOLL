@@ -6,14 +6,15 @@
 #include <cassert>
 #include <iostream>
 
-using namespace soll;
+namespace soll {
+
 using llvm::BasicBlock;
 using llvm::Function;
 using llvm::Value;
 
 FuncBodyCodeGen::FuncBodyCodeGen(llvm::LLVMContext &Context,
                                  llvm::IRBuilder<llvm::NoFolder> &Builder,
-                                 llvm::Module &Module, soll::ASTContext &Ctx)
+                                 llvm::Module &Module, ASTContext &Ctx)
     : Context(Context), Builder(Builder), Module(Module), ASTCtx(Ctx) {
   Int256Ty = Builder.getIntNTy(256);
   VoidTy = Builder.getVoidTy();
@@ -23,7 +24,7 @@ FuncBodyCodeGen::FuncBodyCodeGen(llvm::LLVMContext &Context,
   One256 = Builder.getIntN(256, 1);
 }
 
-void FuncBodyCodeGen::compile(const soll::FunctionDecl &FD) {
+void FuncBodyCodeGen::compile(const FunctionDecl &FD) {
   CurFunc = Module.getFunction(FD.getName());
   assert(CurFunc != nullptr);
 
@@ -362,7 +363,7 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
   // This impl assumes:
   //   every type is uint64
   bool isSigned;
-  const Type* Ty = BO.getType().get();
+  const Type *Ty = BO.getType().get();
   if (auto TyNow = dynamic_cast<const IntegerType *>(Ty))
     isSigned = TyNow->isSigned();
   else if (auto TyNow = dynamic_cast<const BooleanType *>(Ty))
@@ -903,3 +904,5 @@ void FuncBodyCodeGen::visit(NumberLiteralType &NL) {
   TempValueTable[&NL] =
       Builder.getIntN(NL.getType()->getBitNum(), NL.getValue());
 }
+
+} // namespace soll

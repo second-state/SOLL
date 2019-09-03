@@ -15,7 +15,9 @@
 #include <map>
 #include <unordered_map>
 
-class FuncBodyCodeGen : public soll::ConstStmtVisitor {
+namespace soll {
+
+class FuncBodyCodeGen : public ConstStmtVisitor {
   llvm::LLVMContext &Context;
   llvm::IRBuilder<llvm::NoFolder> &Builder;
   llvm::Module &Module;
@@ -33,7 +35,7 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
   llvm::ConstantInt *Zero256 = nullptr;
   llvm::ConstantInt *One256 = nullptr;
 
-  soll::ASTContext &ASTCtx;
+  ASTContext &ASTCtx;
 
   // TODO: replace this temp impl
   // proper impl is like Decl* -> llvm::Value *
@@ -43,9 +45,9 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
   // TempValueTable stores temperary values
   // assume LValue will store address in TempValueTable
   // assume RValue will store value in TempValueTable
-  std::unordered_map<const soll::Stmt *, llvm::Value *> TempValueTable;
+  std::unordered_map<const Stmt *, llvm::Value *> TempValueTable;
   // TODO: replace this temp impl
-  std::unordered_map<const soll::Stmt *, llvm::BasicBlock *> BasicBlockTable;
+  std::unordered_map<const Stmt *, llvm::BasicBlock *> BasicBlockTable;
 
   // codegen LLVM IR in the visit functions
   void visit(BlockType &) override;
@@ -70,12 +72,12 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
   void visit(StringLiteralType &) override;
   void visit(NumberLiteralType &) override;
 
-  void emitCast(const soll::CastExpr &Cast);
+  void emitCast(const CastExpr &Cast);
 
   // create load instruction based on DataLocation
-  llvm::Value *loadValue(const soll::Expr *ID);
+  llvm::Value *loadValue(const Expr *ID);
   // create store instruction based on DataLocation
-  void storeValue(const soll::Expr *Expr, llvm::Value *Val);
+  void storeValue(const Expr *Expr, llvm::Value *Val);
 
   // for mapping and dynamic storage array codegen
   // codegen function for concating {idx, base}
@@ -89,18 +91,34 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
   // ast type -> llvm type ptr
   // currently support integer and integer memory array ONLY
   // TODO: add other types
-  llvm::Type *getLLVMTy(const soll::Type *Ty) {
-    if (auto *ArrTy = dynamic_cast<const soll::ArrayType *>(Ty)) {
+  llvm::Type *getLLVMTy(const Type *Ty) {
+    switch (Ty->getCategory()) {
+    case Type::Category::Integer: {
+      const IntegerType *IntTy = dynamic_cast<const IntegerType *>(Ty);
+      return Builder.getIntNTy(IntTy->getBitNum());
+    }
+    case Type::Category::Bool: {
+      return Builder.getInt1Ty();
+    }
+    case Type::Category::Address: {
+      return Builder.getIntNTy(160);
+    }
+    case Type::Category::String: {
+      return StringTy;
+    }
+    case Type::Category::Array: {
+      const ArrayType *ArrTy = dynamic_cast<const ArrayType *>(Ty);
       return llvm::ArrayType::get(getLLVMTy(ArrTy->getElementType().get()),
                                   ArrTy->getLength());
-    } else {
-      return Builder.getIntNTy(Ty->getBitNum());
+    }
+    default:
+      assert(false && "unsupported type!");
     }
   }
-  llvm::Type *getLLVMTy(const soll::VarDecl *VD) {
+  llvm::Type *getLLVMTy(const VarDecl *VD) {
     return getLLVMTy(VD->GetType().get());
   }
-  llvm::Type *getLLVMTy(const soll::FunctionDecl &FD) {
+  llvm::Type *getLLVMTy(const FunctionDecl &FD) {
     auto *Ty = FD.getReturnParams()->getParams()[0]->GetType().get();
     return getLLVMTy(Ty);
   }
@@ -112,14 +130,14 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
       return nullptr;
   }
 
-  llvm::Value *findTempValue(const soll::Stmt *S) {
+  llvm::Value *findTempValue(const Stmt *S) {
     if (TempValueTable.count(S))
       return TempValueTable[S];
     else
       return nullptr;
   }
 
-  llvm::BasicBlock *findBasicBlock(const soll::Stmt *S) {
+  llvm::BasicBlock *findBasicBlock(const Stmt *S) {
     if (BasicBlockTable.count(S))
       return BasicBlockTable[S];
     else
@@ -129,7 +147,9 @@ class FuncBodyCodeGen : public soll::ConstStmtVisitor {
 public:
   FuncBodyCodeGen(llvm::LLVMContext &Context,
                   llvm::IRBuilder<llvm::NoFolder> &Builder,
-                  llvm::Module &Module, soll::ASTContext &Ctx);
+                  llvm::Module &Module, ASTContext &Ctx);
   // codegen a certain function
-  void compile(const soll::FunctionDecl &FD);
+  void compile(const FunctionDecl &FD);
 };
+
+} // namespace soll

@@ -399,6 +399,30 @@ public:
     return Result;
   }
 
+  llvm::Type *getStaticLLVMTy(const Type *Ty) {
+    switch (Ty->getCategory()) {
+      case Type::Category::Integer: {
+        const IntegerType *IntTy = dynamic_cast<const IntegerType *>(Ty);
+        return IRBuilder->getIntNTy(IntTy->getBitNum());
+      }
+      case Type::Category::Bool: {
+        return Int1Ty;
+      }
+      case Type::Category::Address: {
+        return IRBuilder->getIntNTy(160);
+      }
+      case Type::Category::String:
+      case Type::Category::Bytes: {
+        return Int256Ty;
+      }
+      default:
+        assert(false && "unsupported type!");
+    }
+  }
+  llvm::Type *getStaticLLVMTy(const VarDecl *VD) {
+    return getStaticLLVMTy(VD->GetType().get());
+  }
+
   llvm::Type *getLLVMTy(const Type *Ty) {
     switch (Ty->getCategory()) {
       case Type::Category::Integer: {
@@ -482,7 +506,7 @@ public:
           Builder.CreateBitCast(cptr, Int256PtrTy, param_name + "_ptr_b");
       auto *val_b = Builder.CreateLoad(Int256Ty, ptr_b, param_name + "_b");
       auto *val = Builder.CreateCall(Func_bswap256, {val_b}, param_name);
-      ArgsVal.push_back(castToTy(val, getLLVMTy(Fparams[i])));
+      ArgsVal.push_back(castToTy(val, getStaticLLVMTy(Fparams[i])));
       ArgsTy.push_back(getLLVMTy(Fparams[i]));
       offset += size;
     }
