@@ -1,0 +1,3 @@
+[submodule "utils/ewasm-testbench"]
+	path = utils/ewasm-testbench
+	url = ../ewasm-testbench.git

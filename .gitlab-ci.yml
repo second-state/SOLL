@@ -1,34 +1,56 @@
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+  BASE_BINDIR: build
+  TEST_SRCDIR: test/release
+  TEST_ENVDIR: utils/ewasm-testbench
+
+stages:
+  - build
+  - compile
+  - test
+
 .build_job_template: &build_job
   stage: build
   image: yi2nd/soll:${OS}-${COMPILER}
   before_script:
-    - rm -rf build
-    - mkdir build
-    - cd build
+    - rm -rf ${BASE_BINDIR}
+    - mkdir ${BASE_BINDIR}
+    - cd ${BASE_BINDIR}
   script:
     - cmake .. -DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true
     - make -j2
   cache:
     key: ${OS}-${COMPILER}
     paths:
-      - build
+      - ${BASE_BINDIR}
     policy: push
+
+.compile_job_template: &compile_job
+  stage: compile
+  image: yi2nd/soll:${OS}-test
+  script:
+    - bash -c "${BASE_BINDIR}/tools/soll/soll ${TEST_SRCDIR}/0-0-1.sol > ${BASE_BINDIR}/0-0-1.ll"
+    - bash -c "${BASE_BINDIR}/tools/soll/soll ${TEST_SRCDIR}/0-0-2.sol > ${BASE_BINDIR}/0-0-2.ll"
+    - bash -c "./utils/compile -v ${BASE_BINDIR}/*.ll || test -f ${BASE_BINDIR}/0-0-1.wasm -a -f ${BASE_BINDIR}/0-0-2.wasm"
+  cache:
+    key: ${OS}-${COMPILER}
+    paths:
+      - ${BASE_BINDIR}
+    policy: pull-push
 
 .test_job_template: &test_job
   stage: test
   image: yi2nd/soll:${OS}-test
   before_script:
-    - cd build
-    - cp ../test/release/0-0-1.sol test.sol
+    - cp ${BASE_BINDIR}/*.wasm ${TEST_ENVDIR}
   script:
-    - ctest
-    - bash -c "./tools/soll/soll test.sol > test.ll"
-    - bash -c "../utils/compile -v test.ll || true"
-    - bash -c "soll-ewasm-env.js test.wasm div 16 7"
+    - bash -c "cd ${BASE_BINDIR} && ctest"
+    - bash -c "cd ${TEST_ENVDIR} && ./safeMath.js 0-0-1.wasm div 16 7"
+    - bash -c "cd ${TEST_ENVDIR} && ./erc20.js 0-0-2.wasm {} balanceOf 1"
   cache:
     key: ${OS}-${COMPILER}
     paths:
-      - build
+      - ${BASE_BINDIR}
     policy: pull
 
 build:ubuntu-gcc:
@@ -39,6 +61,18 @@ build:ubuntu-gcc:
 
 build:ubuntu-clang:
   <<: *build_job
+  variables:
+    OS: "ubuntu"
+    COMPILER: "clang"
+
+compile:ubuntu-gcc:
+  <<: *compile_job
+  variables:
+    OS: "ubuntu"
+    COMPILER: "gcc"
+
+compile:ubuntu-clang:
+  <<: *compile_job
   variables:
     OS: "ubuntu"
     COMPILER: "clang"
