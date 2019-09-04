@@ -38,10 +38,10 @@ public:
   virtual void setBitNum(unsigned) {}
   virtual unsigned int getBitNum() const { return 0; }
   virtual bool isImplicitlyConvertibleTo(Type const &_other) const {
-    return false;
+    return _other.getCategory() == getCategory();
   }
   virtual bool isExplicitlyConvertibleTo(Type const &_convertTo) const {
-    return false;
+    return _convertTo.getCategory() == getCategory();
   }
   virtual Category getCategory() const = 0;
   virtual std::string getName() const = 0;
@@ -50,12 +50,6 @@ public:
 
 class AddressType : public Type {
 public:
-  bool isImplicitlyConvertibleTo(Type const &_other) const override {
-    return _other.getCategory() == Category::Address;
-  }
-  bool isExplicitlyConvertibleTo(Type const &_convertTo) const override {
-    return _convertTo.getCategory() == Category::Address;
-  }
   Category getCategory() const override { return Category::Address; }
   unsigned int getBitNum() const override { return 160; }
   std::string getName() const override { return "address"; }

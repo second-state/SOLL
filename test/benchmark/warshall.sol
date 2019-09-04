@@ -35,11 +35,11 @@ contract WARSHALL {
 		uint64[10][10] memory G;
 		for(uint i = uint(0); i < 10; i += 1) {
 			for(uint j = uint(0); j < 10; j += 1) {
-				G[i][j] = 999999999;
+				G[i][j] = uint64(999999999);
 			}
 		}
 		for(uint i = uint(0); i < 10; i += 1) {
-			G[i][i] = 0;
+			G[i][i] = uint64(0);
 			if (i != 9) {
 				G[i][i+1] = uint64(i * 2);
 				G[i+1][i] = uint64(i * 2);

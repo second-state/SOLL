@@ -17,11 +17,11 @@ contract FIB {
 	    return s;
 	}
 	function fib64(uint64 x) public pure returns(uint64) {
-		uint64 MOD = 1000000007;
+		uint64 MOD = uint64(1000000007);
 		uint64 f = uint64(1);
 		uint64 s = uint64(1);
 		uint64 tmp;
-	    for(uint64 i = uint64(3); i<=x; i += 1) {
+	    for(uint64 i = uint64(3); i<=x; i += uint64(1)) {
 	        f = f + s;
 			f %= MOD;
 	        tmp = f;
@@ -31,12 +31,14 @@ contract FIB {
 	    return s;
 	}
 
+	/*
 	function fib_recursive(uint x) public pure returns(uint) {
 		if (x == 1 || x == 2) return 1;
 		else return fib_recursive(x-1) + fib_recursive(x-2);
 	}
 	function fib64_recursive(uint64 x) public pure returns(uint64) {
-		if (x == 1 || x == 2) return 1;
+		if (x == uint64(1) || x == uint64(2)) return uint64(1);
 		else return fib64_recursive(x-1) + fib64_recursive(x-2);
 	}
+	*/
 }

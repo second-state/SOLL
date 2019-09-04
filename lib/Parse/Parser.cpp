@@ -690,7 +690,8 @@ TypePtr Parser::parseTypeName(bool AllowVar) {
                CurTok->getKind() <= tok::kw_uint256) {
       T = std::make_shared<IntegerType>(token2inttype(CurTok));
       TheLexer.CachedLex();
-    } else if (tok::kw_bytes1 <= CurTok->getKind() && CurTok->getKind() <= tok::kw_bytes32) {
+    } else if (tok::kw_bytes1 <= CurTok->getKind() &&
+               CurTok->getKind() <= tok::kw_bytes32) {
       T = std::make_shared<FixedBytesType>(token2bytetype(CurTok));
       TheLexer.CachedLex();
     } else if (CurTok->getKind() == tok::kw_bytes) {
