@@ -479,7 +479,7 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
       break;
     }
     // [TODO] < Parse all Types in contract's context >
-    if (Kind == tok::kw_function) {
+    if (Kind == tok::kw_function || Kind == tok::kw_constructor) {
       SubNodes.push_back(
           std::move(parseFunctionDefinitionOrFunctionTypeStateVariable()));
       Actions.EraseFunRtnTys();
@@ -505,9 +505,10 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
     } else if (Kind == tok::kw_using) {
       // [TODO] contract tok::kw_using
       assert(false && "using not implemented");
-    } else
+    } else {
       assert(false && "Solidity Error: Function, variable, struct or modifier "
                       "declaration expected.");
+    }
   }
   return std::make_unique<ContractDecl>(Name, std::move(BaseContracts),
                                         std::move(SubNodes), CtKind);
@@ -651,10 +652,17 @@ Parser::parseVariableDeclaration(VarDeclParserOptions const &Options,
     Name = TheLexer.CachedLex()->getIdentifierInfo()->getName();
   }
 
-  // [TODO] Handle variable with init value
-  auto VD = std::make_unique<VarDecl>(std::move(T), Name, nullptr, Vsblty,
-                                      Options.IsStateVariable, IsIndexed,
-                                      IsDeclaredConst, Loc);
+  unique_ptr<Expr> Value;
+  if (Options.AllowInitialValue) {
+    if (TheLexer.LookAhead(0)->is(tok::equal)) {
+      TheLexer.CachedLex();
+      Value = parseExpression();
+    }
+  }
+
+  auto VD = std::make_unique<VarDecl>(std::move(T), Name, std::move(Value),
+                                      Vsblty, Options.IsStateVariable,
+                                      IsIndexed, IsDeclaredConst, Loc);
 
   Actions.addIdentifierDecl(Name, *VD);
   return std::move(VD);
