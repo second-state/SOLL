@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "soll/Frontend/CompilerInvocation.h"
+#include "soll/Basic/TargetOptions.h"
 #include "soll/CodeGen/CodeGenAction.h"
 #include "soll/Frontend/CompilerInstance.h"
 #include "soll/Frontend/FrontendActions.h"
@@ -23,6 +24,11 @@ static cl::opt<ActionKind> Action("action", cl::Optional, cl::ValueRequired,
                                   cl::values(clEnumVal(EmitFuncSig, "")),
                                   cl::values(clEnumVal(EmitABI, "")),
                                   cl::cat(SollCategory));
+static cl::opt<TargetKind>
+    Target("target", cl::Optional, cl::ValueRequired, cl::init(EWASM),
+           cl::values(clEnumVal(EWASM, "Generate LLVM IR for eWASM backend")),
+           cl::values(clEnumVal(EVM, "Generate LLVM IR for EVM backend")),
+           cl::cat(SollCategory));
 
 void CompilerInvocation::ParseCommandLineOptions(int argc, const char **argv) {
   llvm::cl::ParseCommandLineOptions(argc, argv);
@@ -31,6 +37,7 @@ void CompilerInvocation::ParseCommandLineOptions(int argc, const char **argv) {
   DiagRenderer =
       std::make_unique<TextDiagnostic>(llvm::errs(), *DiagnosticOpts);
   FrontendOpts.ProgramAction = Action;
+  TargetOpts.BackendTarget = Target;
 }
 
 bool CompilerInvocation::Execute(CompilerInstance &CI) {

@@ -885,8 +885,9 @@ void FuncBodyCodeGen::visit(IndexAccessType &IA) {
     bytes = Builder.CreateInsertValue(
         bytes, Builder.getInt32(emitConcateArrLength), {0});
     bytes = Builder.CreateInsertValue(
-        bytes, Builder.CreateInBoundsGEP(
-                   emitConcateArr, {Builder.getInt32(0), Builder.getInt32(0)}),
+        bytes,
+        Builder.CreateInBoundsGEP(emitConcateArr,
+                                  {Builder.getInt32(0), Builder.getInt32(0)}),
         {1});
 
     V = Builder.CreateCall(Module.getFunction("solidity.keccak256"), {bytes},
