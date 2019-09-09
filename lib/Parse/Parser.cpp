@@ -510,8 +510,7 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
       // [TODO] contract tok::kw_modifier
       assert(false && "modifier not implemented");
     } else if (Kind == tok::kw_event) {
-      // [TODO] contract tok::kw_event
-      assert(false && "event not implemented");
+      parseEventDefinition();
     } else if (Kind == tok::kw_using) {
       // [TODO] contract tok::kw_using
       assert(false && "using not implemented");
@@ -630,13 +629,13 @@ Parser::parseVariableDeclaration(VarDeclParserOptions const &Options,
         CurTok->isOneOf(tok::kw_public, tok::kw_private, tok::kw_internal)) {
       Vsblty = parseVisibilitySpecifier();
     } else {
-      if (Options.AllowIndexed && CurTok->is(tok::kw_indexed))
+      if (Options.AllowIndexed && CurTok->is(tok::kw_indexed)) {
         IsIndexed = true;
-      else if (CurTok->is(tok::kw_constant))
+      } else if (CurTok->is(tok::kw_constant)) {
         IsDeclaredConst = true;
-      else if (Options.AllowLocationSpecifier &&
-               CurTok->isOneOf(tok::kw_memory, tok::kw_storage,
-                               tok::kw_calldata)) {
+      } else if (Options.AllowLocationSpecifier &&
+                 CurTok->isOneOf(tok::kw_memory, tok::kw_storage,
+                                 tok::kw_calldata)) {
         if (Loc != VarDecl::Location::Unspecified)
           assert(false && "Location already specified.");
         else if (!T)
@@ -682,6 +681,22 @@ Parser::parseVariableDeclaration(VarDeclParserOptions const &Options,
 
   Actions.addIdentifierDecl(Name, *VD);
   return std::move(VD);
+}
+
+unique_ptr<AST> Parser::parseEventDefinition() {
+  TheLexer.CachedLex(); // event
+  std::string Name = getLiteralAndAdvance(TheLexer.LookAhead(0)).str();
+  printf("Event : %s\n", Name.c_str());
+  VarDeclParserOptions Options;
+  Options.AllowIndexed = true;
+  std::unique_ptr<ParamList> Parameters = parseParameterList(Options);
+  bool Anonymous = false;
+  if (TheLexer.LookAhead(0)->is(tok::kw_anonymous)) {
+    Anonymous = true;
+    TheLexer.CachedLex(); // anonymous
+  }
+  TheLexer.CachedLex(); // ;
+  return nullptr;
 }
 
 TypePtr Parser::parseTypeNameSuffix(TypePtr T) {
