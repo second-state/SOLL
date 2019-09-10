@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "soll/CodeGen/BackendUtil.h"
+#include "soll/Basic/TargetOptions.h"
 #include "soll/CodeGen/LoweringInteger.h"
 #include <llvm/ADT/Triple.h>
 #include <llvm/Config/llvm-config.h>
@@ -12,8 +13,9 @@
 
 namespace soll {
 
-void EmitBackendOutput(DiagnosticsEngine &Diags, const llvm::DataLayout &TDesc,
-                       llvm::Module *TheModule,
+void EmitBackendOutput(DiagnosticsEngine &Diags,
+                       const TargetOptions &TargetOpts,
+                       const llvm::DataLayout &TDesc, llvm::Module *TheModule,
                        std::unique_ptr<llvm::raw_pwrite_stream> OS) {
   std::unique_ptr<llvm::Module> EmptyModule;
 
@@ -57,7 +59,9 @@ void EmitBackendOutput(DiagnosticsEngine &Diags, const llvm::DataLayout &TDesc,
 
   llvm::ModulePassManager MPM(false);
 
-  MPM.addPass(LoweringInteger());
+  if (TargetOpts.BackendTarget == EWASM) {
+    MPM.addPass(LoweringInteger());
+  }
 
   if (auto Err = PB.parsePassPipeline(MPM, "default<O0>", false, false)) {
     llvm::errs() << llvm::toString(std::move(Err)) << '\n';

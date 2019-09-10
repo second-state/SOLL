@@ -63,6 +63,11 @@ public:
     return Invocation->getFrontendOpts();
   }
 
+  TargetOptions &getTargetOpts() { return Invocation->getTargetOpts(); }
+  const TargetOptions &getTargetOpts() const {
+    return Invocation->getTargetOpts();
+  }
+
   bool hasDiagnostics() const { return Diagnostics != nullptr; }
   DiagnosticsEngine &getDiagnostics() const {
     assert(Diagnostics && "Compiler instance has no diagnostics!");

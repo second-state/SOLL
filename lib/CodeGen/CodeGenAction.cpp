@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "soll/CodeGen/CodeGenAction.h"
 #include "soll/Basic/SourceManager.h"
+#include "soll/Basic/TargetOptions.h"
 #include "soll/CodeGen/BackendUtil.h"
 #include "soll/CodeGen/ModuleBuilder.h"
 #include "soll/Frontend/CompilerInstance.h"
@@ -32,15 +33,17 @@ class BackendConsumer : public ASTConsumer {
   DiagnosticsEngine &Diags;
   std::unique_ptr<llvm::raw_pwrite_stream> AsmOutStream;
   ASTContext *Context;
+  const TargetOptions &TargetOpts;
 
   std::unique_ptr<CodeGenerator> Gen;
 
 public:
-  BackendConsumer(DiagnosticsEngine &Diags, const std::string &InFile,
+  BackendConsumer(DiagnosticsEngine &Diags, TargetOptions &TargetOpts,
+                  const std::string &InFile,
                   std::unique_ptr<llvm::raw_pwrite_stream> OS,
                   llvm::LLVMContext &C)
-      : Diags(Diags), AsmOutStream(std::move(OS)), Context(nullptr),
-        Gen(CreateLLVMCodeGen(Diags, InFile, C)) {}
+      : Diags(Diags), TargetOpts(TargetOpts), AsmOutStream(std::move(OS)),
+        Context(nullptr), Gen(CreateLLVMCodeGen(Diags, InFile, C)) {}
   llvm::Module *getModule() const { return Gen->GetModule(); }
 
   CodeGenerator *getCodeGenerator() { return Gen.get(); }
@@ -58,8 +61,8 @@ public:
     assert(getModule() && "module == nullptr");
 
     EmbedBitcode(getModule(), llvm::MemoryBufferRef());
-    EmitBackendOutput(Diags, getModule()->getDataLayout(), getModule(),
-                      std::move(AsmOutStream));
+    EmitBackendOutput(Diags, TargetOpts, getModule()->getDataLayout(),
+                      getModule(), std::move(AsmOutStream));
   }
 };
 
@@ -76,7 +79,8 @@ CodeGenAction::CreateASTConsumer(CompilerInstance &CI, llvm::StringRef InFile) {
   std::unique_ptr<llvm::raw_pwrite_stream> OS =
       CI.createDefaultOutputFile(false, InFile, "ll");
 
-  return std::make_unique<BackendConsumer>(CI.getDiagnostics(), InFile,
+  return std::make_unique<BackendConsumer>(CI.getDiagnostics(),
+                                           CI.getTargetOpts(), InFile,
                                            std::move(OS), *VMContext);
 }
 
