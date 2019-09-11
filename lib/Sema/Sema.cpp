@@ -58,14 +58,14 @@ StmtPtr Sema::CreateReturnStmt(ExprPtr &&Value) {
 
 std::unique_ptr<FunctionDecl> Sema::CreateFunctionDecl(
     llvm::StringRef Name, FunctionDecl::Visibility Vis, StateMutability SM,
-    bool IsConstructor, std::unique_ptr<ParamList> &&Params,
+    bool IsConstructor, bool IsFallback, std::unique_ptr<ParamList> &&Params,
     std::vector<std::unique_ptr<ModifierInvocation>> &&Modifiers,
     std::unique_ptr<ParamList> &&ReturnParams, std::unique_ptr<Block> &&Body) {
   auto FD = std::make_unique<FunctionDecl>(
-      Name, Vis, SM, IsConstructor, std::move(Params), std::move(Modifiers),
-      std::move(ReturnParams), std::move(Body));
+      Name, Vis, SM, IsConstructor, IsFallback, std::move(Params),
+      std::move(Modifiers), std::move(ReturnParams), std::move(Body));
   resolveBreak(*FD);
-  addIdentifierDecl(FD->getName(), *FD.get());
+  addIdentifierDecl(FD->getName(), *FD);
   return std::move(FD);
 }
 
@@ -259,14 +259,14 @@ ExprPtr Sema::DefaultLvalueConversion(ExprPtr &&E) {
 void Sema::resolveBreak(FunctionDecl &FD) { BreakableVisitor().check(FD); }
 
 void Sema::addIdentifierDecl(const std::string &S, Decl &D) {
-  ID2DeclTable[S] = &D;
+  ID2DeclTable.emplace(S, &D);
 }
 
 // TODO: refactor this
 // current impl. assumes no name scope
 Decl *Sema::findIdentifierDecl(const std::string &S) {
-  if (ID2DeclTable.count(S))
-    return ID2DeclTable[S];
+  if (auto iter = ID2DeclTable.find(S); iter != ID2DeclTable.end())
+    return iter->second;
   else
     return nullptr;
 }

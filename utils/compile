@@ -5,6 +5,8 @@ LLOPT=$(command -v opt-8)
 LLOPT=${LLOPT:-$(command -v opt)}
 LLC=$(command -v llc-8)
 LLC=${LLC:-$(command -v llc)}
+LLLINK=$(command -v llvm-link-8)
+LLLINK=${LLLINK:-$(command -v llvm-link)}
 WASM_LD=$(command -v wasm-ld-8)
 WASM_LD=${WASM_LD:-$(command -v wasm-ld)}
 WASM_OPT=$(command -v wasm-opt)
@@ -35,9 +37,54 @@ run() {
     "$@"
 }
 
+entry() {
+    {
+        echo "source_filename = \"$2\""
+        echo 'target datalayout = "e-m:e-p:32:32-i64:64-n32:64-S128"'
+        echo 'target triple = "wasm32-unknown-unknown-wasm"'
+        echo "declare void @solidity.$1()"
+        echo 'define void @main() {'
+        echo "  tail call void @solidity.$1()"
+        echo '  ret void'
+        echo '}'
+    } > "$2"
+}
+
+bin2deploy() {
+    local data
+    local size
+    # data="$(hexdump -v -e '/1 "\\%02x"' "$1")"
+    # data="$(LANG=C awk 'BEGIN{FS="";RS=".";for(i=0;i<256;i++)ord[sprintf("%c",i)]=i}{for(i=1;i<=NF;++i)printf("\\%02x",ord[$i])}' "$1")"
+    data=$(xxd -ps "$1" | sed -e 's@..@\\\0@g' | tr -d \\n)
+    size="$(wc -c "$1" | cut -d\  -f1)"
+    {
+        echo "source_filename = \"$2\""
+        echo 'target datalayout = "e-m:e-p:32:32-i64:64-n32:64-S128"'
+        echo 'target triple = "wasm32-unknown-unknown-wasm"'
+        echo "@deploy.data = local_unnamed_addr constant [$size x i8] c\"$data\", align 1"
+        echo "@deploy.size = local_unnamed_addr constant i32 $size, align 8"
+    } > "$2"
+}
+
 for INPUT in "$@"; do
-    run "$LLOPT" -Oz "$INPUT" -o "${INPUT%.ll}.bc" && \
-    run "$LLC" -O3 -filetype=obj "${INPUT%.ll}.bc" && \
-    run "$WASM_LD" --entry main --gc-sections --allow-undefined "${INPUT%.ll}.o" -o "${INPUT%.ll}.wasm" && \
-    [ "$WASM_OPT" ] && run "$WASM_OPT" -O4 "${INPUT%.ll}.wasm" -o "${INPUT%.ll}-opt.wasm"
+    BASE="${INPUT%.ll}"
+    entry main "$BASE.main.ll"
+    run "$LLLINK" "$BASE.ll" "$BASE.main.ll" -o "$BASE.bc" || exit -1
+    run "$LLOPT" -std-link-opts -Oz -polly "$BASE.bc" -o "$BASE.bc" || exit -1
+    run "$LLC" -O3 -filetype=obj "$BASE.bc" || exit -1
+    run "$WASM_LD" --entry main --gc-sections --allow-undefined "$BASE.o" -o "$BASE.wasm" || exit -1
+    if [ "$WASM_OPT" ]; then
+        run "$WASM_OPT" -O4 "$BASE.wasm" -o "$BASE-opt.wasm" || exit -1
+        bin2deploy "$BASE-opt.wasm" "$BASE.deploy.ll"
+    else
+        bin2deploy "$BASE.wasm" "$BASE.deploy.ll"
+    fi
+    entry ctor "$BASE.ctor.ll"
+    run "$LLLINK" "$BASE.ll" "$BASE.deploy.ll" "$BASE.ctor.ll" -o "$BASE.deploy.bc" || exit -1
+    run "$LLOPT" -std-link-opts -Oz -polly "$BASE.deploy.bc" -o "$BASE.deploy.bc" || exit -1
+    run "$LLC" -O3 -filetype=obj "$BASE.deploy.bc" || exit -1
+    run "$WASM_LD" --entry main --gc-sections --allow-undefined "$BASE.deploy.o" -o "$BASE.deploy.wasm" || exit -1
+    if [ "$WASM_OPT" ]; then
+        run "$WASM_OPT" -O4 "$BASE.deploy.wasm" -o "$BASE-opt.deploy.wasm" || exit -1
+    fi
 done

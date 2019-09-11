@@ -84,7 +84,8 @@ public:
     Int256PtrTy = llvm::PointerType::getUnqual(Int256Ty);
     VoidTy = Builder.getVoidTy();
 
-    BytesTy = llvm::StructType::create(M->getContext(), {Int32Ty, Int8PtrTy}, "bytes");
+    BytesTy = llvm::StructType::create(M->getContext(), {Int32Ty, Int8PtrTy},
+                                       "bytes");
     StringTy = llvm::StructType::create(M->getContext(), {Int256Ty, Int8PtrTy},
                                         "string", false);
   }
@@ -92,48 +93,58 @@ public:
   void createEEIDeclaration() {
     llvm::LLVMContext &Context = M->getContext();
     llvm::FunctionType *FT = nullptr;
+    llvm::Attribute Ethereum =
+        llvm::Attribute::get(Context, "wasm-import-module", "ethereum");
+    llvm::Attribute Debug =
+        llvm::Attribute::get(Context, "wasm-import-module", "debug");
 
     // getCallDataSize
     FT = llvm::FunctionType::get(Int32Ty, {}, false);
     Func_getCallDataSize = llvm::Function::Create(
-        FT, llvm::Function::ExternalLinkage, "getCallDataSize", *M);
+        FT, llvm::Function::ExternalLinkage, "ethereum.getCallDataSize", *M);
+    Func_getCallDataSize->addFnAttr(Ethereum);
     Func_getCallDataSize->addFnAttr(
-        llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
+        llvm::Attribute::get(Context, "wasm-import-name", "getCallDataSize"));
 
     // callDataCopy
     FT = llvm::FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty, Int32Ty}, false);
     Func_callDataCopy = llvm::Function::Create(
-        FT, llvm::Function::ExternalLinkage, "callDataCopy", *M);
+        FT, llvm::Function::ExternalLinkage, "ethereum.callDataCopy", *M);
+    Func_callDataCopy->addFnAttr(Ethereum);
     Func_callDataCopy->addFnAttr(
-        llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
+        llvm::Attribute::get(Context, "wasm-import-name", "callDataCopy"));
 
     // finish
     FT = llvm::FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
     Func_finish = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
-                                         "finish", *M);
+                                         "ethereum.finish", *M);
+    Func_finish->addFnAttr(Ethereum);
     Func_finish->addFnAttr(
-        llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
+        llvm::Attribute::get(Context, "wasm-import-name", "finish"));
 
     // revert
     FT = llvm::FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
     Func_revert = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
-                                         "revert", *M);
+                                         "ethereum.revert", *M);
+    Func_revert->addFnAttr(Ethereum);
     Func_revert->addFnAttr(
-        llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
+        llvm::Attribute::get(Context, "wasm-import-name", "revert"));
 
     // storageLoad
     FT = llvm::FunctionType::get(VoidTy, {Int256PtrTy, Int256PtrTy}, false);
-    Func_storageLoad = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
-                                        "storageLoad", *M);
+    Func_storageLoad = llvm::Function::Create(
+        FT, llvm::Function::ExternalLinkage, "ethereum.storageLoad", *M);
+    Func_storageLoad->addFnAttr(Ethereum);
     Func_storageLoad->addFnAttr(
-        llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
+        llvm::Attribute::get(Context, "wasm-import-name", "storageLoad"));
 
     // storageStore
     FT = llvm::FunctionType::get(VoidTy, {Int256PtrTy, Int256PtrTy}, false);
-    Func_storageStore = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
-                                         "storageStore", *M);
+    Func_storageStore = llvm::Function::Create(
+        FT, llvm::Function::ExternalLinkage, "ethereum.storageStore", *M);
+    Func_storageStore->addFnAttr(Ethereum);
     Func_storageStore->addFnAttr(
-        llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
+        llvm::Attribute::get(Context, "wasm-import-name", "storageStore"));
 
     // getCaller
     FT = llvm::FunctionType::get(VoidTy, {Int160PtrTy}, false);
@@ -146,24 +157,26 @@ public:
     FT = llvm::FunctionType::get(
         Int32Ty, {Int32Ty, Int160PtrTy, Int8PtrTy, Int32Ty}, false);
     Func_callStatic = llvm::Function::Create(
-        FT, llvm::Function::ExternalLinkage, "callStatic", *M);
+        FT, llvm::Function::ExternalLinkage, "ethereum.callStatic", *M);
+    Func_callStatic->addFnAttr(Ethereum);
     Func_callStatic->addFnAttr(
-        llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
+        llvm::Attribute::get(Context, "wasm-import-name", "callStatic"));
 
     // returnDataCopy
-    FT = llvm::FunctionType::get(
-        VoidTy, {Int8PtrTy, Int32Ty, Int32Ty}, false);
+    FT = llvm::FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty, Int32Ty}, false);
     Func_returnDataCopy = llvm::Function::Create(
-        FT, llvm::Function::ExternalLinkage, "returnDataCopy", *M);
+        FT, llvm::Function::ExternalLinkage, "ethereum.returnDataCopy", *M);
+    Func_returnDataCopy->addFnAttr(Ethereum);
     Func_returnDataCopy->addFnAttr(
-        llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
+        llvm::Attribute::get(Context, "wasm-import-name", "returnDataCopy"));
 
     // debug.print32
     FT = llvm::FunctionType::get(VoidTy, {Int32Ty}, false);
     Func_print32 = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
-                                          "print32", *M);
+                                          "ethereum.print32", *M);
+    Func_print32->addFnAttr(Debug);
     Func_print32->addFnAttr(
-        llvm::Attribute::get(Context, "wasm-import-module", "debug"));
+        llvm::Attribute::get(Context, "wasm-import-name", "print32"));
   }
 
   void createBswapI256() {
@@ -222,10 +235,6 @@ public:
     llvm::PHINode *DstPHI = Builder.CreatePHI(Int8PtrTy, 2);
     llvm::PHINode *LengthPHI = Builder.CreatePHI(Int32Ty, 2);
 
-    Builder.CreateCall(Func_print32, {Builder.CreatePtrToInt(SrcPHI, Int32Ty)});
-    Builder.CreateCall(Func_print32, {Builder.CreatePtrToInt(DstPHI, Int32Ty)});
-    Builder.CreateCall(Func_print32, {LengthPHI});
-
     llvm::Value *value = Builder.CreateLoad(SrcPHI);
     Builder.CreateStore(value, DstPHI);
     llvm::Value *Src2 = Builder.CreateInBoundsGEP(SrcPHI, {One});
@@ -250,12 +259,12 @@ public:
 
     Func_bswap256 = llvm::Function::Create(
         llvm::FunctionType::get(Int256Ty, {Int256Ty}, false),
-        llvm::Function::InternalLinkage, "__bswapi256", *M);
+        llvm::Function::InternalLinkage, "solidity.bswapi256", *M);
 
     Func_memcpy = llvm::Function::Create(
         llvm::FunctionType::get(Int8PtrTy, {Int8PtrTy, Int8PtrTy, Int32Ty},
                                 false),
-        llvm::Function::InternalLinkage, "__memcpy", *M);
+        llvm::Function::InternalLinkage, "solidity.memcpy", *M);
 
     createBswapI256();
     createMemcpy();
@@ -303,7 +312,7 @@ public:
     // keccak256
     FT = llvm::FunctionType::get(Int256Ty, {BytesTy}, false);
     Func_keccak256 = llvm::Function::Create(FT, llvm::Function::InternalLinkage,
-                                            "keccak256", *M);
+                                            "solidity.keccak256", *M);
 
     createKeccak256();
   }
@@ -335,56 +344,124 @@ public:
   void visit(ContractDeclType &CD) override {
     auto &Builder = *IRBuilder;
     llvm::LLVMContext &Context = M->getContext();
-    llvm::FunctionType *FT = nullptr;
+    llvm::FunctionType *FT = llvm::FunctionType::get(VoidTy, {}, false);
+
+    // constructor
+    {
+      llvm::GlobalVariable *deploy_size = new llvm::GlobalVariable(
+          *GetModule(), Int32Ty, true, llvm::GlobalVariable::ExternalLinkage,
+          nullptr, "deploy.size");
+      deploy_size->setUnnamedAddr(llvm::GlobalVariable::UnnamedAddr::Local);
+      deploy_size->setAlignment(8);
+      deploy_size->setVisibility(
+          llvm::Function::VisibilityTypes::HiddenVisibility);
+      llvm::GlobalVariable *deploy_data = new llvm::GlobalVariable(
+          *GetModule(), Int8Ty, true, llvm::GlobalVariable::ExternalLinkage,
+          nullptr, "deploy.data");
+      deploy_data->setAlignment(1);
+      deploy_data->setVisibility(
+          llvm::Function::VisibilityTypes::HiddenVisibility);
+
+      llvm::Function *Ctor = llvm::Function::Create(
+          FT, llvm::Function::ExternalLinkage, "solidity.ctor", *M);
+      Ctor->setVisibility(llvm::Function::VisibilityTypes::HiddenVisibility);
+      Ctor->addFnAttr(
+          llvm::Attribute::get(Context, llvm::Attribute::AlwaysInline));
+      llvm::BasicBlock *Entry =
+          llvm::BasicBlock::Create(Context, "entry", Ctor);
+      Builder.SetInsertPoint(Entry);
+
+      if (auto Constructor = CD.getConstructor()) {
+        assert(Constructor->getParams()->getParams().empty() &&
+               "parameters in constructor not supported!");
+        assert(Constructor->getReturnParams()->getParams().empty() &&
+               "no returns in constructor!");
+        llvm::Function *Func =
+            llvm::Function::Create(FT, llvm::Function::InternalLinkage,
+                                   Constructor->getName(), *GetModule());
+
+        Builder.CreateCall(Func, {});
+      }
+
+      Builder.CreateCall(Func_finish,
+                         {deploy_data, Builder.CreateLoad(deploy_size)});
+      Builder.CreateRetVoid();
+    }
 
     // main
-    FT = llvm::FunctionType::get(VoidTy, {}, false);
-    llvm::Function *Main =
-        llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "main", *M);
+    llvm::Function *Main = llvm::Function::Create(
+        FT, llvm::Function::ExternalLinkage, "solidity.main", *M);
+    Main->setVisibility(llvm::Function::VisibilityTypes::HiddenVisibility);
+    Main->addFnAttr(
+        llvm::Attribute::get(Context, llvm::Attribute::AlwaysInline));
 
     llvm::BasicBlock *Entry = llvm::BasicBlock::Create(Context, "entry", Main);
-    llvm::BasicBlock *Switch =
-        llvm::BasicBlock::Create(Context, "switch", Main);
     llvm::BasicBlock *Error = llvm::BasicBlock::Create(Context, "error", Main);
-
-    Builder.SetInsertPoint(Entry);
-    llvm::Value *callDataSize =
-        Builder.CreateCall(Func_getCallDataSize, {}, "size");
-    llvm::Value *cmp =
-        Builder.CreateICmpUGE(callDataSize, Builder.getInt32(4), "cmp");
-    Builder.CreateCondBr(cmp, Switch, Error);
 
     // two phase codegen
     Builder.SetInsertPoint(Error);
-    Builder.CreateCall(Func_revert, {llvm::ConstantPointerNull::get(Int8PtrTy),
-                                     Builder.getInt32(0)});
-    Builder.CreateUnreachable();
+    if (auto Fallback = CD.getFallback()) {
+      assert(Fallback->getParams()->getParams().empty() &&
+             "not parameters in fallback functions!");
+      assert(Fallback->getReturnParams()->getParams().empty() &&
+             "no returns in fallback functions!");
+      // fallback
 
-    Builder.SetInsertPoint(Switch);
-    llvm::Value *HashVPtr =
-        Builder.CreateAlloca(Int8Ty, Builder.getInt32(4), "hash.vptr");
-    Builder.CreateCall(Func_callDataCopy,
-                       {HashVPtr, Builder.getInt32(0), Builder.getInt32(4)});
-    llvm::Value *HashPtr =
-        Builder.CreateBitCast(HashVPtr, Int32PtrTy, "hash.ptr");
-    llvm::Value *Hash = Builder.CreateLoad(Int32Ty, HashPtr, "hash");
+      llvm::Function *Func =
+          llvm::Function::Create(FT, llvm::Function::InternalLinkage,
+                                 Fallback->getName(), *GetModule());
 
-    std::map<std::string, llvm::BasicBlock *> Labels;
-
-    llvm::SwitchInst *SI =
-        Builder.CreateSwitch(Hash, Error, CD.getFuncs().size());
-
-    for (auto F : CD.getFuncs()) {
-      llvm::BasicBlock *CondBB =
-          llvm::BasicBlock::Create(Context, F->getName(), Main);
-      Labels[F->getName()] = CondBB;
-      std::uint32_t hash = funcSignatureHash(*F);
-      SI->addCase(Builder.getInt32(hash), CondBB);
+      Builder.CreateCall(Func, {});
+      Builder.CreateCall(
+          Func_finish,
+          {llvm::ConstantPointerNull::get(Int8PtrTy), Builder.getInt32(0)});
+      Builder.CreateRetVoid();
+    } else {
+      Builder.CreateCall(
+          Func_revert,
+          {llvm::ConstantPointerNull::get(Int8PtrTy), Builder.getInt32(0)});
+      Builder.CreateUnreachable();
     }
 
-    for (auto Node : CD.getFuncs()) {
-      const FunctionDecl *F = dynamic_cast<const soll::FunctionDecl *>(Node);
-      genABI(*F, Labels[F->getName()], Error, callDataSize);
+    if (const auto &Fs = CD.getFuncs(); !Fs.empty()) {
+      llvm::BasicBlock *Switch =
+          llvm::BasicBlock::Create(Context, "switch", Main);
+
+      Builder.SetInsertPoint(Entry);
+      llvm::Value *callDataSize =
+          Builder.CreateCall(Func_getCallDataSize, {}, "size");
+      llvm::Value *cmp =
+          Builder.CreateICmpUGE(callDataSize, Builder.getInt32(4), "cmp");
+      Builder.CreateCondBr(cmp, Switch, Error);
+
+      Builder.SetInsertPoint(Switch);
+      llvm::Value *HashVPtr =
+          Builder.CreateAlloca(Int8Ty, Builder.getInt32(4), "hash.vptr");
+      Builder.CreateCall(Func_callDataCopy,
+                         {HashVPtr, Builder.getInt32(0), Builder.getInt32(4)});
+      llvm::Value *HashPtr =
+          Builder.CreateBitCast(HashVPtr, Int32PtrTy, "hash.ptr");
+      llvm::Value *Hash = Builder.CreateLoad(Int32Ty, HashPtr, "hash");
+
+      std::map<std::string, llvm::BasicBlock *> Labels;
+
+      llvm::SwitchInst *SI =
+          Builder.CreateSwitch(Hash, Error, CD.getFuncs().size());
+
+      for (auto F : Fs) {
+        llvm::BasicBlock *CondBB =
+            llvm::BasicBlock::Create(Context, F->getName(), Main);
+        Labels[F->getName()] = CondBB;
+        std::uint32_t hash = funcSignatureHash(*F);
+        SI->addCase(Builder.getInt32(hash), CondBB);
+      }
+
+      for (auto F : Fs) {
+        genABI(*F, Labels[F->getName()], Error, callDataSize);
+      }
+    } else {
+      Builder.SetInsertPoint(Entry);
+      Builder.CreateBr(Error);
     }
 
     // codegen function body
@@ -406,22 +483,22 @@ public:
 
   llvm::Type *getStaticLLVMTy(const Type *Ty) {
     switch (Ty->getCategory()) {
-      case Type::Category::Integer: {
-        const IntegerType *IntTy = dynamic_cast<const IntegerType *>(Ty);
-        return IRBuilder->getIntNTy(IntTy->getBitNum());
-      }
-      case Type::Category::Bool: {
-        return Int1Ty;
-      }
-      case Type::Category::Address: {
-        return IRBuilder->getIntNTy(160);
-      }
-      case Type::Category::String:
-      case Type::Category::Bytes: {
-        return Int256Ty;
-      }
-      default:
-        assert(false && "unsupported type!");
+    case Type::Category::Integer: {
+      const IntegerType *IntTy = dynamic_cast<const IntegerType *>(Ty);
+      return IRBuilder->getIntNTy(IntTy->getBitNum());
+    }
+    case Type::Category::Bool: {
+      return Int1Ty;
+    }
+    case Type::Category::Address: {
+      return IRBuilder->getIntNTy(160);
+    }
+    case Type::Category::String:
+    case Type::Category::Bytes: {
+      return Int256Ty;
+    }
+    default:
+      assert(false && "unsupported type!");
     }
   }
   llvm::Type *getStaticLLVMTy(const VarDecl *VD) {
@@ -430,21 +507,21 @@ public:
 
   llvm::Type *getLLVMTy(const Type *Ty) {
     switch (Ty->getCategory()) {
-      case Type::Category::Integer: {
-        const IntegerType *IntTy = dynamic_cast<const IntegerType *>(Ty);
-        return IRBuilder->getIntNTy(IntTy->getBitNum());
-      }
-      case Type::Category::Bool: {
-        return Int1Ty;
-      }
-      case Type::Category::Address: {
-        return IRBuilder->getIntNTy(160);
-      }
-      case Type::Category::String: {
-        return StringTy;
-      }
-      default:
-        assert(false && "unsupported type!");
+    case Type::Category::Integer: {
+      const IntegerType *IntTy = dynamic_cast<const IntegerType *>(Ty);
+      return IRBuilder->getIntNTy(IntTy->getBitNum());
+    }
+    case Type::Category::Bool: {
+      return Int1Ty;
+    }
+    case Type::Category::Address: {
+      return IRBuilder->getIntNTy(160);
+    }
+    case Type::Category::String: {
+      return StringTy;
+    }
+    default:
+      assert(false && "unsupported type!");
     }
   }
   llvm::Type *getLLVMTy(const VarDecl *VD) {
@@ -567,12 +644,12 @@ public:
     llvm::FunctionType *FT =
         llvm::FunctionType::get(getLLVMTy(F), ArgsTy, false);
     llvm::Function *Func = llvm::Function::Create(
-        FT, llvm::Function::ExternalLinkage, F.getName(), *GetModule());
+        FT, llvm::Function::InternalLinkage, F.getName(), *GetModule());
     const auto &Returns = F.getReturnParams()->getParams();
     if (Returns.empty()) {
       Builder.CreateCall(Func, ArgsVal);
       Builder.CreateCall(
-          M->getFunction("finish"),
+          Func_finish,
           {llvm::ConstantPointerNull::get(Int8PtrTy), Builder.getInt32(0)});
     } else if (Returns.size() == 1) {
       switch (Returns.front()->GetType()->getCategory()) {
@@ -590,8 +667,7 @@ public:
         Builder.CreateStore(r_b, r_ptr);
         auto *r_vptr = Builder.CreateBitCast(
             r_ptr, llvm::PointerType::getUnqual(Int8Ty), Fname + "_r_vptr");
-        Builder.CreateCall(M->getFunction("finish"),
-                           {r_vptr, Builder.getInt32(32)});
+        Builder.CreateCall(Func_finish, {r_vptr, Builder.getInt32(32)});
         break;
       }
       case Type::Category::String: {
@@ -620,7 +696,7 @@ public:
 
         auto *r_vptr = Builder.CreateBitCast(
             r_ptr, llvm::PointerType::getUnqual(Int8Ty), Fname + "_r_vptr");
-        Builder.CreateCall(M->getFunction("finish"),
+        Builder.CreateCall(Func_finish,
                            {r_vptr, Builder.CreateTrunc(r_size, Int32Ty)});
         break;
       }
@@ -632,7 +708,7 @@ public:
       assert(false && "unsupported tuple return!");
     }
 
-    Builder.CreateUnreachable();
+    Builder.CreateRetVoid();
   }
 
   std::uint32_t funcSignatureHash(const FunctionDecl &F) {

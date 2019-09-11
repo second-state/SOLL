@@ -23,7 +23,7 @@ int main(int argc, const char **argv) {
   SourceUnit source(make_unique_vector<Decl>(make_unique<ContractDecl>(
       "C", make_unique_vector<InheritanceSpecifier>(),
       make_unique_vector<Decl>(make_unique<FunctionDecl>(
-          "add", Decl::Visibility::Public, StateMutability::Pure, false,
+          "add", Decl::Visibility::Public, StateMutability::Pure, false, false,
           make_unique<ParamList>(make_unique_vector<VarDecl>(
               make_unique<VarDecl>(
                   make_unique<IntegerType>(IntegerType::IntKind::I64), "a",
@@ -47,7 +47,7 @@ int main(int argc, const char **argv) {
                                               make_unique<Identifier>("b"),
                                               BinaryOperatorKind::BO_Add),
                   BinaryOperatorKind::BO_Assign))))),
-      ContractDecl::ContractKind::Contract)));
+      nullptr, nullptr, ContractDecl::ContractKind::Contract)));
 
   ASTContext *Ctx = new ASTContext();
   auto p = CreateASTPrinter();

@@ -23,6 +23,7 @@ int main(int argc, const char **argv) {
                       Decl::Visibility::Public, // Function visibility
                       StateMutability::Pure,    // Function mutability
                       false,                    // Function is constructor
+                      false,                    // Function is fallback
                       make_unique<ParamList>(   // Function parameter
                           make_unique_vector<VarDecl>( // list of Params
                               make_unique<VarDecl>(    // string a;
@@ -48,6 +49,8 @@ int main(int argc, const char **argv) {
                       make_unique<Block>(              // Function body
                           make_unique_vector<Stmt>())) // end of FunctionDecl
                   ),                                   // end of vector<Decl>
+              nullptr,                                 // no constructor
+              nullptr,                                 // no fallback
               ContractDecl::ContractKind::Contract)    // end of ContractDecl
           )                                            // end of vector<Decl>
   );                                                   // end of SourceUnit

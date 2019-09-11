@@ -311,7 +311,8 @@ Value *FuncBodyCodeGen::loadValue(const Expr *Expr) {
       Value *AddrPtr = Builder.CreateAlloca(Addr->getType(), nullptr);
       Value *ValPtr = Builder.CreateAlloca(Addr->getType(), nullptr);
       Builder.CreateStore(Addr, AddrPtr);
-      Builder.CreateCall(Module.getFunction("storageLoad"), {AddrPtr, ValPtr});
+      Builder.CreateCall(Module.getFunction("ethereum.storageLoad"),
+                         {AddrPtr, ValPtr});
       Val = Builder.CreateLoad(ValPtr);
     } else {
       Val = Builder.CreateLoad(Addr);
@@ -321,7 +322,8 @@ Value *FuncBodyCodeGen::loadValue(const Expr *Expr) {
       Value *AddrPtr = Builder.CreateAlloca(Addr->getType(), nullptr);
       Value *ValPtr = Builder.CreateAlloca(Addr->getType(), nullptr);
       Builder.CreateStore(Addr, AddrPtr);
-      Builder.CreateCall(Module.getFunction("storageLoad"), {AddrPtr, ValPtr});
+      Builder.CreateCall(Module.getFunction("ethereum.storageLoad"),
+                         {AddrPtr, ValPtr});
       Val = Builder.CreateLoad(ValPtr);
     } else {
       Val = Builder.CreateLoad(Addr);
@@ -341,7 +343,8 @@ void FuncBodyCodeGen::storeValue(const Expr *Expr, Value *Val) {
       Value *ValPtr = Builder.CreateAlloca(Val->getType(), nullptr);
       Builder.CreateStore(Addr, AddrPtr);
       Builder.CreateStore(Val, ValPtr);
-      Builder.CreateCall(Module.getFunction("storageStore"), {AddrPtr, ValPtr});
+      Builder.CreateCall(Module.getFunction("ethereum.storageStore"),
+                         {AddrPtr, ValPtr});
     } else {
       Builder.CreateStore(Val, Addr);
     }
@@ -351,7 +354,8 @@ void FuncBodyCodeGen::storeValue(const Expr *Expr, Value *Val) {
       Value *ValPtr = Builder.CreateAlloca(Val->getType(), nullptr);
       Builder.CreateStore(Addr, AddrPtr);
       Builder.CreateStore(Val, ValPtr);
-      Builder.CreateCall(Module.getFunction("storageStore"), {AddrPtr, ValPtr});
+      Builder.CreateCall(Module.getFunction("ethereum.storageStore"),
+                         {AddrPtr, ValPtr});
     } else {
       Builder.CreateStore(Val, Addr);
     }
@@ -585,7 +589,7 @@ void FuncBodyCodeGen::visit(CallExprType &CALL) {
     auto *MSG = Builder.CreateInBoundsGEP(
         findTempValue(Arguments[1]), {Builder.getInt32(0), Builder.getInt32(0)},
         "msg.ptr");
-    Builder.CreateCall(Module.getFunction("revert"), {MSG, Length});
+    Builder.CreateCall(Module.getFunction("ethereum.revert"), {MSG, Length});
     Builder.CreateUnreachable();
 
     Builder.SetInsertPoint(ContBB);
@@ -605,7 +609,7 @@ void FuncBodyCodeGen::visit(CallExprType &CALL) {
     Builder.SetInsertPoint(RevertBB);
     Value *MSG = Builder.CreateInBoundsGEP(
         errStr, {Builder.getInt32(0), Length}, "msg.ptr");
-    Builder.CreateCall(Module.getFunction("revert"), {MSG, Length});
+    Builder.CreateCall(Module.getFunction("ethereum.revert"), {MSG, Length});
     Builder.CreateUnreachable();
 
     Builder.SetInsertPoint(ContBB);
@@ -622,7 +626,7 @@ void FuncBodyCodeGen::visit(CallExprType &CALL) {
     Builder.SetInsertPoint(RevertBB);
     auto *MSG = Builder.CreateInBoundsGEP(
         findTempValue(Arguments[0]), {Builder.getInt32(0), Length}, "msg.ptr");
-    Builder.CreateCall(Module.getFunction("revert"), {MSG, Length});
+    Builder.CreateCall(Module.getFunction("ethereum.revert"), {MSG, Length});
     Builder.CreateUnreachable();
   } else {
     ConstStmtVisitor::visit(CALL);
@@ -788,7 +792,7 @@ void FuncBodyCodeGen::emitCheckArrayOutOfBound(llvm::Value *ArrSz,
   Builder.SetInsertPoint(RevertBB);
   Value *MSG = Builder.CreateInBoundsGEP(ErrStr, {Builder.getInt32(0), Length},
                                          "msg.ptr");
-  Builder.CreateCall(Module.getFunction("revert"), {MSG, Length});
+  Builder.CreateCall(Module.getFunction("ethereum.revert"), {MSG, Length});
   Builder.CreateUnreachable();
 
   Builder.SetInsertPoint(ContBB);
@@ -822,7 +826,8 @@ void FuncBodyCodeGen::visit(IndexAccessType &IA) {
                                   {Builder.getInt32(0), Builder.getInt32(0)}),
         {1});
 
-    V = Builder.CreateCall(Module.getFunction("keccak256"), {bytes}, "Mapping");
+    V = Builder.CreateCall(Module.getFunction("solidity.keccak256"), {bytes},
+                           "Mapping");
   } else if (IA.getBase()->getType()->getCategory() == Type::Category::Array) {
     // Array Type : Fixed Size Mem Array, Fixed Sized Storage Array, Dynamic
     // Sized Storage Array
@@ -863,7 +868,7 @@ void FuncBodyCodeGen::visit(IndexAccessType &IA) {
                                     {Builder.getInt32(0), Builder.getInt32(0)}),
           {1});
 
-      V = Builder.CreateCall(Module.getFunction("keccak256"), {bytes},
+      V = Builder.CreateCall(Module.getFunction("solidity.keccak256"), {bytes},
                              "DynArrEntry");
     } else {
       // Fixed Size Storage Array : store storage address of slot the accessed

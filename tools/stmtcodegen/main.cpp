@@ -30,6 +30,7 @@ int main(int argc, const char **argv) {
             "C", make_unique_vector<InheritanceSpecifier>(),
             make_unique_vector<Decl>(make_unique<FunctionDecl>(
                 "test", Decl::Visibility::Public, StateMutability::Pure, false,
+                false,
                 make_unique<ParamList>(make_unique_vector<VarDecl>(
                     make_unique<VarDecl>(
                         make_unique<IntegerType>(IntegerType::IntKind::I64),
@@ -59,13 +60,14 @@ int main(int argc, const char **argv) {
                             make_unique<Identifier>("a"),
                             make_unique<Identifier>("b"),
                             BinaryOperatorKind::BO_Add)))))))),
-            ContractDecl::ContractKind::Contract)));
+            nullptr, nullptr, ContractDecl::ContractKind::Contract)));
   } else if (!strcmp(argv[1], "WhileStmt")) { // WhileStmt test
     source = make_unique<
         SourceUnit>(make_unique_vector<Decl>(make_unique<ContractDecl>(
         "C", make_unique_vector<InheritanceSpecifier>(),
         make_unique_vector<Decl>(make_unique<FunctionDecl>(
             "test", Decl::Visibility::Public, StateMutability::Pure, false,
+            false,
             make_unique<ParamList>(
                 make_unique_vector<VarDecl>(make_unique<VarDecl>(
                     make_unique<IntegerType>(IntegerType::IntKind::I64), "a",
@@ -99,13 +101,14 @@ int main(int argc, const char **argv) {
                 make_unique<BinaryOperator>(make_unique<NumberLiteral>(10),
                                             make_unique<Identifier>("a"),
                                             BinaryOperatorKind::BO_Add))))),
-        ContractDecl::ContractKind::Contract)));
+        nullptr, nullptr, ContractDecl::ContractKind::Contract)));
   } else if (!strcmp(argv[1], "ForStmt")) { // ForStmt test
     source = make_unique<
         SourceUnit>(make_unique_vector<Decl>(make_unique<ContractDecl>(
         "C", make_unique_vector<InheritanceSpecifier>(),
         make_unique_vector<Decl>(make_unique<FunctionDecl>(
             "test", Decl::Visibility::Public, StateMutability::Pure, false,
+            false,
             make_unique<ParamList>(
                 make_unique_vector<VarDecl>(make_unique<VarDecl>(
                     make_unique<IntegerType>(IntegerType::IntKind::I64), "a",
@@ -134,13 +137,14 @@ int main(int argc, const char **argv) {
                 make_unique<BinaryOperator>(make_unique<NumberLiteral>(10),
                                             make_unique<Identifier>("a"),
                                             BinaryOperatorKind::BO_Add))))),
-        ContractDecl::ContractKind::Contract)));
+        nullptr, nullptr, ContractDecl::ContractKind::Contract)));
   } else if (!strcmp(argv[1], "ReturnStmt")) { // ReturnStmt test
     source = make_unique<SourceUnit>(
         make_unique_vector<Decl>(make_unique<ContractDecl>(
             "C", make_unique_vector<InheritanceSpecifier>(),
             make_unique_vector<Decl>(make_unique<FunctionDecl>(
                 "test", Decl::Visibility::Public, StateMutability::Pure, false,
+                false,
                 make_unique<ParamList>(
                     make_unique_vector<VarDecl>(make_unique<VarDecl>(
                         make_unique<IntegerType>(IntegerType::IntKind::I64),
@@ -153,13 +157,14 @@ int main(int argc, const char **argv) {
                 make_unique<Block>(
                     make_unique_vector<Stmt>(make_unique<ReturnStmt>(
                         make_unique<NumberLiteral>(7122)))))),
-            ContractDecl::ContractKind::Contract)));
+            nullptr, nullptr, ContractDecl::ContractKind::Contract)));
   } else if (!strcmp(argv[1], "BreakStmt")) { // BreakStmt test
     source = make_unique<
         SourceUnit>(make_unique_vector<Decl>(make_unique<ContractDecl>(
         "C", make_unique_vector<InheritanceSpecifier>(),
         make_unique_vector<Decl>(make_unique<FunctionDecl>(
             "test", Decl::Visibility::Public, StateMutability::Pure, false,
+            false,
             make_unique<ParamList>(
                 make_unique_vector<VarDecl>(make_unique<VarDecl>(
                     make_unique<IntegerType>(IntegerType::IntKind::I64), "a",
@@ -196,13 +201,14 @@ int main(int argc, const char **argv) {
                         nullptr),
                     make_unique<BreakStmt>())),
                 false))))),
-        ContractDecl::ContractKind::Contract)));
+        nullptr, nullptr, ContractDecl::ContractKind::Contract)));
   } else if (!strcmp(argv[1], "ContinueStmt")) { // ContinueStmt test
     source = make_unique<
         SourceUnit>(make_unique_vector<Decl>(make_unique<ContractDecl>(
         "C", make_unique_vector<InheritanceSpecifier>(),
         make_unique_vector<Decl>(make_unique<FunctionDecl>(
             "test", Decl::Visibility::Public, StateMutability::Pure, false,
+            false,
             make_unique<ParamList>(
                 make_unique_vector<VarDecl>(make_unique<VarDecl>(
                     make_unique<IntegerType>(IntegerType::IntKind::I64), "a",
@@ -239,7 +245,7 @@ int main(int argc, const char **argv) {
                         nullptr),
                     make_unique<ContinueStmt>())),
                 false))))),
-        ContractDecl::ContractKind::Contract)));
+        nullptr, nullptr, ContractDecl::ContractKind::Contract)));
   } else
     return 0;
 

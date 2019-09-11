@@ -78,7 +78,7 @@ int main(int argc, const char **argv) {
   SourceUnit source(make_unique_vector<Decl>(make_unique<ContractDecl>(
       "IndexAccess", make_unique_vector<InheritanceSpecifier>(),
       make_unique_vector<Decl>(make_unique<FunctionDecl>(
-          "main", Decl::Visibility::Public, StateMutability::Pure, false,
+          "main", Decl::Visibility::Public, StateMutability::Pure, false, false,
           make_unique<ParamList>(make_unique_vector<VarDecl>()),
           make_unique_vector<ModifierInvocation>(),
           make_unique<ParamList>(make_unique_vector<VarDecl>()),
@@ -86,7 +86,7 @@ int main(int argc, const char **argv) {
               make_unique_vector<Stmt>(make_unique<BinaryOperator>(
                   make_unique<IndexAccess>(std::move(arr), std::move(idx)),
                   std::move(val), BO_Assign))))),
-      ContractDecl::ContractKind::Contract)));
+      nullptr, nullptr, ContractDecl::ContractKind::Contract)));
 
   ASTContext *Ctx = new ASTContext();
   auto p = CreateASTPrinter();

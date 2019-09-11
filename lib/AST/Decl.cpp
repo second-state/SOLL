@@ -64,8 +64,9 @@ std::vector<const VarDecl *> ContractDecl::getVars() const {
 std::vector<FunctionDecl *> ContractDecl::getFuncs() {
   std::vector<FunctionDecl *> Nodes;
   for (auto &Node : SubNodes) {
-    if (auto VD = dynamic_cast<FunctionDecl *>(Node.get()))
+    if (auto VD = dynamic_cast<FunctionDecl *>(Node.get())) {
       Nodes.emplace_back(VD);
+    }
   }
   return Nodes;
 }
@@ -73,10 +74,27 @@ std::vector<FunctionDecl *> ContractDecl::getFuncs() {
 std::vector<const FunctionDecl *> ContractDecl::getFuncs() const {
   std::vector<const FunctionDecl *> Nodes;
   for (auto &Node : this->SubNodes) {
-    if (auto VD = dynamic_cast<const FunctionDecl *>(Node.get()))
+    if (auto VD = dynamic_cast<const FunctionDecl *>(Node.get())) {
       Nodes.emplace_back(VD);
+    }
   }
   return Nodes;
+}
+
+FunctionDecl *ContractDecl::getConstructor() {
+  return Constructor.get();
+}
+
+const FunctionDecl *ContractDecl::getConstructor() const {
+  return Constructor.get();
+}
+
+FunctionDecl *ContractDecl::getFallback() {
+  return Fallback.get();
+}
+
+const FunctionDecl *ContractDecl::getFallback() const {
+  return Fallback.get();
 }
 
 ///
@@ -98,12 +116,12 @@ std::vector<VarDecl *> ParamList::getParams() {
 
 FunctionDecl::FunctionDecl(
     llvm::StringRef name, Visibility visibility, StateMutability sm,
-    bool isConstructor, std::unique_ptr<ParamList> &&Params,
+    bool isConstructor, bool isFallback, std::unique_ptr<ParamList> &&Params,
     std::vector<std::unique_ptr<ModifierInvocation>> &&modifiers,
     std::unique_ptr<ParamList> &&returnParams, std::unique_ptr<Block> &&body)
     : CallableVarDecl(name, visibility, std::move(Params),
                       std::move(returnParams)),
-      SM(sm), IsConstructor(isConstructor),
+      SM(sm), IsConstructor(isConstructor), IsFallback(isFallback),
       FunctionModifiers(std::move(modifiers)), Body(std::move(body)),
       Implemented(body != nullptr) {
   std::vector<TypePtr> PTys;

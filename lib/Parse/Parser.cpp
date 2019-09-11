@@ -459,6 +459,8 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
   llvm::StringRef Name;
   vector<unique_ptr<InheritanceSpecifier>> BaseContracts;
   vector<unique_ptr<Decl>> SubNodes;
+  unique_ptr<FunctionDecl> Constructor;
+  unique_ptr<FunctionDecl> Fallback;
   Name = TheLexer.CachedLex()->getIdentifierInfo()->getName();
 
   if (TheLexer.LookAhead(0)->is(tok::kw_is)) {
@@ -480,8 +482,16 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
     }
     // [TODO] < Parse all Types in contract's context >
     if (Kind == tok::kw_function || Kind == tok::kw_constructor) {
-      SubNodes.push_back(
-          std::move(parseFunctionDefinitionOrFunctionTypeStateVariable()));
+      auto F = parseFunctionDefinitionOrFunctionTypeStateVariable();
+      if (F->isConstructor()) {
+        assert(!Constructor && "multiple constructor defined!");
+        Constructor = std::move(F);
+      } else if (F->isFallback()) {
+        assert(!Fallback && "multiple constructor defined!");
+        Fallback = std::move(F);
+      } else {
+        SubNodes.push_back(std::move(F));
+      }
       Actions.EraseFunRtnTys();
     } else if (Kind == tok::kw_struct) {
       // [TODO] contract tok::kw_struct
@@ -510,8 +520,9 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
                       "declaration expected.");
     }
   }
-  return std::make_unique<ContractDecl>(Name, std::move(BaseContracts),
-                                        std::move(SubNodes), CtKind);
+  return std::make_unique<ContractDecl>(
+      Name, std::move(BaseContracts), std::move(SubNodes),
+      std::move(Constructor), std::move(Fallback), CtKind);
 }
 
 Parser::FunctionHeaderParserResult
@@ -520,17 +531,21 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
   FunctionHeaderParserResult Result;
 
   Result.IsConstructor = false;
+  Result.IsFallback = false;
+
   if (TheLexer.CachedLex()->is(tok::kw_constructor)) {
     Result.IsConstructor = true;
   }
 
   llvm::Optional<Token> CurTok = TheLexer.LookAhead(0);
-  if (Result.IsConstructor)
-    Result.Name = llvm::StringRef();
-  else if (ForceEmptyName || CurTok->is(tok::l_paren))
-    Result.Name = llvm::StringRef();
-  else
+  if (Result.IsConstructor) {
+    Result.Name = llvm::StringRef("solidity.constructor");
+  } else if (ForceEmptyName || CurTok->is(tok::l_paren)) {
+    Result.Name = llvm::StringRef("solidity.fallback");
+    Result.IsFallback = true;
+  } else {
     Result.Name = TheLexer.CachedLex()->getIdentifierInfo()->getName();
+  }
 
   VarDeclParserOptions Options;
   Options.AllowLocationSpecifier = true;
@@ -584,8 +599,9 @@ Parser::parseFunctionDefinitionOrFunctionTypeStateVariable() {
     }
     return Actions.CreateFunctionDecl(
         Header.Name, Header.Vsblty, Header.SM, Header.IsConstructor,
-        std::move(Header.Parameters), std::move(Header.Modifiers),
-        std::move(Header.ReturnParameters), std::move(block));
+        Header.IsFallback, std::move(Header.Parameters),
+        std::move(Header.Modifiers), std::move(Header.ReturnParameters),
+        std::move(block));
   } else {
     // [TODO] State Variable case.
     return nullptr;

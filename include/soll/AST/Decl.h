@@ -64,6 +64,8 @@ public:
 private:
   std::vector<std::unique_ptr<InheritanceSpecifier>> BaseContracts;
   std::vector<DeclPtr> SubNodes;
+  std::unique_ptr<FunctionDecl> Constructor;
+  std::unique_ptr<FunctionDecl> Fallback;
   ContractKind Kind;
 
 public:
@@ -71,9 +73,12 @@ public:
       llvm::StringRef name,
       std::vector<std::unique_ptr<InheritanceSpecifier>> &&baseContracts,
       std::vector<DeclPtr> &&subNodes,
+      std::unique_ptr<FunctionDecl> &&constructor,
+      std::unique_ptr<FunctionDecl> &&fallback,
       ContractKind kind = ContractKind::Contract)
       : Decl(name), BaseContracts(std::move(baseContracts)),
-        SubNodes(std::move(subNodes)), Kind(kind) {}
+        SubNodes(std::move(subNodes)), Constructor(std::move(constructor)),
+        Fallback(std::move(fallback)), Kind(kind) {}
 
   std::vector<Decl *> getSubNodes();
   std::vector<const Decl *> getSubNodes() const;
@@ -83,6 +88,12 @@ public:
 
   std::vector<FunctionDecl *> getFuncs();
   std::vector<const FunctionDecl *> getFuncs() const;
+
+  FunctionDecl *getConstructor();
+  const FunctionDecl *getConstructor() const;
+
+  FunctionDecl *getFallback();
+  const FunctionDecl *getFallback() const;
 
   void accept(DeclVisitor &visitor) override;
   void accept(ConstDeclVisitor &visitor) const override;
@@ -124,6 +135,7 @@ enum class StateMutability { Pure, View, NonPayable, Payable };
 class FunctionDecl : public CallableVarDecl {
   StateMutability SM;
   bool IsConstructor;
+  bool IsFallback;
   std::vector<std::unique_ptr<ModifierInvocation>> FunctionModifiers;
   std::unique_ptr<Block> Body;
   bool Implemented;
@@ -131,7 +143,8 @@ class FunctionDecl : public CallableVarDecl {
 
 public:
   FunctionDecl(llvm::StringRef name, Visibility visibility, StateMutability sm,
-               bool isConstructor, std::unique_ptr<ParamList> &&Params,
+               bool isConstructor, bool isFallback,
+               std::unique_ptr<ParamList> &&Params,
                std::vector<std::unique_ptr<ModifierInvocation>> &&modifiers,
                std::unique_ptr<ParamList> &&returnParams,
                std::unique_ptr<Block> &&body);
@@ -139,6 +152,8 @@ public:
   Block *getBody() { return Body.get(); }
   const Block *getBody() const { return Body.get(); }
   TypePtr getType() const { return FuncTy; }
+  bool isConstructor() const { return IsConstructor; }
+  bool isFallback() const { return IsFallback; }
 
   void accept(DeclVisitor &visitor) override;
   void accept(ConstDeclVisitor &visitor) const override;

@@ -50,6 +50,7 @@ private:
 
   struct FunctionHeaderParserResult {
     bool IsConstructor;
+    bool IsFallback;
     llvm::StringRef Name;
     Decl::Visibility Vsblty = Decl::Visibility::Default;
     StateMutability SM = StateMutability::NonPayable;
