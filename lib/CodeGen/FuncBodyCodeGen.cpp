@@ -4,7 +4,13 @@
 #include <llvm/IR/Function.h>
 
 #include <cassert>
-#include <iostream>
+
+#include "../utils/SHA-3/CommandParser.h"
+#include "../utils/SHA-3/Keccak.h"
+#include "../utils/SHA-3/stdafx.h"
+
+#include "../utils/SHA-3/Endian.h"
+#include "../utils/SHA-3/Rotation.h"
 
 namespace soll {
 
@@ -12,11 +18,30 @@ using llvm::BasicBlock;
 using llvm::Function;
 using llvm::Value;
 
+static std::vector<uint8_t> EventSignatureHash(const EventDecl &E) {
+  Keccak h(256);
+  h.addData(E.getName().bytes_begin(), 0, E.getName().size());
+  h.addData('(');
+  bool first = true;
+  for (const VarDecl *var : E.getParams()->getParams()) {
+    if (!first)
+      h.addData(',');
+    first = false;
+    assert(var->GetType() && "unsupported type!");
+    const std::string &name = var->GetType()->getName();
+    h.addData(reinterpret_cast<const uint8_t *>(name.data()), 0, name.size());
+  }
+  h.addData(')');
+  const std::vector<std::uint8_t> op = h.digest();
+  return op;
+}
+
 FuncBodyCodeGen::FuncBodyCodeGen(llvm::LLVMContext &Context,
                                  llvm::IRBuilder<llvm::NoFolder> &Builder,
                                  llvm::Module &Module, ASTContext &Ctx)
     : Context(Context), Builder(Builder), Module(Module), ASTCtx(Ctx) {
   Int256Ty = Builder.getIntNTy(256);
+  Int256PtrTy = llvm::PointerType::getUnqual(Int256Ty);
   VoidTy = Builder.getVoidTy();
   AddressTy = Builder.getIntNTy(160);
   StringTy = Module.getTypeByName("string");
@@ -635,7 +660,7 @@ void FuncBodyCodeGen::visit(CallExprType &CALL) {
 
       llvm::Value *RetV = nullptr;
       auto Arguments = CALL.getArguments();
-      std::vector<llvm::Value *> argsValue(Arguments.size());
+      std::vector<llvm::Value *> ArgsValue(Arguments.size());
       if (CALL.isNamedCall()) {
         // Call's arguments are with name
         // TODO: implement getParamDecl()
@@ -648,25 +673,62 @@ void FuncBodyCodeGen::visit(CallExprType &CALL) {
           argName2value[passedArgOrder[i]] = findTempValue(Arguments[i]);
         }
         for (size_t i = 0; i < Arguments.size(); i++) {
-          argsValue[i] = argName2value[declArgOrder[i]];
+          ArgsValue[i] = argName2value[declArgOrder[i]];
         }
         */
       } else {
         // normal function call
         for (size_t i = 0; i < Arguments.size(); i++) {
-          argsValue[i] = findTempValue(Arguments[i]);
+          ArgsValue[i] = findTempValue(Arguments[i]);
         }
       }
 
       llvm::Function *F = Module.getFunction(funcName);
       if (F->getReturnType()->isVoidTy()) {
-        Builder.CreateCall(F, argsValue);
+        Builder.CreateCall(F, ArgsValue);
       } else {
-        RetV = Builder.CreateCall(F, argsValue, funcName);
+        RetV = Builder.CreateCall(F, ArgsValue, funcName);
         TempValueTable[&CALL] = RetV;
       }
-    } else if (auto ED = dynamic_cast<const CallableVarDecl *>(
+    } else if (auto ED = dynamic_cast<const EventDecl *>(
                    Callee->getCorrespondDecl())) {
+      auto Params = ED->getParams()->getParams();
+      auto Arguments = CALL.getArguments();
+      std::vector<llvm::Value *> Data(
+          1, llvm::ConstantPointerNull::get(Int256PtrTy));
+      std::vector<llvm::Value *> Topics(
+          4, llvm::ConstantPointerNull::get(Int256PtrTy));
+      uint IndexedCnt = 0;
+      uint DataCnt = 0;
+
+      // Generate event signature should be moved to ModuleBuilder.
+      if (ED->isAnonymous() == false){
+        auto Signature = EventSignatureHash(*ED);
+        auto *s_ptr = Builder.CreateAlloca(Builder.getInt8Ty(), Builder.getInt32(32), "s_ptr");
+        for (size_t i = 0; i < 32; i++) {
+          auto *v_ptr = Builder.CreateInBoundsGEP(s_ptr, {Builder.getInt64(i)});
+          Builder.CreateStore(Builder.getInt8(Signature[i]), v_ptr);
+        }
+        Topics[IndexedCnt++] = Builder.CreateBitCast(s_ptr, Int256PtrTy);
+      }
+
+      // XXX: Multiple args and complex data type encoding not implemented yet.
+      for (size_t i = 0; i < Arguments.size(); i++) {
+        auto Val = findTempValue(Arguments[i]);
+        auto *v_b = Builder.CreateCall(Module.getFunction("solidity.bswapi256"),
+                                     {Builder.CreateZExtOrTrunc(Val, Int256Ty)}, "v_b");
+        llvm::Value *ValPtr = Builder.CreateAlloca(Int256Ty, nullptr);
+        Builder.CreateStore(v_b, ValPtr);
+        if (Params[i]->isIndexed()) {
+          Topics[IndexedCnt++] = ValPtr;
+        } else {
+          Data[DataCnt++] = ValPtr;
+        }
+      }
+      Builder.CreateCall(Module.getFunction("ethereum.log"),
+                         {Builder.CreateBitCast(Data[0], Builder.getInt8PtrTy()), Builder.getInt32(32),
+                          Builder.getInt32(IndexedCnt),
+                          Topics[0], Topics[1], Topics[2], Topics[3]});
     } else {
       assert(false && "Unhandle CallExprType CodeGen case.");
     }
@@ -904,7 +966,7 @@ void FuncBodyCodeGen::visit(MemberExprType &ME) {
   if (BaseID != nullptr && BaseID->getName().compare("msg") == 0) {
     if (ME.getName()->getName().compare("sender") == 0) {
       Value *ValPtr = Builder.CreateAlloca(AddressTy);
-      Builder.CreateCall(Module.getFunction("getCaller"), {ValPtr});
+      Builder.CreateCall(Module.getFunction("ethereum.getCaller"), {ValPtr});
       V = Builder.CreateLoad(ValPtr);
     } else {
       assert(false && "Unsuuported member access for msg");

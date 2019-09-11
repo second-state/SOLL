@@ -3,7 +3,6 @@
 #include "CodeGenModule.h"
 #include "soll/AST/AST.h"
 #include "soll/CodeGen/FuncBodyCodeGen.h"
-#include <iostream>
 
 #include "../utils/SHA-3/CommandParser.h"
 #include "../utils/SHA-3/Keccak.h"
@@ -39,6 +38,7 @@ class CodeGeneratorImpl : public CodeGenerator,
 
   llvm::Function *Func_getCallDataSize = nullptr;
   llvm::Function *Func_callDataCopy = nullptr;
+  llvm::Function *Func_log = nullptr;
   llvm::Function *Func_finish = nullptr;
   llvm::Function *Func_revert = nullptr;
   llvm::Function *Func_callStatic = nullptr;
@@ -114,6 +114,17 @@ public:
     Func_callDataCopy->addFnAttr(
         llvm::Attribute::get(Context, "wasm-import-name", "callDataCopy"));
 
+    // log
+    FT = llvm::FunctionType::get(VoidTy,
+                                 {Int8PtrTy, Int32Ty, Int32Ty, Int256PtrTy,
+                                  Int256PtrTy, Int256PtrTy, Int256PtrTy},
+                                 false);
+    Func_log =
+        llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "ethereum.log", *M);
+    Func_log->addFnAttr(Ethereum);
+    Func_log->addFnAttr(
+        llvm::Attribute::get(Context, "wasm-import-name", "log"));
+
     // finish
     FT = llvm::FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
     Func_finish = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
@@ -149,9 +160,10 @@ public:
     // getCaller
     FT = llvm::FunctionType::get(VoidTy, {Int160PtrTy}, false);
     Func_getCaller = llvm::Function::Create(
-        FT, llvm::Function::ExternalLinkage, "getCaller", *M);
+        FT, llvm::Function::ExternalLinkage, "ethereum.getCaller", *M);
+    Func_getCaller->addFnAttr(Ethereum);
     Func_getCaller->addFnAttr(
-        llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
+        llvm::Attribute::get(Context, "wasm-import-name", "getCaller"));
 
     // callStatic
     FT = llvm::FunctionType::get(

@@ -337,8 +337,7 @@ void ASTPrinter::visit(DeclStmtType &decstmt) {
   ConstStmtVisitor::visit(decstmt);
   for (auto vdecl : decstmt.getVarDecls())
     vdecl->accept(*this);
-  // [TODO] Debug use, this field should be removed in the furture.
-  // Value will store in ValDecl node.
+  // TODO: Consider directly store value in ValDecl node.
   if (decstmt.getValue() != nullptr)
     decstmt.getValue()->accept(*this);
   unindent();

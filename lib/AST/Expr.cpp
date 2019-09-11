@@ -3,8 +3,6 @@
 #include "soll/AST/Decl.h"
 #include "soll/AST/Stmt.h"
 
-#include <iostream>
-
 namespace soll {
 
 bool IndexAccess::isStateVariable() const {

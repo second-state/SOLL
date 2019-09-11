@@ -169,9 +169,8 @@ public:
   EventDecl(llvm::StringRef name, std::unique_ptr<ParamList> &&params,
             bool isAnonymous = false);
 
-  bool isAnonymous() { return IsAnonymous; }
-  bool isAnonymous() const { return IsAnonymous; }
   TypePtr getType() const { return FuncTy; }
+  bool isAnonymous() const { return IsAnonymous; }
 
   void accept(DeclVisitor &visitor) override;
   void accept(ConstDeclVisitor &visitor) const override;
@@ -217,9 +216,8 @@ public:
 
   TypePtr GetType() { return TypeName; }
   const TypePtr &GetType() const { return TypeName; }
-  Location getLoc() { return ReferenceLocation; }
   Location getLoc() const { return ReferenceLocation; }
-  bool isStateVariable() { return IsStateVariable; }
+  bool isIndexed() const { return IsIndexed; }
   bool isStateVariable() const { return IsStateVariable; }
 };
 

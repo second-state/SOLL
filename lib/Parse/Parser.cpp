@@ -384,7 +384,7 @@ unique_ptr<PragmaDirective> Parser::parsePragmaDirective() {
   } while (!TheLexer.LookAhead(0)->isOneOf(tok::semi, tok::eof));
   TheLexer.CachedLex();
 
-  // [TODO] Implement version recognize and compare. ref: parsePragmaVersion
+  // TODO: Implement version recognize and compare. ref: parsePragmaVersion
   return std::make_unique<PragmaDirective>();
 }
 
@@ -467,7 +467,7 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
     do {
       TheLexer.CachedLex();
       TheLexer.CachedLex();
-      // [TODO] Update vector<InheritanceSpecifier> baseContracts
+      // TODO: Update vector<InheritanceSpecifier> baseContracts
       BaseContracts.push_back(std::move(std::make_unique<InheritanceSpecifier>(
           TheLexer.LookAhead(0)->getIdentifierInfo()->getName().str(),
           vector<std::unique_ptr<Expr>>())));
@@ -480,7 +480,7 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
     if (Kind == tok::r_brace) {
       break;
     }
-    // [TODO] < Parse all Types in contract's context >
+    // TODO: < Parse all Types in contract's context >
     if (Kind == tok::kw_function || Kind == tok::kw_constructor) {
       auto F = parseFunctionDefinitionOrFunctionTypeStateVariable();
       if (F->isConstructor()) {
@@ -494,10 +494,10 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
       }
       Actions.EraseFunRtnTys();
     } else if (Kind == tok::kw_struct) {
-      // [TODO] contract tok::kw_struct
+      // TODO: contract tok::kw_struct
       assert(false && "struct not implemented");
     } else if (Kind == tok::kw_enum) {
-      // [TODO] contract tok::kw_enum
+      // TODO: contract tok::kw_enum
       assert(false && "enum not implemented");
     } else if (Kind == tok::identifier || Kind == tok::kw_mapping ||
                TheLexer.LookAhead(0)->isElementaryTypeName()) {
@@ -507,12 +507,12 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
       SubNodes.push_back(parseVariableDeclaration(options));
       TheLexer.CachedLex(); // ;
     } else if (Kind == tok::kw_modifier) {
-      // [TODO] contract tok::kw_modifier
+      // TODO: contract tok::kw_modifier
       assert(false && "modifier not implemented");
     } else if (Kind == tok::kw_event) {
       SubNodes.push_back(std::move(parseEventDefinition()));
     } else if (Kind == tok::kw_using) {
-      // [TODO] contract tok::kw_using
+      // TODO: contract tok::kw_using
       assert(false && "using not implemented");
     } else {
       assert(false && "Solidity Error: Function, variable, struct or modifier "
@@ -554,10 +554,10 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
   while (true) {
     CurTok = TheLexer.LookAhead(0);
     if (AllowModifiers && CurTok->is(tok::identifier)) {
-      // [TODO] Function Modifier
+      // TODO: Function Modifier
     } else if (CurTok->isOneOf(tok::kw_public, tok::kw_private,
                                tok::kw_internal, tok::kw_external)) {
-      // [TODO] Special case of a public state variable of function Type.
+      // TODO: Special case of a public state variable of function Type.
       Result.Vsblty = parseVisibilitySpecifier();
     } else if (CurTok->isOneOf(tok::kw_constant, tok::kw_pure, tok::kw_view,
                                tok::kw_payable)) {
@@ -601,7 +601,7 @@ Parser::parseFunctionDefinitionOrFunctionTypeStateVariable() {
         std::move(Header.Modifiers), std::move(Header.ReturnParameters),
         std::move(block));
   } else {
-    // [TODO] State Variable case.
+    // TODO: State Variable case.
     return nullptr;
   }
 }
@@ -713,7 +713,7 @@ TypePtr Parser::parseTypeNameSuffix(TypePtr T) {
   return T;
 }
 
-// [TODO] < Need complete all Types >
+// TODO: < Need complete all Types >
 TypePtr Parser::parseTypeName(bool AllowVar) {
   TypePtr T;
   bool HaveType = false;
@@ -748,14 +748,14 @@ TypePtr Parser::parseTypeName(bool AllowVar) {
     }
     HaveType = true;
   } else if (Kind == tok::kw_var) {
-    // [TODO] parseTypeName tok::kw_var (var is deprecated)
+    // TODO: parseTypeName tok::kw_var (var is deprecated)
     assert(false && "Expected Type Name");
   } else if (Kind == tok::kw_function) {
-    // [TODO] parseTypeName tok::kw_function
+    // TODO: parseTypeName tok::kw_function
   } else if (Kind == tok::kw_mapping) {
     T = std::move(parseMapping());
   } else if (Kind == tok::identifier) {
-    // [TODO] parseTypeName tok::identifier
+    // TODO: parseTypeName tok::identifier
   } else {
     assert(false && "Expected Type Name");
   }
@@ -809,7 +809,7 @@ unique_ptr<Block> Parser::parseBlock() {
   return std::make_unique<Block>(std::move(Statements));
 }
 
-// [TODO] < Parse all statements >
+// TODO: < Parse all statements >
 unique_ptr<Stmt> Parser::parseStatement() {
   unique_ptr<Stmt> Statement;
   llvm::Optional<Token> CurTok;
@@ -840,7 +840,7 @@ unique_ptr<Stmt> Parser::parseStatement() {
     }
     break;
   case tok::kw_assembly:
-    // [TODO] parseStatement kw_assembly
+    // TODO: parseStatement kw_assembly
     break;
   case tok::kw_emit:
     Statement = parseEmitStatement();
@@ -1108,7 +1108,7 @@ Parser::IndexAccessedPath Parser::parseIndexAccessedPath() {
   return Iap;
 }
 
-// [TODO] IAP relative function
+// TODO: IAP relative function
 TypePtr
 Parser::typeNameFromIndexAccessStructure(Parser::IndexAccessedPath &Iap) {
   if (Iap.empty())
@@ -1122,7 +1122,7 @@ Parser::typeNameFromIndexAccessStructure(Parser::IndexAccessedPath &Iap) {
     vector<std::string> Path;
     for (auto const &el : Iap.Path)
       Path.push_back(el->getName());
-    // [TODO] UserDefinedTypeName
+    // TODO: UserDefinedTypeName
     // T = UserDefinedTypeName with Path
   }
   for (auto &Length : Iap.Indices) {
@@ -1134,7 +1134,7 @@ Parser::typeNameFromIndexAccessStructure(Parser::IndexAccessedPath &Iap) {
   return T;
 }
 
-// [TODO] IAP relative function
+// TODO: IAP relative function
 unique_ptr<Expr>
 Parser::expressionFromIndexAccessStructure(Parser::IndexAccessedPath &Iap) {
   if (Iap.empty()) {
@@ -1147,7 +1147,7 @@ Parser::expressionFromIndexAccessStructure(Parser::IndexAccessedPath &Iap) {
   }
 
   for (auto &Index : Iap.Indices) {
-    // [TODO] assumption idx always is integer
+    // TODO: assumption idx always is integer
     Expression =
         Actions.CreateIndexAccess(std::move(Expression), std::move(Index));
   }
@@ -1169,7 +1169,7 @@ Parser::parseExpression(unique_ptr<Expr> &&PartiallyParsedExpression) {
     unique_ptr<Expr> trueExpression = parseExpression();
     TheLexer.CachedLex();
     unique_ptr<Expr> falseExpression = parseExpression();
-    // [TODO] Create ConditionExpression
+    // TODO: Create ConditionExpression
     return nullptr;
   } else
     return Expression;
@@ -1253,7 +1253,7 @@ unique_ptr<Expr> Parser::parseLeftHandSideExpression(
       vector<llvm::StringRef> Names;
       tie(Arguments, Names) = parseFunctionCallArguments();
       TheLexer.CachedLex(); // )
-      // [TODO] Fix passs arguments' name fail.
+      // TODO: Fix passs arguments' name fail.
       Expression =
           Actions.CreateCallExpr(std::move(Expression), std::move(Arguments));
       break;
@@ -1311,12 +1311,12 @@ unique_ptr<Expr> Parser::parsePrimaryExpression() {
     break;
   }
   case tok::kw_type:
-    // [TODO] Type expression is globally-avariable function
+    // TODO: Type expression is globally-avariable function
     assert(false && "Type not support right now\n");
     break;
   case tok::l_paren:
   case tok::l_square: {
-    // [TODO] Tuple case
+    // TODO: Tuple case
     //
     // Tuple/parenthesized expression or inline array/bracketed expression.
     // Special cases: ()/[] is empty tuple/array type, (x) is not a real tuple,
@@ -1333,7 +1333,7 @@ unique_ptr<Expr> Parser::parsePrimaryExpression() {
     assert(false && "Unknown token");
     break;
   default:
-    // [TODO] Type MxN case
+    // TODO: Type MxN case
     assert(false && "Expected primary expression.");
     break;
   }
@@ -1356,7 +1356,7 @@ pair<vector<unique_ptr<Expr>>, vector<llvm::StringRef>>
 Parser::parseFunctionCallArguments() {
   pair<vector<unique_ptr<Expr>>, vector<llvm::StringRef>> Ret;
   if (TheLexer.LookAhead(0)->is(tok::l_brace)) {
-    // [TODO] Unverified function parameters case
+    // TODO: Unverified function parameters case
     // call({arg1 : 1, arg2 : 2 })
     TheLexer.CachedLex();
     bool First = true;
