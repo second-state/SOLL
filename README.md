@@ -1,9 +1,9 @@
 # WHAT IS SOLL
-**SOLL** is a new compiler for generate [EWASM](https://github.com/ewasm) from solidity.
+**SOLL** is a new compiler for generating [EWASM](https://github.com/ewasm) from solidity.
 
-Currently we apply two phases generate flow. Generate .ll (LLVM IR file) first, then generate .wasm (WASM file).
+Currently, we apply two phases generating flow. Generate .ll (LLVM IR file) first, then generate .wasm (WASM file).
 
-In this document we will show you how to achieve that goal.
+In this document, we will show you how to achieve that goal.
 
 1. Build soll.
 2. Generate ewasm from our demo test case.
@@ -26,7 +26,7 @@ To get started with our demo, you will need three components at first.
 docker pull yi2nd/soll:v0.0.1
 ```
 
-- Git clone from official gitlab repository.
+- Git clone from official Gitlab repository.
 ```Shell
 git clone https://github.com/second-state/soll.git
 git clone https://github.com/second-state/soll-ewasm-testbench.git ewasm-testbench
@@ -47,8 +47,8 @@ git clone https://github.com/second-state/soll-ewasm-testbench.git ewasm-testben
         └── (...)
 ```
 
-## Lauch Environment
-Attach shell to container and bind volume with repositorys' path.
+## Launch Environment
+Attach shell to container and bind volume with repositories' path.
 ```Shell
 docker run -it --rm \
       -v $(pwd)/ewasm-testbench:/root/ewasm-testbench \
@@ -72,7 +72,7 @@ Build soll first (we use cmake with llvm library).
 ```
 
 ## Run 
-Trigger EWASM smart contract function call inside nativa javascript code.
+Trigger EWASM smart contract function call inside native javascript code.
 ```Shell
 (docker) $ cd ~/ewasm-testbench
 (docker) $ ./index.js safemath.wasm div 16 7
