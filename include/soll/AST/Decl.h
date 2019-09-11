@@ -116,10 +116,10 @@ class CallableVarDecl : public Decl {
 public:
   CallableVarDecl(
       llvm::StringRef name, Visibility visibility,
-      std::unique_ptr<ParamList> &&Params,
+      std::unique_ptr<ParamList> &&params,
       std::unique_ptr<ParamList> &&returnParams =
           std::make_unique<ParamList>(std::vector<std::unique_ptr<VarDecl>>()))
-      : Decl(name, visibility), Params(std::move(Params)),
+      : Decl(name, visibility), Params(std::move(params)),
         ReturnParams(std::move(returnParams)) {}
 
   ParamList *getParams() { return Params.get(); }
@@ -146,7 +146,7 @@ class FunctionDecl : public CallableVarDecl {
 public:
   FunctionDecl(llvm::StringRef name, Visibility visibility, StateMutability sm,
                bool isConstructor, bool isFallback,
-               std::unique_ptr<ParamList> &&Params,
+               std::unique_ptr<ParamList> &&params,
                std::vector<std::unique_ptr<ModifierInvocation>> &&modifiers,
                std::unique_ptr<ParamList> &&returnParams,
                std::unique_ptr<Block> &&body);
@@ -161,12 +161,28 @@ public:
   void accept(ConstDeclVisitor &visitor) const override;
 };
 
+class EventDecl : public CallableVarDecl {
+  bool IsAnonymous;
+  TypePtr FuncTy;
+
+public:
+  EventDecl(llvm::StringRef name, std::unique_ptr<ParamList> &&params,
+            bool isAnonymous = false);
+
+  bool isAnonymous() { return IsAnonymous; }
+  bool isAnonymous() const { return IsAnonymous; }
+  TypePtr getType() const { return FuncTy; }
+
+  void accept(DeclVisitor &visitor) override;
+  void accept(ConstDeclVisitor &visitor) const override;
+};
+
 class ParamList {
   std::vector<std::unique_ptr<VarDecl>> Params;
 
 public:
-  ParamList(std::vector<std::unique_ptr<VarDecl>> &&Params)
-      : Params(std::move(Params)) {}
+  ParamList(std::vector<std::unique_ptr<VarDecl>> &&params)
+      : Params(std::move(params)) {}
 
   std::vector<const VarDecl *> getParams() const;
   std::vector<VarDecl *> getParams();

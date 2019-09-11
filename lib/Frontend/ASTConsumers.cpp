@@ -205,11 +205,13 @@ public:
   void visit(SourceUnitType &) override;
   void visit(ContractDeclType &) override;
   void visit(FunctionDeclType &) override;
+  void visit(EventDeclType &) override;
   void visit(ParamListType &) override;
   void visit(VarDeclType &) override;
   void visit(ModifierInvocationType &) override;
 
   void visit(BlockType &) override;
+  void visit(EmitStmtType &) override;
   void visit(IfStmtType &) override;
   void visit(ForStmtType &) override;
   void visit(ContinueStmtType &) override;
@@ -259,6 +261,13 @@ void ASTPrinter::visit(FunctionDeclType &decl) {
   unindent();
 }
 
+void ASTPrinter::visit(EventDeclType &decl) {
+  os() << indent() << "EventDecl \"" << decl.getName() << "\" "
+       << ToString(decl.getType()) << " \n";
+  ConstDeclVisitor::visit(decl);
+  unindent();
+}
+
 void ASTPrinter::visit(ParamListType &param) {
   os() << indent() << "ParamList\n";
   ConstDeclVisitor::visit(param);
@@ -283,6 +292,12 @@ void ASTPrinter::visit(ModifierInvocationType &modifier) {
 
 void ASTPrinter::visit(BlockType &block) {
   os() << indent() << "Block\n";
+  ConstStmtVisitor::visit(block);
+  unindent();
+}
+
+void ASTPrinter::visit(EmitStmtType &block) {
+  os() << indent() << "EmitStmt\n";
   ConstStmtVisitor::visit(block);
   unindent();
 }

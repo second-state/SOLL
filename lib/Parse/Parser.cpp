@@ -682,7 +682,7 @@ Parser::parseVariableDeclaration(VarDeclParserOptions const &Options,
   return std::move(VD);
 }
 
-unique_ptr<CallableVarDecl> Parser::parseEventDefinition() {
+unique_ptr<EventDecl> Parser::parseEventDefinition() {
   TheLexer.CachedLex(); // event
   std::string Name = getLiteralAndAdvance(TheLexer.LookAhead(0)).str();
   VarDeclParserOptions Options;
@@ -917,7 +917,7 @@ unique_ptr<ForStmt> Parser::parseForStatement() {
                                    std::move(Loop), std::move(Body));
 }
 
-unique_ptr<Expr> Parser::parseEmitStatement() {
+unique_ptr<EmitStmt> Parser::parseEmitStatement() {
   TheLexer.CachedLex(); // emit
 
   if (TheLexer.LookAhead(0)->isNot(tok::identifier)) {
@@ -940,10 +940,9 @@ unique_ptr<Expr> Parser::parseEmitStatement() {
   vector<llvm::StringRef> Names;
   tie(Arguments, Names) = parseFunctionCallArguments();
   TheLexer.CachedLex(); // )
-  unique_ptr<Expr> Expression;
-  Expression =
+  unique_ptr<CallExpr> Call =
       Actions.CreateCallExpr(std::move(EventName), std::move(Arguments));
-  return Expression;
+  return make_unique<EmitStmt>(std::move(Call));
 }
 
 unique_ptr<Stmt> Parser::parseSimpleStatement() {

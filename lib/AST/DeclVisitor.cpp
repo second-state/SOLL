@@ -28,6 +28,11 @@ void DeclVisitorBase<Const>::visit(FunctionDeclType &decl) {
     decl.getReturnParams()->accept(*this);
 }
 
+template <bool Const> void DeclVisitorBase<Const>::visit(EventDeclType &decl) {
+  if (decl.getParams() != nullptr)
+    decl.getParams()->accept(*this);
+}
+
 template <bool Const> void DeclVisitorBase<Const>::visit(ParamListType &decl) {
   for (auto param : decl.getParams())
     param->accept(*this);

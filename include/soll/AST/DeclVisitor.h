@@ -8,6 +8,7 @@ class SourceUnit;
 class PragmaDirective;
 class ContractDecl;
 class FunctionDecl;
+class EventDecl;
 class ParamList;
 class CallableVarDecl;
 class VarDecl;
@@ -19,6 +20,7 @@ protected:
   using PragmaDirectiveType = typename cond_const<Const, PragmaDirective>::type;
   using ContractDeclType = typename cond_const<Const, ContractDecl>::type;
   using FunctionDeclType = typename cond_const<Const, FunctionDecl>::type;
+  using EventDeclType = typename cond_const<Const, EventDecl>::type;
   using ParamListType = typename cond_const<Const, ParamList>::type;
   using CallableVarDeclType = typename cond_const<Const, CallableVarDecl>::type;
   using VarDeclType = typename cond_const<Const, VarDecl>::type;
@@ -31,6 +33,7 @@ public:
   virtual void visit(PragmaDirectiveType &);
   virtual void visit(ContractDeclType &);
   virtual void visit(FunctionDeclType &);
+  virtual void visit(EventDeclType &);
   virtual void visit(ParamListType &);
   virtual void visit(CallableVarDeclType &);
   virtual void visit(VarDeclType &);

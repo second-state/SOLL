@@ -16,6 +16,20 @@ public:
   virtual void accept(ConstStmtVisitor &visitor) const = 0;
 };
 
+class EmitStmt : public Stmt {
+  std::unique_ptr<CallExpr> EventCall;
+
+public:
+  EmitStmt(std::unique_ptr<CallExpr> &&EventCall)
+      : EventCall(std::move(EventCall)) {}
+
+  CallExpr *getCall() { return EventCall.get(); }
+  const CallExpr *getCall() const { return EventCall.get(); }
+
+  void accept(StmtVisitor &visitor) override;
+  void accept(ConstStmtVisitor &visitor) const override;
+};
+
 class DeclStmt : public Stmt {
   std::vector<VarDeclPtr> VarDecls;
   ExprPtr Value;
@@ -26,7 +40,7 @@ public:
 
   std::vector<VarDecl *> getVarDecls();
   std::vector<const VarDecl *> getVarDecls() const;
-
+  Expr *getValue() { return Value.get(); }
   const Expr *getValue() const { return Value.get(); }
 
   void accept(StmtVisitor &visitor) override;

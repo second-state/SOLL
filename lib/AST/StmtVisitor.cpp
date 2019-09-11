@@ -10,8 +10,11 @@ template <bool Const> void StmtVisitorBase<Const>::visit(BlockType &block) {
     stmt->accept(*this);
 }
 
-template <bool Const>
-void StmtVisitorBase<Const>::visit(DeclStmtType &declstmt) {
+template <bool Const> void StmtVisitorBase<Const>::visit(EmitStmtType &stmt) {
+  stmt.getCall()->accept(*this);
+}
+
+template <bool Const> void StmtVisitorBase<Const>::visit(DeclStmtType &stmt) {
   // leaf, do nothing
 }
 
@@ -22,9 +25,9 @@ template <bool Const> void StmtVisitorBase<Const>::visit(IfStmtType &stmt) {
     stmt.getElse()->accept(*this);
 }
 
-template <bool Const> void StmtVisitorBase<Const>::visit(WhileStmtType &While) {
-  While.getCond()->accept(*this);
-  While.getBody()->accept(*this);
+template <bool Const> void StmtVisitorBase<Const>::visit(WhileStmtType &stmt) {
+  stmt.getCond()->accept(*this);
+  stmt.getBody()->accept(*this);
 }
 
 template <bool Const> void StmtVisitorBase<Const>::visit(ForStmtType &stmt) {

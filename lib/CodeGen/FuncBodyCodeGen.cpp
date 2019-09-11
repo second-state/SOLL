@@ -630,39 +630,40 @@ void FuncBodyCodeGen::visit(CallExprType &CALL) {
     Builder.CreateUnreachable();
   } else {
     ConstStmtVisitor::visit(CALL);
-    llvm::Value *V = nullptr;
-    auto Arguments = CALL.getArguments();
-    std::vector<llvm::Value *> argsValue(Arguments.size());
-    if (CALL.isNamedCall()) {
-      // named call
-      // TODO: implement getParamDecl()
-      // current AST cannot get the order the params are declared
-      /*
-      std::vector<std::string>> declArgOrder = getParamDecl();  // get the order
-      the params are declared std::vector<std::string>> passedArgOrder =
-      CALL.getNames(); std::map<std::string, llvm::Value*> argName2value; for
-      (size_t i = 0; i < Arguments.size(); i++) {
-        argName2value[passedArgOrder[i]] = findTempValue(Arguments[i]);
-      }
-      for (size_t i = 0; i < Arguments.size(); i++) {
-        argsValue[i] = argName2value[declArgOrder[i]];
-      }
-      */
-    } else {
-      // normal function call
-      for (size_t i = 0; i < Arguments.size(); i++) {
-        argsValue[i] = findTempValue(Arguments[i]);
-      }
-    }
-
     if (auto FD =
             dynamic_cast<const FunctionDecl *>(Callee->getCorrespondDecl())) {
+
+      llvm::Value *RetV = nullptr;
+      auto Arguments = CALL.getArguments();
+      std::vector<llvm::Value *> argsValue(Arguments.size());
+      if (CALL.isNamedCall()) {
+        // Call's arguments are with name
+        // TODO: implement getParamDecl()
+        // current AST cannot get the order the params are declared
+        /*
+        std::vector<std::string>> declArgOrder = getParamDecl();  // get the
+        order the params are declared std::vector<std::string>> passedArgOrder =
+        CALL.getNames(); std::map<std::string, llvm::Value*> argName2value; for
+        (size_t i = 0; i < Arguments.size(); i++) {
+          argName2value[passedArgOrder[i]] = findTempValue(Arguments[i]);
+        }
+        for (size_t i = 0; i < Arguments.size(); i++) {
+          argsValue[i] = argName2value[declArgOrder[i]];
+        }
+        */
+      } else {
+        // normal function call
+        for (size_t i = 0; i < Arguments.size(); i++) {
+          argsValue[i] = findTempValue(Arguments[i]);
+        }
+      }
+
       llvm::Function *F = Module.getFunction(funcName);
       if (F->getReturnType()->isVoidTy()) {
         Builder.CreateCall(F, argsValue);
       } else {
-        V = Builder.CreateCall(F, argsValue, funcName);
-        TempValueTable[&CALL] = V;
+        RetV = Builder.CreateCall(F, argsValue, funcName);
+        TempValueTable[&CALL] = RetV;
       }
     } else if (auto ED = dynamic_cast<const CallableVarDecl *>(
                    Callee->getCorrespondDecl())) {

@@ -133,4 +133,15 @@ FunctionDecl::FunctionDecl(
   FuncTy = std::make_shared<FunctionType>(std::move(PTys), std::move(RTys));
 }
 
+EventDecl::EventDecl(llvm::StringRef name, std::unique_ptr<ParamList> &&Params,
+                     bool isAnonymous)
+    : CallableVarDecl(name, Decl::Visibility::Default, std::move(Params)),
+      IsAnonymous(isAnonymous) {
+  std::vector<TypePtr> PTys;
+  std::vector<TypePtr> RTys;
+  for (auto VD : this->getParams()->getParams())
+    PTys.push_back(VD->GetType());
+  FuncTy = std::make_shared<FunctionType>(std::move(PTys), std::move(RTys));
+}
+
 } // namespace soll

@@ -6,6 +6,7 @@
 namespace soll {
 
 class Block;
+class EmitStmt;
 class IfStmt;
 class WhileStmt;
 class ForStmt;
@@ -29,6 +30,7 @@ class NumberLiteral;
 template <bool Const> class StmtVisitorBase {
 protected:
   using BlockType = typename cond_const<Const, Block>::type;
+  using EmitStmtType = typename cond_const<Const, EmitStmt>::type;
   using IfStmtType = typename cond_const<Const, IfStmt>::type;
   using WhileStmtType = typename cond_const<Const, WhileStmt>::type;
   using ForStmtType = typename cond_const<Const, ForStmt>::type;
@@ -54,6 +56,7 @@ protected:
 public:
   virtual ~StmtVisitorBase() noexcept {}
   virtual void visit(BlockType &);
+  virtual void visit(EmitStmtType &);
   virtual void visit(IfStmtType &);
   virtual void visit(WhileStmtType &);
   virtual void visit(ForStmtType &);

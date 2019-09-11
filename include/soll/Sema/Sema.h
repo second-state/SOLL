@@ -45,17 +45,15 @@ public:
       std::unique_ptr<ParamList> &&params,
       std::vector<std::unique_ptr<ModifierInvocation>> &&modifiers,
       std::unique_ptr<ParamList> &&returnParams, std::unique_ptr<Block> &&body);
-
-  // [TODO] Need use EventDecl replace CallableVarDecl
-  std::unique_ptr<CallableVarDecl>
+  std::unique_ptr<EventDecl>
   CreateEventDecl(llvm::StringRef name, std::unique_ptr<ParamList> &&Params,
                   bool Anonymous);
 
   // Expr
   ExprPtr CreateBinOp(BinaryOperatorKind Opc, ExprPtr &&LHS, ExprPtr &&RHS);
   ExprPtr CreateIndexAccess(ExprPtr &&LHS, ExprPtr &&RHS);
-  ExprPtr CreateCallExpr(ExprPtr &&Callee,
-                         std::vector<std::unique_ptr<Expr>> &&Args);
+  std::unique_ptr<CallExpr>
+  CreateCallExpr(ExprPtr &&Callee, std::vector<std::unique_ptr<Expr>> &&Args);
   std::unique_ptr<Identifier> CreateIdentifier(const std::string Name);
 
   /// type checking binary operators (subroutines of CreateBinOp)

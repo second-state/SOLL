@@ -69,11 +69,10 @@ std::unique_ptr<FunctionDecl> Sema::CreateFunctionDecl(
   return std::move(FD);
 }
 
-std::unique_ptr<CallableVarDecl>
+std::unique_ptr<EventDecl>
 Sema::CreateEventDecl(llvm::StringRef Name, std::unique_ptr<ParamList> &&Params,
                       bool Anonymous) {
-  auto ED = std::make_unique<CallableVarDecl>(Name, Decl::Visibility::Default,
-                                              std::move(Params));
+  auto ED = std::make_unique<EventDecl>(Name, std::move(Params), Anonymous);
   addIdentifierDecl(ED->getName(), *ED.get());
   return std::move(ED);
 }
@@ -127,7 +126,8 @@ ExprPtr Sema::CreateIndexAccess(ExprPtr &&LHS, ExprPtr &&RHS) {
                                        ResultTy);
 }
 
-ExprPtr Sema::CreateCallExpr(ExprPtr &&Callee, std::vector<ExprPtr> &&Args) {
+std::unique_ptr<CallExpr> Sema::CreateCallExpr(ExprPtr &&Callee,
+                                               std::vector<ExprPtr> &&Args) {
   TypePtr ResultTy = Callee->getType();
   if (auto CalleeIden = dynamic_cast<Identifier *>(Callee.get())) {
     if (auto FD =
