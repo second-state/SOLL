@@ -114,9 +114,11 @@ class CallableVarDecl : public Decl {
   std::unique_ptr<ParamList> ReturnParams;
 
 public:
-  CallableVarDecl(llvm::StringRef name, Visibility visibility,
-                  std::unique_ptr<ParamList> &&Params,
-                  std::unique_ptr<ParamList> &&returnParams = nullptr)
+  CallableVarDecl(
+      llvm::StringRef name, Visibility visibility,
+      std::unique_ptr<ParamList> &&Params,
+      std::unique_ptr<ParamList> &&returnParams =
+          std::make_unique<ParamList>(std::vector<std::unique_ptr<VarDecl>>()))
       : Decl(name, visibility), Params(std::move(Params)),
         ReturnParams(std::move(returnParams)) {}
 

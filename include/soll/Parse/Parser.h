@@ -74,7 +74,7 @@ private:
   std::unique_ptr<VarDecl>
   parseVariableDeclaration(VarDeclParserOptions const &Options = {},
                            TypePtr &&LookAheadArrayType = nullptr);
-  std::unique_ptr<AST> parseEventDefinition();
+  std::unique_ptr<CallableVarDecl> parseEventDefinition();
   TypePtr parseTypeNameSuffix(TypePtr T);
   TypePtr parseTypeName(bool AllowVar);
   std::shared_ptr<MappingType> parseMapping();
@@ -87,6 +87,7 @@ private:
   std::unique_ptr<WhileStmt> parseWhileStatement();
   std::unique_ptr<WhileStmt> parseDoWhileStatement();
   std::unique_ptr<ForStmt> parseForStatement();
+  std::unique_ptr<Expr> parseEmitStatement();
   std::unique_ptr<Stmt> parseSimpleStatement();
   std::unique_ptr<DeclStmt>
   parseVariableDeclarationStatement(TypePtr &&LookAheadArrayType = nullptr);

@@ -69,6 +69,15 @@ std::unique_ptr<FunctionDecl> Sema::CreateFunctionDecl(
   return std::move(FD);
 }
 
+std::unique_ptr<CallableVarDecl>
+Sema::CreateEventDecl(llvm::StringRef Name, std::unique_ptr<ParamList> &&Params,
+                      bool Anonymous) {
+  auto ED = std::make_unique<CallableVarDecl>(Name, Decl::Visibility::Default,
+                                              std::move(Params));
+  addIdentifierDecl(ED->getName(), *ED.get());
+  return std::move(ED);
+}
+
 ExprPtr Sema::CreateBinOp(BinaryOperatorKind Opc, ExprPtr &&LHS,
                           ExprPtr &&RHS) {
   TypePtr ResultTy;
@@ -129,6 +138,8 @@ ExprPtr Sema::CreateCallExpr(ExprPtr &&Callee, std::vector<ExprPtr> &&Args) {
       auto FDTy = static_cast<FunctionType *>(FD->getType().get());
       if (auto ReturnTy = FDTy->getReturnTypes(); ReturnTy.size() == 1)
         ResultTy = ReturnTy[0];
+    } else if (auto ED = dynamic_cast<CallableVarDecl *>(
+                   CalleeIden->getCorrespondDecl())) {
     } else {
       assert(isMagicFuncName(CalleeIden->getName()) &&
              "callee is not FuncDecl");

@@ -42,9 +42,14 @@ public:
   std::unique_ptr<FunctionDecl> CreateFunctionDecl(
       llvm::StringRef name, FunctionDecl::Visibility visibility,
       StateMutability sm, bool isConstructor, bool isFallback,
-      std::unique_ptr<ParamList> &&Params,
+      std::unique_ptr<ParamList> &&params,
       std::vector<std::unique_ptr<ModifierInvocation>> &&modifiers,
       std::unique_ptr<ParamList> &&returnParams, std::unique_ptr<Block> &&body);
+
+  // [TODO] Need use EventDecl replace CallableVarDecl
+  std::unique_ptr<CallableVarDecl>
+  CreateEventDecl(llvm::StringRef name, std::unique_ptr<ParamList> &&Params,
+                  bool Anonymous);
 
   // Expr
   ExprPtr CreateBinOp(BinaryOperatorKind Opc, ExprPtr &&LHS, ExprPtr &&RHS);

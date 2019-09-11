@@ -510,7 +510,7 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
       // [TODO] contract tok::kw_modifier
       assert(false && "modifier not implemented");
     } else if (Kind == tok::kw_event) {
-      parseEventDefinition();
+      SubNodes.push_back(std::move(parseEventDefinition()));
     } else if (Kind == tok::kw_using) {
       // [TODO] contract tok::kw_using
       assert(false && "using not implemented");
@@ -577,7 +577,6 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
       Tys.push_back(Return->GetType());
     Actions.SetFunRtnTys(Tys);
   } else {
-    // [PrePOC] Need return empty parameter list.
     Result.ReturnParameters =
         make_unique<ParamList>(std::vector<std::unique_ptr<VarDecl>>());
   }
@@ -683,10 +682,9 @@ Parser::parseVariableDeclaration(VarDeclParserOptions const &Options,
   return std::move(VD);
 }
 
-unique_ptr<AST> Parser::parseEventDefinition() {
+unique_ptr<CallableVarDecl> Parser::parseEventDefinition() {
   TheLexer.CachedLex(); // event
   std::string Name = getLiteralAndAdvance(TheLexer.LookAhead(0)).str();
-  printf("Event : %s\n", Name.c_str());
   VarDeclParserOptions Options;
   Options.AllowIndexed = true;
   std::unique_ptr<ParamList> Parameters = parseParameterList(Options);
@@ -696,7 +694,7 @@ unique_ptr<AST> Parser::parseEventDefinition() {
     TheLexer.CachedLex(); // anonymous
   }
   TheLexer.CachedLex(); // ;
-  return nullptr;
+  return Actions.CreateEventDecl(Name, std::move(Parameters), Anonymous);
 }
 
 TypePtr Parser::parseTypeNameSuffix(TypePtr T) {
@@ -845,7 +843,7 @@ unique_ptr<Stmt> Parser::parseStatement() {
     // [TODO] parseStatement kw_assembly
     break;
   case tok::kw_emit:
-    // [TODO] parseStatement kw_emit
+    Statement = parseEmitStatement();
     break;
   case tok::identifier:
   default:
@@ -917,6 +915,35 @@ unique_ptr<ForStmt> Parser::parseForStatement() {
   unique_ptr<Stmt> Body = parseStatement();
   return std::make_unique<ForStmt>(std::move(Init), std::move(Condition),
                                    std::move(Loop), std::move(Body));
+}
+
+unique_ptr<Expr> Parser::parseEmitStatement() {
+  TheLexer.CachedLex(); // emit
+
+  if (TheLexer.LookAhead(0)->isNot(tok::identifier)) {
+    assert(false && "Expected event name or path.");
+  }
+
+  IndexAccessedPath Iap;
+  while (true) {
+    Iap.Path.push_back(Actions.CreateIdentifier(
+        getLiteralAndAdvance(TheLexer.LookAhead(0)).str()));
+    if (TheLexer.LookAhead(0)->isNot(tok::period))
+      break;
+    TheLexer.CachedLex(); // .
+  };
+
+  auto EventName = expressionFromIndexAccessStructure(Iap);
+
+  TheLexer.CachedLex(); // (
+  vector<unique_ptr<Expr>> Arguments;
+  vector<llvm::StringRef> Names;
+  tie(Arguments, Names) = parseFunctionCallArguments();
+  TheLexer.CachedLex(); // )
+  unique_ptr<Expr> Expression;
+  Expression =
+      Actions.CreateCallExpr(std::move(EventName), std::move(Arguments));
+  return Expression;
 }
 
 unique_ptr<Stmt> Parser::parseSimpleStatement() {
@@ -1222,11 +1249,11 @@ unique_ptr<Expr> Parser::parseLeftHandSideExpression(
       break;
     }
     case tok::l_paren: {
-      TheLexer.CachedLex();
+      TheLexer.CachedLex(); // (
       vector<unique_ptr<Expr>> Arguments;
       vector<llvm::StringRef> Names;
       tie(Arguments, Names) = parseFunctionCallArguments();
-      TheLexer.CachedLex();
+      TheLexer.CachedLex(); // )
       // [TODO] Fix passs arguments' name fail.
       Expression =
           Actions.CreateCallExpr(std::move(Expression), std::move(Arguments));

@@ -570,8 +570,8 @@ void FuncBodyCodeGen::visit(BinaryOperatorType &BO) {
 }
 
 void FuncBodyCodeGen::visit(CallExprType &CALL) {
-  auto funcName =
-      dynamic_cast<const Identifier *>(CALL.getCalleeExpr())->getName();
+  auto Callee = dynamic_cast<const Identifier *>(CALL.getCalleeExpr());
+  auto funcName = Callee->getName();
   if (funcName.compare("require") == 0) {
     // require function
     auto Arguments = CALL.getArguments();
@@ -654,12 +654,20 @@ void FuncBodyCodeGen::visit(CallExprType &CALL) {
         argsValue[i] = findTempValue(Arguments[i]);
       }
     }
-    llvm::Function *F = Module.getFunction(funcName);
-    if (F->getReturnType()->isVoidTy()) {
-      Builder.CreateCall(F, argsValue);
+
+    if (auto FD =
+            dynamic_cast<const FunctionDecl *>(Callee->getCorrespondDecl())) {
+      llvm::Function *F = Module.getFunction(funcName);
+      if (F->getReturnType()->isVoidTy()) {
+        Builder.CreateCall(F, argsValue);
+      } else {
+        V = Builder.CreateCall(F, argsValue, funcName);
+        TempValueTable[&CALL] = V;
+      }
+    } else if (auto ED = dynamic_cast<const CallableVarDecl *>(
+                   Callee->getCorrespondDecl())) {
     } else {
-      V = Builder.CreateCall(F, argsValue, funcName);
-      TempValueTable[&CALL] = V;
+      assert(false && "Unhandle CallExprType CodeGen case.");
     }
   }
 }
