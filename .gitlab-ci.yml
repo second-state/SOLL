@@ -27,7 +27,7 @@ stages:
 
 .compile_job_template: &compile_job
   stage: compile
-  image: yi2nd/soll:${OS}-test
+  image: yi2nd/soll:${OS}-compile
   script:
     - bash -c "${BASE_BINDIR}/tools/soll/soll ${TEST_SRCDIR}/0-0-1.sol > ${BASE_BINDIR}/0-0-1.ll"
     - bash -c "${BASE_BINDIR}/tools/soll/soll ${TEST_SRCDIR}/0-0-2.sol > ${BASE_BINDIR}/0-0-2.ll"
@@ -58,33 +58,45 @@ build:ubuntu-gcc:
   variables:
     OS: "ubuntu"
     COMPILER: "gcc"
+  tags:
+    - gcc
 
 build:ubuntu-clang:
   <<: *build_job
   variables:
     OS: "ubuntu"
     COMPILER: "clang"
+  tags:
+    - clang
 
 compile:ubuntu-gcc:
   <<: *compile_job
   variables:
     OS: "ubuntu"
     COMPILER: "gcc"
+  tags:
+    - gcc
 
 compile:ubuntu-clang:
   <<: *compile_job
   variables:
     OS: "ubuntu"
     COMPILER: "clang"
+  tags:
+    - clang
 
 test:ubuntu-gcc:
   <<: *test_job
   variables:
     OS: "ubuntu"
     COMPILER: "gcc"
+  tags:
+    - gcc
 
 test:ubuntu-clang:
   <<: *test_job
   variables:
     OS: "ubuntu"
     COMPILER: "clang"
+  tags:
+    - clang

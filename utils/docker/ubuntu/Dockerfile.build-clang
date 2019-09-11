@@ -1,4 +1,5 @@
-FROM yi2nd/soll:ubuntu-base
+ARG BASE=yi2nd/soll:ubuntu-base
+FROM ${BASE}
 
 RUN apt update \
     && apt install -y \
@@ -8,8 +9,8 @@ RUN wget --quiet -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
 RUN apt-add-repository "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-8 main"
 RUN apt update \
     && apt install -y \
+        cmake \
         clang-8 \
-        lld-8 \
         make
 RUN rm -rf /var/lib/apt/lists/*
 

@@ -1,7 +1,9 @@
-FROM yi2nd/soll:ubuntu-base
+ARG BASE=yi2nd/soll:ubuntu-base
+FROM ${BASE}
 
 RUN apt update \
     && apt install -y \
+        cmake \
         g++ \
         make
 RUN rm -rf /var/lib/apt/lists/*
