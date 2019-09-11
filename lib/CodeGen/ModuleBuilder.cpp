@@ -99,6 +99,43 @@ public:
   void createEVMOpcodeDeclaration() {
     llvm::LLVMContext &Context = M->getContext();
     llvm::FunctionType *FT = nullptr;
+
+    // evm_calldatasize
+    FT = llvm::FunctionType::get(Int256Ty, {}, false);
+    Func_getCallDataSize =
+        CGM().getIntrinsic(llvm::Intrinsic::evm_calldatasize, FT);
+
+    // evm_calldatacopy
+    FT = llvm::FunctionType::get(VoidTy, {Int256Ty, Int256Ty, Int256Ty}, false);
+    Func_callDataCopy =
+        CGM().getIntrinsic(llvm::Intrinsic::evm_calldatacopy, FT);
+
+    // finish
+    FT = llvm::FunctionType::get(VoidTy, {Int256Ty, Int256Ty}, false);
+    Func_finish = CGM().getIntrinsic(llvm::Intrinsic::evm_return, FT);
+
+    // revert
+    FT = llvm::FunctionType::get(VoidTy, {Int256Ty, Int256Ty}, false);
+    Func_revert = CGM().getIntrinsic(llvm::Intrinsic::evm_revert, FT);
+
+    // storageLoad
+    FT = llvm::FunctionType::get(Int256Ty, {Int256Ty}, false);
+    Func_storageStore = CGM().getIntrinsic(llvm::Intrinsic::evm_sload, FT);
+
+    // storageStore
+    FT = llvm::FunctionType::get(VoidTy, {Int256PtrTy, Int256PtrTy}, false);
+    Func_storageStore = CGM().getIntrinsic(llvm::Intrinsic::evm_sstore, FT);
+
+    // callStatic
+    FT = llvm::FunctionType::get(
+        Int256Ty, {Int256Ty, Int256Ty, Int256Ty, Int256Ty, Int256Ty, Int256Ty},
+        false);
+    Func_callStatic = CGM().getIntrinsic(llvm::Intrinsic::evm_staticcall, FT);
+
+    // returnDataCopy
+    FT = llvm::FunctionType::get(VoidTy, {Int256Ty, Int256Ty, Int256Ty}, false);
+    Func_returnDataCopy =
+        CGM().getIntrinsic(llvm::Intrinsic::evm_returndatacopy, FT);
   }
 
   void createEEIDeclaration() {
