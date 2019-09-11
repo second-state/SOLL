@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #pragma once
 #include "soll/Basic/TargetOptions.h"
+#include <llvm/ADT/APInt.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/Type.h>
 
 namespace soll {
 class ASTContext;
@@ -24,6 +26,7 @@ public:
   CodeGenModule(ASTContext &C, llvm::Module &module,
                 DiagnosticsEngine &Diags,
                 const TargetOptions &TargetOpts);
+  llvm::Function *getIntrinsic(unsigned IID, llvm::ArrayRef<llvm::Type*> Typs = llvm::None);
 };
 
 } // namespace CodeGen
