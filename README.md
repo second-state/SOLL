@@ -1,4 +1,4 @@
-# WHAT IS SOLL
+# What is SOLL?
 **SOLL** is a new compiler for generating [EWASM](https://github.com/ewasm) from solidity.
 
 Currently, we apply two phases generating flow. Generate .ll (LLVM IR file) first, then generate .wasm (WASM file).
@@ -9,7 +9,7 @@ In this document, we will show you how to achieve that goal.
 2. Generate ewasm from our demo test case.
 3. Execute wasm file.
 
-# GETTING STARTED
+# Getting Started
 
 To get started with our demo, you will need three components at first.
 
