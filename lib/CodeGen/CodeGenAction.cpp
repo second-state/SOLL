@@ -43,7 +43,8 @@ public:
                   std::unique_ptr<llvm::raw_pwrite_stream> OS,
                   llvm::LLVMContext &C)
       : Diags(Diags), TargetOpts(TargetOpts), AsmOutStream(std::move(OS)),
-        Context(nullptr), Gen(CreateLLVMCodeGen(Diags, InFile, C)) {}
+        Context(nullptr), Gen(CreateLLVMCodeGen(Diags, InFile, C, TargetOpts)) {
+  }
   llvm::Module *getModule() const { return Gen->GetModule(); }
 
   CodeGenerator *getCodeGenerator() { return Gen.get(); }

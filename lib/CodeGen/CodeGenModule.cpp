@@ -5,8 +5,10 @@ namespace soll {
 namespace CodeGen {
 
 CodeGenModule::CodeGenModule(ASTContext &C, llvm::Module &M,
-                             DiagnosticsEngine &Diags)
-    : Context(C), TheModule(M), Diags(Diags), VMContext(M.getContext()) {}
+                             DiagnosticsEngine &Diags,
+                             const TargetOptions &TargetOpts)
+    : Context(C), TheModule(M), Diags(Diags), TargetOpts(TargetOpts),
+      VMContext(M.getContext()) {}
 
 } // namespace CodeGen
 } // namespace soll

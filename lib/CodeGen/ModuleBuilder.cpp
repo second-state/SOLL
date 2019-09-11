@@ -60,12 +60,14 @@ protected:
   std::unique_ptr<llvm::Module> M;
   std::unique_ptr<CodeGen::CodeGenModule> Builder;
   std::unique_ptr<llvm::IRBuilder<llvm::NoFolder>> IRBuilder;
+  const TargetOptions &TargetOpts;
 
 public:
   CodeGeneratorImpl(DiagnosticsEngine &diags, llvm::StringRef ModuleName,
-                    llvm::LLVMContext &C)
+                    llvm::LLVMContext &C, const TargetOptions &TargetOpts)
       : Diags(diags), Ctx(nullptr),
-        M(std::make_unique<llvm::Module>(ModuleName, C)) {}
+        M(std::make_unique<llvm::Module>(ModuleName, C)),
+        TargetOpts(TargetOpts) {}
 
   CodeGen::CodeGenModule &CGM() { return *Builder; }
 
@@ -92,6 +94,11 @@ public:
                                        "bytes");
     StringTy = llvm::StructType::create(M->getContext(), {Int256Ty, Int8PtrTy},
                                         "string", false);
+  }
+
+  void createEVMOpcodeDeclaration() {
+    llvm::LLVMContext &Context = M->getContext();
+    llvm::FunctionType *FT = nullptr;
   }
 
   void createEEIDeclaration() {
@@ -356,14 +363,25 @@ public:
   void Initialize(ASTContext &Context) override {
     Ctx = &Context;
 
-    M->setTargetTriple("wasm32-unknown-unknown-wasm");
-    // WebAssembly32TargetInfo
+    if (TargetOpts.BackendTarget == EVM) {
+      M->setTargetTriple("evm-unknown-unknown-evm");
+    } else {
+      M->setTargetTriple("wasm32-unknown-unknown-wasm");
+      // WebAssembly32TargetInfo
+    }
+
     M->setDataLayout(llvm::DataLayout("e-m:e-p:32:32-i64:64-n32:64-S128"));
-    Builder.reset(new CodeGen::CodeGenModule(Context, *M, Diags));
+    Builder.reset(new CodeGen::CodeGenModule(Context, *M, Diags, TargetOpts));
     IRBuilder =
         std::make_unique<llvm::IRBuilder<llvm::NoFolder>>(M->getContext());
     createTypes();
-    createEEIDeclaration();
+
+    if (TargetOpts.BackendTarget == EVM) {
+      createEVMOpcodeDeclaration();
+    } else {
+      createEEIDeclaration();
+    }
+
     createI256Arithmetic();
     createPrebuiltContract();
   }
@@ -775,8 +793,9 @@ namespace soll {
 
 CodeGenerator *CreateLLVMCodeGen(DiagnosticsEngine &Diags,
                                  llvm::StringRef ModuleName,
-                                 llvm::LLVMContext &C) {
-  return new CodeGeneratorImpl(Diags, ModuleName, C);
+                                 llvm::LLVMContext &C,
+                                 const TargetOptions &TargetOpts) {
+  return new CodeGeneratorImpl(Diags, ModuleName, C, TargetOpts);
 }
 
 llvm::Module *CodeGenerator::GetModule() {
