@@ -2,6 +2,7 @@
 #include "soll/CodeGen/BackendUtil.h"
 #include "soll/CodeGen/LoweringInteger.h"
 #include <llvm/ADT/Triple.h>
+#include <llvm/Config/llvm-config.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/IRPrintingPasses.h>
 #include <llvm/Passes/PassBuilder.h>
@@ -35,7 +36,11 @@ void EmitBackendOutput(DiagnosticsEngine &Diags, const llvm::DataLayout &TDesc,
   }
   TheModule->setDataLayout(TM->createDataLayout());
 
+#if LLVM_VERSION_MAJOR >= 10
+  llvm::PassBuilder PB(TM.get(), llvm::PipelineTuningOptions(), llvm::None);
+#else
   llvm::PassBuilder PB(TM.get(), llvm::None);
+#endif
 
   llvm::LoopAnalysisManager LAM(false);
   llvm::FunctionAnalysisManager FAM(false);

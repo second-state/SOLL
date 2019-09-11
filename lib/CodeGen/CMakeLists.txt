@@ -1,14 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-add_library(sollCodeGen
+set(LLVM_LINK_COMPONENTS
+  all
+  )
+
+add_llvm_library(sollCodeGen
   BackendUtil.cpp
   CodeGenAction.cpp
   CodeGenModule.cpp
   FuncBodyCodeGen.cpp
   LoweringInteger.cpp
   ModuleBuilder.cpp
-  )
-
-target_link_libraries(sollCodeGen
+  LINK_LIBS
   sollAST
   sollBasic
   sollFrontend
