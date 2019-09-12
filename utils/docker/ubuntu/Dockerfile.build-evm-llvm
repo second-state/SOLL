@@ -1,0 +1,25 @@
+FROM yi2nd/ubuntu-soll-build:18.04-clang
+
+RUN apt update \
+    && apt install -y \
+        git
+RUN rm -rf /var/lib/apt/lists/*
+
+WORKDIR /
+RUN git clone --single-branch --branch EVM \
+        https://github.com/etclabscore/evm_llvm.git
+
+RUN mkdir -p /evm_llvm_build
+WORKDIR /evm_llvm_build
+RUN cmake -DCMAKE_INSTALL_PREFIX=/evm_llvm_build \
+        -DLLVM_ENABLE_RTTI=ON \
+        -DCMAKE_BUILD_TYPE="Debug" \
+        -DLLVM_TARGETS_TO_BUILD="EVM" -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD="EVM" \
+        /evm_llvm \
+    && make -j4 \
+    && cmake --build . --target install
+
+ENV LLVM_DIR=/evm_llvm_build
+ENV CXX=clang++-8
+
+WORKDIR /
