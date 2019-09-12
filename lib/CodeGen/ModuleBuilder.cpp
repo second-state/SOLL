@@ -46,6 +46,7 @@ class CodeGeneratorImpl : public CodeGenerator,
   llvm::Function *Func_print32 = nullptr;
   llvm::Function *Func_storageLoad = nullptr;
   llvm::Function *Func_storageStore = nullptr;
+  llvm::Function *Func_getCaller = nullptr;
 
   llvm::Function *Func_keccak256 = nullptr;
 
@@ -132,6 +133,13 @@ public:
     Func_storageStore = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
                                          "storageStore", *M);
     Func_storageStore->addFnAttr(
+        llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
+
+    // getCaller
+    FT = llvm::FunctionType::get(VoidTy, {Int160PtrTy}, false);
+    Func_getCaller = llvm::Function::Create(
+        FT, llvm::Function::ExternalLinkage, "getCaller", *M);
+    Func_getCaller->addFnAttr(
         llvm::Attribute::get(Context, "wasm-import-module", "ethereum"));
 
     // callStatic

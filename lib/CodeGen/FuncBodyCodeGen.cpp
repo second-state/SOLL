@@ -18,6 +18,7 @@ FuncBodyCodeGen::FuncBodyCodeGen(llvm::LLVMContext &Context,
     : Context(Context), Builder(Builder), Module(Module), ASTCtx(Ctx) {
   Int256Ty = Builder.getIntNTy(256);
   VoidTy = Builder.getVoidTy();
+  AddressTy = Builder.getIntNTy(160);
   StringTy = Module.getTypeByName("string");
   BytesTy = Module.getTypeByName("bytes");
   Zero256 = Builder.getIntN(256, 0);
@@ -880,9 +881,25 @@ void FuncBodyCodeGen::visit(IndexAccessType &IA) {
 }
 
 void FuncBodyCodeGen::visit(MemberExprType &ME) {
-  // XXX: need implement msg.sender, msg.data, msg.sig, ...
+  // XXX: only implement msg.sender
+  // need to handle more msg.*, tx.*, block.*
   ConstStmtVisitor::visit(ME);
-  TempValueTable[&ME] = Builder.getIntN(160, 0);
+  llvm::Value *V = nullptr;
+
+  auto *BaseID = dynamic_cast<const Identifier *>(ME.getBase());
+  if (BaseID != nullptr && BaseID->getName().compare("msg") == 0) {
+    if (ME.getName()->getName().compare("sender") == 0) {
+      Value *ValPtr = Builder.CreateAlloca(AddressTy);
+      Builder.CreateCall(Module.getFunction("getCaller"), {ValPtr});
+      V = Builder.CreateLoad(ValPtr);
+    } else {
+      assert(false && "Unsuuported member access for msg");
+    }
+  } else {
+    assert(false && "Can only suuport msg.sender now");
+  }
+
+  TempValueTable[&ME] = V;
 }
 
 void FuncBodyCodeGen::visit(BooleanLiteralType &BL) {
