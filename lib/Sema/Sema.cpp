@@ -73,7 +73,7 @@ std::unique_ptr<EventDecl>
 Sema::CreateEventDecl(llvm::StringRef Name, std::unique_ptr<ParamList> &&Params,
                       bool Anonymous) {
   auto ED = std::make_unique<EventDecl>(Name, std::move(Params), Anonymous);
-  addIdentifierDecl(ED->getName(), *ED.get());
+  addIdentifierDecl(ED->getName(), *ED);
   return std::move(ED);
 }
 

@@ -64,8 +64,8 @@ std::vector<const VarDecl *> ContractDecl::getVars() const {
 std::vector<FunctionDecl *> ContractDecl::getFuncs() {
   std::vector<FunctionDecl *> Nodes;
   for (auto &Node : SubNodes) {
-    if (auto VD = dynamic_cast<FunctionDecl *>(Node.get())) {
-      Nodes.emplace_back(VD);
+    if (auto FD = dynamic_cast<FunctionDecl *>(Node.get())) {
+      Nodes.emplace_back(FD);
     }
   }
   return Nodes;
@@ -74,8 +74,28 @@ std::vector<FunctionDecl *> ContractDecl::getFuncs() {
 std::vector<const FunctionDecl *> ContractDecl::getFuncs() const {
   std::vector<const FunctionDecl *> Nodes;
   for (auto &Node : this->SubNodes) {
-    if (auto VD = dynamic_cast<const FunctionDecl *>(Node.get())) {
-      Nodes.emplace_back(VD);
+    if (auto FD = dynamic_cast<const FunctionDecl *>(Node.get())) {
+      Nodes.emplace_back(FD);
+    }
+  }
+  return Nodes;
+}
+
+std::vector<EventDecl *> ContractDecl::getEvents() {
+  std::vector<EventDecl *> Nodes;
+  for (auto &Node : SubNodes) {
+    if (auto ED = dynamic_cast<EventDecl *>(Node.get())) {
+      Nodes.emplace_back(ED);
+    }
+  }
+  return Nodes;
+}
+
+std::vector<const EventDecl *> ContractDecl::getEvents() const {
+  std::vector<const EventDecl *> Nodes;
+  for (auto &Node : this->SubNodes) {
+    if (auto ED = dynamic_cast<const EventDecl *>(Node.get())) {
+      Nodes.emplace_back(ED);
     }
   }
   return Nodes;

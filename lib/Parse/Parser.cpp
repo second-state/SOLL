@@ -689,11 +689,9 @@ unique_ptr<EventDecl> Parser::parseEventDefinition() {
   Options.AllowIndexed = true;
   std::unique_ptr<ParamList> Parameters = parseParameterList(Options);
   bool Anonymous = false;
-  if (TheLexer.LookAhead(0)->is(tok::kw_anonymous)) {
+  if (TheLexer.CachedLex()->is(tok::kw_anonymous)) {
     Anonymous = true;
-    TheLexer.CachedLex(); // anonymous
   }
-  TheLexer.CachedLex(); // ;
   return Actions.CreateEventDecl(Name, std::move(Parameters), Anonymous);
 }
 

@@ -89,6 +89,9 @@ public:
   std::vector<FunctionDecl *> getFuncs();
   std::vector<const FunctionDecl *> getFuncs() const;
 
+  std::vector<EventDecl *> getEvents();
+  std::vector<const EventDecl *> getEvents() const;
+
   FunctionDecl *getConstructor();
   const FunctionDecl *getConstructor() const;
 

@@ -18,24 +18,6 @@ using llvm::BasicBlock;
 using llvm::Function;
 using llvm::Value;
 
-static std::vector<uint8_t> EventSignatureHash(const EventDecl &E) {
-  Keccak h(256);
-  h.addData(E.getName().bytes_begin(), 0, E.getName().size());
-  h.addData('(');
-  bool first = true;
-  for (const VarDecl *var : E.getParams()->getParams()) {
-    if (!first)
-      h.addData(',');
-    first = false;
-    assert(var->GetType() && "unsupported type!");
-    const std::string &name = var->GetType()->getName();
-    h.addData(reinterpret_cast<const uint8_t *>(name.data()), 0, name.size());
-  }
-  h.addData(')');
-  const std::vector<std::uint8_t> op = h.digest();
-  return op;
-}
-
 FuncBodyCodeGen::FuncBodyCodeGen(llvm::LLVMContext &Context,
                                  llvm::IRBuilder<llvm::NoFolder> &Builder,
                                  llvm::Module &Module, ASTContext &Ctx)
@@ -701,15 +683,9 @@ void FuncBodyCodeGen::visit(CallExprType &CALL) {
       uint IndexedCnt = 0;
       uint DataCnt = 0;
 
-      // Generate event signature should be moved to ModuleBuilder.
-      if (ED->isAnonymous() == false){
-        auto Signature = EventSignatureHash(*ED);
-        auto *s_ptr = Builder.CreateAlloca(Builder.getInt8Ty(), Builder.getInt32(32), "s_ptr");
-        for (size_t i = 0; i < 32; i++) {
-          auto *v_ptr = Builder.CreateInBoundsGEP(s_ptr, {Builder.getInt64(i)});
-          Builder.CreateStore(Builder.getInt8(Signature[i]), v_ptr);
-        }
-        Topics[IndexedCnt++] = Builder.CreateBitCast(s_ptr, Int256PtrTy);
+      if (ED->isAnonymous() == false) {
+        Topics[IndexedCnt++] =
+            Builder.CreateBitCast(ASTCtx.getEvent(ED->getName()), Int256PtrTy);
       }
 
       // XXX: Multiple args and complex data type encoding not implemented yet.

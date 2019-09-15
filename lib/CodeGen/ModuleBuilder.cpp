@@ -358,6 +358,24 @@ public:
     llvm::LLVMContext &Context = M->getContext();
     llvm::FunctionType *FT = llvm::FunctionType::get(VoidTy, {}, false);
 
+    // event
+    if (const auto &Es = CD.getEvents(); !Es.empty()) {
+      for (auto E : Es) {
+        std::vector<llvm::Constant *> Signature;
+        for (auto s : eventSignatureHash(*E))
+          Signature.push_back(Builder.getInt8(s));
+
+        llvm::ArrayType *aty = llvm::ArrayType::get(Int8Ty, 32);
+        llvm::Constant *init = llvm::ConstantArray::get(aty, Signature);
+        llvm::GlobalVariable *gv = new llvm::GlobalVariable(
+            *GetModule(), aty, true, llvm::GlobalVariable::InternalLinkage,
+            init, "solidity.event");
+        gv->setUnnamedAddr(llvm::GlobalVariable::UnnamedAddr::Local);
+        gv->setAlignment(1);
+        Ctx->setEvent(E->getName(), gv);
+      }
+    }
+
     // constructor
     {
       llvm::GlobalVariable *deploy_size = new llvm::GlobalVariable(
@@ -365,14 +383,12 @@ public:
           nullptr, "deploy.size");
       deploy_size->setUnnamedAddr(llvm::GlobalVariable::UnnamedAddr::Local);
       deploy_size->setAlignment(8);
-      deploy_size->setVisibility(
-          llvm::Function::VisibilityTypes::HiddenVisibility);
+      deploy_size->setVisibility(llvm::GlobalValue::HiddenVisibility);
       llvm::GlobalVariable *deploy_data = new llvm::GlobalVariable(
           *GetModule(), Int8Ty, true, llvm::GlobalVariable::ExternalLinkage,
           nullptr, "deploy.data");
       deploy_data->setAlignment(1);
-      deploy_data->setVisibility(
-          llvm::Function::VisibilityTypes::HiddenVisibility);
+      deploy_data->setVisibility(llvm::GlobalValue::HiddenVisibility);
 
       llvm::Function *Ctor = llvm::Function::Create(
           FT, llvm::Function::ExternalLinkage, "solidity.ctor", *M);
@@ -742,6 +758,24 @@ public:
     for (int i = 0; i < 4; i++)
       hash = (hash << 8) | op[i];
     return __builtin_bswap32(hash);
+  }
+
+  std::vector<uint8_t> eventSignatureHash(const EventDecl &E) {
+    Keccak h(256);
+    h.addData(E.getName().bytes_begin(), 0, E.getName().size());
+    h.addData('(');
+    bool first = true;
+    for (const VarDecl *var : E.getParams()->getParams()) {
+      if (!first)
+        h.addData(',');
+      first = false;
+      assert(var->GetType() && "unsupported type!");
+      const std::string &name = var->GetType()->getName();
+      h.addData(reinterpret_cast<const uint8_t *>(name.data()), 0, name.size());
+    }
+    h.addData(')');
+    const std::vector<std::uint8_t> op = h.digest();
+    return op;
   }
 }; // namespace
 

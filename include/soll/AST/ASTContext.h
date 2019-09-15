@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #pragma once
 #include <llvm/ADT/IntrusiveRefCntPtr.h>
+#include <llvm/IR/Value.h>
 #include <unordered_map>
 namespace soll {
 
@@ -27,11 +28,16 @@ public:
 
 class ASTContext : public llvm::RefCountedBase<ASTContext> {
   StorageAllocator SA;
+  std::unordered_map<std::string, llvm::GlobalVariable *> EventTable;
 
 public:
   unsigned findStoragePosition(const std::string &S, unsigned Len = 1) {
     return SA.findStoragePosition(S, Len);
   }
+  void setEvent(const std::string &S, llvm::GlobalVariable *V) {
+    EventTable[S] = V;
+  }
+  llvm::GlobalVariable *getEvent(const std::string &S) { return EventTable[S]; }
 };
 
 } // namespace soll
