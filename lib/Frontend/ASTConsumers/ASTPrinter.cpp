@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-#include "soll/Frontend/ASTConsumers.h"
 #include "soll/AST/AST.h"
 #include "soll/AST/ASTConsumer.h"
+#include "soll/Frontend/ASTConsumers.h"
 #include <llvm/ADT/Twine.h>
 #include <llvm/Support/raw_ostream.h>
 

@@ -20,6 +20,7 @@ static cl::opt<ActionKind> Action("action", cl::Optional, cl::ValueRequired,
                                   cl::init(EmitLLVM),
                                   cl::values(clEnumVal(ASTDump, "")),
                                   cl::values(clEnumVal(EmitLLVM, "")),
+                                  cl::values(clEnumVal(EmitFuncSig, "")),
                                   cl::cat(SollCategory));
 
 void CompilerInvocation::ParseCommandLineOptions(int argc, const char **argv) {
@@ -40,6 +41,9 @@ bool CompilerInvocation::Execute(CompilerInstance &CI) {
     break;
   case EmitLLVM:
     Action = std::make_unique<EmitLLVMAction>(&Ctx);
+    break;
+  case EmitFuncSig:
+    Action = std::make_unique<EmitFuncSigAction>();
     break;
   }
   return std::all_of(std::begin(InputFilenames), std::end(InputFilenames),

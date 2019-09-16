@@ -11,4 +11,7 @@ class ASTConsumer;
 std::unique_ptr<ASTConsumer>
 CreateASTPrinter(llvm::raw_ostream &Out = llvm::outs());
 
+std::unique_ptr<ASTConsumer>
+CreateFuncSigPrinter(llvm::raw_ostream &Out = llvm::outs());
+
 } // namespace soll

@@ -11,4 +11,10 @@ ASTPrintAction::CreateASTConsumer(CompilerInstance &CI,
   return CreateASTPrinter();
 }
 
+std::unique_ptr<ASTConsumer>
+EmitFuncSigAction::CreateASTConsumer(CompilerInstance &CI,
+                                     llvm::StringRef InFile) {
+  return CreateFuncSigPrinter();
+}
+
 } // namespace soll
