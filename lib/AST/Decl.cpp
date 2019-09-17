@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "soll/AST/Decl.h"
 #include "soll/AST/Type.h"
+#include "../utils/SHA-3/Keccak.h"
 
 namespace soll {
 
@@ -115,6 +116,26 @@ FunctionDecl *ContractDecl::getFallback() {
 
 const FunctionDecl *ContractDecl::getFallback() const {
   return Fallback.get();
+}
+
+///
+/// CallableVarDecl
+///
+std::vector<unsigned char> CallableVarDecl::getSignatureHash() const {
+  Keccak h(256);
+  h.addData(getName().bytes_begin(), 0, getName().size());
+  h.addData('(');
+  bool first = true;
+  for (const VarDecl *var : getParams()->getParams()) {
+    if (!first)
+      h.addData(',');
+    first = false;
+    assert(var->GetType() && "unsupported type!");
+    const std::string &name = var->GetType()->getName();
+    h.addData(reinterpret_cast<const uint8_t *>(name.data()), 0, name.size());
+  }
+  h.addData(')');
+  return h.digest();
 }
 
 ///

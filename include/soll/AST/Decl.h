@@ -131,6 +131,8 @@ public:
   ParamList *getReturnParams() { return ReturnParams.get(); }
   const ParamList *getReturnParams() const { return ReturnParams.get(); }
 
+  std::vector<unsigned char> getSignatureHash() const;
+
   void accept(DeclVisitor &visitor) override;
   void accept(ConstDeclVisitor &visitor) const override;
 };
