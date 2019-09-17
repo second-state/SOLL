@@ -362,7 +362,7 @@ public:
     if (const auto &Es = CD.getEvents(); !Es.empty()) {
       for (auto E : Es) {
         std::vector<llvm::Constant *> Signature;
-        for (auto s : eventSignatureHash(*E))
+        for (auto s : E->getSignatureHash())
           Signature.push_back(Builder.getInt8(s));
 
         llvm::ArrayType *aty = llvm::ArrayType::get(Int8Ty, 32);
@@ -741,28 +741,7 @@ public:
 
   std::uint32_t funcSignatureHash(const FunctionDecl &F) {
     const std::vector<unsigned char> op = F.getSignatureHash();
-    std::uint32_t hash = 0;
-    for (int i = 0; i < 4; i++)
-      hash = (hash << 8) | op[i];
-    return __builtin_bswap32(hash);
-  }
-
-  std::vector<uint8_t> eventSignatureHash(const EventDecl &E) {
-    Keccak h(256);
-    h.addData(E.getName().bytes_begin(), 0, E.getName().size());
-    h.addData('(');
-    bool first = true;
-    for (const VarDecl *var : E.getParams()->getParams()) {
-      if (!first)
-        h.addData(',');
-      first = false;
-      assert(var->GetType() && "unsupported type!");
-      const std::string &name = var->GetType()->getName();
-      h.addData(reinterpret_cast<const uint8_t *>(name.data()), 0, name.size());
-    }
-    h.addData(')');
-    const std::vector<std::uint8_t> op = h.digest();
-    return op;
+    return *reinterpret_cast<const std::uint32_t *>(op.data());
   }
 }; // namespace
 
