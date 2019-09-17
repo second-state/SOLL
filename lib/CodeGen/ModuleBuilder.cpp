@@ -740,20 +740,7 @@ public:
   }
 
   std::uint32_t funcSignatureHash(const FunctionDecl &F) {
-    Keccak h(256);
-    h.addData(F.getName().bytes_begin(), 0, F.getName().size());
-    h.addData('(');
-    bool first = true;
-    for (const VarDecl *var : F.getParams()->getParams()) {
-      if (!first)
-        h.addData(',');
-      first = false;
-      assert(var->GetType() && "unsupported type!");
-      const std::string &name = var->GetType()->getName();
-      h.addData(reinterpret_cast<const uint8_t *>(name.data()), 0, name.size());
-    }
-    h.addData(')');
-    const std::vector<std::uint8_t> op = h.digest();
+    const std::vector<unsigned char> op = F.getSignatureHash();
     std::uint32_t hash = 0;
     for (int i = 0; i < 4; i++)
       hash = (hash << 8) | op[i];
