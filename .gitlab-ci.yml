@@ -71,6 +71,25 @@ build:ubuntu-clang:
   tags:
     - clang
 
+build:ubuntu-clang-evm-backend:
+  stage: build
+  image: hydai/ubuntu-soll-build-evm_llvm:20190918
+  tags:
+    - soll
+  before_script:
+    - rm -rf ${BASE_BINDIR}
+    - mkdir ${BASE_BINDIR}
+    - cd ${BASE_BINDIR}
+  script:
+    - cmake .. -DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true -DSOLL_ENABLE_EVM=true -DLLVM_CMAKE_PATH=/evm_llvm_build
+    - make -j2
+  cache:
+    key: ubuntu-clang-evm
+    paths:
+      - ${BASE_BINDIR}
+    policy: push
+
+
 compile:ubuntu-gcc:
   <<: *compile_job
   variables:
