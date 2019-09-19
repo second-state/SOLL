@@ -75,7 +75,7 @@ build:ubuntu-clang-evm-backend:
   stage: build
   image: hydai/ubuntu-soll-build-evm_llvm:20190918
   tags:
-    - soll
+    - evm
   before_script:
     - rm -rf ${BASE_BINDIR}
     - mkdir ${BASE_BINDIR}
