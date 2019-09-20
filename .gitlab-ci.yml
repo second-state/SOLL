@@ -49,6 +49,8 @@ stages:
     - bash -c "cd ${TEST_ENVDIR} && ./erc20.js 0-0-2.wasm {} _mint 0x1234567890123456789012345678901234567890 100"
     - bash -c 'cd ${TEST_ENVDIR} && ./erc20.js 0-0-2.wasm \{\"0\":\"64\",\"f5b24dcea0e9381721a8c72784d30cfe64c11b4591226269f839d095b3e9cf10\":\"64\"\} transfer 0x01 10'
     - bash -c 'cd ${TEST_ENVDIR} && ./erc20.js 0-0-2.wasm \{\"0\":\"64\",\"f5b24dcea0e9381721a8c72784d30cfe64c11b4591226269f839d095b3e9cf10\":\"5a\",\"3cbd4ff31ab6027f35d2d04a81e2957deb3a24998b9cea0327c6e16d0b547a1d\":\"a\"\} balanceOf 0x01'
+    - ${BASE_BINDIR}/tools/soll/soll -action=EmitFuncSig ${TEST_SRCDIR}/0-0-2.sol
+    - ${BASE_BINDIR}/tools/soll/soll -action=EmitABI ${TEST_SRCDIR}/0-0-2.sol
   cache:
     key: ${OS}-${COMPILER}
     paths:
