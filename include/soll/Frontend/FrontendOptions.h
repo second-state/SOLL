@@ -5,7 +5,7 @@
 
 namespace soll {
 
-enum ActionKind { ASTDump, EmitLLVM, EmitFuncSig };
+enum ActionKind { ASTDump, EmitLLVM, EmitFuncSig, EmitABI };
 
 class FrontendInputFile {
   /// The file name, or "-" to read from standard input.

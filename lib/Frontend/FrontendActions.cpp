@@ -17,4 +17,9 @@ EmitFuncSigAction::CreateASTConsumer(CompilerInstance &CI,
   return CreateFuncSigPrinter();
 }
 
+std::unique_ptr<ASTConsumer>
+EmitABIAction::CreateASTConsumer(CompilerInstance &CI, llvm::StringRef InFile) {
+  return CreateABIPrinter();
+}
+
 } // namespace soll

@@ -34,6 +34,7 @@ public:
   virtual void accept(DeclVisitor &visitor) = 0;
   virtual void accept(ConstDeclVisitor &visitor) const = 0;
   llvm::StringRef getName() const { return Name; }
+  Visibility getVisibility() const { return Vis; }
 };
 
 class SourceUnit : public Decl {
@@ -159,6 +160,7 @@ public:
   Block *getBody() { return Body.get(); }
   const Block *getBody() const { return Body.get(); }
   TypePtr getType() const { return FuncTy; }
+  StateMutability getStateMutability() const { return SM; }
   bool isConstructor() const { return IsConstructor; }
   bool isFallback() const { return IsFallback; }
 
