@@ -22,9 +22,12 @@ function docker_build
 
 # Build all images.
 docker_build Dockerfile.base        ubuntu-base
-docker_build Dockerfile.build-gcc   ubuntu-gcc
-docker_build Dockerfile.build-clang ubuntu-clang
-docker_build Dockerfile.compile     ubuntu-compile
+docker_build Dockerfile.build-gcc   ubuntu-gcc          \
+    --build-arg "BASE=${NAME}:ubuntu-base"
+docker_build Dockerfile.build-clang ubuntu-clang        \
+    --build-arg "BASE=${NAME}:ubuntu-base"
+docker_build Dockerfile.compile     ubuntu-compile      \
+    --build-arg "BASE=${NAME}:ubuntu-base"
 docker_build Dockerfile.test        ubuntu-test         \
     --build-arg "BASE=${NAME}:ubuntu-base"
 docker_build Dockerfile.compile     im-gcc-compile      \
