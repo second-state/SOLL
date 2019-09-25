@@ -167,7 +167,7 @@ public:
 
     // callStatic
     FT = llvm::FunctionType::get(
-        Int32Ty, {Int32Ty, Int160PtrTy, Int8PtrTy, Int32Ty}, false);
+        Int32Ty, {Int64Ty, Int160PtrTy, Int8PtrTy, Int32Ty}, false);
     Func_callStatic = llvm::Function::Create(
         FT, llvm::Function::ExternalLinkage, "ethereum.callStatic", *M);
     Func_callStatic->addFnAttr(Ethereum);
@@ -295,10 +295,10 @@ public:
     llvm::Value *Length = Builder.CreateExtractValue(Memory, {0}, "length");
     llvm::Value *Ptr = Builder.CreateExtractValue(Memory, {1}, "ptr");
 
-    llvm::ConstantInt *BaseFee = Builder.getInt32(60);
-    llvm::ConstantInt *WordFee = Builder.getInt32(12);
+    llvm::ConstantInt *BaseFee = Builder.getInt64(30);
+    llvm::ConstantInt *WordFee = Builder.getInt64(6);
     llvm::Value *PaddedLength =
-        Builder.CreateLShr(Builder.CreateAdd(Length, Builder.getInt32(31)), 5);
+        Builder.CreateLShr(Builder.CreateAdd(Builder.CreateZExt(Length, Int64Ty), Builder.getInt64(31)), 5);
     llvm::Value *Fee =
         Builder.CreateAdd(Builder.CreateMul(PaddedLength, WordFee), BaseFee);
     llvm::Value *AddressPtr =
