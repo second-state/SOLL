@@ -11,7 +11,7 @@ stages:
 
 .build_job_template: &build_job
   stage: build
-  image: yi2nd/soll:${OS}-${COMPILER}
+  image: secondstate/soll:${OS}-${COMPILER}
   before_script:
     - rm -rf ${BASE_BINDIR}
     - mkdir ${BASE_BINDIR}
@@ -27,7 +27,7 @@ stages:
 
 .compile_job_template: &compile_job
   stage: compile
-  image: yi2nd/soll:${OS}-compile
+  image: secondstate/soll:${OS}-compile
   script:
     - bash -c "${BASE_BINDIR}/tools/soll/soll ${TEST_SRCDIR}/0-0-1.sol > ${BASE_BINDIR}/0-0-1.ll"
     - bash -c "${BASE_BINDIR}/tools/soll/soll ${TEST_SRCDIR}/0-0-2.sol > ${BASE_BINDIR}/0-0-2.ll"
@@ -40,7 +40,7 @@ stages:
 
 .test_job_template: &test_job
   stage: test
-  image: yi2nd/soll:${OS}-test
+  image: secondstate/soll:${OS}-test
   before_script:
     - cp ${BASE_BINDIR}/*.wasm ${TEST_ENVDIR}
   script:

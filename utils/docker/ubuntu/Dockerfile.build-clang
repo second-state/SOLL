@@ -1,4 +1,4 @@
-ARG BASE=yi2nd/soll:ubuntu-base
+ARG BASE=secondstate/soll:ubuntu-base
 FROM ${BASE}
 
 RUN apt update \
