@@ -297,15 +297,19 @@ public:
 
     llvm::ConstantInt *BaseFee = Builder.getInt64(30);
     llvm::ConstantInt *WordFee = Builder.getInt64(6);
-    llvm::Value *PaddedLength =
-        Builder.CreateLShr(Builder.CreateAdd(Builder.CreateZExt(Length, Int64Ty), Builder.getInt64(31)), 5);
+    llvm::Value *PaddedLength = Builder.CreateLShr(
+        Builder.CreateAdd(Builder.CreateZExtOrTrunc(Length, Int64Ty),
+                          Builder.getInt64(31)),
+        5);
     llvm::Value *Fee =
         Builder.CreateAdd(Builder.CreateMul(PaddedLength, WordFee), BaseFee);
     llvm::Value *AddressPtr =
         Builder.CreateAlloca(Int160Ty, nullptr, "address.ptr");
     Builder.CreateStore(Builder.getIntN(160, 9), AddressPtr);
 
-    Builder.CreateCall(Func_callStatic, {Fee, AddressPtr, Ptr, Length});
+    Builder.CreateCall(
+        Func_callStatic,
+        {Fee, AddressPtr, Ptr, Builder.CreateZExtOrTrunc(Length, Int32Ty)});
     llvm::Value *ResultPtr =
         Builder.CreateAlloca(Int256Ty, nullptr, "result.ptr");
     llvm::Value *ResultVPtr =
