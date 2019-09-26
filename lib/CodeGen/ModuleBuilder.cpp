@@ -29,6 +29,7 @@ class CodeGeneratorImpl : public CodeGenerator,
   llvm::PointerType *Int8PtrTy = nullptr;
   llvm::PointerType *Int32PtrTy = nullptr;
   llvm::PointerType *Int64PtrTy = nullptr;
+  llvm::PointerType *Int128PtrTy = nullptr;
   llvm::PointerType *Int160PtrTy = nullptr;
   llvm::PointerType *Int256PtrTy = nullptr;
   llvm::Type *VoidTy = nullptr;
@@ -47,6 +48,7 @@ class CodeGeneratorImpl : public CodeGenerator,
   llvm::Function *Func_storageLoad = nullptr;
   llvm::Function *Func_storageStore = nullptr;
   llvm::Function *Func_getCaller = nullptr;
+  llvm::Function *Func_getCallValue = nullptr;
 
   llvm::Function *Func_keccak256 = nullptr;
 
@@ -80,6 +82,7 @@ public:
     Int8PtrTy = Builder.getInt8PtrTy();
     Int32PtrTy = llvm::PointerType::getUnqual(Int32Ty);
     Int64PtrTy = llvm::PointerType::getUnqual(Int64Ty);
+    Int128PtrTy = llvm::PointerType::getUnqual(Int128Ty);
     Int160PtrTy = llvm::PointerType::getUnqual(Int160Ty);
     Int256PtrTy = llvm::PointerType::getUnqual(Int256Ty);
     VoidTy = Builder.getVoidTy();
@@ -119,8 +122,8 @@ public:
                                  {Int8PtrTy, Int32Ty, Int32Ty, Int256PtrTy,
                                   Int256PtrTy, Int256PtrTy, Int256PtrTy},
                                  false);
-    Func_log =
-        llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "ethereum.log", *M);
+    Func_log = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                      "ethereum.log", *M);
     Func_log->addFnAttr(Ethereum);
     Func_log->addFnAttr(
         llvm::Attribute::get(Context, "wasm-import-name", "log"));
@@ -159,11 +162,19 @@ public:
 
     // getCaller
     FT = llvm::FunctionType::get(VoidTy, {Int160PtrTy}, false);
-    Func_getCaller = llvm::Function::Create(
-        FT, llvm::Function::ExternalLinkage, "ethereum.getCaller", *M);
+    Func_getCaller = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                            "ethereum.getCaller", *M);
     Func_getCaller->addFnAttr(Ethereum);
     Func_getCaller->addFnAttr(
         llvm::Attribute::get(Context, "wasm-import-name", "getCaller"));
+
+    // getCallValue
+    FT = llvm::FunctionType::get(VoidTy, {Int128PtrTy}, false);
+    Func_getCallValue = llvm::Function::Create(
+        FT, llvm::Function::ExternalLinkage, "ethereum.getCallValue", *M);
+    Func_getCallValue->addFnAttr(Ethereum);
+    Func_getCallValue->addFnAttr(
+        llvm::Attribute::get(Context, "wasm-import-name", "getCallValue"));
 
     // callStatic
     FT = llvm::FunctionType::get(

@@ -23,6 +23,8 @@ class FuncBodyCodeGen : public ConstStmtVisitor {
   llvm::BasicBlock *EndOfFunc;
   llvm::Value *RetVal;
 
+  llvm::IntegerType *Int128Ty = nullptr;
+  llvm::PointerType *Int128PtrTy = nullptr;
   llvm::IntegerType *Int256Ty = nullptr;
   llvm::PointerType *Int256PtrTy = nullptr;
   llvm::Type *VoidTy = nullptr;

@@ -22,6 +22,8 @@ FuncBodyCodeGen::FuncBodyCodeGen(llvm::LLVMContext &Context,
                                  llvm::IRBuilder<llvm::NoFolder> &Builder,
                                  llvm::Module &Module, ASTContext &Ctx)
     : Context(Context), Builder(Builder), Module(Module), ASTCtx(Ctx) {
+  Int128Ty = Builder.getIntNTy(128);
+  Int128PtrTy = llvm::PointerType::getUnqual(Int128Ty);
   Int256Ty = Builder.getIntNTy(256);
   Int256PtrTy = llvm::PointerType::getUnqual(Int256Ty);
   VoidTy = Builder.getVoidTy();
@@ -691,8 +693,9 @@ void FuncBodyCodeGen::visit(CallExprType &CALL) {
       // XXX: Multiple args and complex data type encoding not implemented yet.
       for (size_t i = 0; i < Arguments.size(); i++) {
         auto Val = findTempValue(Arguments[i]);
-        auto *v_b = Builder.CreateCall(Module.getFunction("solidity.bswapi256"),
-                                     {Builder.CreateZExtOrTrunc(Val, Int256Ty)}, "v_b");
+        auto *v_b = Builder.CreateCall(
+            Module.getFunction("solidity.bswapi256"),
+            {Builder.CreateZExtOrTrunc(Val, Int256Ty)}, "v_b");
         llvm::Value *ValPtr = Builder.CreateAlloca(Int256Ty, nullptr);
         Builder.CreateStore(v_b, ValPtr);
         if (Params[i]->isIndexed()) {
@@ -701,10 +704,11 @@ void FuncBodyCodeGen::visit(CallExprType &CALL) {
           Data[DataCnt++] = ValPtr;
         }
       }
-      Builder.CreateCall(Module.getFunction("ethereum.log"),
-                         {Builder.CreateBitCast(Data[0], Builder.getInt8PtrTy()), Builder.getInt32(32),
-                          Builder.getInt32(IndexedCnt),
-                          Topics[0], Topics[1], Topics[2], Topics[3]});
+      Builder.CreateCall(
+          Module.getFunction("ethereum.log"),
+          {Builder.CreateBitCast(Data[0], Builder.getInt8PtrTy()),
+           Builder.getInt32(32), Builder.getInt32(IndexedCnt), Topics[0],
+           Topics[1], Topics[2], Topics[3]});
     } else {
       assert(false && "Unhandle CallExprType CodeGen case.");
     }
@@ -868,9 +872,8 @@ void FuncBodyCodeGen::visit(IndexAccessType &IA) {
     bytes = Builder.CreateInsertValue(
         bytes, Builder.getInt32(emitConcateArrLength), {0});
     bytes = Builder.CreateInsertValue(
-        bytes,
-        Builder.CreateInBoundsGEP(emitConcateArr,
-                                  {Builder.getInt32(0), Builder.getInt32(0)}),
+        bytes, Builder.CreateInBoundsGEP(
+                   emitConcateArr, {Builder.getInt32(0), Builder.getInt32(0)}),
         {1});
 
     V = Builder.CreateCall(Module.getFunction("solidity.keccak256"), {bytes},
@@ -943,6 +946,10 @@ void FuncBodyCodeGen::visit(MemberExprType &ME) {
     if (ME.getName()->getName().compare("sender") == 0) {
       Value *ValPtr = Builder.CreateAlloca(AddressTy);
       Builder.CreateCall(Module.getFunction("ethereum.getCaller"), {ValPtr});
+      V = Builder.CreateLoad(ValPtr);
+    } else if (ME.getName()->getName().compare("value") == 0) {
+      Value *ValPtr = Builder.CreateAlloca(Int128Ty);
+      Builder.CreateCall(Module.getFunction("ethereum.getCallValue"), {ValPtr});
       V = Builder.CreateLoad(ValPtr);
     } else {
       assert(false && "Unsuuported member access for msg");
