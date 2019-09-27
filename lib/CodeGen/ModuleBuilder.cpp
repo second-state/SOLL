@@ -37,19 +37,20 @@ class CodeGeneratorImpl : public CodeGenerator,
   llvm::StructType *StringTy = nullptr;
   llvm::StructType *BytesTy = nullptr;
 
-  llvm::Function *Func_getCallDataSize = nullptr;
   llvm::Function *Func_callDataCopy = nullptr;
+  llvm::Function *Func_getCallDataSize = nullptr;
+  llvm::Function *Func_callStatic = nullptr;
+  llvm::Function *Func_storageStore = nullptr;
+  llvm::Function *Func_storageLoad = nullptr;
+  llvm::Function *Func_getCaller = nullptr;
+  llvm::Function *Func_getCallValue = nullptr;
+  llvm::Function *Func_getGasLeft = nullptr;
   llvm::Function *Func_log = nullptr;
   llvm::Function *Func_finish = nullptr;
   llvm::Function *Func_revert = nullptr;
-  llvm::Function *Func_callStatic = nullptr;
   llvm::Function *Func_returnDataCopy = nullptr;
-  llvm::Function *Func_print32 = nullptr;
-  llvm::Function *Func_storageLoad = nullptr;
-  llvm::Function *Func_storageStore = nullptr;
-  llvm::Function *Func_getCaller = nullptr;
-  llvm::Function *Func_getCallValue = nullptr;
 
+  llvm::Function *Func_print32 = nullptr;
   llvm::Function *Func_keccak256 = nullptr;
 
   llvm::Function *Func_bswap256 = nullptr;
@@ -101,14 +102,6 @@ public:
     llvm::Attribute Debug =
         llvm::Attribute::get(Context, "wasm-import-module", "debug");
 
-    // getCallDataSize
-    FT = llvm::FunctionType::get(Int32Ty, {}, false);
-    Func_getCallDataSize = llvm::Function::Create(
-        FT, llvm::Function::ExternalLinkage, "ethereum.getCallDataSize", *M);
-    Func_getCallDataSize->addFnAttr(Ethereum);
-    Func_getCallDataSize->addFnAttr(
-        llvm::Attribute::get(Context, "wasm-import-name", "getCallDataSize"));
-
     // callDataCopy
     FT = llvm::FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty, Int32Ty}, false);
     Func_callDataCopy = llvm::Function::Create(
@@ -117,40 +110,22 @@ public:
     Func_callDataCopy->addFnAttr(
         llvm::Attribute::get(Context, "wasm-import-name", "callDataCopy"));
 
-    // log
-    FT = llvm::FunctionType::get(VoidTy,
-                                 {Int8PtrTy, Int32Ty, Int32Ty, Int256PtrTy,
-                                  Int256PtrTy, Int256PtrTy, Int256PtrTy},
-                                 false);
-    Func_log = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
-                                      "ethereum.log", *M);
-    Func_log->addFnAttr(Ethereum);
-    Func_log->addFnAttr(
-        llvm::Attribute::get(Context, "wasm-import-name", "log"));
+    // getCallDataSize
+    FT = llvm::FunctionType::get(Int32Ty, {}, false);
+    Func_getCallDataSize = llvm::Function::Create(
+        FT, llvm::Function::ExternalLinkage, "ethereum.getCallDataSize", *M);
+    Func_getCallDataSize->addFnAttr(Ethereum);
+    Func_getCallDataSize->addFnAttr(
+        llvm::Attribute::get(Context, "wasm-import-name", "getCallDataSize"));
 
-    // finish
-    FT = llvm::FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
-    Func_finish = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
-                                         "ethereum.finish", *M);
-    Func_finish->addFnAttr(Ethereum);
-    Func_finish->addFnAttr(
-        llvm::Attribute::get(Context, "wasm-import-name", "finish"));
-
-    // revert
-    FT = llvm::FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
-    Func_revert = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
-                                         "ethereum.revert", *M);
-    Func_revert->addFnAttr(Ethereum);
-    Func_revert->addFnAttr(
-        llvm::Attribute::get(Context, "wasm-import-name", "revert"));
-
-    // storageLoad
-    FT = llvm::FunctionType::get(VoidTy, {Int256PtrTy, Int256PtrTy}, false);
-    Func_storageLoad = llvm::Function::Create(
-        FT, llvm::Function::ExternalLinkage, "ethereum.storageLoad", *M);
-    Func_storageLoad->addFnAttr(Ethereum);
-    Func_storageLoad->addFnAttr(
-        llvm::Attribute::get(Context, "wasm-import-name", "storageLoad"));
+    // callStatic
+    FT = llvm::FunctionType::get(
+        Int32Ty, {Int64Ty, Int160PtrTy, Int8PtrTy, Int32Ty}, false);
+    Func_callStatic = llvm::Function::Create(
+        FT, llvm::Function::ExternalLinkage, "ethereum.callStatic", *M);
+    Func_callStatic->addFnAttr(Ethereum);
+    Func_callStatic->addFnAttr(
+        llvm::Attribute::get(Context, "wasm-import-name", "callStatic"));
 
     // storageStore
     FT = llvm::FunctionType::get(VoidTy, {Int256PtrTy, Int256PtrTy}, false);
@@ -159,6 +134,14 @@ public:
     Func_storageStore->addFnAttr(Ethereum);
     Func_storageStore->addFnAttr(
         llvm::Attribute::get(Context, "wasm-import-name", "storageStore"));
+
+    // storageLoad
+    FT = llvm::FunctionType::get(VoidTy, {Int256PtrTy, Int256PtrTy}, false);
+    Func_storageLoad = llvm::Function::Create(
+        FT, llvm::Function::ExternalLinkage, "ethereum.storageLoad", *M);
+    Func_storageLoad->addFnAttr(Ethereum);
+    Func_storageLoad->addFnAttr(
+        llvm::Attribute::get(Context, "wasm-import-name", "storageLoad"));
 
     // getCaller
     FT = llvm::FunctionType::get(VoidTy, {Int160PtrTy}, false);
@@ -176,14 +159,40 @@ public:
     Func_getCallValue->addFnAttr(
         llvm::Attribute::get(Context, "wasm-import-name", "getCallValue"));
 
-    // callStatic
-    FT = llvm::FunctionType::get(
-        Int32Ty, {Int64Ty, Int160PtrTy, Int8PtrTy, Int32Ty}, false);
-    Func_callStatic = llvm::Function::Create(
-        FT, llvm::Function::ExternalLinkage, "ethereum.callStatic", *M);
-    Func_callStatic->addFnAttr(Ethereum);
-    Func_callStatic->addFnAttr(
-        llvm::Attribute::get(Context, "wasm-import-name", "callStatic"));
+    // log
+    FT = llvm::FunctionType::get(VoidTy,
+                                 {Int8PtrTy, Int32Ty, Int32Ty, Int256PtrTy,
+                                  Int256PtrTy, Int256PtrTy, Int256PtrTy},
+                                 false);
+    Func_log = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                      "ethereum.log", *M);
+    Func_log->addFnAttr(Ethereum);
+    Func_log->addFnAttr(
+        llvm::Attribute::get(Context, "wasm-import-name", "log"));
+
+    // getGasLeft
+    FT = llvm::FunctionType::get(Int64Ty, {}, false);
+    Func_getGasLeft = llvm::Function::Create(
+        FT, llvm::Function::ExternalLinkage, "ethereum.getGasLeft", *M);
+    Func_getGasLeft->addFnAttr(Ethereum);
+    Func_getGasLeft->addFnAttr(
+        llvm::Attribute::get(Context, "wasm-import-name", "getGasLeft"));
+
+    // finish
+    FT = llvm::FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
+    Func_finish = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                         "ethereum.finish", *M);
+    Func_finish->addFnAttr(Ethereum);
+    Func_finish->addFnAttr(
+        llvm::Attribute::get(Context, "wasm-import-name", "finish"));
+
+    // revert
+    FT = llvm::FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty}, false);
+    Func_revert = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                         "ethereum.revert", *M);
+    Func_revert->addFnAttr(Ethereum);
+    Func_revert->addFnAttr(
+        llvm::Attribute::get(Context, "wasm-import-name", "revert"));
 
     // returnDataCopy
     FT = llvm::FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty, Int32Ty}, false);
@@ -306,6 +315,7 @@ public:
     llvm::Value *Length = Builder.CreateExtractValue(Memory, {0}, "length");
     llvm::Value *Ptr = Builder.CreateExtractValue(Memory, {1}, "ptr");
 
+    /*
     llvm::ConstantInt *BaseFee = Builder.getInt64(30);
     llvm::ConstantInt *WordFee = Builder.getInt64(6);
     llvm::Value *PaddedLength = Builder.CreateLShr(
@@ -314,13 +324,21 @@ public:
         5);
     llvm::Value *Fee =
         Builder.CreateAdd(Builder.CreateMul(PaddedLength, WordFee), BaseFee);
+    */
+    llvm::Value *Fee = Builder.CreateCall(Func_getGasLeft, {}, "gasleft");
     llvm::Value *AddressPtr =
-        Builder.CreateAlloca(Int160Ty, nullptr, "address.ptr");
-    Builder.CreateStore(Builder.getIntN(160, 9), AddressPtr);
+        Builder.CreateAlloca(Int256Ty, nullptr, "address.ptr");
 
-    Builder.CreateCall(
-        Func_callStatic,
-        {Fee, AddressPtr, Ptr, Builder.CreateZExtOrTrunc(Length, Int32Ty)});
+    llvm::Value *Sha256Addr = Builder.getIntN(160, 2);
+    llvm::Value *Sha256AddrExt =
+        Builder.CreateZExtOrTrunc(Sha256Addr, Int256Ty);
+    llvm::Value *Sha256AddrShl = Builder.CreateShl(Sha256AddrExt, 96);
+    llvm::Value *Sha256AddrRev =
+        Builder.CreateCall(Func_bswap256, {Sha256AddrShl}, "reverse_addr");
+    Builder.CreateStore(Sha256AddrRev, AddressPtr);
+    Builder.CreateCall(Func_callStatic,
+                       {Fee, Builder.CreateBitCast(AddressPtr, Int160PtrTy),
+                        Ptr, Builder.CreateZExtOrTrunc(Length, Int32Ty)});
     llvm::Value *ResultPtr =
         Builder.CreateAlloca(Int256Ty, nullptr, "result.ptr");
     llvm::Value *ResultVPtr =
