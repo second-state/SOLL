@@ -571,6 +571,24 @@ private:
       }
       assert(false && "Unsuuported member access for msg");
       __builtin_unreachable();
+    } else if (BaseName == "tx") {
+      if (MemberName == "gasprice") {
+        llvm::Function *getTxGasPrice =
+            CGF.getCodeGenModule().getModule().getFunction(
+                "ethereum.getTxGasPrice");
+        llvm::Value *ValPtr = Builder.CreateAlloca(CGF.Int128Ty);
+        Builder.CreateCall(getTxGasPrice, {ValPtr});
+        llvm::Value *Val = Builder.CreateLoad(ValPtr);
+        return ExprValue::getRValue(ME, Val);
+      } else if (MemberName == "origin") {
+        llvm::Function *getTxOrigin =
+            CGF.getCodeGenModule().getModule().getFunction(
+                "ethereum.getTxOrigin");
+        llvm::Value *ValPtr = Builder.CreateAlloca(CGF.AddressTy);
+        Builder.CreateCall(getTxOrigin, {ValPtr});
+        llvm::Value *Val = Builder.CreateLoad(ValPtr);
+        return ExprValue::getRValue(ME, Val);
+      }
     }
     assert(false && "Can only suuport msg.sender now");
     __builtin_unreachable();

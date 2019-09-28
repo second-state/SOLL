@@ -21,6 +21,8 @@ enum {
   evm_return,
   evm_revert,
   evm_returndatacopy,
+  evm_getTxGasPrice,
+  evm_getTxOrigin
 };
 }
 */
@@ -131,6 +133,14 @@ void CodeGenModule::initEVMOpcodeDeclaration() {
   // returnDataCopy
   FT = llvm::FunctionType::get(VoidTy, {EVMIntTy, EVMIntTy, EVMIntTy}, false);
   Func_returnDataCopy = getIntrinsic(llvm::Intrinsic::evm_returndatacopy, FT);
+
+  // getTxGasPrice
+  FT = llvm::FunctionType::get(VoidTy, {Int128PtrTy}, false);
+  Func_getTxGasPrice = getIntrinsic(llvm::Intrinsic::evm_getTxGasPrice, FT);
+
+  // getTxOrigin
+  FT = llvm::FunctionType::get(VoidTy, {Int160PtrTy}, false);
+  Func_getTxOrigin = getIntrinsic(llvm::Intrinsic::evm_getTxOrigin, FT);
 #endif
 }
 
@@ -275,6 +285,22 @@ void CodeGenModule::initEEIDeclaration() {
   Func_storageStore->addFnAttr(llvm::Attribute::NoUnwind);
   Func_storageStore->addParamAttr(0, llvm::Attribute::ReadOnly);
   Func_storageStore->addParamAttr(1, llvm::Attribute::ReadOnly);
+
+  // getTxGasPrice
+  FT = llvm::FunctionType::get(VoidTy, {Int128PtrTy}, false);
+  Func_getTxGasPrice = llvm::Function::Create(
+      FT, llvm::Function::ExternalLinkage, "ethereum.getTxGasPrice", TheModule);
+  Func_getTxGasPrice->addFnAttr(Ethereum);
+  Func_getTxGasPrice->addFnAttr(
+      llvm::Attribute::get(VMContext, "wasm-import-name", "getTxGasPrice"));
+
+  // getTxOrigin
+  FT = llvm::FunctionType::get(VoidTy, {AddressPtrTy}, false);
+  Func_getTxOrigin = llvm::Function::Create(
+      FT, llvm::Function::ExternalLinkage, "ethereum.getTxOrigin", TheModule);
+  Func_getTxOrigin->addFnAttr(Ethereum);
+  Func_getTxOrigin->addFnAttr(
+      llvm::Attribute::get(VMContext, "wasm-import-name", "getTxOrigin"));
 
   // debug.print32
   FT = llvm::FunctionType::get(VoidTy, {Int32Ty}, false);

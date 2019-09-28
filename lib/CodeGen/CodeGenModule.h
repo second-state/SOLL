@@ -39,6 +39,8 @@ class CodeGenModule : public CodeGenTypeCache {
   llvm::Function *Func_revert = nullptr;
   llvm::Function *Func_storageLoad = nullptr;
   llvm::Function *Func_storageStore = nullptr;
+  llvm::Function *Func_getTxGasPrice = nullptr;
+  llvm::Function *Func_getTxOrigin = nullptr;
 
   llvm::Function *Func_print32 = nullptr;
 
