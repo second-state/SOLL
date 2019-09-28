@@ -559,6 +559,15 @@ private:
                            {ValPtr, Builder.getInt32(0), callDataSize});
         Builder.CreateStore(ValPtr, bytesDataPtr);
         return ExprValue::getRValue(ME, bytes);
+      } else if (MemberName == "sig") {
+        llvm::Value *ValPtr = Builder.CreateAlloca(Builder.getInt32Ty());
+        llvm::Function *callDataCopy =
+            CGF.getCodeGenModule().getModule().getFunction(
+                "ethereum.callDataCopy");
+        Builder.CreateCall(callDataCopy,
+                           {ValPtr, Builder.getInt32(0), Builder.getInt32(4)});
+        llvm::Value *Val = Builder.CreateLoad(ValPtr);
+        return ExprValue::getRValue(ME, Val);
       }
       assert(false && "Unsuuported member access for msg");
       __builtin_unreachable();
