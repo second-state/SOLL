@@ -536,6 +536,29 @@ private:
         Builder.CreateCall(getCallValue, {ValPtr});
         llvm::Value *Val = Builder.CreateLoad(ValPtr);
         return ExprValue::getRValue(ME, Val);
+      } else if (MemberName == "data") {
+        llvm::Function *getCallDataSize =
+            CGF.getCodeGenModule().getModule().getFunction(
+                "ethereum.getCallDataSize");
+        llvm::Value *callDataSize = Builder.CreateCall(getCallDataSize, {});
+        llvm::Value *bytes = Builder.CreateAlloca(CGF.BytesTy);
+        llvm::Value *bytesSizePtr = Builder.CreateStructGEP(bytes, 0);
+        llvm::Value *bytesDataPtr = Builder.CreateStructGEP(bytes, 1);
+        Builder.CreateStore(callDataSize, bytesSizePtr);
+        llvm::Value *mallocSize =
+            llvm::ConstantExpr::getSizeOf(Builder.getInt8Ty());
+        llvm::Instruction *var_malloc = llvm::CallInst::CreateMalloc(
+            Builder.GetInsertBlock(), Builder.getInt64Ty(), Builder.getInt8Ty(),
+            mallocSize, callDataSize, nullptr);
+        Builder.Insert(var_malloc);
+        llvm::Value *ValPtr = var_malloc;
+        llvm::Function *callDataCopy =
+            CGF.getCodeGenModule().getModule().getFunction(
+                "ethereum.callDataCopy");
+        Builder.CreateCall(callDataCopy,
+                           {ValPtr, Builder.getInt32(0), callDataSize});
+        Builder.CreateStore(ValPtr, bytesDataPtr);
+        return ExprValue::getRValue(ME, bytes);
       }
       assert(false && "Unsuuported member access for msg");
       __builtin_unreachable();
