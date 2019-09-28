@@ -91,6 +91,9 @@ class FuncBodyCodeGen : public ConstStmtVisitor {
   // codegen function for checking whether array idx is out of bound
   void emitCheckArrayOutOfBound(llvm::Value *, llvm::Value *);
 
+  // codegen for endian convert from wasm to javascript
+  llvm::Value *EmitEndianConvert(llvm::Value *Val);
+
   // ast type -> llvm type ptr
   // currently support integer and integer memory array ONLY
   // TODO: add other types

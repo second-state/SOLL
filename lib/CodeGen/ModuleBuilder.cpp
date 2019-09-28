@@ -315,26 +315,17 @@ public:
     llvm::Value *Length = Builder.CreateExtractValue(Memory, {0}, "length");
     llvm::Value *Ptr = Builder.CreateExtractValue(Memory, {1}, "ptr");
 
-    /*
-    llvm::ConstantInt *BaseFee = Builder.getInt64(30);
-    llvm::ConstantInt *WordFee = Builder.getInt64(6);
-    llvm::Value *PaddedLength = Builder.CreateLShr(
-        Builder.CreateAdd(Builder.CreateZExtOrTrunc(Length, Int64Ty),
-                          Builder.getInt64(31)),
-        5);
-    llvm::Value *Fee =
-        Builder.CreateAdd(Builder.CreateMul(PaddedLength, WordFee), BaseFee);
-    */
     llvm::Value *Fee = Builder.CreateCall(Func_getGasLeft, {}, "gasleft");
     llvm::Value *AddressPtr =
         Builder.CreateAlloca(Int256Ty, nullptr, "address.ptr");
 
     llvm::Value *Sha256Addr = Builder.getIntN(160, 2);
     llvm::Value *Sha256AddrExt =
-        Builder.CreateZExtOrTrunc(Sha256Addr, Int256Ty);
-    llvm::Value *Sha256AddrShl = Builder.CreateShl(Sha256AddrExt, 96);
+        Builder.CreateZExtOrTrunc(Sha256Addr, Int256Ty, "address.ext256");
+    llvm::Value *Sha256AddrShl =
+        Builder.CreateShl(Sha256AddrExt, 96, "address.shl");
     llvm::Value *Sha256AddrRev =
-        Builder.CreateCall(Func_bswap256, {Sha256AddrShl}, "reverse_addr");
+        Builder.CreateCall(Func_bswap256, {Sha256AddrShl}, "address.reverse");
     Builder.CreateStore(Sha256AddrRev, AddressPtr);
     Builder.CreateCall(Func_callStatic,
                        {Fee, Builder.CreateBitCast(AddressPtr, Int160PtrTy),

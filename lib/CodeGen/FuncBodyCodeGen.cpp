@@ -323,6 +323,7 @@ Value *FuncBodyCodeGen::loadValue(const Expr *Expr) {
       Builder.CreateCall(Module.getFunction("ethereum.storageLoad"),
                          {AddrPtr, ValPtr});
       Val = Builder.CreateLoad(ValPtr);
+      Val = EmitEndianConvert(Val);
     } else {
       Val = Builder.CreateLoad(Addr);
     }
@@ -334,6 +335,7 @@ Value *FuncBodyCodeGen::loadValue(const Expr *Expr) {
       Builder.CreateCall(Module.getFunction("ethereum.storageLoad"),
                          {AddrPtr, ValPtr});
       Val = Builder.CreateLoad(ValPtr);
+      Val = EmitEndianConvert(Val);
     } else {
       Val = Builder.CreateLoad(Addr);
     }
@@ -351,7 +353,7 @@ void FuncBodyCodeGen::storeValue(const Expr *Expr, Value *Val) {
       Value *AddrPtr = Builder.CreateAlloca(Addr->getType(), nullptr);
       Value *ValPtr = Builder.CreateAlloca(Val->getType(), nullptr);
       Builder.CreateStore(Addr, AddrPtr);
-      Builder.CreateStore(Val, ValPtr);
+      Builder.CreateStore(EmitEndianConvert(Val), ValPtr);
       Builder.CreateCall(Module.getFunction("ethereum.storageStore"),
                          {AddrPtr, ValPtr});
     } else {
@@ -362,7 +364,7 @@ void FuncBodyCodeGen::storeValue(const Expr *Expr, Value *Val) {
       Value *AddrPtr = Builder.CreateAlloca(Addr->getType(), nullptr);
       Value *ValPtr = Builder.CreateAlloca(Val->getType(), nullptr);
       Builder.CreateStore(Addr, AddrPtr);
-      Builder.CreateStore(Val, ValPtr);
+      Builder.CreateStore(EmitEndianConvert(Val), ValPtr);
       Builder.CreateCall(Module.getFunction("ethereum.storageStore"),
                          {AddrPtr, ValPtr});
     } else {
@@ -849,6 +851,17 @@ void FuncBodyCodeGen::emitCheckArrayOutOfBound(llvm::Value *ArrSz,
   Builder.SetInsertPoint(ContBB);
 }
 
+// codegen for endian convert from wasm to javascript
+llvm::Value *FuncBodyCodeGen::EmitEndianConvert(llvm::Value *Val) {
+  llvm::IntegerType *Ty = static_cast<llvm::IntegerType *>(Val->getType());
+  llvm::Value *Ext = Builder.CreateZExtOrTrunc(Val, Int256Ty, "extend_256");
+  llvm::Value *Shl =
+      Builder.CreateShl(Ext, 256 - Ty->getBitWidth(), "shift_left");
+  llvm::Value *Reverse = Builder.CreateCall(
+      Module.getFunction("solidity.bswapi256"), {Shl}, "reverse");
+  return Builder.CreateTrunc(Reverse, Ty, "trunc");
+}
+
 void FuncBodyCodeGen::visit(IndexAccessType &IA) {
   ConstStmtVisitor::visit(IA);
   llvm::Value *BaseV = findTempValue(IA.getBase());
@@ -947,10 +960,13 @@ void FuncBodyCodeGen::visit(MemberExprType &ME) {
       Value *ValPtr = Builder.CreateAlloca(AddressTy);
       Builder.CreateCall(Module.getFunction("ethereum.getCaller"), {ValPtr});
       V = Builder.CreateLoad(ValPtr);
+      V = EmitEndianConvert(V);
     } else if (ME.getName()->getName().compare("value") == 0) {
       Value *ValPtr = Builder.CreateAlloca(Int128Ty);
       Builder.CreateCall(Module.getFunction("ethereum.getCallValue"), {ValPtr});
       V = Builder.CreateLoad(ValPtr);
+      V = EmitEndianConvert(V);
+      V = Builder.CreateZExtOrTrunc(V, Int256Ty);
     } else {
       assert(false && "Unsuuported member access for msg");
     }
