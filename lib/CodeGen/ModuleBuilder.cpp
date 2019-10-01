@@ -97,6 +97,10 @@ public:
   }
 
   void createEVMOpcodeDeclaration() {
+#if !defined(ENABLE_EVM_BACKEND)
+    llvm::errs() << "Your LLVM backend targets doesn't support EVM!\n";
+    exit(1);
+#else
     llvm::LLVMContext &Context = M->getContext();
     llvm::FunctionType *FT = nullptr;
 
@@ -136,6 +140,7 @@ public:
     FT = llvm::FunctionType::get(VoidTy, {Int256Ty, Int256Ty, Int256Ty}, false);
     Func_returnDataCopy =
         CGM().getIntrinsic(llvm::Intrinsic::evm_returndatacopy, FT);
+#endif
   }
 
   void createEEIDeclaration() {
@@ -400,20 +405,21 @@ public:
   void Initialize(ASTContext &Context) override {
     Ctx = &Context;
 
-    if (TargetOpts.BackendTarget == EVM) {
+    if (isEVM()) {
       M->setTargetTriple("evm-unknown-unknown-evm");
-    } else {
-      M->setTargetTriple("wasm32-unknown-unknown-wasm");
+      M->setDataLayout(llvm::DataLayout("E-m:e-p:256:256-i:256:256-n256-S0"));
+    } else if (isEWASM()) {
       // WebAssembly32TargetInfo
+      M->setTargetTriple("wasm32-unknown-unknown-wasm");
+      M->setDataLayout(llvm::DataLayout("e-m:e-p:32:32-i64:64-n32:64-S128"));
     }
 
-    M->setDataLayout(llvm::DataLayout("e-m:e-p:32:32-i64:64-n32:64-S128"));
     Builder.reset(new CodeGen::CodeGenModule(Context, *M, Diags, TargetOpts));
     IRBuilder =
         std::make_unique<llvm::IRBuilder<llvm::NoFolder>>(M->getContext());
     createTypes();
 
-    if (TargetOpts.BackendTarget == EVM) {
+    if (isEVM()) {
       createEVMOpcodeDeclaration();
     } else {
       createEEIDeclaration();
@@ -822,6 +828,10 @@ public:
     const std::vector<unsigned char> op = F.getSignatureHash();
     return *reinterpret_cast<const std::uint32_t *>(op.data());
   }
+
+  bool isEVM() { return TargetOpts.BackendTarget == EVM; }
+
+  bool isEWASM() { return TargetOpts.BackendTarget == EWASM; }
 }; // namespace
 
 } // namespace

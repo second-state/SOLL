@@ -28,6 +28,10 @@ option(SOLL_INCLUDE_TESTS
   "Generate build targets for the Soll unit tests."
   ${LLVM_INCLUDE_TESTS})
 
+option(SOLL_ENABLE_EVM
+  "Enable EVM backend for the SOLL. This feature depends on EVM_LLVM project."
+  ${SOLL_ENABLE_EVM})
+
 add_subdirectory(lib)
 add_subdirectory(tools)
 add_subdirectory(utils)

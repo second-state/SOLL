@@ -16,3 +16,7 @@ add_llvm_library(sollCodeGen
   sollFrontend
   SHA3
   )
+
+if (SOLL_ENABLE_EVM)
+  add_definitions(-DENABLE_EVM_BACKEND)
+endif()
