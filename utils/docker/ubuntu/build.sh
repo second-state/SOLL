@@ -8,12 +8,13 @@ set -e
 function docker_build
 {
     local FILENAME=$1; shift
-    local NAME_TAG=${NAME}:$1; shift
+    local TAG=$1; shift
+    local NAME_TAG=${NAME}:${TAG}
     echo "Building docker image \"${NAME_TAG}\" from file \"${FILENAME}\"."
 
     ( set -x; docker build "$@" -f "${FILENAME}" -t "${NAME_TAG}" . )
 
-    if [[ "${NAME_TAG}" == im-* ]]; then
+    if [[ "${TAG}" == im-* ]]; then
         INTERMEDIATES+=( "${NAME_TAG}" )
     else
         IMAGES+=( "${NAME_TAG}" )
