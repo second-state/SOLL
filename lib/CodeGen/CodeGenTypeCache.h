@@ -26,6 +26,11 @@ struct CodeGenTypeCache {
   llvm::StructType *BytesTy;
   /// String
   llvm::StructType *StringTy;
+
+  /// i256
+  llvm::IntegerType *EVMIntTy;
+  /// i256*
+  llvm::PointerType *EVMIntPtrTy;
 };
 
 } // namespace soll::CodeGen

@@ -5,6 +5,26 @@
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Intrinsics.h>
 
+/*
+// for testing purpose
+namespace llvm::Intrinsic {
+enum {
+  evm_calldatacopy,
+  evm_calldatasize,
+  evm_staticcall,
+  evm_sstore,
+  evm_sload,
+  evm_caller,
+  evm_callvalue,
+  evm_log3,
+  evm_gas,
+  evm_return,
+  evm_revert,
+  evm_returndatacopy,
+};
+}
+*/
+
 namespace soll::CodeGen {
 
 CodeGenModule::CodeGenModule(ASTContext &C, llvm::Module &M,
@@ -43,6 +63,9 @@ void CodeGenModule::initTypes() {
   BytesTy = llvm::StructType::create(VMContext, {Int256Ty, Int8PtrTy}, "bytes");
   StringTy = llvm::StructType::create(VMContext, {Int256Ty, Int8PtrTy},
                                       "string", false);
+
+  EVMIntTy = Int256Ty;
+  EVMIntPtrTy = Int256PtrTy;
 }
 
 llvm::Function *CodeGenModule::getIntrinsic(unsigned IID,
@@ -58,38 +81,63 @@ void CodeGenModule::initEVMOpcodeDeclaration() {
 #else
   llvm::FunctionType *FT = nullptr;
 
-  // evm_calldatasize
-  FT = llvm::FunctionType::get(Int256Ty, {}, false);
-  Func_getCallDataSize = getIntrinsic(llvm::Intrinsic::evm_calldatasize, FT);
-
   // evm_calldatacopy
-  FT = llvm::FunctionType::get(VoidTy, {Int256Ty, Int256Ty, Int256Ty}, false);
+  FT = llvm::FunctionType::get(VoidTy, {EVMIntTy, EVMIntTy, EVMIntTy}, false);
   Func_callDataCopy = getIntrinsic(llvm::Intrinsic::evm_calldatacopy, FT);
 
-  // finish
-  FT = llvm::FunctionType::get(VoidTy, {Int256Ty, Int256Ty}, false);
-  Func_finish = getIntrinsic(llvm::Intrinsic::evm_return, FT);
+  // evm_calldatasize
+  FT = llvm::FunctionType::get(EVMIntTy, {}, false);
+  Func_getCallDataSize = getIntrinsic(llvm::Intrinsic::evm_calldatasize, FT);
 
-  // revert
-  FT = llvm::FunctionType::get(VoidTy, {Int256Ty, Int256Ty}, false);
-  Func_revert = getIntrinsic(llvm::Intrinsic::evm_revert, FT);
-
-  // storageLoad
-  FT = llvm::FunctionType::get(Int256Ty, {Int256Ty}, false);
-  Func_storageStore = getIntrinsic(llvm::Intrinsic::evm_sload, FT);
-
-  // storageStore
-  FT = llvm::FunctionType::get(VoidTy, {Int256PtrTy, Int256PtrTy}, false);
-  Func_storageStore = getIntrinsic(llvm::Intrinsic::evm_sstore, FT);
-
-  // callStatic
+  // evm_staticcall
+  // XXX: Function Type mismatch.
   FT = llvm::FunctionType::get(
-      Int256Ty, {Int256Ty, Int256Ty, Int256Ty, Int256Ty, Int256Ty, Int256Ty},
+      EVMIntTy, {EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy},
       false);
   Func_callStatic = getIntrinsic(llvm::Intrinsic::evm_staticcall, FT);
 
+  // evm_sstore
+  // XXX: Function Type mismatch.
+  FT = llvm::FunctionType::get(VoidTy, {EVMIntTy, EVMIntTy}, false);
+  Func_storageStore = getIntrinsic(llvm::Intrinsic::evm_sstore, FT);
+
+  // evm_sload
+  // XXX: Function Type mismatch.
+  FT = llvm::FunctionType::get(EVMIntTy, {EVMIntTy}, false);
+  Func_storageStore = getIntrinsic(llvm::Intrinsic::evm_sload, FT);
+
+  // evm_caller
+  // XXX: Function Type mismatch.
+  FT = llvm::FunctionType::get(AddressTy, {}, false);
+  Func_getCaller = getIntrinsic(llvm::Intrinsic::evm_caller, FT);
+
+  // evm_callvalue
+  // XXX: Function Type mismatch.
+  FT = llvm::FunctionType::get(EVMIntTy, {}, false);
+  Func_getCallValue = getIntrinsic(llvm::Intrinsic::evm_callvalue, FT);
+
+  // evm_log3
+  // XXX: Function Type mismatch. The EEI has only a general log function.
+  FT = llvm::FunctionType::get(
+      VoidTy, {EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy}, false);
+  Func_log3 = getIntrinsic(llvm::Intrinsic::evm_log3, FT);
+
+  // evm_gas
+  FT = llvm::FunctionType::get(EVMIntTy, {}, false);
+  Func_getGasLeft = getIntrinsic(llvm::Intrinsic::evm_gas, FT);
+
+  // finish
+  // XXX: Function Type mismatch.
+  FT = llvm::FunctionType::get(VoidTy, {EVMIntTy, EVMIntTy}, false);
+  Func_finish = getIntrinsic(llvm::Intrinsic::evm_return, FT);
+
+  // revert
+  FT = llvm::FunctionType::get(VoidTy, {EVMIntTy, EVMIntTy}, false);
+  Func_revert = getIntrinsic(llvm::Intrinsic::evm_revert, FT);
+
   // returnDataCopy
-  FT = llvm::FunctionType::get(VoidTy, {Int256Ty, Int256Ty, Int256Ty}, false);
+  // XXX: Function Type mismatch.
+  FT = llvm::FunctionType::get(VoidTy, {EVMIntTy, EVMIntTy, EVMIntTy}, false);
   Func_returnDataCopy = getIntrinsic(llvm::Intrinsic::evm_returndatacopy, FT);
 #endif
 }

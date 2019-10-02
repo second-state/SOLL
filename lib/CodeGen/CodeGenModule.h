@@ -34,6 +34,7 @@ class CodeGenModule : public CodeGenTypeCache {
   llvm::Function *Func_getCaller = nullptr;
   llvm::Function *Func_getGasLeft = nullptr;
   llvm::Function *Func_log = nullptr;
+  llvm::Function *Func_log3 = nullptr;
   llvm::Function *Func_returnDataCopy = nullptr;
   llvm::Function *Func_revert = nullptr;
   llvm::Function *Func_storageLoad = nullptr;
