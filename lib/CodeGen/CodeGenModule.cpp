@@ -296,18 +296,21 @@ void CodeGenModule::initEEIDeclaration() {
 }
 
 void CodeGenModule::initHelperDeclaration() {
-  Func_bswap256 = llvm::Function::Create(
-      llvm::FunctionType::get(Int256Ty, {Int256Ty}, false),
-      llvm::Function::InternalLinkage, "solidity.bswapi256", TheModule);
-  Func_bswap256->addFnAttr(llvm::Attribute::NoUnwind);
+  if (isEWASM()) {
+    Func_bswap256 = llvm::Function::Create(
+        llvm::FunctionType::get(Int256Ty, {Int256Ty}, false),
+        llvm::Function::InternalLinkage, "solidity.bswapi256", TheModule);
+    Func_bswap256->addFnAttr(llvm::Attribute::NoUnwind);
+    initBswapI256();
+  } else {
+    Func_bswap256 = nullptr;
+  }
 
   Func_memcpy = llvm::Function::Create(
       llvm::FunctionType::get(Int8PtrTy, {Int8PtrTy, Int8PtrTy, Int32Ty},
                               false),
       llvm::Function::InternalLinkage, "solidity.memcpy", TheModule);
   Func_memcpy->addFnAttr(llvm::Attribute::NoUnwind);
-
-  initBswapI256();
   initMemcpy();
 }
 
@@ -414,7 +417,10 @@ void CodeGenModule::initKeccak256() {
 
   llvm::Value *AddressPtr =
       Builder.CreateAlloca(AddressTy, nullptr, "address.ptr");
-  const llvm::APInt Address = llvm::APInt(160, 9).byteSwap();
+  llvm::APInt Address = llvm::APInt(160, 9);
+  if (isEWASM()) {
+    Address = Address.byteSwap();
+  }
   Builder.CreateStore(Builder.getInt(Address), AddressPtr);
 
   llvm::Value *Fee = Builder.CreateCall(Func_getGasLeft, {});
@@ -444,7 +450,10 @@ void CodeGenModule::initSha256() {
 
   llvm::Value *AddressPtr =
       Builder.CreateAlloca(AddressTy, nullptr, "address.ptr");
-  const llvm::APInt Address = llvm::APInt(160, 9).byteSwap();
+  llvm::APInt Address = llvm::APInt(160, 2);
+  if (isEWASM()) {
+    Address = Address.byteSwap();
+  }
   Builder.CreateStore(Builder.getInt(Address), AddressPtr);
 
   llvm::Value *Fee = Builder.CreateCall(Func_getGasLeft, {});
