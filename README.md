@@ -1,5 +1,5 @@
 # Introduction
-**SOLL** is a new compiler for generating [ewasm](https://github.com/ewasm)(Ethereum flavored WebAssembly) files from Solidity.
+**SOLL** is a new compiler for generating [ewasm](https://github.com/ewasm) (Ethereum flavored WebAssembly) files from Solidity.
 
 To support developers as many as possible, we design projects to not only support more smart contract programming languages, such as Rust and C++, but also support various VMs, such as ewasm VM and evm. To achieve this goal, in the very first step, we develop SOLL, a compiler for Solidity-based smart contract running on ewasm VM.
 
@@ -7,89 +7,125 @@ In SOLL, we design two phases of code generation flow. Generate *.ll (LLVM IR fi
 
 In the Getting Started in following sections, we will show you several steps to use SOLL to generate ewasm file.
 
-1. Build SOLL.
-2. Generate an ewasm file from our demo test case.
+1. Build SOLL from source code.
+2. Generate an ewasm file from our demo contract.
+    - [0-0-1.sol](./test/release/0-0-1.sol) - Safemath (simplified version)
 3. Execute the ewasm file.
 
-
-
 # Getting Started
+To get started with our demo, you will need two components at first.
 
-To get started with our demo, you will need three components at first.
-
-- Pre-install **Docker** and pull our [docker image](https://hub.docker.com/r/yi2nd/ubuntu-soll-build/) (optional)  
-
-> *We provide an image include build and execute environment (recommend). If you don't want to use docker directly you will need below tools (cmake, llvm, node.js).*
+- Pre-install **Docker** and pull our [docker image](https://hub.docker.com/r/secondstate/soll) (optional)
+> *We provide an image include build and execute environment (recommend).  
+> If you don't want to use docker directly you will need below tools (cmake, llvm, xxd, wabt, node.js).*
 
 - **Soll** https://github.com/second-state/soll
-- **Test Suit** https://github.com/second-state/soll-ewasm-testbench
 
 ## Preparation
 - Pull official docker image to get an already established build/execute environment.
 ```Shell
-docker pull yi2nd/soll:v0.0.1
+> docker pull secondstate/soll
 ```
 
-- Get Tar balls from Github and decompress these files
+- Get Source Code from Github
 ```Shell
-wget -c https://github.com/second-state/soll/archive/0.0.2.tar.gz -O soll-0.0.2.tar.gz
-tar zxvf 0.0.2.tar.gz soll-0.0.2.tar.gz
-wget -c https://github.com/second-state/soll-ewasm-testbench/archive/0.0.2.tar.gz -O  ewasm-testbench-0.0.2.tar.gz
-tar zxvf ewasm-testbench-0.0.2.tar.gz
+> git clone --recursive https://github.com/second-state/soll.git
 ```
-
 
 ## Working Tree
 ```
-├── ewasm-testbench
-│   ├── README.md
-│   └── index.js              // Entry point for trigger ewasm 
-└── soll
+soll
+├── (...)
+├── build                 // Build code path, manually create it
+├── test
+│   ├── (...)
+│   └── release           // Release Test Contract
+│       └── 0-0-1.sol
+├── (...)
+└── utils
     ├── (...)
-    ├── build                 // Build code path, manually create it
-    └── test
-        ├── lity
-        │   └── safemath.lity // Solidity test contract (Test case)
-        └── (...)
+    └── ewasm-testbench
+        ├── (...)
+        └── safeMath.js   // 0-0-1.sol Test Environment
 ```
 
 ## Launch Environment
 Attach shell to container and bind volume with repositories' path.
 ```Shell
-docker run -it --rm \
-      -v $(pwd)/ewasm-testbench-0.0.2:/root/ewasm-testbench \
-      -v $(pwd)/soll-0.0.2:/root/soll \
-      yi2nd/ubuntu-soll:v0.0.1
+> docker run -it --rm \
+      -v $(pwd)/soll:/root/soll \
+      secondstate/soll
 ```
 
-## Phase 1. Use SOLL generate .ll from test suite
-Build SOLL first (we use cmake with llvm library) and then execute SOLL to generate a *.ll file for the next step.
+## Build SOLL
+Build SOLL first (we use cmake with llvm library)
 ```Shell
 (docker) $ cd ~/soll && mkdir -p build && cd build
 (docker) $ cmake .. && make
-(docker) $ cd ~/ewasm-testbench
-(docker) $ ../soll/build/tools/soll/soll ../soll/test/lity/safemath.lity > safemath.ll
 ```
 
-## Phase 2. Generate .wasm from .ll
+## Demo with [0-0-1.sol](./test/release/0-0-1.sol)
+
+**Phase 1. Use SOLL generate .ll from test contract**
+
+Execute SOLL to generate a *.ll file for the next step.
 ```Shell
-(docker) $ cd ~/ewasm-testbench
-(docker) $ ../soll/utils/compile -v safemath.ll
+(docker) $ ~/soll/build/tools/soll/soll ~/soll/test/release/0-0-1.sol > ~/soll/utils/ewasm-testbench/safeMath.ll
 ```
 
-## Run 
+**Phase 2. Generate .wasm from .ll**
+
+```Shell
+(docker) $ ~/soll/utils/compile -v ~/soll/utils/ewasm-testbench/safeMath.ll
+```
+
+**Run**
+
 We use "16 divides 7" as our smart contract function to check whether our "SafeMath" execute correctly or not.
 ```Shell
-(docker) $ cd ~/ewasm-testbench
-(docker) $ ./index.js safemath.wasm div 16 7
+(docker) $ cd ~/soll/utils/ewasm-testbench
+(docker) $ ./safeMath.js safeMath.wasm div 16 7
 ```
 
 The result should be the same as the following content.
 
 ```Shell
-callDataCopy(66716, 0, 4)
-callDataCopy(66688, 4, 16)
-finish(66672, 8)
-[ '02', '00', '00', '00', '00', '00', '00', '00' ]
+getCallDataSize() = 68
+callDataCopy(66128, 0, 4)
+callDataCopy(66064, 4, 64)
+finish(66032, 32)
+[ Uint8Array [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    2 ],
+  '{}' ]
 ```
-
