@@ -169,6 +169,7 @@ std::string ToString(soll::CastKind CK) {
     return "<TypeCast>";
   }
   assert(false && "unknown cast kind!");
+  __builtin_unreachable();
 }
 
 std::string ToString(soll::VarDecl::Location LOC) {
@@ -181,6 +182,8 @@ std::string ToString(soll::VarDecl::Location LOC) {
     return "Memory";
   case soll::VarDecl::Location::CallData:
     return "CallData";
+  default:
+    __builtin_unreachable();
   }
 }
 

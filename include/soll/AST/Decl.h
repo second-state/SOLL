@@ -133,6 +133,7 @@ public:
   const ParamList *getReturnParams() const { return ReturnParams.get(); }
 
   std::vector<unsigned char> getSignatureHash() const;
+  std::uint32_t getSignatureHashUInt32() const;
 
   void accept(DeclVisitor &visitor) override;
   void accept(ConstDeclVisitor &visitor) const override;
@@ -192,6 +193,7 @@ public:
 
   std::vector<const VarDecl *> getParams() const;
   std::vector<VarDecl *> getParams();
+  unsigned getABIStaticSize() const;
 
   void accept(DeclVisitor &visitor);
   void accept(ConstDeclVisitor &visitor) const;

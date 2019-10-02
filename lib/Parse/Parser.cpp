@@ -3,7 +3,6 @@
 #include "soll/AST/AST.h"
 #include "soll/Basic/OperatorPrecedence.h"
 #include "soll/Lex/Lexer.h"
-#include "soll/Sema/BreakableVisitor.h"
 
 using namespace std;
 
@@ -336,6 +335,7 @@ static DataLocation getLoc(llvm::Optional<Token> Tok) {
 Parser::Parser(Lexer &lexer, Sema &sema) : TheLexer(lexer), Actions(sema) {}
 
 unique_ptr<SourceUnit> Parser::parse() {
+  ParseScope SourceUnitScope{this, 0};
   llvm::Optional<Token> CurTok;
   vector<unique_ptr<Decl>> Nodes;
 
@@ -349,9 +349,10 @@ unique_ptr<SourceUnit> Parser::parse() {
       break;
     case tok::kw_interface:
     case tok::kw_library:
-    case tok::kw_contract:
+    case tok::kw_contract: {
       Nodes.push_back(parseContractDefinition());
       break;
+    }
     default:
       TheLexer.CachedLex();
       break;
@@ -455,6 +456,7 @@ StateMutability Parser::parseStateMutability() {
 }
 
 unique_ptr<ContractDecl> Parser::parseContractDefinition() {
+  ParseScope ContractScope{this, 0};
   ContractDecl::ContractKind CtKind = parseContractKind();
   llvm::StringRef Name;
   vector<unique_ptr<InheritanceSpecifier>> BaseContracts;
@@ -482,15 +484,18 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
     }
     // TODO: < Parse all Types in contract's context >
     if (Kind == tok::kw_function || Kind == tok::kw_constructor) {
-      auto F = parseFunctionDefinitionOrFunctionTypeStateVariable();
-      if (F->isConstructor()) {
-        assert(!Constructor && "multiple constructor defined!");
-        Constructor = std::move(F);
-      } else if (F->isFallback()) {
-        assert(!Fallback && "multiple constructor defined!");
-        Fallback = std::move(F);
-      } else {
-        SubNodes.push_back(std::move(F));
+      auto FD = parseFunctionDefinitionOrFunctionTypeStateVariable();
+      if (FD) {
+        Actions.addDecl(FD.get());
+        if (FD->isConstructor()) {
+          assert(!Constructor && "multiple constructor defined!");
+          Constructor = std::move(FD);
+        } else if (FD->isFallback()) {
+          assert(!Fallback && "multiple fallback defined!");
+          Fallback = std::move(FD);
+        } else {
+          SubNodes.push_back(std::move(FD));
+        }
       }
       Actions.EraseFunRtnTys();
     } else if (Kind == tok::kw_struct) {
@@ -510,7 +515,7 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
       // TODO: contract tok::kw_modifier
       assert(false && "modifier not implemented");
     } else if (Kind == tok::kw_event) {
-      SubNodes.push_back(std::move(parseEventDefinition()));
+      SubNodes.push_back(parseEventDefinition());
     } else if (Kind == tok::kw_using) {
       // TODO: contract tok::kw_using
       assert(false && "using not implemented");
@@ -519,9 +524,11 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
                       "declaration expected.");
     }
   }
-  return std::make_unique<ContractDecl>(
+  auto CD = std::make_unique<ContractDecl>(
       Name, std::move(BaseContracts), std::move(SubNodes),
       std::move(Constructor), std::move(Fallback), CtKind);
+  Actions.addDecl(CD.get());
+  return CD;
 }
 
 Parser::FunctionHeaderParserResult
@@ -586,6 +593,7 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
 
 unique_ptr<FunctionDecl>
 Parser::parseFunctionDefinitionOrFunctionTypeStateVariable() {
+  ParseScope ArgumentScope{this, 0};
   FunctionHeaderParserResult Header = parseFunctionHeader(false, true);
   if (Header.IsConstructor || !Header.Modifiers.empty() ||
       !Header.Name.empty() ||
@@ -593,6 +601,8 @@ Parser::parseFunctionDefinitionOrFunctionTypeStateVariable() {
     // this has to be a function
     unique_ptr<Block> block;
     if (TheLexer.LookAhead(0)->isNot(tok::semi)) {
+      ParseScope FunctionScope{this, Scope::FunctionScope};
+      // TODO: cache token and delay parsing after contract defined
       block = parseBlock();
     }
     return Actions.CreateFunctionDecl(
@@ -678,8 +688,8 @@ Parser::parseVariableDeclaration(VarDeclParserOptions const &Options,
                                       Vsblty, Options.IsStateVariable,
                                       IsIndexed, IsDeclaredConst, Loc);
 
-  Actions.addIdentifierDecl(Name, *VD);
-  return std::move(VD);
+  Actions.addDecl(VD.get());
+  return VD;
 }
 
 unique_ptr<EventDecl> Parser::parseEventDefinition() {
@@ -693,7 +703,9 @@ unique_ptr<EventDecl> Parser::parseEventDefinition() {
     Anonymous = true;
     TheLexer.CachedLex(); // ;
   }
-  return Actions.CreateEventDecl(Name, std::move(Parameters), Anonymous);
+  auto ED = Actions.CreateEventDecl(Name, std::move(Parameters), Anonymous);
+  Actions.addDecl(ED.get());
+  return ED;
 }
 
 TypePtr Parser::parseTypeNameSuffix(TypePtr T) {
@@ -799,6 +811,7 @@ Parser::parseParameterList(VarDeclParserOptions const &_Options,
 }
 
 unique_ptr<Block> Parser::parseBlock() {
+  ParseScope BlockScope{this, 0};
   vector<unique_ptr<Stmt>> Statements;
   TheLexer.CachedLex();
   while (TheLexer.LookAhead(0)->isNot(tok::r_brace)) {
@@ -873,14 +886,22 @@ unique_ptr<WhileStmt> Parser::parseWhileStatement() {
   TheLexer.CachedLex(); // (
   unique_ptr<Expr> Condition = parseExpression();
   TheLexer.CachedLex(); // )
-  unique_ptr<Stmt> Body = parseStatement();
+  unique_ptr<Stmt> Body;
+  {
+    ParseScope WhileScope{this, Scope::BreakScope | Scope::ContinueScope };
+    Body = parseStatement();
+  }
   return std::make_unique<WhileStmt>(std::move(Condition), std::move(Body),
                                      false);
 }
 
 unique_ptr<WhileStmt> Parser::parseDoWhileStatement() {
   TheLexer.CachedLex(); // do
-  unique_ptr<Stmt> Body = parseStatement();
+  unique_ptr<Stmt> Body;
+  {
+    ParseScope DoWhileScope{this, Scope::BreakScope | Scope::ContinueScope };
+    Body = parseStatement();
+  }
   TheLexer.CachedLex(); // while
   TheLexer.CachedLex(); // (
   unique_ptr<Expr> Condition = parseExpression();
@@ -911,7 +932,11 @@ unique_ptr<ForStmt> Parser::parseForStatement() {
     Loop = parseExpression();
   TheLexer.CachedLex(); // )
 
-  unique_ptr<Stmt> Body = parseStatement();
+  unique_ptr<Stmt> Body;
+  {
+    ParseScope ForScope{this, Scope::BreakScope | Scope::ContinueScope };
+    Body = parseStatement();
+  }
   return std::make_unique<ForStmt>(std::move(Init), std::move(Condition),
                                    std::move(Loop), std::move(Body));
 }
@@ -960,10 +985,10 @@ unique_ptr<Stmt> Parser::parseSimpleStatement() {
   switch (StatementType) {
   case LookAheadInfo::VariableDeclaration:
     return parseVariableDeclarationStatement(
-        std::move(typeNameFromIndexAccessStructure(Iap)));
+        typeNameFromIndexAccessStructure(Iap));
   case LookAheadInfo::Expression:
     Expression =
-        parseExpression(std::move(expressionFromIndexAccessStructure(Iap)));
+        parseExpression(expressionFromIndexAccessStructure(Iap));
     break;
   default:
     assert(false && "Unhandle statement.");
@@ -1146,7 +1171,6 @@ Parser::expressionFromIndexAccessStructure(Parser::IndexAccessedPath &Iap) {
   }
 
   for (auto &Index : Iap.Indices) {
-    // TODO: assumption idx always is integer
     Expression =
         Actions.CreateIndexAccess(std::move(Expression), std::move(Index));
   }
@@ -1388,6 +1412,14 @@ llvm::StringRef Parser::getLiteralAndAdvance(llvm::Optional<Token> Tok) {
     return Tok->getIdentifierInfo()->getName();
   assert(Tok->isLiteral() && "except tok::literal");
   return llvm::StringRef(Tok->getLiteralData(), Tok->getLength());
+}
+
+void Parser::EnterScope(unsigned ScopeFlags) {
+  Actions.PushScope(ScopeFlags);
+}
+
+void Parser::ExitScope() {
+  Actions.PopScope();
 }
 
 } // namespace soll

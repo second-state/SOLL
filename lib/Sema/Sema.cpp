@@ -3,6 +3,7 @@
 #include "soll/AST/AST.h"
 #include "soll/AST/ASTConsumer.h"
 #include "soll/Lex/Lexer.h"
+#include "soll/Sema/Scope.h"
 
 namespace soll {
 
@@ -61,20 +62,17 @@ std::unique_ptr<FunctionDecl> Sema::CreateFunctionDecl(
     bool IsConstructor, bool IsFallback, std::unique_ptr<ParamList> &&Params,
     std::vector<std::unique_ptr<ModifierInvocation>> &&Modifiers,
     std::unique_ptr<ParamList> &&ReturnParams, std::unique_ptr<Block> &&Body) {
-  auto FD = std::make_unique<FunctionDecl>(
+  return std::make_unique<FunctionDecl>(
       Name, Vis, SM, IsConstructor, IsFallback, std::move(Params),
       std::move(Modifiers), std::move(ReturnParams), std::move(Body));
-  resolveBreak(*FD);
-  addIdentifierDecl(FD->getName(), *FD);
-  return std::move(FD);
 }
 
 std::unique_ptr<EventDecl>
 Sema::CreateEventDecl(llvm::StringRef Name, std::unique_ptr<ParamList> &&Params,
                       bool Anonymous) {
   auto ED = std::make_unique<EventDecl>(Name, std::move(Params), Anonymous);
-  addIdentifierDecl(ED->getName(), *ED);
-  return std::move(ED);
+  addDecl(ED.get());
+  return ED;
 }
 
 ExprPtr Sema::CreateBinOp(BinaryOperatorKind Opc, ExprPtr &&LHS,
@@ -114,14 +112,19 @@ ExprPtr Sema::CreateIndexAccess(ExprPtr &&LHS, ExprPtr &&RHS) {
   RHS = DefaultLvalueConversion(std::move(RHS));
 
   TypePtr ResultTy;
-  if (auto MT = dynamic_cast<MappingType *>(LHS->getType().get())) {
+  const Type *BaseTy = LHS->getType().get();
+  if (auto MT = dynamic_cast<const MappingType *>(BaseTy)) {
+    TryImplicitCast(MT->getKeyType(), RHS);
     ResultTy = MT->getValueType();
-  } else if (auto AT = dynamic_cast<ArrayType *>(LHS->getType().get())) {
+  } else if (auto AT = dynamic_cast<const ArrayType *>(BaseTy)) {
     // TODO: replace this with Diagonistic
     assert(RHS->getType()->getCategory() == Type::Category::Integer);
+    TryImplicitCast(std::make_shared<IntegerType>(IntegerType::IntKind::U256),
+                    RHS);
     ResultTy = AT->getElementType();
-  } else
+  } else {
     assert(false);
+  }
   return std::make_unique<IndexAccess>(std::move(LHS), std::move(RHS),
                                        ResultTy);
 }
@@ -141,7 +144,7 @@ std::unique_ptr<CallExpr> Sema::CreateCallExpr(ExprPtr &&Callee,
     } else if (auto ED = dynamic_cast<CallableVarDecl *>(
                    CalleeIden->getCorrespondDecl())) {
     } else {
-      assert(isMagicFuncName(CalleeIden->getName()) &&
+      assert(isBuiltinFunction(CalleeIden->getName()) &&
              "callee is not FuncDecl");
     }
   } else
@@ -154,8 +157,10 @@ std::unique_ptr<CallExpr> Sema::CreateCallExpr(ExprPtr &&Callee,
                                     ResultTy);
 }
 
-std::unique_ptr<Identifier> Sema::CreateIdentifier(const std::string Name) {
-  return std::make_unique<Identifier>(Name, findIdentifierDecl(Name));
+std::unique_ptr<Identifier> Sema::CreateIdentifier(llvm::StringRef Name) {
+  Decl *D = lookupName(Name);
+  assert(D != nullptr || isBuiltinFunction(Name) || isBuiltinObject(Name));
+  return std::make_unique<Identifier>(Name, D);
 }
 
 TypePtr Sema::CheckAdditiveOperands(ExprPtr &LHS, ExprPtr &RHS,
@@ -165,7 +170,7 @@ TypePtr Sema::CheckAdditiveOperands(ExprPtr &LHS, ExprPtr &RHS,
   assert(LHS->getType()->getCategory() == Type::Category::Integer);
   assert(RHS->getType()->getCategory() == Type::Category::Integer);
 
-  return std::move(compType);
+  return compType;
 }
 
 TypePtr Sema::CheckMultiplicativeOperands(ExprPtr &LHS, ExprPtr &RHS,
@@ -176,7 +181,7 @@ TypePtr Sema::CheckMultiplicativeOperands(ExprPtr &LHS, ExprPtr &RHS,
   assert(LHS->getType()->getCategory() == Type::Category::Integer);
   assert(RHS->getType()->getCategory() == Type::Category::Integer);
 
-  return std::move(compType);
+  return compType;
 }
 
 TypePtr Sema::CheckShiftOperands(ExprPtr &LHS, ExprPtr &RHS,
@@ -254,32 +259,14 @@ TypePtr Sema::UsualArithmeticConversions(ExprPtr &LHS, ExprPtr &RHS,
 }
 
 ExprPtr Sema::UsualUnaryConversions(ExprPtr &&E) {
-  return std::move(Sema::DefaultLvalueConversion(std::move(E)));
+  return Sema::DefaultLvalueConversion(std::move(E));
 }
 
 ExprPtr Sema::DefaultLvalueConversion(ExprPtr &&E) {
   if (E->isRValue())
     return std::move(E);
 
-  auto Res = std::move(std::make_unique<ImplicitCastExpr>(
-      std::move(E), CastKind::LValueToRValue, E->getType()));
-
-  return std::move(Res);
+  return std::make_unique<ImplicitCastExpr>(
+      std::move(E), CastKind::LValueToRValue, E->getType());
 }
-
-void Sema::resolveBreak(FunctionDecl &FD) { BreakableVisitor().check(FD); }
-
-void Sema::addIdentifierDecl(const std::string &S, Decl &D) {
-  ID2DeclTable.emplace(S, &D);
-}
-
-// TODO: refactor this
-// current impl. assumes no name scope
-Decl *Sema::findIdentifierDecl(const std::string &S) {
-  if (auto iter = ID2DeclTable.find(S); iter != ID2DeclTable.end())
-    return iter->second;
-  else
-    return nullptr;
-}
-
 } // namespace soll

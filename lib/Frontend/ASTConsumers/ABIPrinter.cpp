@@ -19,6 +19,8 @@ std::string ToString(soll::StateMutability SM) {
     return "pure";
   case soll::StateMutability::View:
     return "view";
+  default:
+    __builtin_unreachable();
   }
 }
 

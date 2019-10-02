@@ -4,22 +4,16 @@
 #include "soll/AST/Decl.h"
 #include "soll/AST/Expr.h"
 #include "soll/AST/Type.h"
-#include "soll/CodeGen/FuncBodyCodeGen.h"
+#include "soll/Basic/Diagnostic.h"
+#include "soll/Basic/DiagnosticOptions.h"
+#include "soll/CodeGen/ModuleBuilder.h"
 #include "soll/Frontend/ASTConsumers.h"
 #include <iostream>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Module.h>
 #include <memory>
 
 using namespace soll;
-
-using llvm::IRBuilder;
-using llvm::LLVMContext;
-// using llvm::Value;
-// using llvm::Type;
-// using llvm::FunctionType;
-// using llvm::ConstantInt;
-// using llvm::Module;
-// using llvm::Function;
-// using llvm::BasicBlock;
 
 int main(int argc, const char **argv) {
   using std::make_shared;
@@ -88,39 +82,19 @@ int main(int argc, const char **argv) {
                   std::move(val), BO_Assign))))),
       nullptr, nullptr, ContractDecl::ContractKind::Contract)));
 
-  ASTContext *Ctx = new ASTContext();
+  ASTContext Ctx;
   auto p = CreateASTPrinter();
-  p->HandleSourceUnit(*Ctx, source);
+  p->HandleSourceUnit(Ctx, source);
 
-  LLVMContext Context;
-  soll::ASTContext ASTCtx;
-  IRBuilder<llvm::NoFolder> Builder(Context);
-  llvm::Module Module("FuncBodyCGTest", Context);
-  FuncBodyCodeGen FBCG(Context, Builder, Module, ASTCtx);
+  llvm::LLVMContext Context;
+  llvm::IntrusiveRefCntPtr<soll::DiagnosticOptions> Opts(new soll::DiagnosticOptions());
+  llvm::IntrusiveRefCntPtr<soll::DiagnosticIDs> DiagID(new soll::DiagnosticIDs());
+  llvm::IntrusiveRefCntPtr<soll::DiagnosticsEngine> Diags = new soll::DiagnosticsEngine(DiagID, Opts);
+  soll::TargetOptions TO;
+  soll::CodeGenerator *Gen = soll::CreateLLVMCodeGen(*Diags, "FuncBodyCGTest", Context, TO);
+  soll::ASTContext ASTC;
 
-  // revert
-  llvm::FunctionType *FT = llvm::FunctionType::get(
-      Builder.getVoidTy(), {Builder.getInt8PtrTy(), Builder.getInt32Ty()},
-      false);
-  llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "revert", Module);
-
-  // keccak
-  FT = llvm::FunctionType::get(Builder.getIntNTy(256),
-                               {Builder.getInt8PtrTy(), Builder.getIntNTy(256)},
-                               false);
-  llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "keccak", Module);
-
-  // storage store
-  FT = llvm::FunctionType::get(Builder.getVoidTy(),
-                               {Builder.getIntNTy(256), Builder.getIntNTy(256)},
-                               false);
-  llvm::Function::Create(FT, llvm::Function::ExternalLinkage, "storageStore",
-                         Module);
-
-  FBCG.compile(*static_cast<const FunctionDecl *>(
-      static_cast<const ContractDecl *>(source.getNodes().front())
-          ->getSubNodes()
-          .front()));
-  Module.print(llvm::errs(), nullptr);
+  Gen->HandleSourceUnit(Ctx, source);
+  Gen->getModule()->print(llvm::errs(), nullptr);
   return EXIT_SUCCESS;
 }

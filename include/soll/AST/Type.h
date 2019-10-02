@@ -45,7 +45,8 @@ public:
   }
   virtual Category getCategory() const = 0;
   virtual std::string getName() const = 0;
-  virtual unsigned getCalldataEncodedSize() const = 0;
+  virtual bool isDynamic() const = 0;
+  virtual unsigned getABIStaticSize() const = 0;
 };
 
 class AddressType : public Type {
@@ -53,14 +54,16 @@ public:
   Category getCategory() const override { return Category::Address; }
   unsigned int getBitNum() const override { return 160; }
   std::string getName() const override { return "address"; }
-  unsigned getCalldataEncodedSize() const override { return 32; }
+  bool isDynamic() const override { return false; }
+  unsigned getABIStaticSize() const override { return 32; }
 };
 
 class BooleanType : public Type {
 public:
   Category getCategory() const override { return Category::Bool; }
   std::string getName() const override { return "bool"; }
-  unsigned getCalldataEncodedSize() const override { return 32; }
+  bool isDynamic() const override { return false; }
+  unsigned getABIStaticSize() const override { return 32; }
   unsigned int getBitNum() const override { return 1; }
 };
 
@@ -164,7 +167,8 @@ public:
     oss << getBitNum();
     return oss.str();
   }
-  unsigned getCalldataEncodedSize() const override { return 32; }
+  bool isDynamic() const override { return false; }
+  unsigned getABIStaticSize() const override { return 32; }
 
   static std::shared_ptr<IntegerType> common(const IntegerType &A,
                                              const IntegerType &B);
@@ -221,7 +225,8 @@ public:
     oss << getBitNum() / 8;
     return oss.str();
   }
-  unsigned getCalldataEncodedSize() const override { return 32; }
+  bool isDynamic() const override { return false; }
+  unsigned getABIStaticSize() const override { return 32; }
 
 private:
   ByteKind _byteKind;
@@ -230,13 +235,15 @@ private:
 class StringType : public Type {
   Category getCategory() const override { return Category::String; }
   std::string getName() const override { return "string"; }
-  unsigned getCalldataEncodedSize() const override { return 32; }
+  bool isDynamic() const override { return true; }
+  unsigned getABIStaticSize() const override { return 32; }
 };
 
 class BytesType : public Type {
   Category getCategory() const override { return Category::Bytes; }
   std::string getName() const override { return "bytes"; }
-  unsigned getCalldataEncodedSize() const override { return 32; }
+  bool isDynamic() const override { return true; }
+  unsigned getABIStaticSize() const override { return 32; }
 };
 
 class ReferenceType : public Type {
@@ -264,8 +271,13 @@ public:
 
   Category getCategory() const override { return Category::Mapping; }
   std::string getName() const override { return "mapping"; }
-  unsigned getCalldataEncodedSize() const override {
+  bool isDynamic() const override {
     assert(false && "mapping is not allowed here");
+    __builtin_unreachable();
+  }
+  unsigned getABIStaticSize() const override {
+    assert(false && "mapping is not allowed here");
+    __builtin_unreachable();
   }
 };
 
@@ -289,11 +301,18 @@ public:
   }
   Category getCategory() const override { return Category::Array; }
   std::string getName() const override { return ElementType->getName() + "[]"; }
-  unsigned getCalldataEncodedSize() const override {
+  bool isDynamic() const override {
+    if (isDynamicSized()) {
+      return true;
+    } else {
+      return getElementType()->isDynamic();
+    }
+  }
+  unsigned getABIStaticSize() const override {
     if (isDynamicSized()) {
       return 32;
     } else {
-      return getElementType()->getCalldataEncodedSize() * getLength();
+      return getElementType()->getABIStaticSize() * getLength();
     }
   }
 };
@@ -311,7 +330,8 @@ public:
 
   Category getCategory() const override { return Category::Function; }
   std::string getName() const override { return "function"; }
-  unsigned getCalldataEncodedSize() const override { return 32; }
+  bool isDynamic() const override { return false; }
+  unsigned getABIStaticSize() const override { return 32; }
 };
 
 class StructType : public Type {

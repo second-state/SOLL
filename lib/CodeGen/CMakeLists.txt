@@ -5,9 +5,10 @@ set(LLVM_LINK_COMPONENTS
 
 add_llvm_library(sollCodeGen
   BackendUtil.cpp
+  CGExpr.cpp
   CodeGenAction.cpp
+  CodeGenFunction.cpp
   CodeGenModule.cpp
-  FuncBodyCodeGen.cpp
   LoweringInteger.cpp
   ModuleBuilder.cpp
   LINK_LIBS

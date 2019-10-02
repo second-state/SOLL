@@ -138,6 +138,11 @@ std::vector<unsigned char> CallableVarDecl::getSignatureHash() const {
   return h.digest();
 }
 
+std::uint32_t CallableVarDecl::getSignatureHashUInt32() const {
+  const std::vector<unsigned char> &op = getSignatureHash();
+  return op[0] | (op[1] << 8u) | (op[2] << 16u) | (op[3] << 24u);
+}
+
 ///
 /// ParamList
 ///
@@ -153,6 +158,14 @@ std::vector<VarDecl *> ParamList::getParams() {
   for (auto &P : this->Params)
     Params.emplace_back(P.get());
   return Params;
+}
+
+unsigned ParamList::getABIStaticSize() const {
+  unsigned Result = 0;
+  for (const auto &VD : Params) {
+    Result += VD->GetType()->getABIStaticSize();
+  }
+  return Result;
 }
 
 FunctionDecl::FunctionDecl(

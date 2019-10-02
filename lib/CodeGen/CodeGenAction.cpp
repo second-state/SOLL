@@ -45,7 +45,7 @@ public:
       : Diags(Diags), TargetOpts(TargetOpts), AsmOutStream(std::move(OS)),
         Context(nullptr), Gen(CreateLLVMCodeGen(Diags, InFile, C, TargetOpts)) {
   }
-  llvm::Module *getModule() const { return Gen->GetModule(); }
+  llvm::Module *getModule() const { return Gen->getModule(); }
 
   CodeGenerator *getCodeGenerator() { return Gen.get(); }
 

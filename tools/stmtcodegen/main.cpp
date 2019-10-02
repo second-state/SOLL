@@ -1,23 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "soll/AST/AST.h"
 #include "soll/AST/ASTConsumer.h"
-#include "soll/CodeGen/FuncBodyCodeGen.h"
+#include "soll/Basic/Diagnostic.h"
+#include "soll/Basic/DiagnosticOptions.h"
+#include "soll/CodeGen/ModuleBuilder.h"
 #include "soll/Frontend/ASTConsumers.h"
-#include "soll/Sema/BreakableVisitor.h"
 #include <cstring>
 #include <iostream>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Module.h>
 
 using namespace soll;
-
-using llvm::IRBuilder;
-using llvm::LLVMContext;
-// using llvm::Value;
-// using llvm::Type;
-// using llvm::FunctionType;
-// using llvm::ConstantInt;
-// using llvm::Module;
-// using llvm::Function;
-// using llvm::BasicBlock;
 
 int main(int argc, const char **argv) {
   if (argc == 1)
@@ -249,25 +242,18 @@ int main(int argc, const char **argv) {
   } else
     return 0;
 
-  ASTContext *Ctx = new ASTContext();
+  ASTContext Ctx;
   auto p = CreateASTPrinter();
-  p->HandleSourceUnit(*Ctx, *source);
+  p->HandleSourceUnit(Ctx, *source);
 
-  LLVMContext Context;
-  soll::ASTContext ASTCtx;
-  IRBuilder<llvm::NoFolder> Builder(Context);
-  llvm::Module Module("FuncBodyCGTest", Context);
-  FuncBodyCodeGen FBCG(Context, Builder, Module, ASTCtx);
-  BreakableVisitor BV;
+  llvm::LLVMContext Context;
+  llvm::IntrusiveRefCntPtr<soll::DiagnosticOptions> Opts(new soll::DiagnosticOptions());
+  llvm::IntrusiveRefCntPtr<soll::DiagnosticIDs> DiagID(new soll::DiagnosticIDs());
+  llvm::IntrusiveRefCntPtr<soll::DiagnosticsEngine> Diags = new soll::DiagnosticsEngine(DiagID, Opts);
+  soll::TargetOptions TO;
+  soll::CodeGenerator *Gen = soll::CreateLLVMCodeGen(*Diags, "FuncBodyCGTest", Context, TO);
 
-  BV.check(*static_cast<FunctionDecl *>(
-      static_cast<ContractDecl *>(source->getNodes().front())
-          ->getSubNodes()
-          .front()));
-  FBCG.compile(*static_cast<const FunctionDecl *>(
-      static_cast<const ContractDecl *>(source->getNodes().front())
-          ->getSubNodes()
-          .front()));
-  Module.print(llvm::errs(), nullptr);
+  Gen->HandleSourceUnit(Ctx, *source);
+  Gen->getModule()->print(llvm::errs(), nullptr);
   return EXIT_SUCCESS;
 }

@@ -10,7 +10,7 @@
 
 namespace soll {
 
-enum class ValueKind { VK_LValue, VK_RValue };
+enum class ValueKind { VK_SValue, VK_LValue, VK_RValue };
 
 /// Expr: Base class for all expressions.
 class Expr : public ExprStmt {
@@ -28,6 +28,7 @@ public:
   Expr(ValueKind vk, TypePtr Ty = nullptr) : ExprValueKind(vk), Ty(Ty) {}
   ValueKind getValueKind() const { return ExprValueKind; }
   void setValueKind(ValueKind vk) { ExprValueKind = vk; }
+  bool isSValue() const { return getValueKind() == ValueKind::VK_SValue; }
   bool isLValue() const { return getValueKind() == ValueKind::VK_LValue; }
   bool isRValue() const { return getValueKind() == ValueKind::VK_RValue; }
   void setType(TypePtr Ty) { this->Ty = Ty; }
@@ -298,7 +299,7 @@ public:
   ParenExpr(ExprPtr &&Val) : Expr(*Val), Val(std::move(Val)) {}
 
   Expr *getSubExpr() { return Val.get(); }
-  const Stmt *getSubExpr() const { return Val.get(); }
+  const Expr *getSubExpr() const { return Val.get(); }
 
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;

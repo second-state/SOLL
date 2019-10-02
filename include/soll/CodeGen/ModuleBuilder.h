@@ -12,7 +12,7 @@ class DiagnosticsEngine;
 class CodeGenerator : public ASTConsumer {
 
 public:
-  llvm::Module *GetModule();
+  llvm::Module *getModule();
   void HandleSourceUnit(ASTContext &C, SourceUnit &S) override;
 };
 

@@ -2,23 +2,23 @@
 #pragma once
 
 #include "soll/AST/ASTContext.h"
-#include "soll/Sema/BreakableVisitor.h"
+#include "soll/Sema/Scope.h"
 #include <unordered_map>
 
 namespace soll {
 
-class Lexer;
-class ASTContext;
 class ASTConsumer;
+class ASTContext;
 class DiagnosticsEngine;
+class Lexer;
+class Sema;
 class SourceManager;
 
 class Sema {
   Sema(const Sema &) = delete;
   Sema &operator=(const Sema &) = delete;
-  // TODO: refactor this
-  // current impl. assumes no name scope
-  std::unordered_map<std::string, Decl *> ID2DeclTable;
+
+  std::vector<std::unique_ptr<Scope>> Scopes;
   std::vector<TypePtr> FunRtnTys;
 
 public:
@@ -54,7 +54,7 @@ public:
   ExprPtr CreateIndexAccess(ExprPtr &&LHS, ExprPtr &&RHS);
   std::unique_ptr<CallExpr>
   CreateCallExpr(ExprPtr &&Callee, std::vector<std::unique_ptr<Expr>> &&Args);
-  std::unique_ptr<Identifier> CreateIdentifier(const std::string Name);
+  std::unique_ptr<Identifier> CreateIdentifier(llvm::StringRef Name);
 
   /// type checking binary operators (subroutines of CreateBinOp)
   /// this may add type casting
@@ -89,18 +89,24 @@ public:
 
   ExprPtr DefaultLvalueConversion(ExprPtr &&E);
 
-  void addIdentifierDecl(const std::string &Name, Decl &D);
-  Decl *findIdentifierDecl(const std::string &Name);
+  void PushScope(unsigned Flags) {
+    Scopes.push_back(std::make_unique<Scope>(CurrentScope(), Flags));
+  }
+  void PopScope() { Scopes.pop_back(); }
+  Scope *CurrentScope() const {
+    return Scopes.empty() ? nullptr : Scopes.back().get();
+  }
+  void addDecl(Decl *D) { CurrentScope()->addDecl(D); }
+  Decl *lookupName(llvm::StringRef Name) const {
+    return CurrentScope()->lookupName(Name);
+  }
 
-  void resolveBreak(FunctionDecl &);
+  bool isBuiltinFunction(const std::string &Name) const {
+    return Name == "require" || Name == "assert" || Name == "revert";
+  }
 
-  bool isMagicFuncName(const std::string &Name) {
-    // TODO: replace this
-    // check all magic functionName
-    // TODO: refactor this
-    // msg and sender should NOT be magic name (add to magic name just to pass
-    // erc20)
-    return Name == "require" || Name == "msg" || Name == "sender";
+  bool isBuiltinObject(const std::string &Name) const {
+    return Name == "msg" || Name == "sender";
   }
 };
 

@@ -147,30 +147,16 @@ public:
 };
 
 class ContinueStmt : public Stmt {
-  /// The loop statement that this ContinueStmt is in
-  Stmt *LoopStmt;
-
 public:
-  ContinueStmt(Stmt *LS = nullptr) : LoopStmt(LS) {}
-
-  void setLoopStmt(Stmt *LS) { LoopStmt = LS; }
-  Stmt *getLoopStmt() { return LoopStmt; }
-  const Stmt *getLoopStmt() const { return LoopStmt; }
+  ContinueStmt() = default;
 
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
 };
 
 class BreakStmt : public Stmt {
-  /// The loop statement that this BreakStmt is in
-  Stmt *LoopStmt;
-
 public:
-  BreakStmt(Stmt *LS = nullptr) : LoopStmt(LS) {}
-
-  void setLoopStmt(Stmt *LS) { LoopStmt = LS; }
-  Stmt *getLoopStmt() { return LoopStmt; }
-  const Stmt *getLoopStmt() const { return LoopStmt; }
+  BreakStmt() = default;
 
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;

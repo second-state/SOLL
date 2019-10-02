@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "soll/AST/AST.h"
 #include "soll/AST/ASTConsumer.h"
-#include "soll/CodeGen/FuncBodyCodeGen.h"
+#include "soll/Basic/Diagnostic.h"
+#include "soll/Basic/DiagnosticOptions.h"
+#include "soll/CodeGen/ModuleBuilder.h"
 #include "soll/Frontend/ASTConsumers.h"
 #include <iostream>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Module.h>
 
 using namespace soll;
-
-using llvm::IRBuilder;
-using llvm::LLVMContext;
 
 int main(int argc, const char **argv) {
   using std::make_unique;

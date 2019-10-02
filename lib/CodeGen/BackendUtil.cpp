@@ -38,7 +38,7 @@ void EmitBackendOutput(DiagnosticsEngine &Diags,
   }
   TheModule->setDataLayout(TM->createDataLayout());
 
-#if LLVM_VERSION_MAJOR >= 10
+#if LLVM_VERSION_MAJOR >= 9
   llvm::PassBuilder PB(TM.get(), llvm::PipelineTuningOptions(), llvm::None);
 #else
   llvm::PassBuilder PB(TM.get(), llvm::None);
