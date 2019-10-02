@@ -79,6 +79,10 @@ public:
   void emitContractDecl(const ContractDecl *CD);
   llvm::Value *emitEndianConvert(llvm::Value *Val);
 
+  void emitFinish(llvm::Value *DataOffset, llvm::Value *Length);
+  void emitCallDataCopy(llvm::Value *ResultOffset, llvm::Value *DataOffset,
+                        llvm::Value *Length);
+
 private:
   void emitContractConstructorDecl(const ContractDecl *CD);
   void emitContractDispatcherDecl(const ContractDecl *CD);
