@@ -396,32 +396,28 @@ private:
     unsigned ArrayLength = 0;
     for (llvm::Value *Value : Values) {
       llvm::Type *Ty = Value->getType();
-      ArrayLength += Ty->getIntegerBitWidth() / 8;
+      ArrayLength += (Ty->getIntegerBitWidth() + 255) / 256;
     }
 
-    llvm::ArrayType *ArrayTy =
-        llvm::ArrayType::get(Builder.getInt8Ty(), ArrayLength);
-    llvm::Value *Array = Builder.CreateAlloca(ArrayTy, nullptr, "concat");
+    llvm::Value *Array = Builder.CreateAlloca(
+        CGF.Int256Ty, Builder.getInt32(ArrayLength), "concat");
 
     unsigned Index = 0;
     for (llvm::Value *Value : Values) {
       llvm::Type *Ty = Value->getType();
-      llvm::Value *Ptr = Builder.CreateInBoundsGEP(
-          Array, {Builder.getInt32(0), Builder.getInt32(Index)});
+      llvm::Value *Ptr =
+          Builder.CreateInBoundsGEP(Array, {Builder.getInt32(Index)});
       llvm::Value *CPtr =
           Builder.CreatePointerCast(Ptr, llvm::PointerType::getUnqual(Ty));
       Builder.CreateStore(Value, CPtr);
-      Index += Ty->getIntegerBitWidth() / 8;
+      Index += (Ty->getIntegerBitWidth() + 255) / 256;
     }
 
     llvm::Value *Bytes = llvm::ConstantAggregateZero::get(CGF.BytesTy);
     Bytes = Builder.CreateInsertValue(Bytes, Builder.getIntN(256, ArrayLength),
                                       {0});
     Bytes = Builder.CreateInsertValue(
-        Bytes,
-        Builder.CreateInBoundsGEP(Array,
-                                  {Builder.getInt32(0), Builder.getInt32(0)}),
-        {1});
+        Bytes, Builder.CreateBitCast(Array, CGF.Int8PtrTy), {1});
     return Bytes;
   }
 
