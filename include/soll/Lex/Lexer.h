@@ -115,8 +115,7 @@ private:
 
   Token LexIdentifier(const char *CurPtr);
   Token LexNumericConstant(const char *CurPtr);
-  Token LexStringLiteral(const char *CurPtr);
-  Token LexCharConstant(const char *CurPtr);
+  Token LexStringLiteral(const char *CurPtr, char Quote, tok::TokenKind Kind);
   Token LexEndOfFile(const char *CurPtr);
   void SkipWhitespace(const char *CurPtr);
   void SkipLineComment(const char *CurPtr);

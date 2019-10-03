@@ -179,7 +179,6 @@ LexNextToken:
   case 'e':
   case 'f':
   case 'g':
-  case 'h':
   case 'i':
   case 'j':
   case 'k':
@@ -202,13 +201,26 @@ LexNextToken:
   case '$':
     return LexIdentifier(CurPtr);
 
-  // Character Constants.
-  case '\'':
-    return LexCharConstant(CurPtr);
+  // Identifiers or Hexadecimal Literals
+  case 'h': {
+    Char = getCharAndSize(CurPtr, SizeTmp);
+    if (Char == 'e') {
+      char Char2 = getCharAndSize(CurPtr + SizeTmp, SizeTmp2);
+      if (Char2 == 'x') {
+        unsigned SizeTmp3;
+        char Char3 = getCharAndSize(CurPtr + SizeTmp2, SizeTmp3);
+        if (Char3 == '"' || Char3 == '\'') {
+          return LexStringLiteral(CurPtr + SizeTmp3, Char3, tok::hex_string_literal);
+        }
+      }
+    }
+    return LexIdentifier(CurPtr);
+  }
 
   // String Literals.
   case '"':
-    return LexStringLiteral(CurPtr);
+  case '\'':
+    return LexStringLiteral(CurPtr, Char, tok::string_literal);
 
   // Punctuators.
   case '?':
@@ -557,51 +569,14 @@ Token Lexer::LexNumericConstant(const char *CurPtr) {
   return Result;
 }
 
-Token Lexer::LexCharConstant(const char *CurPtr) {
-  // Does this character contain the \0 character?
-  const char *NulCharacter = nullptr;
-
-  char C = getAndAdvanceChar(CurPtr);
-  if (C == '\'') {
-    Diag(BufferPtr, diag::ext_empty_character);
-    return FormTokenWithChars(CurPtr, tok::unknown);
-  }
-
-  while (C != '\'') {
-    // Skip escaped characters.
-    if (C == '\\')
-      C = getAndAdvanceChar(CurPtr);
-
-    if (C == '\n' || C == '\r' ||              // Newline.
-        (C == 0 && CurPtr - 1 == BufferEnd)) { // End of file.
-      Diag(BufferPtr, diag::ext_unterminated_char_or_string) << 0;
-      return FormTokenWithChars(CurPtr - 1, tok::unknown);
-    }
-
-    if (C == 0) {
-      NulCharacter = CurPtr - 1;
-    }
-    C = getAndAdvanceChar(CurPtr);
-  }
-
-  // If a nul character existed in the character, warn about it.
-  if (NulCharacter)
-    Diag(NulCharacter, diag::null_in_char_or_string) << 0;
-
-  // Update the location of token as well as BufferPtr.
-  const char *TokStart = BufferPtr;
-  Token Result = FormTokenWithChars(CurPtr, tok::char_constant);
-  Result.setLiteralData(TokStart);
-  return Result;
-}
-
-Token Lexer::LexStringLiteral(const char *CurPtr) {
+Token Lexer::LexStringLiteral(const char *CurPtr, char Quote,
+                              tok::TokenKind Kind) {
   const char *AfterQuote = CurPtr;
   // Does this string contain the \0 character?
   const char *NulCharacter = nullptr;
 
   char C = getAndAdvanceChar(CurPtr);
-  while (C != '"') {
+  while (C != Quote) {
     // Skip escaped characters.  Escaped newlines will already be processed by
     // getAndAdvanceChar.
     if (C == '\\')

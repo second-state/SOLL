@@ -3,6 +3,34 @@
 #include "CodeGenModule.h"
 #include <llvm/IR/CFG.h>
 
+namespace {
+inline llvm::GlobalVariable *createGlobalString(llvm::LLVMContext &Context,
+                                                llvm::Module &Module,
+                                                llvm::StringRef Str,
+                                                const llvm::Twine &Name = "") {
+  llvm::Constant *StrConstant =
+      llvm::ConstantDataArray::getString(Context, Str, false);
+  auto *GV = new llvm::GlobalVariable(Module, StrConstant->getType(), true,
+                                      llvm::GlobalValue::PrivateLinkage,
+                                      StrConstant, Name);
+  GV->setUnnamedAddr(llvm::GlobalValue::UnnamedAddr::Global);
+  GV->setAlignment(1);
+  return GV;
+}
+inline llvm::Constant *createGlobalStringPtr(llvm::LLVMContext &Context,
+                                             llvm::Module &Module,
+                                             llvm::StringRef Str,
+                                             const llvm::Twine &Name = "") {
+  llvm::GlobalVariable *GV = createGlobalString(Context, Module, Str, Name);
+  llvm::Constant *Zero =
+      llvm::ConstantInt::get(llvm::Type::getInt32Ty(Context), 0);
+  llvm::Constant *Indices[] = {Zero, Zero};
+  return llvm::ConstantExpr::getInBoundsGetElementPtr(GV->getValueType(), GV,
+                                                      Indices);
+}
+
+} // namespace
+
 namespace soll::CodeGen {
 
 class ExprEmitter {
@@ -422,7 +450,8 @@ private:
   void emitCheckArrayOutOfBound(llvm::Value *ArrSz, llvm::Value *Index) {
     using namespace std::string_literals;
     static const std::string Message = "Array out of bound"s;
-    llvm::Value *MessageValue = Builder.CreateGlobalStringPtr(Message);
+    llvm::Value *MessageValue = createGlobalStringPtr(
+        CGF.getLLVMContext(), CGF.getCodeGenModule().getModule(), Message);
 
     llvm::BasicBlock *Continue = CGF.createBasicBlock("continue");
     llvm::BasicBlock *Revert = CGF.createBasicBlock("revert");
@@ -646,9 +675,9 @@ private:
 
   ExprValue visit(const StringLiteral *SL) {
     const std::string &StringData = SL->getValue();
-    llvm::GlobalVariable *GlobalPtr = Builder.CreateGlobalString(StringData);
     llvm::Value *String = llvm::ConstantAggregateZero::get(CGF.StringTy);
-    llvm::Value *Ptr = Builder.CreateBitCast(GlobalPtr, CGF.Int8PtrTy);
+    llvm::Constant *Ptr = createGlobalStringPtr(
+        CGF.getLLVMContext(), CGF.getCodeGenModule().getModule(), StringData);
     String = Builder.CreateInsertValue(
         String, Builder.getIntN(256, StringData.size()), {0});
     String = Builder.CreateInsertValue(String, Ptr, {1});
@@ -679,7 +708,8 @@ void CodeGenFunction::emitCallRequire(const CallExpr *CE) {
 
   std::string Message =
       dynamic_cast<const StringLiteral *>(Arguments[1])->getValue();
-  llvm::Constant *MessageValue = Builder.CreateGlobalStringPtr(Message);
+  llvm::Constant *MessageValue = createGlobalStringPtr(
+      getLLVMContext(), getCodeGenModule().getModule(), Message);
 
   llvm::BasicBlock *Continue = createBasicBlock("continue");
   llvm::BasicBlock *Revert = createBasicBlock("revert");
@@ -700,7 +730,8 @@ void CodeGenFunction::emitCallAssert(const CallExpr *CE) {
 
   using namespace std::string_literals;
   static const std::string Message = "Assertion Fail"s;
-  llvm::Constant *MessageValue = Builder.CreateGlobalStringPtr(Message);
+  llvm::Constant *MessageValue = createGlobalStringPtr(
+      getLLVMContext(), getCodeGenModule().getModule(), Message);
 
   llvm::BasicBlock *Continue = createBasicBlock("continue");
   llvm::BasicBlock *Revert = createBasicBlock("revert");
@@ -721,7 +752,8 @@ void CodeGenFunction::emitCallRevert(const CallExpr *CE) {
   llvm::StringRef Message =
       dynamic_cast<const StringLiteral *>(Arguments[0])->getValue();
 
-  llvm::Constant *MessageValue = Builder.CreateGlobalStringPtr(Message);
+  llvm::Constant *MessageValue = createGlobalStringPtr(
+      getLLVMContext(), getCodeGenModule().getModule(), Message);
   Builder.CreateCall(CGM.getModule().getFunction("ethereum.revert"),
                      {MessageValue, Builder.getInt32(Message.size())});
   Builder.CreateUnreachable();

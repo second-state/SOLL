@@ -24,6 +24,7 @@ TOK(numeric_constant)    // 0x123
 TOK(char_constant)       // 'a'
 
 TOK(string_literal)      // "foo"
+TOK(hex_string_literal)      // hex"012ff"
 
 PUNCTUATOR(l_square,            "[")
 PUNCTUATOR(r_square,            "]")

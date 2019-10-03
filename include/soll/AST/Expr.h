@@ -354,10 +354,11 @@ class StringLiteral : public Expr {
 
 public:
   // TODO: set value kind in another pass
-  StringLiteral(std::string &&val) : Expr(ValueKind::VK_RValue), value(val) {
+  StringLiteral(std::string &&val)
+      : Expr(ValueKind::VK_RValue), value(std::move(val)) {
     Ty = std::make_shared<StringType>();
   }
-  void setValue(std::string &&val) { value = val; }
+  void setValue(std::string &&val) { value = std::move(val); }
   std::string getValue() const { return value; }
 
   void accept(StmtVisitor &visitor) override;
