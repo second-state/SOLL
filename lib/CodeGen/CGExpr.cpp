@@ -407,9 +407,7 @@ private:
       llvm::Type *Ty = Value->getType();
       llvm::Value *Ptr =
           Builder.CreateInBoundsGEP(Array, {Builder.getInt32(Index)});
-      llvm::Value *CPtr =
-          Builder.CreatePointerCast(Ptr, llvm::PointerType::getUnqual(Ty));
-      Builder.CreateStore(Value, CPtr);
+      Builder.CreateStore(Builder.CreateZExt(Value, CGF.Int256Ty), Ptr);
       Index += (Ty->getIntegerBitWidth() + 255) / 256;
     }
 
