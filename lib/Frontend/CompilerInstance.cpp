@@ -25,8 +25,6 @@ namespace soll {
 CompilerInstance::CompilerInstance()
     : Invocation(std::make_unique<CompilerInvocation>()) {}
 
-bool CompilerInstance::Execute() { return Invocation->Execute(*this); }
-
 CompilerInvocation &CompilerInstance::GetInvocation() {
   assert(Invocation.get() != nullptr);
   return *Invocation;
@@ -277,19 +275,17 @@ bool CompilerInstance::InitializeSourceManager(const FrontendInputFile &Input) {
   return true;
 }
 
-bool CompilerInstance::ExecuteAction(FrontendAction &Act,
-                                     llvm::StringRef filename) {
+bool CompilerInstance::ExecuteAction(FrontendAction &Act) {
   if (!hasDiagnostics()) {
     createDiagnostics();
   }
 
-  FrontendInputFile InputFile(filename);
-
-  if (Act.BeginSourceFile(*this, InputFile)) {
-    Act.Execute();
-    Act.EndSourceFile();
+  for (FrontendInputFile &InputFile : getFrontendOpts().Inputs) {
+    if (Act.BeginSourceFile(*this, InputFile)) {
+      Act.Execute();
+      Act.EndSourceFile();
+    }
   }
-
   return !getDiagnostics().getClient()->getNumErrors();
 }
 

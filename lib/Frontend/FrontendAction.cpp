@@ -76,10 +76,7 @@ failure:
 }
 
 bool FrontendAction::Execute() {
-  CompilerInstance &CI = getCompilerInstance();
-
   ExecuteAction();
-
   return true;
 }
 

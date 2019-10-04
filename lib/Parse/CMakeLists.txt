@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-add_library(sollParse
+add_llvm_library(sollParse
   ParseAST.cpp
   Parser.cpp
-  )
-
-target_link_libraries(sollParse
-  sollAST
+  LINK_LIBS
   sollBasic
+  sollAST
+  sollLex
+  sollSema
   )

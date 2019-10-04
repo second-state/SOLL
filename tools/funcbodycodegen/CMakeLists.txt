@@ -1,8 +1,4 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-set(LLVM_LINK_COMPONENTS
-  CodeGen
-  )
-
 add_llvm_executable(functionboycodegen
   main.cpp
   )
@@ -10,6 +6,7 @@ add_llvm_executable(functionboycodegen
 target_link_libraries(functionboycodegen
   PRIVATE
   sollBasic
+  sollAST
   sollFrontend
   sollCodeGen
   )

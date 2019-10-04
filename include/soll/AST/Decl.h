@@ -19,8 +19,8 @@ public:
   virtual ~Decl() noexcept {}
 
 private:
-  Visibility Vis;
   std::string Name;
+  Visibility Vis;
 
 protected:
   friend class ASTReader;

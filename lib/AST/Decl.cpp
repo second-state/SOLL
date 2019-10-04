@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "soll/AST/Decl.h"
-#include "soll/AST/Type.h"
 #include "../utils/SHA-3/Keccak.h"
+#include "soll/AST/Type.h"
 
 namespace soll {
 
@@ -102,21 +102,15 @@ std::vector<const EventDecl *> ContractDecl::getEvents() const {
   return Nodes;
 }
 
-FunctionDecl *ContractDecl::getConstructor() {
-  return Constructor.get();
-}
+FunctionDecl *ContractDecl::getConstructor() { return Constructor.get(); }
 
 const FunctionDecl *ContractDecl::getConstructor() const {
   return Constructor.get();
 }
 
-FunctionDecl *ContractDecl::getFallback() {
-  return Fallback.get();
-}
+FunctionDecl *ContractDecl::getFallback() { return Fallback.get(); }
 
-const FunctionDecl *ContractDecl::getFallback() const {
-  return Fallback.get();
-}
+const FunctionDecl *ContractDecl::getFallback() const { return Fallback.get(); }
 
 ///
 /// CallableVarDecl

@@ -210,7 +210,8 @@ LexNextToken:
         unsigned SizeTmp3;
         char Char3 = getCharAndSize(CurPtr + SizeTmp2, SizeTmp3);
         if (Char3 == '"' || Char3 == '\'') {
-          return LexStringLiteral(CurPtr + SizeTmp3, Char3, tok::hex_string_literal);
+          return LexStringLiteral(CurPtr + SizeTmp3, Char3,
+                                  tok::hex_string_literal);
         }
       }
     }
@@ -531,7 +532,6 @@ unsigned Lexer::getEscapedNewLineSize(const char *Ptr) {
 
 Token Lexer::LexIdentifier(const char *CurPtr) {
   // Match [_A-Za-z0-9]*, we have already matched [_A-Za-z$]
-  unsigned Size;
   unsigned char C = *CurPtr++;
   while (isIdentifierBody(C))
     C = *CurPtr++;
@@ -555,10 +555,8 @@ Token Lexer::LexIdentifier(const char *CurPtr) {
 Token Lexer::LexNumericConstant(const char *CurPtr) {
   unsigned Size;
   char C = getCharAndSize(CurPtr, Size);
-  char PrevCh = 0;
   while (isNumberBody(C)) {
     CurPtr = ConsumeChar(CurPtr, Size);
-    PrevCh = C;
     C = getCharAndSize(CurPtr, Size);
   }
 
@@ -611,9 +609,6 @@ Token Lexer::LexEndOfFile(const char *CurPtr) {
 }
 
 void Lexer::SkipWhitespace(const char *CurPtr) {
-  // Whitespace - Skip it, then return the token after the whitespace.
-  bool SawNewline = isVerticalWhitespace(CurPtr[-1]);
-
   unsigned char Char = *CurPtr;
 
   // Skip consecutive spaces efficiently.
@@ -627,13 +622,8 @@ void Lexer::SkipWhitespace(const char *CurPtr) {
       break;
 
     // OK, but handle newline.
-    SawNewline = true;
     Char = *++CurPtr;
   }
-
-  // If this isn't immediately after a newline, there is leading space.
-  char PrevChar = CurPtr[-1];
-  bool HasLeadingSpace = !isVerticalWhitespace(PrevChar);
 
   BufferPtr = CurPtr;
 }

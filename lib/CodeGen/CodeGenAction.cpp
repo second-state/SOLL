@@ -31,9 +31,9 @@ public:
 
 class BackendConsumer : public ASTConsumer {
   DiagnosticsEngine &Diags;
+  const TargetOptions &TargetOpts;
   std::unique_ptr<llvm::raw_pwrite_stream> AsmOutStream;
   ASTContext *Context;
-  const TargetOptions &TargetOpts;
 
   std::unique_ptr<CodeGenerator> Gen;
 
@@ -72,8 +72,12 @@ bool SollDiagnosticHandler::handleDiagnostics(const llvm::DiagnosticInfo &DI) {
   return true;
 }
 
+CodeGenAction::CodeGenAction()
+    : OwnedVMContext(std::make_unique<llvm::LLVMContext>()),
+      VMContext(OwnedVMContext.get()) {}
+
 CodeGenAction::CodeGenAction(llvm::LLVMContext *VMContext)
-    : VMContext(VMContext) {}
+    : OwnedVMContext(), VMContext(VMContext) {}
 
 std::unique_ptr<ASTConsumer>
 CodeGenAction::CreateASTConsumer(CompilerInstance &CI, llvm::StringRef InFile) {
@@ -84,6 +88,8 @@ CodeGenAction::CreateASTConsumer(CompilerInstance &CI, llvm::StringRef InFile) {
                                            CI.getTargetOpts(), InFile,
                                            std::move(OS), *VMContext);
 }
+
+EmitLLVMAction::EmitLLVMAction() : CodeGenAction() {}
 
 EmitLLVMAction::EmitLLVMAction(llvm::LLVMContext *VMContext)
     : CodeGenAction(VMContext) {}

@@ -81,9 +81,12 @@ int main(int argc, const char **argv) {
   p->HandleSourceUnit(Ctx, source);
 
   llvm::LLVMContext Context;
-  llvm::IntrusiveRefCntPtr<soll::DiagnosticOptions> Opts(new soll::DiagnosticOptions());
-  llvm::IntrusiveRefCntPtr<soll::DiagnosticIDs> DiagID(new soll::DiagnosticIDs());
-  llvm::IntrusiveRefCntPtr<soll::DiagnosticsEngine> Diags = new soll::DiagnosticsEngine(DiagID, Opts);
+  llvm::IntrusiveRefCntPtr<soll::DiagnosticOptions> Opts(
+      new soll::DiagnosticOptions());
+  llvm::IntrusiveRefCntPtr<soll::DiagnosticIDs> DiagID(
+      new soll::DiagnosticIDs());
+  llvm::IntrusiveRefCntPtr<soll::DiagnosticsEngine> Diags =
+      new soll::DiagnosticsEngine(DiagID, Opts);
   soll::TargetOptions TO;
   std::unique_ptr<soll::CodeGenerator> Gen(
       soll::CreateLLVMCodeGen(*Diags, "FuncBodyCGTest", Context, TO));

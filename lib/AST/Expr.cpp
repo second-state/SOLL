@@ -7,7 +7,7 @@ namespace soll {
 
 bool IndexAccess::isStateVariable() const {
   if (auto ID = dynamic_cast<const Identifier *>(getBase())) {
-    if (auto *D = dynamic_cast<const VarDecl*>(ID->getCorrespondDecl())) {
+    if (auto *D = dynamic_cast<const VarDecl *>(ID->getCorrespondDecl())) {
       return D->isStateVariable();
     }
   } else if (auto IA = dynamic_cast<const IndexAccess *>(getBase())) {

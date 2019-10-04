@@ -267,8 +267,8 @@ class MappingType : public ReferenceType {
 
 public:
   MappingType(TypePtr &&KT, TypePtr &&VT)
-      : KeyType(std::move(KT)), ValueType(std::move(VT)),
-        ReferenceType(DataLocation::Storage) {}
+      : ReferenceType(DataLocation::Storage), KeyType(std::move(KT)),
+        ValueType(std::move(VT)) {}
 
   TypePtr getKeyType() const { return KeyType; }
   TypePtr getValueType() const { return ValueType; }
@@ -291,10 +291,10 @@ class ArrayType : public ReferenceType {
 public:
   // dynamic-sized array
   ArrayType(TypePtr ET, DataLocation Loc)
-      : ElementType(ET), ReferenceType(Loc) {}
+      : ReferenceType(Loc), ElementType(ET) {}
   // fix-sized array
   ArrayType(TypePtr ET, uint32_t L, DataLocation Loc)
-      : ElementType(ET), Length(L), ReferenceType(Loc) {}
+      : ReferenceType(Loc), ElementType(ET), Length(L) {}
 
   TypePtr getElementType() const { return ElementType; }
 

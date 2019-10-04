@@ -28,7 +28,7 @@ void EmitBackendOutput(DiagnosticsEngine &Diags,
     assert(TheTarget && "unable to create target");
 
     llvm::TargetOptions Options;
-    llvm::Reloc::Model RM;
+    llvm::Reloc::Model RM = llvm::Reloc::Static;
     TM.reset(TheTarget->createTargetMachine(Triple, "", "", Options, RM,
                                             llvm::None,
                                             llvm::CodeGenOpt::Level::Default));

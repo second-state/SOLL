@@ -18,10 +18,10 @@ class Lexer {
   DiagnosticsEngine &Diags;
   FileManager &FileMgr;
   SourceManager &SourceMgr;
-  const char *BufferStart;
-  const char *BufferEnd;
   SourceLocation FileLoc;
+  const char *BufferStart;
   const char *BufferPtr;
+  const char *BufferEnd;
   mutable IdentifierTable Identifiers;
 
   using CachedTokensTy = llvm::SmallVector<Token, 1>;

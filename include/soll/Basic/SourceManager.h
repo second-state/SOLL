@@ -111,8 +111,10 @@ public:
     return Entry->getFile().getBuffer(Diag, *this, Loc);
   }
 
+  // TODO: implement
   FileID getFileID(SourceLocation SpellingLoc) const { return FileID(); }
 
+  // TODO: implement
   llvm::StringRef getFilename(SourceLocation SpellingLoc) const {
     return llvm::StringRef();
   }
@@ -162,8 +164,7 @@ public:
   SourceLocation translateLineCol(FileID FID, unsigned Line,
                                   unsigned Col) const;
 
-  PresumedLoc getPresumedLoc(SourceLocation Loc,
-                             bool UseLineDirectives = true) const;
+  PresumedLoc getPresumedLoc(SourceLocation Loc) const;
 
   unsigned local_sloc_entry_size() const { return LocalSLocEntryTable.size(); }
 

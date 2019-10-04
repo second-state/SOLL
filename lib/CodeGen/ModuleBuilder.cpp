@@ -57,6 +57,7 @@ public:
       Builder->emitContractDecl(CD);
     } else {
       assert(false && "invalid top level decl");
+      __builtin_unreachable();
     }
   }
 };

@@ -111,7 +111,7 @@ public:
   const Expr *getCond() const { return Cond.get(); }
   Stmt *getBody() { return Body.get(); }
   const Stmt *getBody() const { return Body.get(); }
-  const bool isDoWhile() const { return DoWhile; }
+  bool isDoWhile() const { return DoWhile; }
 
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;

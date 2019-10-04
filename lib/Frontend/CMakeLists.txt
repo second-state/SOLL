@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-add_library(sollFrontend
+add_llvm_library(sollFrontend
   ASTConsumers/ABIPrinter.cpp
   ASTConsumers/ASTPrinter.cpp
   ASTConsumers/FuncSigPrinter.cpp
@@ -10,12 +10,12 @@ add_library(sollFrontend
   FrontendActions.cpp
   TextDiagnostic.cpp
   TextDiagnosticPrinter.cpp
-  )
-target_link_libraries(sollFrontend
-  sollAST
+  LINK_LIBS
   sollBasic
+  sollAST
   sollLex
   sollParse
   sollSema
-  sollCodeGen
+  LINK_COMPONENTS
+  support
   )

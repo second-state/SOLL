@@ -29,7 +29,7 @@ public:
   };
 
 public:
-  Scope(Scope *Parent, unsigned Flags) : Parent(Parent), Flags(Flags) {
+  Scope(Scope *Parent, unsigned Flags) : Flags(Flags), Parent(Parent) {
     if (Parent) {
       Depth = Parent->Depth + 1;
       FunctionParent = Parent->FunctionParent;

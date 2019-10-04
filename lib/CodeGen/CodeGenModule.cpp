@@ -149,18 +149,15 @@ void CodeGenModule::initEVMOpcodeDeclaration() {
 
   // getBlockCoinbase
   FT = llvm::FunctionType::get(VoidTy, {AddressPtrTy}, false);
-  Func_getBlockCoinbase =
-      getIntrinsic(llvm::Intrinsic::evm_coinbase, FT);
+  Func_getBlockCoinbase = getIntrinsic(llvm::Intrinsic::evm_coinbase, FT);
 
   // getBlockDifficulty
   FT = llvm::FunctionType::get(VoidTy, {Int256PtrTy}, false);
-  Func_getBlockDifficulty =
-      getIntrinsic(llvm::Intrinsic::evm_difficulty, FT);
+  Func_getBlockDifficulty = getIntrinsic(llvm::Intrinsic::evm_difficulty, FT);
 
   // getBlockGasLimit
   FT = llvm::FunctionType::get(Int64PtrTy, {}, false);
-  Func_getBlockGasLimit =
-      getIntrinsic(llvm::Intrinsic::evm_gaslimit, FT);
+  Func_getBlockGasLimit = getIntrinsic(llvm::Intrinsic::evm_gaslimit, FT);
 
   // getBlockNumber
   FT = llvm::FunctionType::get(Int64PtrTy, {}, false);
@@ -168,8 +165,7 @@ void CodeGenModule::initEVMOpcodeDeclaration() {
 
   // getBlockTimestamp
   FT = llvm::FunctionType::get(Int64PtrTy, {}, false);
-  Func_getBlockTimestamp =
-      getIntrinsic(llvm::Intrinsic::evm_timestamp, FT);
+  Func_getBlockTimestamp = getIntrinsic(llvm::Intrinsic::evm_timestamp, FT);
 
 #endif
 }
@@ -255,10 +251,10 @@ void CodeGenModule::initEEIDeclaration() {
   Func_getGasLeft->addFnAttr(llvm::Attribute::NoUnwind);
 
   // log
-  FT =
-      llvm::FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty, Int32Ty, Int256PtrTy,
-                                       Int256PtrTy, Int256PtrTy, Int256PtrTy},
-                              false);
+  FT = llvm::FunctionType::get(VoidTy,
+                               {Int8PtrTy, Int32Ty, Int32Ty, Int256PtrTy,
+                                Int256PtrTy, Int256PtrTy, Int256PtrTy},
+                               false);
   Func_log = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
                                     "ethereum.log", TheModule);
   Func_log->addFnAttr(Ethereum);

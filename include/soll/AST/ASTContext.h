@@ -5,7 +5,6 @@
 #include <unordered_map>
 namespace soll {
 
-class ASTContext : public llvm::RefCountedBase<ASTContext> {
-};
+class ASTContext : public llvm::RefCountedBase<ASTContext> {};
 
 } // namespace soll

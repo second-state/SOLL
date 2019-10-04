@@ -33,7 +33,7 @@ template <typename F> int readFileIntoFunc(const char *fileName, F f) {
   }
 
   return 1;
-};
+}
 
 template <typename F1>
 int hashFile(const char *fileName, const std::string &hashName, F1 &hashObj) {
@@ -267,7 +267,7 @@ void parseCommandLine(const int argc, char *argv[]) {
     opt.hashWidth = 512;
     opt.shakeDigestLength = 512;
 
-    for (unsigned int i = 1; i != argc; i++) {
+    for (int i = 1; i != argc; i++) {
       parseParameter(argv[i], opt);
     }
   }

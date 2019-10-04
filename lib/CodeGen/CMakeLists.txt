@@ -1,8 +1,4 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-set(LLVM_LINK_COMPONENTS
-  all
-  )
-
 add_llvm_library(sollCodeGen
   BackendUtil.cpp
   CGExpr.cpp
@@ -13,9 +9,12 @@ add_llvm_library(sollCodeGen
   ModuleBuilder.cpp
   LINK_LIBS
   sollAST
-  sollBasic
   sollFrontend
-  SHA3
+  LINK_COMPONENTS
+  codegen
+  passes
+  support
+#  webassembly
   )
 
 if (SOLL_ENABLE_EVM)

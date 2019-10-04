@@ -89,7 +89,6 @@ public:
 
 private:
   ExprValue visit(const UnaryOperator *UO) {
-    llvm::ConstantInt *One256 = Builder.getIntN(256, 1);
     ExprValue V;
     if (UO->isArithmeticOp()) {
       const Expr *SubExpr = UO->getSubExpr();
@@ -156,9 +155,9 @@ private:
   static bool isSigned(const Type *Ty) {
     if (auto TyNow = dynamic_cast<const IntegerType *>(Ty))
       return TyNow->isSigned();
-    else if (auto TyNow = dynamic_cast<const BooleanType *>(Ty))
+    else if (dynamic_cast<const BooleanType *>(Ty))
       return false;
-    else if (auto TyNow = dynamic_cast<const AddressType *>(Ty))
+    else if (dynamic_cast<const AddressType *>(Ty))
       return false;
     else {
       assert(false && "Wrong type in binary operator!");
@@ -476,7 +475,7 @@ private:
     llvm::Function *Sha256 =
         CGF.getCodeGenModule().getModule().getFunction("solidity.sha256");
 
-    if (const auto *MapTy = dynamic_cast<const MappingType *>(Base.getType())) {
+    if (dynamic_cast<const MappingType *>(Base.getType())) {
       // mapping : store i256 hash value in TempValueTable
       llvm::Value *MapAddress = Builder.CreateLoad(Base.getValue());
       llvm::Value *Bytes = emitConcateBytes(

@@ -167,8 +167,7 @@ public:
 
   bool InitializeSourceManager(const FrontendInputFile &Input);
 
-  bool Execute();
-  bool ExecuteAction(FrontendAction &action, llvm::StringRef filename);
+  bool ExecuteAction(FrontendAction &action);
 };
 
 } // namespace soll

@@ -10,9 +10,11 @@ class Module;
 namespace soll {
 
 class CodeGenAction : public ASTFrontendAction {
+  std::unique_ptr<llvm::LLVMContext> OwnedVMContext;
   llvm::LLVMContext *VMContext;
 
 protected:
+  CodeGenAction();
   CodeGenAction(llvm::LLVMContext *VMContext);
   std::unique_ptr<ASTConsumer>
   CreateASTConsumer(CompilerInstance &CI, llvm::StringRef InFile) override;
@@ -20,6 +22,7 @@ protected:
 
 class EmitLLVMAction : public CodeGenAction {
 public:
+  EmitLLVMAction();
   EmitLLVMAction(llvm::LLVMContext *VMContext);
 };
 

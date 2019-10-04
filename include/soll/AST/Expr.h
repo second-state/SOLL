@@ -267,7 +267,7 @@ class CastExpr : public Expr {
 
 protected:
   CastExpr(ExprPtr &&SE, CastKind CK, TypePtr Ty)
-      : SubExpr(std::move(SE)), CastK(CK), Expr(ValueKind::VK_RValue, Ty) {}
+      : Expr(ValueKind::VK_RValue, Ty), SubExpr(std::move(SE)), CastK(CK) {}
 
 public:
   Expr *getSubExpr() { return SubExpr.get(); }

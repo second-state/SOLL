@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #pragma once
-#include "soll/Basic/TargetOptions.h"
+#include "soll/Basic/Diagnostic.h"
 #include "soll/Basic/FileSystemOptions.h"
+#include "soll/Basic/TargetOptions.h"
 #include "soll/Frontend/FrontendOptions.h"
+#include <llvm/ADT/ArrayRef.h>
 #include <llvm/ADT/IntrusiveRefCntPtr.h>
 #include <memory>
 
@@ -21,8 +23,8 @@ class CompilerInvocation {
 
 public:
   explicit CompilerInvocation() {}
-  void ParseCommandLineOptions(int argc, const char **argv);
-  bool Execute(CompilerInstance &CI);
+  bool ParseCommandLineOptions(llvm::ArrayRef<const char *> Arg,
+                               DiagnosticsEngine &Diags);
   DiagnosticOptions &GetDiagnosticOptions();
   DiagnosticRenderer &GetDiagnosticRenderer();
 

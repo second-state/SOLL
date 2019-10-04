@@ -228,4 +228,9 @@ FileID SourceManager::translateFile(const FileEntry *SourceFile) const {
   return FirstFID;
 }
 
+// XXX: implement
+PresumedLoc SourceManager::getPresumedLoc(SourceLocation Loc) const {
+  return PresumedLoc();
+}
+
 } // namespace soll

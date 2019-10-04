@@ -2,6 +2,7 @@
 #pragma once
 #include <llvm/ADT/StringRef.h>
 #include <llvm/Support/MemoryBuffer.h>
+#include <vector>
 
 namespace soll {
 
@@ -34,6 +35,9 @@ public:
 
 class FrontendOptions {
 public:
+  bool ShowHelp;
+  bool ShowVersion;
+  std::vector<FrontendInputFile> Inputs;
   ActionKind ProgramAction = EmitLLVM;
 };
 

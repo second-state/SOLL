@@ -30,37 +30,21 @@ static cl::opt<TargetKind>
            cl::values(clEnumVal(EVM, "Generate LLVM IR for EVM backend")),
            cl::cat(SollCategory));
 
-void CompilerInvocation::ParseCommandLineOptions(int argc, const char **argv) {
-  llvm::cl::ParseCommandLineOptions(argc, argv);
+bool CompilerInvocation::ParseCommandLineOptions(
+    llvm::ArrayRef<const char *> Arg, DiagnosticsEngine &Diags) {
+  llvm::cl::ParseCommandLineOptions(Arg.size(), Arg.data());
 
   DiagnosticOpts = new DiagnosticOptions();
   DiagRenderer =
       std::make_unique<TextDiagnostic>(llvm::errs(), *DiagnosticOpts);
-  FrontendOpts.ProgramAction = Action;
-  TargetOpts.BackendTarget = Target;
-}
 
-bool CompilerInvocation::Execute(CompilerInstance &CI) {
-  llvm::LLVMContext Ctx;
-  std::unique_ptr<FrontendAction> Action;
-  switch (CI.getFrontendOpts().ProgramAction) {
-  case ASTDump:
-    Action = std::make_unique<ASTPrintAction>();
-    break;
-  case EmitLLVM:
-    Action = std::make_unique<EmitLLVMAction>(&Ctx);
-    break;
-  case EmitFuncSig:
-    Action = std::make_unique<EmitFuncSigAction>();
-    break;
-  case EmitABI:
-    Action = std::make_unique<EmitABIAction>();
-    break;
+  for (auto &Filename : InputFilenames) {
+    FrontendOpts.Inputs.emplace_back(Filename);
   }
-  return std::all_of(std::begin(InputFilenames), std::end(InputFilenames),
-                     [&Action, &CI](const auto &filename) {
-                       return CI.ExecuteAction(*Action, filename);
-                     });
+  FrontendOpts.ProgramAction = Action;
+
+  TargetOpts.BackendTarget = Target;
+  return true;
 }
 
 DiagnosticOptions &CompilerInvocation::GetDiagnosticOptions() {

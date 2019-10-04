@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-add_library(sollBasic
+add_llvm_library(sollBasic
   Diagnostic.cpp
   DiagnosticIDs.cpp
   FileManager.cpp
@@ -8,4 +8,6 @@ add_library(sollBasic
   SourceManager.cpp
   TokenKinds.cpp
   OperatorPrecedence.cpp
+  LINK_COMPONENTS
+  support
   )

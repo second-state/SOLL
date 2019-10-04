@@ -36,9 +36,9 @@ KeccakBase::KeccakBase(unsigned int length_) {
   length = length_;
 }
 
-Sha3::Sha3(unsigned int len_) : KeccakBase(len_){};
+Sha3::Sha3(unsigned int len_) : KeccakBase(len_) {}
 
-Keccak::Keccak(unsigned int len_) : KeccakBase(len_){};
+Keccak::Keccak(unsigned int len_) : KeccakBase(len_) {}
 
 // Function to create the state structure for SHAKE application, of size length
 // (where length is the number of bits in the hash)
@@ -72,7 +72,7 @@ void KeccakBase::addData(uint8_t input) {
 void KeccakBase::addData(const uint8_t *input, unsigned int off,
                          unsigned int len) {
   while (len > 0) {
-    int cpLen = 0;
+    unsigned int cpLen = 0;
     if ((blockLen - bufferLen) > len) {
       cpLen = len;
     } else {

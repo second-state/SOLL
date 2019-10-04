@@ -853,8 +853,7 @@ Parser::parseVariableDeclaration(VarDeclParserOptions const &Options,
   VarDecl::Location Loc = VarDecl::Location::Unspecified;
   llvm::StringRef Name;
   llvm::Optional<Token> CurTok;
-  while (true) {
-    CurTok = TheLexer.LookAhead(0);
+  while (CurTok = TheLexer.LookAhead(0), CurTok.hasValue()) {
     if (Options.IsStateVariable &&
         CurTok->isOneOf(tok::kw_public, tok::kw_private, tok::kw_internal)) {
       Vsblty = parseVisibilitySpecifier();
@@ -934,7 +933,11 @@ TypePtr Parser::parseTypeNameSuffix(TypePtr T) {
     TheLexer.CachedLex(); // [
     if (TheLexer.LookAhead(0)->isNot(tok::r_square)) {
       int NumValue;
-      getLiteralAndAdvance(TheLexer.LookAhead(0)).getAsInteger(0, NumValue);
+      if (getLiteralAndAdvance(TheLexer.LookAhead(0))
+              .getAsInteger(0, NumValue)) {
+        assert(false && "invalid array length");
+        __builtin_unreachable();
+      }
       T = make_shared<ArrayType>(std::move(T), NumValue,
                                  getLoc(TheLexer.LookAhead(0)));
     } else {
@@ -1109,7 +1112,7 @@ unique_ptr<WhileStmt> Parser::parseWhileStatement() {
   TheLexer.CachedLex(); // )
   unique_ptr<Stmt> Body;
   {
-    ParseScope WhileScope{this, Scope::BreakScope | Scope::ContinueScope };
+    ParseScope WhileScope{this, Scope::BreakScope | Scope::ContinueScope};
     Body = parseStatement();
   }
   return std::make_unique<WhileStmt>(std::move(Condition), std::move(Body),
@@ -1120,7 +1123,7 @@ unique_ptr<WhileStmt> Parser::parseDoWhileStatement() {
   TheLexer.CachedLex(); // do
   unique_ptr<Stmt> Body;
   {
-    ParseScope DoWhileScope{this, Scope::BreakScope | Scope::ContinueScope };
+    ParseScope DoWhileScope{this, Scope::BreakScope | Scope::ContinueScope};
     Body = parseStatement();
   }
   TheLexer.CachedLex(); // while
@@ -1155,7 +1158,7 @@ unique_ptr<ForStmt> Parser::parseForStatement() {
 
   unique_ptr<Stmt> Body;
   {
-    ParseScope ForScope{this, Scope::BreakScope | Scope::ContinueScope };
+    ParseScope ForScope{this, Scope::BreakScope | Scope::ContinueScope};
     Body = parseStatement();
   }
   return std::make_unique<ForStmt>(std::move(Init), std::move(Condition),
@@ -1207,8 +1210,7 @@ unique_ptr<Stmt> Parser::parseSimpleStatement() {
     return parseVariableDeclarationStatement(
         typeNameFromIndexAccessStructure(Iap));
   case LookAheadInfo::Expression:
-    Expression =
-        parseExpression(expressionFromIndexAccessStructure(Iap));
+    Expression = parseExpression(expressionFromIndexAccessStructure(Iap));
     break;
   default:
     assert(false && "Unhandle statement.");
@@ -1539,7 +1541,10 @@ unique_ptr<Expr> Parser::parsePrimaryExpression() {
     break;
   case tok::numeric_constant: {
     int NumValue;
-    getLiteralAndAdvance(CurTok).getAsInteger(0, NumValue);
+    if (getLiteralAndAdvance(CurTok).getAsInteger(0, NumValue)) {
+      assert(false && "invalid numeric constant");
+      __builtin_unreachable();
+    }
     Expression = std::make_unique<NumberLiteral>(NumValue);
     break;
   }
@@ -1578,11 +1583,11 @@ unique_ptr<Expr> Parser::parsePrimaryExpression() {
   }
   case tok::unknown:
     assert(false && "Unknown token");
-    break;
+    __builtin_unreachable();
   default:
     // TODO: Type MxN case
     assert(false && "Expected primary expression.");
-    break;
+    __builtin_unreachable();
   }
   return Expression;
 }
@@ -1638,12 +1643,8 @@ llvm::StringRef Parser::getLiteralAndAdvance(llvm::Optional<Token> Tok) {
   return llvm::StringRef(Tok->getLiteralData(), Tok->getLength());
 }
 
-void Parser::EnterScope(unsigned ScopeFlags) {
-  Actions.PushScope(ScopeFlags);
-}
+void Parser::EnterScope(unsigned ScopeFlags) { Actions.PushScope(ScopeFlags); }
 
-void Parser::ExitScope() {
-  Actions.PopScope();
-}
+void Parser::ExitScope() { Actions.PopScope(); }
 
 } // namespace soll
