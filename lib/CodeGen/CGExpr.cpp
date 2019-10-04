@@ -412,8 +412,8 @@ private:
     }
 
     llvm::Value *Bytes = llvm::ConstantAggregateZero::get(CGF.BytesTy);
-    Bytes = Builder.CreateInsertValue(Bytes, Builder.getIntN(256, ArrayLength),
-                                      {0});
+    Bytes = Builder.CreateInsertValue(
+        Bytes, Builder.getIntN(256, ArrayLength * 32), {0});
     Bytes = Builder.CreateInsertValue(
         Bytes, Builder.CreateBitCast(Array, CGF.Int8PtrTy), {1});
     return Bytes;
