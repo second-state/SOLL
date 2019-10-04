@@ -856,65 +856,66 @@ void CodeGenModule::emitABILoad(const FunctionDecl *FD,
   Builder.SetInsertPoint(Loader);
   const std::string &MangledName = getMangledName(FD);
 
+  std::vector<llvm::Value *> ArgsVal;
   // get arguments from calldata
   const auto ABIStaticSize = FD->getParams()->getABIStaticSize();
-  auto *ArgsBuf = Builder.CreateAlloca(Int8Ty, Builder.getInt32(ABIStaticSize),
-                                       MangledName + ".args.buf");
-  auto *ArgsPtr =
-      Builder.CreateBitCast(ArgsBuf, Int8PtrTy, MangledName + ".args.ptr");
-  Builder.CreateCall(Func_callDataCopy, {ArgsPtr, Builder.getInt32(4),
-                                         Builder.getInt32(ABIStaticSize)});
+  if (ABIStaticSize > 0) {
+    auto *ArgsBuf = Builder.CreateAlloca(
+        Int8Ty, Builder.getInt32(ABIStaticSize), MangledName + ".args.buf");
+    auto *ArgsPtr =
+        Builder.CreateBitCast(ArgsBuf, Int8PtrTy, MangledName + ".args.ptr");
+    emitCallDataCopy(ArgsPtr, Builder.getInt32(4),
+                     Builder.getInt32(ABIStaticSize));
 
-  const auto &Fparams = FD->getParams()->getParams();
-  std::uint32_t Offset = 0;
-  std::vector<llvm::Value *> ArgsVal;
-  std::vector<size_t> ArgsDynamic;
-  for (std::size_t i = 0; i < Fparams.size(); i++) {
-    const Type *Ty = Fparams[i]->GetType().get();
-    if (Ty->isDynamic()) {
-      ArgsDynamic.push_back(i);
+    const auto &Fparams = FD->getParams()->getParams();
+    std::uint32_t Offset = 0;
+    std::vector<size_t> ArgsDynamic;
+    for (std::size_t i = 0; i < Fparams.size(); i++) {
+      const Type *Ty = Fparams[i]->GetType().get();
+      if (Ty->isDynamic()) {
+        ArgsDynamic.push_back(i);
+      }
+      const std::uint32_t Size = Ty->getABIStaticSize();
+      const std::string &ParamName =
+          (MangledName + "." + Fparams[i]->getName()).str();
+      ArgsVal.push_back(emitABILoadParamStatic(Ty, ParamName, ArgsBuf, Offset));
+      Offset += Size;
     }
-    const std::uint32_t Size = Ty->getABIStaticSize();
-    const std::string &ParamName =
-        (MangledName + "." + Fparams[i]->getName()).str();
-    ArgsVal.push_back(emitABILoadParamStatic(Ty, ParamName, ArgsBuf, Offset));
-    Offset += Size;
-  }
 
-  if (!ArgsDynamic.empty()) {
-    llvm::BasicBlock *DynamicLoader = llvm::BasicBlock::Create(
-        VMContext, MangledName + ".dynamic", Loader->getParent());
+    if (!ArgsDynamic.empty()) {
+      llvm::BasicBlock *DynamicLoader = llvm::BasicBlock::Create(
+          VMContext, MangledName + ".dynamic", Loader->getParent());
 
-    llvm::Value *SizeCheck = Builder.getInt1(true);
-    llvm::Value *DynamicSize = Builder.getInt32(0);
-    for (size_t i : ArgsDynamic) {
+      llvm::Value *SizeCheck = Builder.getInt1(true);
+      llvm::Value *DynamicSize = Builder.getInt32(0);
+      for (size_t i : ArgsDynamic) {
+        SizeCheck = Builder.CreateAnd(
+            SizeCheck, Builder.CreateICmpULE(
+                           ArgsVal[i], Builder.getIntN(256, 0xFFFFFFFFU)));
+        DynamicSize = Builder.CreateAdd(
+            DynamicSize, Builder.CreateTrunc(ArgsVal[i], Int32Ty));
+      }
+      llvm::Value *ExceptedCallDataSize =
+          Builder.CreateAdd(DynamicSize, Builder.getInt32(Offset + 4));
+
       SizeCheck = Builder.CreateAnd(
-          SizeCheck,
-          Builder.CreateICmpULE(ArgsVal[i], Builder.getIntN(256, 0xFFFFFFFFU)));
-      DynamicSize = Builder.CreateAdd(DynamicSize,
-                                      Builder.CreateTrunc(ArgsVal[i], Int32Ty));
-    }
-    llvm::Value *ExceptedCallDataSize =
-        Builder.CreateAdd(DynamicSize, Builder.getInt32(Offset + 4));
+          SizeCheck, Builder.CreateICmpEQ(ExceptedCallDataSize, callDataSize));
+      Builder.CreateCondBr(SizeCheck, DynamicLoader, Error);
 
-    SizeCheck = Builder.CreateAnd(
-        SizeCheck, Builder.CreateICmpEQ(ExceptedCallDataSize, callDataSize));
-    Builder.CreateCondBr(SizeCheck, DynamicLoader, Error);
+      Builder.SetInsertPoint(DynamicLoader);
+      llvm::Value *ArgDynPtr =
+          Builder.CreateAlloca(Int8Ty, DynamicSize, MangledName + ".dyn.ptr");
+      emitCallDataCopy(ArgDynPtr, Builder.getInt32(Offset + 4), DynamicSize);
 
-    Builder.SetInsertPoint(DynamicLoader);
-    llvm::Value *ArgDynPtr =
-        Builder.CreateAlloca(Int8Ty, DynamicSize, MangledName + ".dyn.ptr");
-    Builder.CreateCall(Func_callDataCopy,
-                       {ArgDynPtr, Builder.getInt32(Offset + 4), DynamicSize});
-
-    llvm::Value *Offset = Builder.getInt32(0);
-    for (size_t i : ArgsDynamic) {
-      llvm::StringRef Name = ArgsVal[i]->getName();
-      ArgsVal[i]->setName(Name + ".static");
-      llvm::Value *Arg;
-      std::tie(Arg, Offset) = emitABILoadParamDynamic(
-          Fparams[i]->GetType().get(), ArgsVal[i], Name, ArgDynPtr, Offset);
-      ArgsVal[i] = Arg;
+      llvm::Value *Offset = Builder.getInt32(0);
+      for (size_t i : ArgsDynamic) {
+        llvm::StringRef Name = ArgsVal[i]->getName();
+        ArgsVal[i]->setName(Name + ".static");
+        llvm::Value *Arg;
+        std::tie(Arg, Offset) = emitABILoadParamDynamic(
+            Fparams[i]->GetType().get(), ArgsVal[i], Name, ArgDynPtr, Offset);
+        ArgsVal[i] = Arg;
+      }
     }
   }
 
