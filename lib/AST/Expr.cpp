@@ -46,11 +46,20 @@ BinaryOperator::BinaryOperator(ExprPtr &&lhs, ExprPtr &&rhs, Opcode opc,
 /// Identifier
 ///
 Identifier::Identifier(const std::string &Name, Decl *D)
-    : Expr(ValueKind::VK_LValue), name(Name), D(D) {
-  if (auto VD = dynamic_cast<const VarDecl *>(D))
+    : Expr(ValueKind::VK_LValue, nullptr), name(Name), D(D) {
+  if (auto VD = dynamic_cast<const VarDecl *>(D)) {
     Ty = VD->GetType();
-  else if (auto FD = dynamic_cast<const FunctionDecl *>(D))
+  } else if (auto FD = dynamic_cast<const FunctionDecl *>(D)) {
     Ty = FD->getType();
+  } else if (dynamic_cast<const EventDecl *>(D)) {
+    Ty = nullptr;
+  } else {
+    assert(false && "unknown decl");
+    __builtin_unreachable();
+  }
 }
+
+Identifier::Identifier(const std::string &Name, SpecialIdentifier D, TypePtr Ty)
+    : Expr(ValueKind::VK_LValue, std::move(Ty)), name(Name), D(D) {}
 
 } // namespace soll

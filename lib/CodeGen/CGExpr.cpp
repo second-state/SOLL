@@ -544,12 +544,9 @@ private:
   }
 
   ExprValue visit(const MemberExpr *ME) {
-    std::string BaseName =
-        dynamic_cast<const Identifier *>(ME->getBase())->getName();
-    std::string MemberName = ME->getName()->getName();
-
-    if (BaseName == "msg") {
-      if (MemberName == "sender") {
+    if (ME->getName()->isSpecialIdentifier()) {
+      switch (ME->getName()->getSpecialIdentifier()) {
+      case Identifier::SpecialIdentifier::msg_sender: {
         llvm::Function *getCaller =
             CGF.getCodeGenModule().getModule().getFunction(
                 "ethereum.getCaller");
@@ -557,7 +554,8 @@ private:
         Builder.CreateCall(getCaller, {ValPtr});
         llvm::Value *Val = Builder.CreateLoad(ValPtr);
         return ExprValue::getRValue(ME, Val);
-      } else if (MemberName == "value") {
+      }
+      case Identifier::SpecialIdentifier::msg_value: {
         llvm::Function *getCallValue =
             CGF.getCodeGenModule().getModule().getFunction(
                 "ethereum.getCallValue");
@@ -566,7 +564,8 @@ private:
         llvm::Value *Val =
             Builder.CreateZExt(Builder.CreateLoad(ValPtr), CGF.Int256Ty);
         return ExprValue::getRValue(ME, Val);
-      } else if (MemberName == "data") {
+      }
+      case Identifier::SpecialIdentifier::msg_data: {
         llvm::Function *getCallDataSize =
             CGF.getCodeGenModule().getModule().getFunction(
                 "ethereum.getCallDataSize");
@@ -588,7 +587,8 @@ private:
             Bytes, Builder.CreateZExt(CallDataSize, CGF.Int256Ty), {0});
         Bytes = Builder.CreateInsertValue(Bytes, ValPtr, {1});
         return ExprValue::getRValue(ME, Bytes);
-      } else if (MemberName == "sig") {
+      }
+      case Identifier::SpecialIdentifier::msg_sig: {
         llvm::Value *ValPtr = Builder.CreateAlloca(Builder.getInt32Ty());
         llvm::Function *callDataCopy =
             CGF.getCodeGenModule().getModule().getFunction(
@@ -599,10 +599,7 @@ private:
         llvm::Value *Val = Builder.CreateLoad(ValPtr);
         return ExprValue::getRValue(ME, Val);
       }
-      assert(false && "Unsuuported member access for msg");
-      __builtin_unreachable();
-    } else if (BaseName == "tx") {
-      if (MemberName == "gasprice") {
+      case Identifier::SpecialIdentifier::tx_gasprice: {
         llvm::Function *getTxGasPrice =
             CGF.getCodeGenModule().getModule().getFunction(
                 "ethereum.getTxGasPrice");
@@ -611,7 +608,8 @@ private:
         llvm::Value *Val =
             Builder.CreateZExt(Builder.CreateLoad(ValPtr), CGF.Int256Ty);
         return ExprValue::getRValue(ME, Val);
-      } else if (MemberName == "origin") {
+      }
+      case Identifier::SpecialIdentifier::tx_origin: {
         llvm::Function *getTxOrigin =
             CGF.getCodeGenModule().getModule().getFunction(
                 "ethereum.getTxOrigin");
@@ -621,10 +619,7 @@ private:
             Builder.CreateZExt(Builder.CreateLoad(ValPtr), CGF.Int256Ty);
         return ExprValue::getRValue(ME, Val);
       }
-      assert(false && "Unsuuported member access for tx");
-      __builtin_unreachable();
-    } else if (BaseName == "block") {
-      if (MemberName == "coinbase") {
+      case Identifier::SpecialIdentifier::block_coinbase: {
         llvm::Function *getBlockCoinbase =
             CGF.getCodeGenModule().getModule().getFunction(
                 "ethereum.getBlockCoinbase");
@@ -632,7 +627,8 @@ private:
         Builder.CreateCall(getBlockCoinbase, {ValPtr});
         llvm::Value *Val = Builder.CreateLoad(ValPtr);
         return ExprValue::getRValue(ME, Val);
-      } else if (MemberName == "difficulty") {
+      }
+      case Identifier::SpecialIdentifier::block_difficulty: {
         llvm::Function *getBlockDifficulty =
             CGF.getCodeGenModule().getModule().getFunction(
                 "ethereum.getBlockDifficulty");
@@ -640,21 +636,24 @@ private:
         Builder.CreateCall(getBlockDifficulty, {ValPtr});
         llvm::Value *Val = Builder.CreateLoad(ValPtr);
         return ExprValue::getRValue(ME, Val);
-      } else if (MemberName == "gaslimit") {
+      }
+      case Identifier::SpecialIdentifier::block_gaslimit: {
         llvm::Function *getBlockGasLimit =
             CGF.getCodeGenModule().getModule().getFunction(
                 "ethereum.getBlockGasLimit");
         llvm::Value *Val = Builder.CreateZExt(
             Builder.CreateCall(getBlockGasLimit, {}), CGF.Int256Ty);
         return ExprValue::getRValue(ME, Val);
-      } else if (MemberName == "number") {
+      }
+      case Identifier::SpecialIdentifier::block_number: {
         llvm::Function *getBlockNumber =
             CGF.getCodeGenModule().getModule().getFunction(
                 "ethereum.getBlockNumber");
         llvm::Value *Val = Builder.CreateZExt(
             Builder.CreateCall(getBlockNumber, {}), CGF.Int256Ty);
         return ExprValue::getRValue(ME, Val);
-      } else if (MemberName == "timestamp") {
+      }
+      case Identifier::SpecialIdentifier::block_timestamp: {
         llvm::Function *getBlockTimestamp =
             CGF.getCodeGenModule().getModule().getFunction(
                 "ethereum.getBlockTimestamp");
@@ -662,10 +661,13 @@ private:
             Builder.CreateCall(getBlockTimestamp, {}), CGF.Int256Ty);
         return ExprValue::getRValue(ME, Val);
       }
-      assert(false && "Unsuuported member access for block");
-      __builtin_unreachable();
+      default:
+        assert(false && "unsupported special member access");
+        __builtin_unreachable();
+      }
     }
-    assert(false && "Error member type!!");
+
+    assert(false && "unsupported non-special member access");
     __builtin_unreachable();
   }
 
@@ -761,18 +763,42 @@ void CodeGenFunction::emitCallRevert(const CallExpr *CE) {
 
 ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
   auto Callee = dynamic_cast<const Identifier *>(CE->getCalleeExpr());
-  auto Name = Callee->getName();
-  if (Name == "require") {
-    emitCallRequire(CE);
-    return ExprValue();
-  }
-  if (Name == "assert") {
-    emitCallAssert(CE);
-    return ExprValue();
-  }
-  if (Name == "revert") {
-    emitCallRevert(CE);
-    return ExprValue();
+  if (Callee->isSpecialIdentifier()) {
+    switch (Callee->getSpecialIdentifier()) {
+      case Identifier::SpecialIdentifier::require:
+        emitCallRequire(CE);
+        return ExprValue();
+      case Identifier::SpecialIdentifier::assert_:
+        emitCallAssert(CE);
+        return ExprValue();
+      case Identifier::SpecialIdentifier::revert:
+        emitCallRevert(CE);
+        return ExprValue();
+      case Identifier::SpecialIdentifier::gasleft:
+        assert(CE->getArguments().empty() && "gasleft require no arguments");
+        return ExprValue::getRValue(CE, CGM.emitGetGasLeft());
+      case Identifier::SpecialIdentifier::addmod:
+        assert(false && "addmod not supported yet");
+        __builtin_unreachable();
+      case Identifier::SpecialIdentifier::mulmod:
+        assert(false && "addmod not supported yet");
+        __builtin_unreachable();
+      case Identifier::SpecialIdentifier::keccak256:
+        assert(false && "keccak256 not supported yet");
+        __builtin_unreachable();
+      case Identifier::SpecialIdentifier::sha256:
+        assert(false && "sha256 not supported yet");
+        __builtin_unreachable();
+      case Identifier::SpecialIdentifier::ripemd160:
+        assert(false && "ripemd160 not supported yet");
+        __builtin_unreachable();
+      case Identifier::SpecialIdentifier::ecrecover:
+        assert(false && "ecrecover not supported yet");
+        __builtin_unreachable();
+      default:
+        assert(false && "special function not supported yet");
+        __builtin_unreachable();
+    }
   }
   std::vector<llvm::Value *> Args;
   for (auto Argument : CE->getArguments()) {

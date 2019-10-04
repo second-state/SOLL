@@ -22,4 +22,6 @@ using StmtPtr = std::unique_ptr<Stmt>;
 using ExprPtr = std::unique_ptr<Expr>;
 using TypePtr = std::shared_ptr<Type>;
 
+enum class StateMutability { Pure, View, NonPayable, Payable };
+
 } // namespace soll

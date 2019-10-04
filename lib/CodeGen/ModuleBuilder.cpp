@@ -51,7 +51,8 @@ public:
   }
 
   void HandleTopLevelDecl(Decl *D) {
-    if (auto *PD = dynamic_cast<PragmaDirective *>(D)) {
+    assert(Builder.get() && "CodeGenerator need to call Initialize first!");
+    if (dynamic_cast<PragmaDirective *>(D)) {
     } else if (auto *CD = dynamic_cast<ContractDecl *>(D)) {
       Builder->emitContractDecl(CD);
     } else {

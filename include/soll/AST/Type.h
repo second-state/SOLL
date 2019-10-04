@@ -50,7 +50,11 @@ public:
 };
 
 class AddressType : public Type {
+  StateMutability SM;
+
 public:
+  AddressType(StateMutability SM) : SM(SM) {}
+  StateMutability getStateMutability() const { return SM; }
   Category getCategory() const override { return Category::Address; }
   unsigned int getBitNum() const override { return 160; }
   std::string getName() const override { return "address"; }
@@ -336,6 +340,20 @@ public:
 
 class StructType : public Type {
   // TODO
+};
+
+class ContractType : public Type {
+  // TODO
+  Category getCategory() const override { return Category::Contract; }
+  std::string getName() const override { return "contract"; }
+  bool isDynamic() const override {
+    assert(false && "contract is not allowed here");
+    __builtin_unreachable();
+  }
+  unsigned getABIStaticSize() const override {
+    assert(false && "contract is not allowed here");
+    __builtin_unreachable();
+  }
 };
 
 } // namespace soll

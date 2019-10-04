@@ -86,6 +86,7 @@ public:
   void emitContractDecl(const ContractDecl *CD);
   llvm::Value *emitEndianConvert(llvm::Value *Val);
 
+  llvm::Value *emitGetGasLeft();
   void emitFinish(llvm::Value *DataOffset, llvm::Value *Length);
   void emitCallDataCopy(llvm::Value *ResultOffset, llvm::Value *DataOffset,
                         llvm::Value *Length);

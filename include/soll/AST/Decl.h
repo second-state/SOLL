@@ -139,8 +139,6 @@ public:
   void accept(ConstDeclVisitor &visitor) const override;
 };
 
-enum class StateMutability { Pure, View, NonPayable, Payable };
-
 class FunctionDecl : public CallableVarDecl {
   StateMutability SM;
   bool IsConstructor;

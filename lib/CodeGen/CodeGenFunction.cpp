@@ -77,12 +77,35 @@ void CodeGenFunction::emitStmt(const Stmt *S) {
 
 void CodeGenFunction::emitDeclStmt(const DeclStmt *DS) {
   assert(DS->getVarDecls().size() == 1 && "unsupported tuple decoupling!");
-  auto VD = DS->getVarDecls().front();
+  auto *VD = DS->getVarDecls().front();
+  auto *Ty = VD->GetType().get();
+  auto *LLVMTy = CGM.getLLVMType(Ty);
 
-  llvm::Value *Addr = Builder.CreateAlloca(CGM.getLLVMType(VD->GetType().get()),
-                                           nullptr, VD->getName() + ".addr");
+  llvm::Value *Addr =
+      Builder.CreateAlloca(LLVMTy, nullptr, VD->getName() + ".addr");
   setAddrOfLocalVar(VD, Addr);
-  Builder.CreateStore(emitExpr(DS->getValue()).load(Builder, CGM), Addr);
+  if (DS->getValue()) {
+    Builder.CreateStore(emitExpr(DS->getValue()).load(Builder, CGM), Addr);
+  } else {
+    switch (Ty->getCategory()) {
+      case Type::Category::Bool:
+      case Type::Category::Integer:
+      case Type::Category::Address:
+        Builder.CreateStore(llvm::ConstantInt::get(LLVMTy, 0), Addr);
+        break;
+      case Type::Category::String:
+      case Type::Category::Bytes:
+        Builder.CreateStore(llvm::ConstantAggregateZero::get(LLVMTy), Addr);
+        break;
+      case Type::Category::Array:
+        assert(false && "zero-init array not implement");
+        __builtin_unreachable();
+        break;
+      default:
+        assert(false && "unknown type");
+        __builtin_unreachable();
+    }
+  }
 }
 
 void CodeGenFunction::emitExprStmt(const ExprStmt *ES) {

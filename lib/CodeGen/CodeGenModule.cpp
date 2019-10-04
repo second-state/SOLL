@@ -511,7 +511,7 @@ void CodeGenModule::initKeccak256() {
   if (isEVM()) {
     llvm::Value *ResultPtr =
         Builder.CreateAlloca(Int256Ty, nullptr, "result.ptr");
-    llvm::Value *Fee = Builder.CreateCall(Func_getGasLeft, {});
+    llvm::Value *Fee = emitGetGasLeft();
     Builder.CreateCall(Func_callStatic,
                        {Fee, Builder.getIntN(256, 9),
                         Builder.CreatePtrToInt(Ptr, EVMIntTy),
@@ -527,7 +527,7 @@ void CodeGenModule::initKeccak256() {
     llvm::APInt Address = llvm::APInt(160, 9).byteSwap();
     Builder.CreateStore(Builder.getInt(Address), AddressPtr);
 
-    llvm::Value *Fee = Builder.CreateCall(Func_getGasLeft, {});
+    llvm::Value *Fee = emitGetGasLeft();
     Builder.CreateCall(Func_callStatic, {Fee, AddressPtr, Ptr, Length});
     llvm::Value *ResultPtr =
         Builder.CreateAlloca(Int256Ty, nullptr, "result.ptr");
@@ -558,7 +558,7 @@ void CodeGenModule::initSha256() {
   if (isEVM()) {
     llvm::Value *ResultPtr =
         Builder.CreateAlloca(Int256Ty, nullptr, "result.ptr");
-    llvm::Value *Fee = Builder.CreateCall(Func_getGasLeft, {});
+    llvm::Value *Fee = emitGetGasLeft();
     Builder.CreateCall(Func_callStatic,
                        {Fee, Builder.getIntN(256, 2),
                         Builder.CreatePtrToInt(Ptr, EVMIntTy),
@@ -574,7 +574,7 @@ void CodeGenModule::initSha256() {
     llvm::APInt Address = llvm::APInt(160, 2).byteSwap();
     Builder.CreateStore(Builder.getInt(Address), AddressPtr);
 
-    llvm::Value *Fee = Builder.CreateCall(Func_getGasLeft, {});
+    llvm::Value *Fee = emitGetGasLeft();
     Builder.CreateCall(Func_callStatic, {Fee, AddressPtr, Ptr, Length});
     llvm::Value *ResultPtr =
         Builder.CreateAlloca(Int256Ty, nullptr, "result.ptr");
@@ -1085,6 +1085,10 @@ llvm::Value *CodeGenModule::emitEndianConvert(llvm::Value *Val) {
   llvm::Value *Reverse = Builder.CreateCall(
       getModule().getFunction("solidity.bswapi256"), {Ext}, "reverse");
   return Builder.CreateTrunc(Reverse, Ty, "trunc");
+}
+
+llvm::Value *CodeGenModule::emitGetGasLeft() {
+  return Builder.CreateCall(Func_getGasLeft, {});
 }
 
 void CodeGenModule::emitFinish(llvm::Value *DataOffset, llvm::Value *Length) {

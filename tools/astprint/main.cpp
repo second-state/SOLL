@@ -56,8 +56,8 @@ int main(int argc, const char **argv) {
           )                                            // end of vector<Decl>
   );                                                   // end of SourceUnit
 
-  ASTContext *Ctx = new ASTContext();
+  ASTContext Ctx;
   auto p = CreateASTPrinter();
-  p->HandleSourceUnit(*Ctx, source);
+  p->HandleSourceUnit(Ctx, source);
   return EXIT_SUCCESS;
 }

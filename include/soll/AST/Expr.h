@@ -7,6 +7,7 @@
 
 #include <optional>
 #include <string>
+#include <variant>
 
 namespace soll {
 
@@ -22,18 +23,80 @@ protected:
   TypePtr Ty;
 
 public:
-  // TODO: refactor this, should only use Expr(ValueKind vk, TypePtr Ty)
-  // Because current Expr with Type is still working, so let Ty = nullptr for
-  // temp use.
-  Expr(ValueKind vk, TypePtr Ty = nullptr) : ExprValueKind(vk), Ty(Ty) {}
+  Expr(ValueKind vk, TypePtr Ty) : ExprValueKind(vk), Ty(Ty) {}
   ValueKind getValueKind() const { return ExprValueKind; }
   void setValueKind(ValueKind vk) { ExprValueKind = vk; }
   bool isSValue() const { return getValueKind() == ValueKind::VK_SValue; }
   bool isLValue() const { return getValueKind() == ValueKind::VK_LValue; }
   bool isRValue() const { return getValueKind() == ValueKind::VK_RValue; }
-  void setType(TypePtr Ty) { this->Ty = Ty; }
   TypePtr getType() { return Ty; }
   const TypePtr &getType() const { return Ty; }
+};
+
+class Identifier : public Expr {
+public:
+  enum class SpecialIdentifier {
+    block,
+    block_coinbase,
+    block_difficulty,
+    block_gaslimit,
+    block_number,
+    block_timestamp,
+    blockhash,
+    gasleft,
+    msg,
+    msg_data,
+    msg_sender,
+    msg_sig,
+    msg_value,
+    now,
+    tx,
+    tx_gasprice,
+    tx_origin,
+    abi,
+    abi_decode,
+    abi_encode,
+    abi_encodePacked,
+    abi_encodeWithSelector,
+    abi_encodeWithSignature,
+    assert_,
+    require,
+    revert,
+    addmod,
+    mulmod,
+    keccak256,
+    sha256,
+    ripemd160,
+    ecrecover,
+    address_balance,
+    address_transfer,
+    address_send,
+    address_call,
+    address_delegatecall,
+    address_staticcall,
+  };
+
+private:
+  std::string name;
+  std::variant<Decl *, SpecialIdentifier> D;
+
+public:
+  Identifier(const std::string &Name, Decl *D);
+  Identifier(const std::string &Name, SpecialIdentifier D, TypePtr Ty);
+
+  void setName(const std::string &Name) { name = Name; }
+  std::string getName() const { return name; }
+  bool isSpecialIdentifier() const {
+    return std::holds_alternative<SpecialIdentifier>(D);
+  }
+  Decl *getCorrespondDecl() { return std::get<Decl *>(D); }
+  const Decl *getCorrespondDecl() const { return std::get<Decl *>(D); }
+  SpecialIdentifier getSpecialIdentifier() const {
+    return std::get<SpecialIdentifier>(D);
+  }
+
+  void accept(StmtVisitor &visitor) override;
+  void accept(ConstStmtVisitor &visitor) const override;
 };
 
 /// TupleExpr: A type expression such as "(a, b)" or
@@ -51,9 +114,8 @@ class UnaryOperator : public Expr {
 
 public:
   typedef UnaryOperatorKind Opcode;
-  // TODO: set value kind in another pass
-  UnaryOperator(ExprPtr &&val, Opcode opc)
-      : Expr(ValueKind::VK_RValue), Val(std::move(val)), Opc(opc) {}
+  UnaryOperator(ExprPtr &&val, Opcode opc, TypePtr Ty)
+      : Expr(ValueKind::VK_RValue, Ty), Val(std::move(val)), Opc(opc) {}
 
   void setOpcode(Opcode Opc) { this->Opc = Opc; }
   void setSubExpr(ExprPtr &&E) { Val = std::move(E); }
@@ -102,9 +164,7 @@ class BinaryOperator : public Expr {
 
 public:
   typedef BinaryOperatorKind Opcode;
-  // TODO: set value kind in another pass
-  BinaryOperator(ExprPtr &&lhs, ExprPtr &&rhs, Opcode opc,
-                 TypePtr Ty = nullptr);
+  BinaryOperator(ExprPtr &&lhs, ExprPtr &&rhs, Opcode opc, TypePtr Ty);
 
   void setOpcode(Opcode Opc) { this->Opc = Opc; }
   void setLHS(ExprPtr &&E) { SubExprs[LHS] = std::move(E); }
@@ -174,12 +234,11 @@ class CallExpr : public Expr {
   std::optional<std::vector<std::string>> Names;
 
 public:
-  CallExpr(ExprPtr &&CalleeExpr, std::vector<ExprPtr> &&Arguments,
-           TypePtr Ty = nullptr)
+  CallExpr(ExprPtr &&CalleeExpr, std::vector<ExprPtr> &&Arguments, TypePtr Ty)
       : Expr(ValueKind::VK_RValue, Ty), CalleeExpr(std::move(CalleeExpr)),
         Arguments(std::move(Arguments)) {}
   CallExpr(ExprPtr &&CalleeExpr, std::vector<ExprPtr> &&Arguments,
-           std::vector<std::string> &&Names, TypePtr Ty = nullptr)
+           std::vector<std::string> &&Names, TypePtr Ty)
       : Expr(ValueKind::VK_RValue, Ty), CalleeExpr(std::move(CalleeExpr)),
         Arguments(std::move(Arguments)), Names(std::move(Names)) {}
 
@@ -236,8 +295,7 @@ public:
 class NewExpr : public Expr {
   // TODO
 public:
-  // TODO: set value kind in another pass
-  NewExpr() : Expr(ValueKind::VK_RValue) {}
+  NewExpr(TypePtr Ty) : Expr(ValueKind::VK_RValue, Ty) {}
 };
 
 class MemberExpr : public Expr {
@@ -245,14 +303,9 @@ class MemberExpr : public Expr {
   std::unique_ptr<Identifier> Name;
 
 public:
-  // TODO : set MemberExpr to RValue
   MemberExpr(ExprPtr &&Base, std::unique_ptr<Identifier> &&Name)
-      : Expr(ValueKind::VK_RValue), Base(std::move(Base)),
-        Name(std::move(Name)) {
-    // TODO : refactor this
-    // hard code to pass erc20
-    Ty = std::make_shared<AddressType>();
-  }
+      : Expr(ValueKind::VK_RValue, Name->getType()), Base(std::move(Base)),
+        Name(std::move(Name)) {}
 
   void setBase(ExprPtr &&Base) { this->Base = std::move(Base); }
   void setName(std::unique_ptr<Identifier> &&Name) {
@@ -273,7 +326,7 @@ class IndexAccess : public Expr {
   ExprPtr Index;
 
 public:
-  IndexAccess(ExprPtr &&Base, ExprPtr &&Index, TypePtr Ty = nullptr)
+  IndexAccess(ExprPtr &&Base, ExprPtr &&Index, TypePtr Ty)
       : Expr(ValueKind::VK_LValue, Ty), Base(std::move(Base)),
         Index(std::move(Index)) {}
 
@@ -295,7 +348,6 @@ class ParenExpr : public Expr {
   ExprPtr Val;
 
 public:
-  // TODO: set value kind in another pass
   ParenExpr(ExprPtr &&Val) : Expr(*Val), Val(std::move(Val)) {}
 
   Expr *getSubExpr() { return Val.get(); }
@@ -308,41 +360,22 @@ public:
 class ConstantExpr : public Expr {
   // TODO
 public:
-  // TODO: set value kind in another pass
-  ConstantExpr() : Expr(ValueKind::VK_RValue) {}
-};
-
-class Identifier : public Expr {
-  std::string name;
-  Decl *D;
-
-public:
-  Identifier(const std::string &Name, Decl *D = nullptr);
-
-  void setName(const std::string &Name) { name = Name; }
-  std::string getName() const { return name; }
-  Decl *getCorrespondDecl() { return D; }
-  const Decl *getCorrespondDecl() const { return D; }
-
-  void accept(StmtVisitor &visitor) override;
-  void accept(ConstStmtVisitor &visitor) const override;
+  ConstantExpr() : Expr(ValueKind::VK_RValue, nullptr) {}
 };
 
 class ElementaryTypeNameExpr : public Expr {
   // TODO
 public:
-  // TODO: set value kind in another pass
-  ElementaryTypeNameExpr() : Expr(ValueKind::VK_LValue) {}
+  ElementaryTypeNameExpr() : Expr(ValueKind::VK_LValue, nullptr) {}
 };
 
 class BooleanLiteral : public Expr {
   bool value;
 
 public:
-  // TODO: set value kind in another pass
-  BooleanLiteral(bool val) : Expr(ValueKind::VK_RValue), value(val) {
-    Ty = std::make_shared<BooleanType>();
-  }
+  BooleanLiteral(bool val)
+      : Expr(ValueKind::VK_RValue, std::make_shared<BooleanType>()),
+        value(val) {}
   void setValue(bool val) { value = val; }
   bool getValue() const { return value; }
   void accept(StmtVisitor &visitor) override;
@@ -353,11 +386,9 @@ class StringLiteral : public Expr {
   std::string value;
 
 public:
-  // TODO: set value kind in another pass
   StringLiteral(std::string &&val)
-      : Expr(ValueKind::VK_RValue), value(std::move(val)) {
-    Ty = std::make_shared<StringType>();
-  }
+      : Expr(ValueKind::VK_RValue, std::make_shared<StringType>()),
+        value(std::move(val)) {}
   void setValue(std::string &&val) { value = std::move(val); }
   std::string getValue() const { return value; }
 
@@ -371,15 +402,15 @@ class NumberLiteral : public Expr {
   int value;
 
 public:
-  // TODO: replace this, current impl. always set uint32
+  // TODO: replace this, current impl. always set uint256
   // should set proper int type based on value (Solidity's rule)
   // for example:
   //   8    -> uint8
   //   7122 -> uint16
   //   -123 -> int8
-  NumberLiteral(int val) : Expr(ValueKind::VK_RValue), value(val) {
-    Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-  }
+  NumberLiteral(int val, TypePtr Ty = std::make_shared<IntegerType>(
+                             IntegerType::IntKind::U256))
+      : Expr(ValueKind::VK_RValue, Ty), value(val) {}
   void setValue(int val) { value = val; }
   int getValue() const { return value; }
   void accept(StmtVisitor &visitor) override;

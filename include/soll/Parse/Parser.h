@@ -117,7 +117,7 @@ private:
   /// but indices can be empty.
   struct IndexAccessedPath {
     TypePtr ElementaryType;
-    std::vector<std::unique_ptr<Identifier>> Path;
+    std::vector<std::string> Path;
     std::vector<std::unique_ptr<Expr>> Indices;
     bool empty() const;
   };

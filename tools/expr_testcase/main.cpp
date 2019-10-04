@@ -13,71 +13,62 @@ using namespace soll;
 
 int main(int argc, const char **argv) {
   using std::make_unique;
+  auto I64 = std::make_shared<IntegerType>(IntegerType::IntKind::I64);
+  auto A = make_unique<VarDecl>(I64, "a", nullptr, Decl::Visibility::Default);
+  auto B = make_unique<VarDecl>(I64, "b", nullptr, Decl::Visibility::Default);
+  auto C = make_unique<VarDecl>(I64, "c", nullptr, Decl::Visibility::Default);
+  auto D = make_unique<VarDecl>(I64, "d", nullptr, Decl::Visibility::Default);
   SourceUnit source(make_unique_vector<Decl>(make_unique<ContractDecl>(
       "C", make_unique_vector<InheritanceSpecifier>(),
       make_unique_vector<Decl>(make_unique<FunctionDecl>(
           "add", Decl::Visibility::Public, StateMutability::Pure, false, false,
-          make_unique<ParamList>(make_unique_vector<VarDecl>(
-              make_unique<VarDecl>(
-                  make_unique<IntegerType>(IntegerType::IntKind::I64), "a",
-                  nullptr, Decl::Visibility::Default),
-              make_unique<VarDecl>(
-                  make_unique<IntegerType>(IntegerType::IntKind::I64), "b",
-                  nullptr, Decl::Visibility::Default))),
+          make_unique<ParamList>(make_unique_vector<VarDecl>()),
           make_unique_vector<ModifierInvocation>(),
-          make_unique<ParamList>(
-              make_unique_vector<VarDecl>(make_unique<VarDecl>(
-                  make_unique<IntegerType>(IntegerType::IntKind::I64), "",
-                  nullptr, Decl::Visibility::Default))),
+          make_unique<ParamList>(make_unique_vector<VarDecl>()),
 
           make_unique<Block>(make_unique_vector<Stmt>(
-              make_unique<DeclStmt>(
-                  make_unique_vector<VarDecl>(make_unique<VarDecl>(
-                      nullptr, "a", nullptr, Decl::Visibility::Default)),
-                  nullptr),
-              make_unique<DeclStmt>(
-                  make_unique_vector<VarDecl>(make_unique<VarDecl>(
-                      nullptr, "b", nullptr, Decl::Visibility::Default)),
-                  nullptr),
-              make_unique<DeclStmt>(
-                  make_unique_vector<VarDecl>(make_unique<VarDecl>(
-                      nullptr, "c", nullptr, Decl::Visibility::Default)),
-                  nullptr),
-              make_unique<DeclStmt>(
-                  make_unique_vector<VarDecl>(make_unique<VarDecl>(
-                      nullptr, "d", nullptr, Decl::Visibility::Default)),
-                  nullptr),
-              make_unique<BinaryOperator>(make_unique<Identifier>("a"),
-                                          make_unique<Identifier>("b"),
-                                          BinaryOperatorKind::BO_Add),
-              make_unique<UnaryOperator>(make_unique<Identifier>("b"),
-                                         UnaryOperatorKind::UO_Minus),
+              make_unique<DeclStmt>(make_unique_vector<VarDecl>(std::move(A)),
+                                    nullptr),
+              make_unique<DeclStmt>(make_unique_vector<VarDecl>(std::move(B)),
+                                    nullptr),
+              make_unique<DeclStmt>(make_unique_vector<VarDecl>(std::move(C)),
+                                    nullptr),
+              make_unique<DeclStmt>(make_unique_vector<VarDecl>(std::move(D)),
+                                    nullptr),
+              make_unique<BinaryOperator>(make_unique<Identifier>("a", A.get()),
+                                          make_unique<Identifier>("b", B.get()),
+                                          BinaryOperatorKind::BO_Add, I64),
+              make_unique<UnaryOperator>(make_unique<Identifier>("b", B.get()),
+                                         UnaryOperatorKind::UO_Minus, I64),
               make_unique<BinaryOperator>(
-                  make_unique<Identifier>("b"),
+                  make_unique<Identifier>("b", B.get()),
                   make_unique<BinaryOperator>(
-                      make_unique<BinaryOperator>(make_unique<Identifier>("a"),
-                                                  make_unique<Identifier>("d"),
-                                                  BinaryOperatorKind::BO_Div),
-                      make_unique<Identifier>("b"), BinaryOperatorKind::BO_Add),
-                  BinaryOperatorKind::BO_Assign),
+                      make_unique<BinaryOperator>(
+                          make_unique<Identifier>("a", A.get()),
+                          make_unique<Identifier>("d", D.get()),
+                          BinaryOperatorKind::BO_Div, I64),
+                      make_unique<Identifier>("b", B.get()),
+                      BinaryOperatorKind::BO_Add, I64),
+                  BinaryOperatorKind::BO_Assign, I64),
               make_unique<BinaryOperator>(
-                  make_unique<Identifier>("c"),
-                  make_unique<UnaryOperator>(make_unique<Identifier>("c"),
-                                             UnaryOperatorKind::UO_Minus),
-                  BinaryOperatorKind::BO_Assign),
+                  make_unique<Identifier>("c", C.get()),
+                  make_unique<UnaryOperator>(
+                      make_unique<Identifier>("c", C.get()),
+                      UnaryOperatorKind::UO_Minus, I64),
+                  BinaryOperatorKind::BO_Assign, I64),
               make_unique<BinaryOperator>(
-                  make_unique<Identifier>("d"),
+                  make_unique<Identifier>("d", D.get()),
                   make_unique<BinaryOperator>(
                       make_unique<BinaryOperator>(
                           make_unique<BinaryOperator>(
-                              make_unique<Identifier>("d"),
-                              make_unique<Identifier>("a"),
-                              BinaryOperatorKind::BO_Rem),
-                          make_unique<NumberLiteral>(5),
-                          BinaryOperatorKind::BO_Mul),
-                      make_unique<NumberLiteral>(6),
-                      BinaryOperatorKind::BO_Add),
-                  BinaryOperatorKind::BO_Assign))))),
+                              make_unique<Identifier>("d", D.get()),
+                              make_unique<Identifier>("a", A.get()),
+                              BinaryOperatorKind::BO_Rem, I64),
+                          make_unique<NumberLiteral>(5, I64),
+                          BinaryOperatorKind::BO_Mul, I64),
+                      make_unique<NumberLiteral>(6, I64),
+                      BinaryOperatorKind::BO_Add, I64),
+                  BinaryOperatorKind::BO_Assign, I64))))),
       nullptr, nullptr, ContractDecl::ContractKind::Contract)));
 
   ASTContext Ctx;
@@ -89,8 +80,10 @@ int main(int argc, const char **argv) {
   llvm::IntrusiveRefCntPtr<soll::DiagnosticIDs> DiagID(new soll::DiagnosticIDs());
   llvm::IntrusiveRefCntPtr<soll::DiagnosticsEngine> Diags = new soll::DiagnosticsEngine(DiagID, Opts);
   soll::TargetOptions TO;
-  soll::CodeGenerator *Gen = soll::CreateLLVMCodeGen(*Diags, "FuncBodyCGTest", Context, TO);
+  std::unique_ptr<soll::CodeGenerator> Gen(
+      soll::CreateLLVMCodeGen(*Diags, "FuncBodyCGTest", Context, TO));
   soll::ASTContext ASTC;
+  Gen->Initialize(ASTC);
 
   Gen->HandleSourceUnit(Ctx, source);
   Gen->getModule()->print(llvm::errs(), nullptr);

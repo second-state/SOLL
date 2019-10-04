@@ -881,7 +881,7 @@ TypePtr Parser::parseTypeName(bool AllowVar) {
                                          tok::kw_view, tok::kw_payable)) {
         SM = parseStateMutability();
       }
-      T = std::make_shared<AddressType>();
+      T = std::make_shared<AddressType>(SM);
     }
     HaveType = true;
   } else if (Kind == tok::kw_var) {
@@ -1076,8 +1076,7 @@ unique_ptr<EmitStmt> Parser::parseEmitStatement() {
 
   IndexAccessedPath Iap;
   while (true) {
-    Iap.Path.push_back(Actions.CreateIdentifier(
-        getLiteralAndAdvance(TheLexer.LookAhead(0)).str()));
+    Iap.Path.emplace_back(getLiteralAndAdvance(TheLexer.LookAhead(0)).str());
     if (TheLexer.LookAhead(0)->isNot(tok::period))
       break;
     TheLexer.CachedLex(); // .
@@ -1238,12 +1237,10 @@ Parser::LookAheadInfo Parser::peekStatementType() const {
 Parser::IndexAccessedPath Parser::parseIndexAccessedPath() {
   IndexAccessedPath Iap;
   if (TheLexer.LookAhead(0)->is(tok::identifier)) {
-    Iap.Path.push_back(Actions.CreateIdentifier(
-        getLiteralAndAdvance(TheLexer.LookAhead(0)).str()));
+    Iap.Path.emplace_back(getLiteralAndAdvance(TheLexer.LookAhead(0)).str());
     while (TheLexer.LookAhead(0)->is(tok::period)) {
       TheLexer.CachedLex(); // .
-      Iap.Path.push_back(Actions.CreateIdentifier(
-          getLiteralAndAdvance(TheLexer.LookAhead(0)).str()));
+      Iap.Path.emplace_back(getLiteralAndAdvance(TheLexer.LookAhead(0)).str());
     }
   } else {
     Iap.ElementaryType = parseTypeName(false);
@@ -1271,7 +1268,7 @@ Parser::typeNameFromIndexAccessStructure(Parser::IndexAccessedPath &Iap) {
   } else {
     vector<std::string> Path;
     for (auto const &el : Iap.Path)
-      Path.push_back(el->getName());
+      Path.emplace_back(el);
     // TODO: UserDefinedTypeName
     // T = UserDefinedTypeName with Path
   }
@@ -1290,10 +1287,10 @@ Parser::expressionFromIndexAccessStructure(Parser::IndexAccessedPath &Iap) {
   if (Iap.empty()) {
     return {};
   }
-  unique_ptr<Expr> Expression = std::move(Iap.Path.front());
+  unique_ptr<Expr> Expression = Actions.CreateIdentifier(Iap.Path.front());
   for (size_t i = 1; i < Iap.Path.size(); ++i) {
     Expression =
-        make_unique<MemberExpr>(std::move(Expression), std::move(Iap.Path[i]));
+        Actions.CreateMemberExpr(std::move(Expression), std::move(Iap.Path[i]));
   }
 
   for (auto &Index : Iap.Indices) {
@@ -1350,7 +1347,8 @@ Parser::parseUnaryExpression(unique_ptr<Expr> &&PartiallyParsedExpression) {
     // prefix expression
     TheLexer.CachedLex();
     unique_ptr<Expr> SubExps = parseUnaryExpression();
-    return std::make_unique<UnaryOperator>(std::move(SubExps), Op);
+    return std::make_unique<UnaryOperator>(std::move(SubExps), Op,
+                                           SubExps->getType());
   } else {
     // potential postfix expression
     unique_ptr<Expr> SubExps =
@@ -1360,7 +1358,8 @@ Parser::parseUnaryExpression(unique_ptr<Expr> &&PartiallyParsedExpression) {
           Op == UnaryOperatorKind::UO_PostDec))
       return SubExps;
     TheLexer.CachedLex();
-    return std::make_unique<UnaryOperator>(std::move(SubExps), Op);
+    return std::make_unique<UnaryOperator>(std::move(SubExps), Op,
+                                           SubExps->getType());
   }
 }
 
@@ -1390,10 +1389,9 @@ unique_ptr<Expr> Parser::parseLeftHandSideExpression(
     }
     case tok::period: {
       TheLexer.CachedLex();
-      Expression = make_unique<MemberExpr>(
+      Expression = Actions.CreateMemberExpr(
           std::move(Expression),
-          Actions.CreateIdentifier(
-              getLiteralAndAdvance(TheLexer.LookAhead(0)).str()));
+          getLiteralAndAdvance(TheLexer.LookAhead(0)).str());
       break;
     }
     case tok::l_paren: {
@@ -1423,9 +1421,9 @@ unique_ptr<Expr> Parser::parsePrimaryExpression() {
     TheLexer.CachedLex(); // simple type, ex. address, int
     TheLexer.CachedLex(); // (
     if (CurTok->getKind() == tok::kw_address) {
-      Expression = make_unique<ExplicitCastExpr>(std::move(parseExpression()),
-                                                 CastKind::TypeCast,
-                                                 make_shared<AddressType>());
+      Expression = make_unique<ExplicitCastExpr>(
+          std::move(parseExpression()), CastKind::TypeCast,
+          make_shared<AddressType>(StateMutability::Payable));
     } else if (tok::kw_address < CurTok->getKind()) {
       Expression = make_unique<ExplicitCastExpr>(
           std::move(parseExpression()), CastKind::IntegralCast,

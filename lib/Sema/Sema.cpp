@@ -132,35 +132,223 @@ ExprPtr Sema::CreateIndexAccess(ExprPtr &&LHS, ExprPtr &&RHS) {
 std::unique_ptr<CallExpr> Sema::CreateCallExpr(ExprPtr &&Callee,
                                                std::vector<ExprPtr> &&Args) {
   TypePtr ResultTy = Callee->getType();
-  if (auto CalleeIden = dynamic_cast<Identifier *>(Callee.get())) {
-    if (auto FD =
-            dynamic_cast<FunctionDecl *>(CalleeIden->getCorrespondDecl())) {
-      // TODO: refactor this
-      // This assumes function only returns one value,
-      // because tuple type not impl. yet.
-      auto FDTy = static_cast<FunctionType *>(FD->getType().get());
-      if (auto ReturnTy = FDTy->getReturnTypes(); ReturnTy.size() == 1)
-        ResultTy = ReturnTy[0];
-    } else if (auto ED = dynamic_cast<CallableVarDecl *>(
-                   CalleeIden->getCorrespondDecl())) {
+  FunctionType *FTy = nullptr;
+  if (auto I = dynamic_cast<Identifier *>(Callee.get())) {
+    if (I->isSpecialIdentifier()) {
+      FTy = dynamic_cast<FunctionType *>(I->getType().get());
     } else {
-      assert(isBuiltinFunction(CalleeIden->getName()) &&
-             "callee is not FuncDecl");
+      const Decl *D = I->getCorrespondDecl();
+      if (dynamic_cast<const EventDecl *>(D)) {
+        return std::make_unique<CallExpr>(std::move(Callee), std::move(Args),
+                                          nullptr);
+      } else if (auto FD = dynamic_cast<const FunctionDecl *>(D)) {
+        FTy = dynamic_cast<FunctionType *>(FD->getType().get());
+      } else if (dynamic_cast<const CallableVarDecl *>(D)) {
+        // TODO: implement
+        assert(false && "calleevar not supported yet");
+        __builtin_unreachable();
+      } else {
+        assert(false && "callee is not FuncDecl");
+        __builtin_unreachable();
+      }
     }
-  } else
+  } else {
     assert(false && "only support Identifier callee");
+    __builtin_unreachable();
+  }
+
+  // TODO: refactor this
+  // This assumes function only returns one value,
+  // because tuple type not impl. yet.
+  if (auto ReturnTy = FTy->getReturnTypes(); ReturnTy.size() == 1) {
+    ResultTy = ReturnTy[0];
+  }
 
   for (ExprPtr &Arg : Args) {
     Arg = DefaultLvalueConversion(std::move(Arg));
   }
   return std::make_unique<CallExpr>(std::move(Callee), std::move(Args),
-                                    ResultTy);
+                                    std::move(ResultTy));
 }
 
 std::unique_ptr<Identifier> Sema::CreateIdentifier(llvm::StringRef Name) {
+  static const llvm::StringMap<Identifier::SpecialIdentifier> SpecialLookup{
+      {"block", Identifier::SpecialIdentifier::block},
+      {"blockhash", Identifier::SpecialIdentifier::blockhash},
+      {"gasleft", Identifier::SpecialIdentifier::gasleft},
+      {"msg", Identifier::SpecialIdentifier::msg},
+      {"now", Identifier::SpecialIdentifier::now},
+      {"tx", Identifier::SpecialIdentifier::tx},
+      {"assert", Identifier::SpecialIdentifier::assert_},
+      {"require", Identifier::SpecialIdentifier::require},
+      {"revert", Identifier::SpecialIdentifier::revert},
+      {"addmod", Identifier::SpecialIdentifier::addmod},
+      {"mulmod", Identifier::SpecialIdentifier::mulmod},
+      {"keccak256", Identifier::SpecialIdentifier::keccak256},
+      {"sha256", Identifier::SpecialIdentifier::sha256},
+      {"ripemd160", Identifier::SpecialIdentifier::ripemd160},
+      {"ecrecover", Identifier::SpecialIdentifier::ecrecover},
+  };
+  if (auto Iter = SpecialLookup.find(Name); Iter != SpecialLookup.end()) {
+    TypePtr Ty;
+    switch (Iter->second) {
+    case Identifier::SpecialIdentifier::block:
+    case Identifier::SpecialIdentifier::msg:
+    case Identifier::SpecialIdentifier::tx:
+    case Identifier::SpecialIdentifier::abi:
+      Ty = std::make_shared<ContractType>();
+      break;
+    case Identifier::SpecialIdentifier::now:
+      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+      break;
+    case Identifier::SpecialIdentifier::blockhash:
+      Ty = std::make_shared<FunctionType>(
+          std::vector<TypePtr>{
+              std::make_shared<IntegerType>(IntegerType::IntKind::U256)},
+          std::vector<TypePtr>{
+              std::make_shared<FixedBytesType>(FixedBytesType::ByteKind::B32)});
+      break;
+    case Identifier::SpecialIdentifier::gasleft:
+      Ty = std::make_shared<FunctionType>(
+          std::vector<TypePtr>{},
+          std::vector<TypePtr>{
+              std::make_shared<IntegerType>(IntegerType::IntKind::U256)});
+      break;
+    case Identifier::SpecialIdentifier::assert_:
+      Ty = std::make_shared<FunctionType>(
+          std::vector<TypePtr>{std::make_shared<BooleanType>()},
+          std::vector<TypePtr>{});
+      break;
+    case Identifier::SpecialIdentifier::require:
+      Ty = std::make_shared<FunctionType>(
+          std::vector<TypePtr>{std::make_shared<BooleanType>(),
+                               std::make_shared<StringType>()},
+          std::vector<TypePtr>{});
+      break;
+    case Identifier::SpecialIdentifier::revert:
+      Ty = std::make_shared<FunctionType>(
+          std::vector<TypePtr>{std::make_shared<StringType>()},
+          std::vector<TypePtr>{});
+      break;
+    case Identifier::SpecialIdentifier::addmod:
+    case Identifier::SpecialIdentifier::mulmod:
+      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty, Ty},
+                                          std::vector<TypePtr>{Ty});
+      break;
+    case Identifier::SpecialIdentifier::keccak256:
+    case Identifier::SpecialIdentifier::sha256:
+      Ty = std::make_shared<FunctionType>(
+          std::vector<TypePtr>{std::make_shared<BytesType>()},
+          std::vector<TypePtr>{
+              std::make_shared<FixedBytesType>(FixedBytesType::ByteKind::B32)});
+      break;
+    case Identifier::SpecialIdentifier::ripemd160:
+      Ty = std::make_shared<FunctionType>(
+          std::vector<TypePtr>{std::make_shared<BytesType>()},
+          std::vector<TypePtr>{
+              std::make_shared<FixedBytesType>(FixedBytesType::ByteKind::B20)});
+      break;
+    case Identifier::SpecialIdentifier::ecrecover:
+      Ty = std::make_shared<FixedBytesType>(FixedBytesType::ByteKind::B32);
+      Ty = std::make_shared<FunctionType>(
+          std::vector<TypePtr>{
+              Ty, std::make_shared<IntegerType>(IntegerType::IntKind::U256), Ty,
+              Ty},
+          std::vector<TypePtr>{
+              std::make_shared<AddressType>(StateMutability::NonPayable)});
+      break;
+    default:
+      assert(false && "unknown special identifier");
+      __builtin_unreachable();
+    }
+    return std::make_unique<Identifier>(Name, Iter->second, std::move(Ty));
+  }
   Decl *D = lookupName(Name);
-  assert(D != nullptr || isBuiltinFunction(Name) || isBuiltinObject(Name));
+  assert(D != nullptr);
   return std::make_unique<Identifier>(Name, D);
+}
+
+std::unique_ptr<MemberExpr>
+Sema::CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr, std::string &&Name) {
+  static const llvm::StringMap<Identifier::SpecialIdentifier> Lookup{
+      {"coinbase", Identifier::SpecialIdentifier::block_coinbase},
+      {"difficulty", Identifier::SpecialIdentifier::block_difficulty},
+      {"gaslimit", Identifier::SpecialIdentifier::block_gaslimit},
+      {"number", Identifier::SpecialIdentifier::block_number},
+      {"timestamp", Identifier::SpecialIdentifier::block_timestamp},
+      {"data", Identifier::SpecialIdentifier::msg_data},
+      {"sender", Identifier::SpecialIdentifier::msg_sender},
+      {"sig", Identifier::SpecialIdentifier::msg_sig},
+      {"value", Identifier::SpecialIdentifier::msg_value},
+      {"gasprice", Identifier::SpecialIdentifier::tx_gasprice},
+      {"origin", Identifier::SpecialIdentifier::tx_origin},
+  };
+  const Expr *Base = BaseExpr.get();
+  if (auto *I = dynamic_cast<const Identifier *>(Base)) {
+    if (I->isSpecialIdentifier()) {
+      if (auto Iter = Lookup.find(Name); Iter != Lookup.end()) {
+        std::shared_ptr<Type> Ty;
+        switch (I->getSpecialIdentifier()) {
+        case Identifier::SpecialIdentifier::block:
+          switch (Iter->second) {
+          case Identifier::SpecialIdentifier::block_coinbase:
+            Ty = std::make_shared<AddressType>(StateMutability::Payable);
+            break;
+          case Identifier::SpecialIdentifier::block_difficulty:
+          case Identifier::SpecialIdentifier::block_gaslimit:
+          case Identifier::SpecialIdentifier::block_number:
+          case Identifier::SpecialIdentifier::block_timestamp:
+            Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+            break;
+          default:
+            assert(false && "unknown member");
+            __builtin_unreachable();
+          }
+          break;
+        case Identifier::SpecialIdentifier::msg:
+          switch (Iter->second) {
+          case Identifier::SpecialIdentifier::msg_data:
+            Ty = std::make_shared<BytesType>();
+            break;
+          case Identifier::SpecialIdentifier::msg_sender:
+            Ty = std::make_shared<AddressType>(StateMutability::Payable);
+            break;
+          case Identifier::SpecialIdentifier::msg_sig:
+            Ty = std::make_shared<FixedBytesType>(FixedBytesType::ByteKind::B4);
+            break;
+          case Identifier::SpecialIdentifier::msg_value:
+            Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+            break;
+          default:
+            assert(false && "unknown member");
+            __builtin_unreachable();
+          }
+          break;
+        case Identifier::SpecialIdentifier::tx:
+          switch (Iter->second) {
+          case Identifier::SpecialIdentifier::tx_gasprice:
+            Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+            break;
+          case Identifier::SpecialIdentifier::tx_origin:
+            Ty = std::make_shared<AddressType>(StateMutability::Payable);
+            break;
+          default:
+            assert(false && "unknown member");
+            __builtin_unreachable();
+          }
+          break;
+        default:
+          __builtin_unreachable();
+        }
+        return std::make_unique<MemberExpr>(
+            std::move(BaseExpr),
+            std::make_unique<Identifier>(Name, Iter->second, Ty));
+      }
+    }
+  }
+  assert(false && "normal member is not supported yet");
+  __builtin_unreachable();
 }
 
 TypePtr Sema::CheckAdditiveOperands(ExprPtr &LHS, ExprPtr &RHS,

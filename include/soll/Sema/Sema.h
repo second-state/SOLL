@@ -55,6 +55,8 @@ public:
   std::unique_ptr<CallExpr>
   CreateCallExpr(ExprPtr &&Callee, std::vector<std::unique_ptr<Expr>> &&Args);
   std::unique_ptr<Identifier> CreateIdentifier(llvm::StringRef Name);
+  std::unique_ptr<MemberExpr> CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr,
+                                               std::string &&Name);
 
   /// type checking binary operators (subroutines of CreateBinOp)
   /// this may add type casting
@@ -99,14 +101,6 @@ public:
   void addDecl(Decl *D) { CurrentScope()->addDecl(D); }
   Decl *lookupName(llvm::StringRef Name) const {
     return CurrentScope()->lookupName(Name);
-  }
-
-  bool isBuiltinFunction(const std::string &Name) const {
-    return Name == "require" || Name == "assert" || Name == "revert";
-  }
-
-  bool isBuiltinObject(const std::string &Name) const {
-    return Name == "msg" || Name == "sender";
   }
 };
 

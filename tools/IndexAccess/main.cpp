@@ -19,67 +19,61 @@ int main(int argc, const char **argv) {
   using std::make_shared;
   using std::make_unique;
 
-  // should be shared ptr, waiting for merge request
+  auto I64 = make_shared<IntegerType>(IntegerType::IntKind::I64);
+  auto I256 = make_shared<IntegerType>(IntegerType::IntKind::I256);
+  auto U256 = make_shared<IntegerType>(IntegerType::IntKind::U256);
 
   // mapping
   /*
-  auto mapping = make_unique<Identifier>("map");
-  auto key = make_unique<NumberLiteral>(87);
-  auto val = make_unique<NumberLiteral>(7122);
-  mapping->setType(make_shared<MappingType>(
-      make_shared<IntegerType>(IntegerType::IntKind::U256),
-      make_shared<IntegerType>(IntegerType::IntKind::I256)));
-  key->setType(make_shared<IntegerType>(IntegerType::IntKind::U256));
-  val->setType(make_shared<IntegerType>(IntegerType::IntKind::I256));
+  auto MU256I256 = make_shared<MappingType>(U256, I256, DataLocation::Storage);
+  auto Mapping = make_unique<VarDecl>(MU256I256, "map", nullptr,
+                                      Decl::Visibility::Public, true);
+  auto mapping = make_unique<Identifier>("map", Mapping.get());
+  auto key = make_unique<NumberLiteral>(87, U256);
+  auto val = make_unique<NumberLiteral>(7122, I256);
   */
 
   // fixed size memory array
   /*
-  auto arr = make_unique<Identifier>("arr");
-  auto idx = make_unique<NumberLiteral>(3);
-  auto val = make_unique<NumberLiteral>(3);
-  arr->setType(make_shared<ArrayType>(
-    make_shared<IntegerType>(IntegerType::IntKind::I64),
-    20,
-    DataLocation::Memory
-  ));
-  idx->setType(make_shared<IntegerType>(IntegerType::IntKind::U256));
-  val->setType(make_shared<IntegerType>(IntegerType::IntKind::I64));
+  auto AI64_20 = make_shared<ArrayType>(I64, 20, DataLocation::Memory);
+  auto Arr = make_unique<VarDecl>(AI64_20, "arr", nullptr,
+                                  Decl::Visibility::Public, true);
+  auto arr = make_unique<Identifier>("arr", Arr.get());
+  auto idx = make_unique<NumberLiteral>(3, U256);
+  auto val = make_unique<NumberLiteral>(3, I64);
   */
 
   // fixed size storage array
   /*
-  auto arr = make_unique<Identifier>("arr");
-  auto idx = make_unique<NumberLiteral>(3);
-  arr->setType(make_shared<ArrayType>(
-    make_shared<IntegerType>(IntegerType::IntKind::I64),
-    20,
-    DataLocation::Storage
-  ));
-  idx->setType(make_shared<IntegerType>(IntegerType::IntKind::U256));
+  auto AI64_20S = make_shared<ArrayType>(I64, 20, DataLocation::Storage);
+  auto Arr = make_unique<VarDecl>(AI64_20S, "arr", nullptr,
+                                  Decl::Visibility::Public, true);
+  auto arr = make_unique<Identifier>("arr", Arr.get());
+  auto idx = make_unique<NumberLiteral>(3, U256);
   */
 
   // dynamic storage array
-  auto arr = make_unique<Identifier>("arr");
-  auto idx = make_unique<NumberLiteral>(3);
-  auto val = make_unique<NumberLiteral>(7122);
-  arr->setType(make_shared<ArrayType>(
-      make_shared<IntegerType>(IntegerType::IntKind::I64),
-      DataLocation::Storage));
-  idx->setType(make_shared<IntegerType>(IntegerType::IntKind::U256));
-  val->setType(make_shared<IntegerType>(IntegerType::IntKind::I64));
+  auto AI64S = make_shared<ArrayType>(I64, DataLocation::Storage);
+  auto Arr = make_unique<VarDecl>(AI64S, "arr", nullptr,
+                                  Decl::Visibility::Public, true);
+  auto idx = make_unique<NumberLiteral>(3, U256);
+  auto val = make_unique<NumberLiteral>(7122, I64);
 
   SourceUnit source(make_unique_vector<Decl>(make_unique<ContractDecl>(
       "IndexAccess", make_unique_vector<InheritanceSpecifier>(),
-      make_unique_vector<Decl>(make_unique<FunctionDecl>(
-          "main", Decl::Visibility::Public, StateMutability::Pure, false, false,
-          make_unique<ParamList>(make_unique_vector<VarDecl>()),
-          make_unique_vector<ModifierInvocation>(),
-          make_unique<ParamList>(make_unique_vector<VarDecl>()),
-          make_unique<Block>(
-              make_unique_vector<Stmt>(make_unique<BinaryOperator>(
-                  make_unique<IndexAccess>(std::move(arr), std::move(idx)),
-                  std::move(val), BO_Assign))))),
+      make_unique_vector<Decl>(
+          std::move(Arr),
+          make_unique<FunctionDecl>(
+              "main", Decl::Visibility::Public, StateMutability::Pure, false,
+              false, make_unique<ParamList>(make_unique_vector<VarDecl>()),
+              make_unique_vector<ModifierInvocation>(),
+              make_unique<ParamList>(make_unique_vector<VarDecl>()),
+              make_unique<Block>(
+                  make_unique_vector<Stmt>(make_unique<BinaryOperator>(
+                      make_unique<IndexAccess>(
+                          make_unique<Identifier>("arr", Arr.get()),
+                          std::move(idx), I64),
+                      std::move(val), BO_Assign, I64))))),
       nullptr, nullptr, ContractDecl::ContractKind::Contract)));
 
   ASTContext Ctx;
@@ -91,8 +85,10 @@ int main(int argc, const char **argv) {
   llvm::IntrusiveRefCntPtr<soll::DiagnosticIDs> DiagID(new soll::DiagnosticIDs());
   llvm::IntrusiveRefCntPtr<soll::DiagnosticsEngine> Diags = new soll::DiagnosticsEngine(DiagID, Opts);
   soll::TargetOptions TO;
-  soll::CodeGenerator *Gen = soll::CreateLLVMCodeGen(*Diags, "FuncBodyCGTest", Context, TO);
+  std::unique_ptr<soll::CodeGenerator> Gen(
+      soll::CreateLLVMCodeGen(*Diags, "FuncBodyCGTest", Context, TO));
   soll::ASTContext ASTC;
+  Gen->Initialize(ASTC);
 
   Gen->HandleSourceUnit(Ctx, source);
   Gen->getModule()->print(llvm::errs(), nullptr);
