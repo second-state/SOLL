@@ -536,9 +536,7 @@ void CodeGenModule::emitContractConstructorDecl(const ContractDecl *CD) {
   Builder.SetInsertPoint(Entry);
 
   if (const auto *Constructor = CD->getConstructor()) {
-    llvm::Function *Func = llvm::Function::Create(
-        FT, llvm::Function::InternalLinkage, Constructor->getName(), TheModule);
-
+    llvm::Function *Func = TheModule.getFunction(getMangledName(Constructor));
     Builder.CreateCall(Func, {});
   }
 
@@ -566,7 +564,7 @@ void CodeGenModule::emitContractDispatcherDecl(const ContractDecl *CD) {
            "no returns in fallback functions!");
     // fallback
 
-    llvm::Function *Func = createLLVMFunction(Fallback);
+    llvm::Function *Func = TheModule.getFunction(getMangledName(Fallback));
 
     Builder.CreateCall(Func, {});
     emitFinish(llvm::ConstantPointerNull::get(Int8PtrTy), Builder.getInt32(0));
