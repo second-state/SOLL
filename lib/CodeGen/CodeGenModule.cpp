@@ -602,8 +602,6 @@ void CodeGenModule::emitContractDispatcherDecl(const ContractDecl *CD) {
     llvm::Value *HashVPtr =
         Builder.CreateAlloca(Int8Ty, Builder.getInt32(4), "hash.vptr");
     emitCallDataCopy(HashVPtr, Builder.getInt32(0), Builder.getInt32(4));
-    Builder.CreateCall(Func_callDataCopy,
-                       {HashVPtr, Builder.getInt32(0), Builder.getInt32(4)});
     llvm::Value *HashPtr =
         Builder.CreateBitCast(HashVPtr, Int32PtrTy, "hash.ptr");
     llvm::Value *Hash = Builder.CreateLoad(Int32Ty, HashPtr, "hash");
