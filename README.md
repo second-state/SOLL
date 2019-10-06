@@ -8,9 +8,10 @@ In SOLL, we design two phases of code generation flow. Generate *.ll (LLVM IR fi
 In the Getting Started in following sections, we will show you several steps to use SOLL to generate ewasm file.
 
 1. Build SOLL from source code.
-2. Generate an ewasm file from our demo contract.
+2. Generate ewasm files from our demo contracts.
     - [0-0-1.sol](./test/release/0-0-1.sol) - Safemath (simplified version)
-3. Execute the ewasm file.
+    - [0-0-2.sol](./test/release/0-0-2.sol) - [ERC20](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md) (simplified version)
+3. Execute those ewasm files in our test environment.
 
 # Getting Started
 To get started with our demo, you will need two components at first.
@@ -40,13 +41,15 @@ soll
 ├── test
 │   ├── (...)
 │   └── release           // Release Test Contract
-│       └── 0-0-1.sol
+│       ├── 0-0-1.sol
+│       └── 0-0-2.sol
 ├── (...)
 └── utils
     ├── (...)
     └── ewasm-testbench
         ├── (...)
-        └── safeMath.js   // 0-0-1.sol Test Environment
+        ├── safeMath.js   // 0-0-1.sol Test Environment
+        └── erc20.js      // 0-0-2.sol Test Environment
 ```
 
 ## Launch Environment
@@ -79,7 +82,7 @@ Execute SOLL to generate a *.ll file for the next step.
 (docker) $ ~/soll/utils/compile -v ~/soll/utils/ewasm-testbench/safeMath.ll
 ```
 
-**Run**
+**Run in Test Env**
 
 We use "16 divides 7" as our smart contract function to check whether our "SafeMath" execute correctly or not.
 ```Shell
@@ -90,42 +93,94 @@ We use "16 divides 7" as our smart contract function to check whether our "SafeM
 The result should be the same as the following content.
 
 ```Shell
-getCallDataSize() = 68
+getCallDataSize()
+{ size: 68 }
 callDataCopy(66128, 0, 4)
+{ data: a391c15b }
 callDataCopy(66064, 4, 64)
+{ data: 00000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000007 }
+getCallValue(66048)
+{ value: 00000000000000000000000000000000 }
 finish(66032, 32)
-[ Uint8Array [
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    2 ],
-  '{}' ]
+{ returnData:
+   '0000000000000000000000000000000000000000000000000000000000000002',
+  storage: '{}' }
+```
+
+## Demo with [0-0-2.sol](./test/release/0-0-2.sol)
+
+**Phase 1. Use SOLL generate .ll from test contract**
+
+Execute SOLL to generate a *.ll file for the next step.
+```Shell
+(docker) $ ~/soll/build/tools/soll/soll ~/soll/test/release/0-0-2.sol > ~/soll/utils/ewasm-testbench/erc20.ll
+```
+
+**Phase 2. Generate .wasm from .ll**
+
+```Shell
+(docker) $ ~/soll/utils/compile -v ~/soll/utils/ewasm-testbench/erc20.ll
+```
+
+**Run in Test Env**
+
+We use `{"2":"f","13425c139e83d895e2b184742e4c3c48f19def0307be60e6900f6563e300a60f":"f"}` as our storage current state and use smart contract function **balanceOf** to check the balance of default **msg.sender**.
+> Here default msg.sender is address 0x1234567890123456789012345678901234567890  
+> [More](https://solidity.readthedocs.io/en/v0.5.3/miscellaneous.html#mappings-and-dynamic-arrays) about how storage layout
+
+```Shell
+(docker) $ cd ~/soll/utils/ewasm-testbench/
+(docker) $ ./erc20.js erc20.wasm '{"2":"f","13425c139e83d895e2b184742e4c3c48f19def0307be60e6900f6563e300a60f":"f"}' balanceOf 0x1234567890123456789012345678901234567890
+```
+
+The result should be the same as the following content.
+```
+getCallDataSize()
+{ size: 36 }
+callDataCopy(66096, 0, 4)
+{ data: 70a08231 }
+callDataCopy(66064, 4, 32)
+{ data: 0000000000000000000000001234567890123456789012345678901234567890 }
+getCallValue(65992)
+{ value: 00000000000000000000000000000000 }
+getGasLeft()
+{ gas: 65522 }
+callStatic(65522, 66040, 65792, 64)
+{ address: 2, data: 00000000000000000000000012345678901234567890123456789012345678900000000000000000000000000000000000000000000000000000000000000000 }
+getCallDataSize()
+{ size: 64 }
+useGas(84)
+getCallDataSize()
+{ size: 64 }
+callDataCopy(1179584, 0, 64)
+{ data: 00000000000000000000000012345678901234567890123456789012345678900000000000000000000000000000000000000000000000000000000000000000 }
+finish(1048544, 32)
+returnDataCopy(66008, 0, 32)
+{ data: 13425c139e83d895e2b184742e4c3c48f19def0307be60e6900f6563e300a60f }
+storageLoad(65728, 65760)
+{ key: 13425c139e83d895e2b184742e4c3c48f19def0307be60e6900f6563e300a60f, value: f }
+finish(66032, 32)
+{ returnData:
+   '000000000000000000000000000000000000000000000000000000000000000f',
+  storage:
+   '{"2":"f","13425c139e83d895e2b184742e4c3c48f19def0307be60e6900f6563e300a60f":"f"}' }
+```
+
+**Run in Test Env**
+
+We still use `{"2":"f","13425c139e83d895e2b184742e4c3c48f19def0307be60e6900f6563e300a60f":"f"}` as our storage current state and use smart contract function **transfer** to transfer amount(1) from default **msg.sender** to other address as 0x1234567890123456789012345678901234567891.
+
+```Shell
+(docker) $ cd ~/soll/utils/ewasm-testbench/
+(docker) $ ./erc20.js erc20.wasm '{"2":"f","13425c139e83d895e2b184742e4c3c48f19def0307be60e6900f6563e300a60f":"f"}' transfer 0x1234567890123456789012345678901234567891 1
+```
+
+The result should be the same as the following content.
+```
+(... omitted)
+
+{ returnData:
+   '0000000000000000000000000000000000000000000000000000000000000001',
+  storage:
+   '{"2":"f","13425c139e83d895e2b184742e4c3c48f19def0307be60e6900f6563e300a60f":"e","d3a40b027a96d16f0c9c02fdbf30dd031cb372ed53432958315b5da0226952e":"1"}' }
 ```
