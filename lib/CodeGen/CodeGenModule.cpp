@@ -21,8 +21,13 @@ enum {
   evm_return,
   evm_revert,
   evm_returndatacopy,
-  evm_getTxGasPrice,
-  evm_getTxOrigin
+  evm_gasprice,
+  evm_origin,
+  evm_coinbase,
+  evm_difficulty,
+  evm_gaslimit,
+  evm_number,
+  evm_timestamp
 };
 }
 */
@@ -136,11 +141,36 @@ void CodeGenModule::initEVMOpcodeDeclaration() {
 
   // getTxGasPrice
   FT = llvm::FunctionType::get(VoidTy, {Int128PtrTy}, false);
-  Func_getTxGasPrice = getIntrinsic(llvm::Intrinsic::evm_getTxGasPrice, FT);
+  Func_getTxGasPrice = getIntrinsic(llvm::Intrinsic::evm_gasprice, FT);
 
   // getTxOrigin
-  FT = llvm::FunctionType::get(VoidTy, {Int160PtrTy}, false);
-  Func_getTxOrigin = getIntrinsic(llvm::Intrinsic::evm_getTxOrigin, FT);
+  FT = llvm::FunctionType::get(VoidTy, {AddressPtrTy}, false);
+  Func_getTxOrigin = getIntrinsic(llvm::Intrinsic::evm_origin, FT);
+
+  // getBlockCoinbase
+  FT = llvm::FunctionType::get(VoidTy, {AddressPtrTy}, false);
+  Func_getBlockCoinbase =
+      getIntrinsic(llvm::Intrinsic::evm_coinbase, FT);
+
+  // getBlockDifficulty
+  FT = llvm::FunctionType::get(VoidTy, {Int256PtrTy}, false);
+  Func_getBlockDifficulty =
+      getIntrinsic(llvm::Intrinsic::evm_difficulty, FT);
+
+  // getBlockGasLimit
+  FT = llvm::FunctionType::get(Int64PtrTy, {}, false);
+  Func_getBlockGasLimit =
+      getIntrinsic(llvm::Intrinsic::evm_gaslimit, FT);
+
+  // getBlockNumber
+  FT = llvm::FunctionType::get(Int64PtrTy, {}, false);
+  Func_getBlockNumber = getIntrinsic(llvm::Intrinsic::evm_number, FT);
+
+  // getBlockTimestamp
+  FT = llvm::FunctionType::get(Int64PtrTy, {}, false);
+  Func_getBlockTimestamp =
+      getIntrinsic(llvm::Intrinsic::evm_timestamp, FT);
+
 #endif
 }
 
@@ -225,10 +255,10 @@ void CodeGenModule::initEEIDeclaration() {
   Func_getGasLeft->addFnAttr(llvm::Attribute::NoUnwind);
 
   // log
-  FT = llvm::FunctionType::get(VoidTy,
-                               {Int8PtrTy, Int32Ty, Int32Ty, Int256PtrTy,
-                                Int256PtrTy, Int256PtrTy, Int256PtrTy},
-                               false);
+  FT =
+      llvm::FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty, Int32Ty, Int256PtrTy,
+                                       Int256PtrTy, Int256PtrTy, Int256PtrTy},
+                              false);
   Func_log = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
                                     "ethereum.log", TheModule);
   Func_log->addFnAttr(Ethereum);
@@ -296,11 +326,56 @@ void CodeGenModule::initEEIDeclaration() {
 
   // getTxOrigin
   FT = llvm::FunctionType::get(VoidTy, {AddressPtrTy}, false);
-  Func_getTxOrigin = llvm::Function::Create(
-      FT, llvm::Function::ExternalLinkage, "ethereum.getTxOrigin", TheModule);
+  Func_getTxOrigin = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                            "ethereum.getTxOrigin", TheModule);
   Func_getTxOrigin->addFnAttr(Ethereum);
   Func_getTxOrigin->addFnAttr(
       llvm::Attribute::get(VMContext, "wasm-import-name", "getTxOrigin"));
+
+  // getBlockCoinbase
+  FT = llvm::FunctionType::get(VoidTy, {AddressPtrTy}, false);
+  Func_getBlockCoinbase =
+      llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                             "ethereum.getBlockCoinbase", TheModule);
+  Func_getBlockCoinbase->addFnAttr(Ethereum);
+  Func_getBlockCoinbase->addFnAttr(
+      llvm::Attribute::get(VMContext, "wasm-import-name", "getBlockCoinbase"));
+
+  // getBlockDifficulty
+  FT = llvm::FunctionType::get(VoidTy, {Int256PtrTy}, false);
+  Func_getBlockDifficulty =
+      llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                             "ethereum.getBlockDifficulty", TheModule);
+  Func_getBlockDifficulty->addFnAttr(Ethereum);
+  Func_getBlockDifficulty->addFnAttr(llvm::Attribute::get(
+      VMContext, "wasm-import-name", "getBlockDifficulty"));
+
+  // getBlockGasLimit
+  FT = llvm::FunctionType::get(Int64PtrTy, {}, false);
+  Func_getBlockGasLimit =
+      llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                             "ethereum.getBlockGasLimit", TheModule);
+  Func_getBlockGasLimit->addFnAttr(Ethereum);
+  Func_getBlockGasLimit->addFnAttr(
+      llvm::Attribute::get(VMContext, "wasm-import-name", "getBlockGasLimit"));
+
+  // getBlockNumber
+  FT = llvm::FunctionType::get(Int64PtrTy, {}, false);
+  Func_getBlockNumber =
+      llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                             "ethereum.getBlockNumber", TheModule);
+  Func_getBlockNumber->addFnAttr(Ethereum);
+  Func_getBlockNumber->addFnAttr(
+      llvm::Attribute::get(VMContext, "wasm-import-name", "getBlockNumber"));
+
+  // getBlockTimestamp
+  FT = llvm::FunctionType::get(Int64PtrTy, {}, false);
+  Func_getBlockTimestamp =
+      llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                             "ethereum.getBlockTimestamp", TheModule);
+  Func_getBlockTimestamp->addFnAttr(Ethereum);
+  Func_getBlockTimestamp->addFnAttr(
+      llvm::Attribute::get(VMContext, "wasm-import-name", "getBlockTimestamp"));
 
   // debug.print32
   FT = llvm::FunctionType::get(VoidTy, {Int32Ty}, false);

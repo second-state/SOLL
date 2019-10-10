@@ -589,8 +589,48 @@ private:
         llvm::Value *Val = Builder.CreateLoad(ValPtr);
         return ExprValue::getRValue(ME, Val);
       }
+      assert(false && "Unsuuported member access for tx");
+      __builtin_unreachable();
+    } else if (BaseName == "block") {
+      if (MemberName == "coinbase") {
+        llvm::Function *getBlockCoinbase =
+            CGF.getCodeGenModule().getModule().getFunction(
+                "ethereum.getBlockCoinbase");
+        llvm::Value *ValPtr = Builder.CreateAlloca(CGF.AddressTy);
+        Builder.CreateCall(getBlockCoinbase, {ValPtr});
+        llvm::Value *Val = Builder.CreateLoad(ValPtr);
+        return ExprValue::getRValue(ME, Val);
+      } else if (MemberName == "difficulty") {
+        llvm::Function *getBlockDifficulty =
+            CGF.getCodeGenModule().getModule().getFunction(
+                "ethereum.getBlockDifficulty");
+        llvm::Value *ValPtr = Builder.CreateAlloca(CGF.Int256Ty);
+        Builder.CreateCall(getBlockDifficulty, {ValPtr});
+        llvm::Value *Val = Builder.CreateLoad(ValPtr);
+        return ExprValue::getRValue(ME, Val);
+      } else if (MemberName == "gaslimit") {
+        llvm::Function *getBlockGasLimit =
+            CGF.getCodeGenModule().getModule().getFunction(
+                "ethereum.getBlockGasLimit");
+        llvm::Value *Val = Builder.CreateCall(getBlockGasLimit, {});
+        return ExprValue::getRValue(ME, Val);
+      } else if (MemberName == "number") {
+        llvm::Function *getBlockNumber =
+            CGF.getCodeGenModule().getModule().getFunction(
+                "ethereum.getBlockNumber");
+        llvm::Value *Val = Builder.CreateCall(getBlockNumber, {});
+        return ExprValue::getRValue(ME, Val);
+      } else if (MemberName == "timestamp") {
+        llvm::Function *getBlockTimestamp =
+            CGF.getCodeGenModule().getModule().getFunction(
+                "ethereum.getBlockTimestamp");
+        llvm::Value *Val = Builder.CreateCall(getBlockTimestamp, {});
+        return ExprValue::getRValue(ME, Val);
+      }
+      assert(false && "Unsuuported member access for block");
+      __builtin_unreachable();
     }
-    assert(false && "Can only suuport msg.sender now");
+    assert(false && "Error member type!!");
     __builtin_unreachable();
   }
 
