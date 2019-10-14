@@ -158,6 +158,7 @@ public:
 
   Block *getBody() { return Body.get(); }
   const Block *getBody() const { return Body.get(); }
+  void setBody(std::unique_ptr<Block> &&B) { Body = std::move(B); }
   TypePtr getType() const { return FuncTy; }
   StateMutability getStateMutability() const { return SM; }
   bool isConstructor() const { return IsConstructor; }

@@ -61,6 +61,8 @@ public:
 
   llvm::Optional<Token> CachedLex();
 
+  void EnterTokenStream(const Token *Toks, unsigned NumToks);
+
 private:
   llvm::Optional<Token> PeekAhead(unsigned N);
 

@@ -2,11 +2,11 @@
 #pragma once
 #include "soll/AST/AST.h"
 #include "soll/Basic/SourceManager.h"
+#include "soll/Lex/Token.h"
 #include "soll/Sema/Sema.h"
 
 namespace soll {
 
-class Token;
 class Lexer;
 class AST;
 
@@ -166,6 +166,33 @@ public:
   };
   void EnterScope(unsigned ScopeFlags);
   void ExitScope();
+
+private:
+  struct LateParsedDeclaration {
+    LateParsedDeclaration() = default;
+    virtual ~LateParsedDeclaration() = default;
+    virtual void ParseLexedMethodDefs() {}
+  };
+
+  struct LexedMethod : public LateParsedDeclaration {
+    Parser *Self;
+    Decl *D;
+    llvm::SmallVector<Token, 4> Toks;
+
+    explicit LexedMethod(Parser *P, Decl *MD) : Self(P), D(MD) {}
+    void ParseLexedMethodDefs() override;
+  };
+
+  llvm::SmallVector<std::unique_ptr<LateParsedDeclaration>, 2>
+      LateParsedDeclarations;
+
+  void ParseLexedMethodDef(LexedMethod &LM);
+  bool ConsumeAndStoreUntil(tok::TokenKind T1,
+                            llvm::SmallVector<Token, 4> &Toks) {
+    return ConsumeAndStoreUntil(T1, T1, Toks);
+  }
+  bool ConsumeAndStoreUntil(tok::TokenKind T1, tok::TokenKind T2,
+                            llvm::SmallVector<Token, 4> &Toks);
 };
 
 } // namespace soll

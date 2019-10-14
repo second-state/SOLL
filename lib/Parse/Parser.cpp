@@ -654,6 +654,10 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
       Name, std::move(BaseContracts), std::move(SubNodes),
       std::move(Constructor), std::move(Fallback), CtKind);
   Actions.addDecl(CD.get());
+  for (auto &LPD : LateParsedDeclarations) {
+    LPD->ParseLexedMethodDefs();
+  }
+  LateParsedDeclarations.clear();
   return CD;
 }
 
@@ -717,6 +721,39 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
   return Result;
 }
 
+void Parser::LexedMethod::ParseLexedMethodDefs() {
+  Self->ParseLexedMethodDef(*this);
+}
+
+void Parser::ParseLexedMethodDef(LexedMethod &LM) {
+  {
+    Token BodyEnd;
+    BodyEnd.setKind(tok::eof);
+    BodyEnd.setLocation(LM.Toks.back().getEndLoc());
+    LM.Toks.emplace_back(std::move(BodyEnd));
+  }
+  TheLexer.EnterTokenStream(LM.Toks.data(), LM.Toks.size());
+  auto *FD = dynamic_cast<FunctionDecl *>(LM.D);
+  ParseScope ArgumentScope{this, 0};
+  for (auto *P : FD->getParams()->getParams()) {
+    Actions.addDecl(P);
+  }
+  {
+    vector<TypePtr> Tys;
+    for (auto &&Return : FD->getReturnParams()->getParams())
+      Tys.push_back(Return->GetType());
+    Actions.SetFunRtnTys(Tys);
+  }
+
+  ParseScope FunctionScope{this, Scope::FunctionScope};
+  FD->setBody(parseBlock());
+  if (!TheLexer.LookAhead(0)->is(tok::eof)) {
+    assert(false);
+  }
+  TheLexer.CachedLex(); // eof
+  Actions.EraseFunRtnTys();
+}
+
 unique_ptr<FunctionDecl>
 Parser::parseFunctionDefinitionOrFunctionTypeStateVariable() {
   ParseScope ArgumentScope{this, 0};
@@ -724,21 +761,79 @@ Parser::parseFunctionDefinitionOrFunctionTypeStateVariable() {
   if (Header.IsConstructor || !Header.Modifiers.empty() ||
       !Header.Name.empty() ||
       TheLexer.LookAhead(0)->isOneOf(tok::semi, tok::l_brace)) {
-    // this has to be a function
-    unique_ptr<Block> block;
-    if (TheLexer.LookAhead(0)->isNot(tok::semi)) {
-      ParseScope FunctionScope{this, Scope::FunctionScope};
-      // TODO: cache token and delay parsing after contract defined
-      block = parseBlock();
-    }
-    return Actions.CreateFunctionDecl(
+    // this has to be a function, consume the tokens and store them for later
+    // parsing
+    auto FD = Actions.CreateFunctionDecl(
         Header.Name, Header.Vsblty, Header.SM, Header.IsConstructor,
         Header.IsFallback, std::move(Header.Parameters),
         std::move(Header.Modifiers), std::move(Header.ReturnParameters),
-        std::move(block));
+        nullptr);
+    if (TheLexer.LookAhead(0)->isNot(tok::semi)) {
+      auto LM = std::make_unique<LexedMethod>(this, FD.get());
+      LM->Toks.emplace_back(*TheLexer.CachedLex());
+      if (!ConsumeAndStoreUntil(tok::r_brace, LM->Toks)) {
+        assert(false);
+      }
+      LateParsedDeclarations.emplace_back(std::move(LM));
+    }
+    return FD;
   } else {
     // TODO: State Variable case.
     return nullptr;
+  }
+}
+
+bool Parser::ConsumeAndStoreUntil(tok::TokenKind T1, tok::TokenKind T2,
+                                  llvm::SmallVector<Token, 4> &Toks) {
+  while (true) {
+    // If we found one of the tokens, stop and return true.
+    Token Tok = *TheLexer.LookAhead(0);
+    if (Tok.is(T1) || Tok.is(T2)) {
+      Toks.push_back(Tok);
+      TheLexer.CachedLex(); // T1 | T2
+      return true;
+    }
+
+    switch (Tok.getKind()) {
+    case tok::eof:
+      // Ran out of tokens.
+      return false;
+
+    case tok::l_paren:
+      // Recursively consume properly-nested parens.
+      Toks.push_back(Tok);
+      TheLexer.CachedLex(); // (
+      ConsumeAndStoreUntil(tok::r_paren, Toks);
+      break;
+    case tok::l_square:
+      // Recursively consume properly-nested square brackets.
+      Toks.push_back(Tok);
+      TheLexer.CachedLex(); // [
+      ConsumeAndStoreUntil(tok::r_square, Toks);
+      break;
+    case tok::l_brace:
+      // Recursively consume properly-nested braces.
+      Toks.push_back(Tok);
+      TheLexer.CachedLex(); // {
+      ConsumeAndStoreUntil(tok::r_brace, Toks);
+      break;
+
+    case tok::r_paren:
+      Toks.push_back(Tok);
+      break;
+    case tok::r_square:
+      Toks.push_back(Tok);
+      break;
+    case tok::r_brace:
+      Toks.push_back(Tok);
+      break;
+
+    default:
+      // consume this token.
+      Toks.push_back(Tok);
+      TheLexer.CachedLex();
+      break;
+    }
   }
 }
 

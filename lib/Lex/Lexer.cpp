@@ -879,4 +879,9 @@ void Lexer::SkipBlockComment(const char *CurPtr) {
   BufferPtr = CurPtr;
 }
 
+void Lexer::EnterTokenStream(const Token *Toks, unsigned NumToks) {
+  CachedTokens.insert(CachedTokens.begin() + CachedLexPos, Toks,
+                      Toks + NumToks);
+}
+
 } // namespace soll
