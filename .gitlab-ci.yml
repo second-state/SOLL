@@ -29,9 +29,13 @@ stages:
   stage: compile
   image: secondstate/soll:${OS}-compile
   script:
-    - bash -c "${BASE_BINDIR}/tools/soll/soll ${TEST_SRCDIR}/0-0-1.sol > ${BASE_BINDIR}/0-0-1.ll"
-    - bash -c "${BASE_BINDIR}/tools/soll/soll ${TEST_SRCDIR}/0-0-2.sol > ${BASE_BINDIR}/0-0-2.ll"
-    - bash -c "./utils/compile -v ${BASE_BINDIR}/*.ll || test -f ${BASE_BINDIR}/0-0-1.wasm -a -f ${BASE_BINDIR}/0-0-2.wasm"
+    - ${BASE_BINDIR}/tools/soll/soll -action=EmitFuncSig ${TEST_SRCDIR}/0-0-1.sol
+    - ${BASE_BINDIR}/tools/soll/soll -action=EmitABI     ${TEST_SRCDIR}/0-0-1.sol
+    - ${BASE_BINDIR}/tools/soll/soll -action=EmitFuncSig ${TEST_SRCDIR}/0-0-2.sol
+    - ${BASE_BINDIR}/tools/soll/soll -action=EmitABI     ${TEST_SRCDIR}/0-0-2.sol
+    - bash -c "${BASE_BINDIR}/tools/soll/soll ${TEST_ENVDIR}/test/safeMath.sol > ${BASE_BINDIR}/safeMath.ll"
+    - bash -c "${BASE_BINDIR}/tools/soll/soll ${TEST_ENVDIR}/test/erc20.sol    > ${BASE_BINDIR}/erc20.ll"
+    - bash -c "./utils/compile -v ${BASE_BINDIR}/*.ll || test -f ${BASE_BINDIR}/safeMath.wasm -a -f ${BASE_BINDIR}/erc20.wasm"
   cache:
     key: ${OS}-${COMPILER}
     paths:
@@ -42,15 +46,10 @@ stages:
   stage: test
   image: secondstate/soll:${OS}-test
   before_script:
-    - cp ${BASE_BINDIR}/*.wasm ${TEST_ENVDIR}
+    - cp ${BASE_BINDIR}/*.wasm ${TEST_ENVDIR}/test
   script:
     - bash -c "cd ${BASE_BINDIR} && ctest"
-    - bash -c "cd ${TEST_ENVDIR} && ./safeMath.js 0-0-1.wasm div 16 7"
-    - bash -c "cd ${TEST_ENVDIR} && ./erc20.js 0-0-2.wasm {} _mint 0x1234567890123456789012345678901234567890 100"
-    - bash -c 'cd ${TEST_ENVDIR} && ./erc20.js 0-0-2.wasm \{\"0\":\"64\",\"f5b24dcea0e9381721a8c72784d30cfe64c11b4591226269f839d095b3e9cf10\":\"64\"\} transfer 0x01 10'
-    - bash -c 'cd ${TEST_ENVDIR} && ./erc20.js 0-0-2.wasm \{\"0\":\"64\",\"f5b24dcea0e9381721a8c72784d30cfe64c11b4591226269f839d095b3e9cf10\":\"5a\",\"3cbd4ff31ab6027f35d2d04a81e2957deb3a24998b9cea0327c6e16d0b547a1d\":\"a\"\} balanceOf 0x01'
-    - ${BASE_BINDIR}/tools/soll/soll -action=EmitFuncSig ${TEST_SRCDIR}/0-0-2.sol
-    - ${BASE_BINDIR}/tools/soll/soll -action=EmitABI ${TEST_SRCDIR}/0-0-2.sol
+    - bash -c "cd ${TEST_ENVDIR} && mocha"
   cache:
     key: ${OS}-${COMPILER}
     paths:
