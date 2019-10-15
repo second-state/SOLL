@@ -533,7 +533,7 @@ void CodeGenModule::initKeccak256() {
                        {ResultVPtr, Builder.getInt32(0), Builder.getInt32(32)});
     llvm::Value *Result = Builder.CreateLoad(ResultPtr);
 
-    Builder.CreateRet(Result);
+    Builder.CreateRet(emitEndianConvert(Result));
   } else {
     __builtin_unreachable();
   }
@@ -580,7 +580,7 @@ void CodeGenModule::initSha256() {
                        {ResultVPtr, Builder.getInt32(0), Builder.getInt32(32)});
     llvm::Value *Result = Builder.CreateLoad(ResultPtr);
 
-    Builder.CreateRet(Result);
+    Builder.CreateRet(emitEndianConvert(Result));
   } else {
     __builtin_unreachable();
   }

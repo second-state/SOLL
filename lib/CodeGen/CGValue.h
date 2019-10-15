@@ -33,7 +33,10 @@ public:
       llvm::Function *StorageLoad =
           CGM.getModule().getFunction("ethereum.storageLoad");
       llvm::Value *ValPtr = Builder.CreateAlloca(CGM.Int256Ty, nullptr);
-      Builder.CreateCall(StorageLoad, {V, ValPtr});
+      llvm::Value *KeyPtr = Builder.CreateAlloca(CGM.Int256Ty, nullptr);
+      llvm::Value *Key = CGM.emitEndianConvert(Builder.CreateLoad(V));
+      Builder.CreateStore(Key, KeyPtr);
+      Builder.CreateCall(StorageLoad, {KeyPtr, ValPtr});
       llvm::Value *Val = CGM.emitEndianConvert(Builder.CreateLoad(ValPtr));
       switch (Ty->getCategory()) {
       case Type::Category::Address:
@@ -126,6 +129,9 @@ public:
       case Type::Category::Integer:
       case Type::Category::RationalNumber: {
         llvm::Value *ValPtr = Builder.CreateAlloca(CGM.Int256Ty, nullptr);
+        llvm::Value *KeyPtr = Builder.CreateAlloca(CGM.Int256Ty, nullptr);
+        llvm::Value *Key = CGM.emitEndianConvert(Builder.CreateLoad(V));
+        Builder.CreateStore(Key, KeyPtr);
         if (Shift != nullptr) {
           llvm::Function *StorageLoad =
               CGM.getModule().getFunction("ethereum.storageLoad");
@@ -135,12 +141,12 @@ public:
           llvm::Value *Mask2 =
               Builder.CreateShl(Builder.CreateZExt(Value, CGM.Int256Ty), Shift);
 
-          Builder.CreateCall(StorageLoad, {V, ValPtr});
+          Builder.CreateCall(StorageLoad, {KeyPtr, ValPtr});
           llvm::Value *Val = CGM.emitEndianConvert(Builder.CreateLoad(ValPtr));
           Value = Builder.CreateOr(Builder.CreateAnd(Val, Mask1), Mask2);
         }
         Builder.CreateStore(CGM.emitEndianConvert(Value), ValPtr);
-        Builder.CreateCall(StorageStore, {V, ValPtr});
+        Builder.CreateCall(StorageStore, {KeyPtr, ValPtr});
         return;
       }
       case Type::Category::String:

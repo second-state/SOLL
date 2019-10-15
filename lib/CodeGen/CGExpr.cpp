@@ -479,7 +479,9 @@ private:
       // mapping : store i256 hash value in TempValueTable
       llvm::Value *MapAddress = Builder.CreateLoad(Base.getValue());
       llvm::Value *Bytes = emitConcateBytes(
-          {MapAddress, Index.load(Builder, CGF.getCodeGenModule())});
+          {CGF.getCodeGenModule().emitEndianConvert(Builder.CreateZExtOrTrunc(
+               Index.load(Builder, CGF.getCodeGenModule()), CGF.Int256Ty)),
+           CGF.getCodeGenModule().emitEndianConvert(MapAddress)});
       llvm::Value *Address = Builder.CreateAlloca(CGF.Int256Ty);
       Builder.CreateStore(Builder.CreateCall(Sha256, {Bytes}), Address);
       return ExprValue(Ty, ValueKind::VK_SValue, Address);
@@ -510,7 +512,8 @@ private:
         emitCheckArrayOutOfBound(ArraySize, IndexValue);
 
         // load array position
-        llvm::Value *Bytes = emitConcateBytes({ArrayAddress});
+        llvm::Value *Bytes = emitConcateBytes(
+            {CGF.getCodeGenModule().emitEndianConvert(ArrayAddress)});
         ArrayAddress = Builder.CreateCall(Sha256, {Bytes});
       } else {
         // Fixed Size Storage Array
@@ -552,7 +555,8 @@ private:
         llvm::Value *ValPtr = Builder.CreateAlloca(CGF.AddressTy);
         Builder.CreateCall(getCaller, {ValPtr});
         llvm::Value *Val = Builder.CreateLoad(ValPtr);
-        return ExprValue::getRValue(ME, Val);
+        return ExprValue::getRValue(
+            ME, CGF.getCodeGenModule().emitEndianConvert(Val));
       }
       case Identifier::SpecialIdentifier::msg_value: {
         llvm::Function *getCallValue =
