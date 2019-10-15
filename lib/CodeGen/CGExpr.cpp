@@ -534,38 +534,39 @@ private:
                 "ethereum.getCallValue");
         llvm::Value *ValPtr = Builder.CreateAlloca(CGF.Int128Ty);
         Builder.CreateCall(getCallValue, {ValPtr});
-        llvm::Value *Val = Builder.CreateLoad(ValPtr);
+        llvm::Value *Val =
+            Builder.CreateZExt(Builder.CreateLoad(ValPtr), CGF.Int256Ty);
         return ExprValue::getRValue(ME, Val);
       } else if (MemberName == "data") {
         llvm::Function *getCallDataSize =
             CGF.getCodeGenModule().getModule().getFunction(
                 "ethereum.getCallDataSize");
-        llvm::Value *callDataSize = Builder.CreateCall(getCallDataSize, {});
-        llvm::Value *bytes = Builder.CreateAlloca(CGF.BytesTy);
-        llvm::Value *bytesSizePtr = Builder.CreateStructGEP(bytes, 0);
-        llvm::Value *bytesDataPtr = Builder.CreateStructGEP(bytes, 1);
-        Builder.CreateStore(callDataSize, bytesSizePtr);
-        llvm::Value *mallocSize =
-            llvm::ConstantExpr::getSizeOf(Builder.getInt8Ty());
-        llvm::Instruction *var_malloc = llvm::CallInst::CreateMalloc(
-            Builder.GetInsertBlock(), Builder.getInt64Ty(), Builder.getInt8Ty(),
-            mallocSize, callDataSize, nullptr);
-        Builder.Insert(var_malloc);
-        llvm::Value *ValPtr = var_malloc;
         llvm::Function *callDataCopy =
             CGF.getCodeGenModule().getModule().getFunction(
                 "ethereum.callDataCopy");
+
+        llvm::Value *CallDataSize = Builder.CreateCall(getCallDataSize, {});
+        llvm::Constant *AllocSize = llvm::ConstantExpr::getSizeOf(CGF.Int8Ty);
+        llvm::Instruction *Malloc = llvm::CallInst::CreateMalloc(
+            Builder.GetInsertBlock(), CGF.Int64Ty, CGF.Int8Ty, AllocSize,
+            CallDataSize, nullptr);
+        llvm::Value *ValPtr = Builder.Insert(Malloc);
         Builder.CreateCall(callDataCopy,
-                           {ValPtr, Builder.getInt32(0), callDataSize});
-        Builder.CreateStore(ValPtr, bytesDataPtr);
-        return ExprValue::getRValue(ME, bytes);
+                           {ValPtr, Builder.getInt32(0), CallDataSize});
+
+        llvm::Value *Bytes = llvm::ConstantAggregateZero::get(CGF.BytesTy);
+        Bytes = Builder.CreateInsertValue(
+            Bytes, Builder.CreateZExt(CallDataSize, CGF.Int256Ty), {0});
+        Bytes = Builder.CreateInsertValue(Bytes, ValPtr, {1});
+        return ExprValue::getRValue(ME, Bytes);
       } else if (MemberName == "sig") {
         llvm::Value *ValPtr = Builder.CreateAlloca(Builder.getInt32Ty());
         llvm::Function *callDataCopy =
             CGF.getCodeGenModule().getModule().getFunction(
                 "ethereum.callDataCopy");
         Builder.CreateCall(callDataCopy,
-                           {ValPtr, Builder.getInt32(0), Builder.getInt32(4)});
+                           {Builder.CreateBitCast(ValPtr, CGF.Int8PtrTy),
+                            Builder.getInt32(0), Builder.getInt32(4)});
         llvm::Value *Val = Builder.CreateLoad(ValPtr);
         return ExprValue::getRValue(ME, Val);
       }
@@ -578,7 +579,8 @@ private:
                 "ethereum.getTxGasPrice");
         llvm::Value *ValPtr = Builder.CreateAlloca(CGF.Int128Ty);
         Builder.CreateCall(getTxGasPrice, {ValPtr});
-        llvm::Value *Val = Builder.CreateLoad(ValPtr);
+        llvm::Value *Val =
+            Builder.CreateZExt(Builder.CreateLoad(ValPtr), CGF.Int256Ty);
         return ExprValue::getRValue(ME, Val);
       } else if (MemberName == "origin") {
         llvm::Function *getTxOrigin =
@@ -586,7 +588,8 @@ private:
                 "ethereum.getTxOrigin");
         llvm::Value *ValPtr = Builder.CreateAlloca(CGF.AddressTy);
         Builder.CreateCall(getTxOrigin, {ValPtr});
-        llvm::Value *Val = Builder.CreateLoad(ValPtr);
+        llvm::Value *Val =
+            Builder.CreateZExt(Builder.CreateLoad(ValPtr), CGF.Int256Ty);
         return ExprValue::getRValue(ME, Val);
       }
       assert(false && "Unsuuported member access for tx");
@@ -612,19 +615,22 @@ private:
         llvm::Function *getBlockGasLimit =
             CGF.getCodeGenModule().getModule().getFunction(
                 "ethereum.getBlockGasLimit");
-        llvm::Value *Val = Builder.CreateCall(getBlockGasLimit, {});
+        llvm::Value *Val = Builder.CreateZExt(
+            Builder.CreateCall(getBlockGasLimit, {}), CGF.Int256Ty);
         return ExprValue::getRValue(ME, Val);
       } else if (MemberName == "number") {
         llvm::Function *getBlockNumber =
             CGF.getCodeGenModule().getModule().getFunction(
                 "ethereum.getBlockNumber");
-        llvm::Value *Val = Builder.CreateCall(getBlockNumber, {});
+        llvm::Value *Val = Builder.CreateZExt(
+            Builder.CreateCall(getBlockNumber, {}), CGF.Int256Ty);
         return ExprValue::getRValue(ME, Val);
       } else if (MemberName == "timestamp") {
         llvm::Function *getBlockTimestamp =
             CGF.getCodeGenModule().getModule().getFunction(
                 "ethereum.getBlockTimestamp");
-        llvm::Value *Val = Builder.CreateCall(getBlockTimestamp, {});
+        llvm::Value *Val = Builder.CreateZExt(
+            Builder.CreateCall(getBlockTimestamp, {}), CGF.Int256Ty);
         return ExprValue::getRValue(ME, Val);
       }
       assert(false && "Unsuuported member access for block");

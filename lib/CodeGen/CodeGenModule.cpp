@@ -351,7 +351,7 @@ void CodeGenModule::initEEIDeclaration() {
       VMContext, "wasm-import-name", "getBlockDifficulty"));
 
   // getBlockGasLimit
-  FT = llvm::FunctionType::get(Int64PtrTy, {}, false);
+  FT = llvm::FunctionType::get(Int64Ty, {}, false);
   Func_getBlockGasLimit =
       llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
                              "ethereum.getBlockGasLimit", TheModule);
@@ -360,7 +360,7 @@ void CodeGenModule::initEEIDeclaration() {
       llvm::Attribute::get(VMContext, "wasm-import-name", "getBlockGasLimit"));
 
   // getBlockNumber
-  FT = llvm::FunctionType::get(Int64PtrTy, {}, false);
+  FT = llvm::FunctionType::get(Int64Ty, {}, false);
   Func_getBlockNumber =
       llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
                              "ethereum.getBlockNumber", TheModule);
@@ -369,7 +369,7 @@ void CodeGenModule::initEEIDeclaration() {
       llvm::Attribute::get(VMContext, "wasm-import-name", "getBlockNumber"));
 
   // getBlockTimestamp
-  FT = llvm::FunctionType::get(Int64PtrTy, {}, false);
+  FT = llvm::FunctionType::get(Int64Ty, {}, false);
   Func_getBlockTimestamp =
       llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
                              "ethereum.getBlockTimestamp", TheModule);
@@ -795,6 +795,7 @@ void CodeGenModule::emitABIStore(const Type *Ty, llvm::StringRef Name,
   switch (Ty->getCategory()) {
   case Type::Category::Address:
   case Type::Category::Bool:
+  case Type::Category::FixedBytes:
   case Type::Category::Integer: {
     // XXX: check signed
     llvm::Value *RetB = Builder.CreateCall(
@@ -987,6 +988,9 @@ llvm::Type *CodeGenModule::getLLVMType(const Type *Ty) {
   case Type::Category::Integer:
     return Builder.getIntNTy(
         dynamic_cast<const IntegerType *>(Ty)->getBitNum());
+  case Type::Category::FixedBytes:
+    return Builder.getIntNTy(
+        dynamic_cast<const FixedBytesType *>(Ty)->getBitNum());
   case Type::Category::Bool:
     return BoolTy;
   case Type::Category::Address:
@@ -1018,6 +1022,8 @@ llvm::Type *CodeGenModule::getStaticLLVMType(const Type *Ty) {
   case Type::Category::Bool:
     return Int256Ty;
   case Type::Category::Address:
+    return Int256Ty;
+  case Type::Category::FixedBytes:
     return Int256Ty;
   case Type::Category::String:
     return Int256Ty;
