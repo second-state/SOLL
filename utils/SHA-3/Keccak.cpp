@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BSD-3-Clause
 #include "Keccak.h"
-#include "CommandParser.h"
-#include "stdafx.h"
 
 #include "Endian.h"
 #include "Rotation.h"
+
+#include <cstring>
 
 // Constants of the Keccak algorithm.
 

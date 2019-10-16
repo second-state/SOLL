@@ -2,7 +2,8 @@
 #pragma once
 
 #include "HashFunction.h"
-#include "stdafx.h"
+
+#include <vector>
 
 // State structure
 class KeccakBase : public HashFunction {
