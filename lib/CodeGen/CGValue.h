@@ -37,7 +37,9 @@ public:
       llvm::Value *Key = CGM.emitEndianConvert(Builder.CreateLoad(V));
       Builder.CreateStore(Key, KeyPtr);
       Builder.CreateCall(StorageLoad, {KeyPtr, ValPtr});
-      llvm::Value *Val = CGM.emitEndianConvert(Builder.CreateLoad(ValPtr));
+      llvm::Type *ValueTy = Builder.getIntNTy(Ty->getBitNum());
+      llvm::Value *Val = Builder.CreateZExtOrTrunc(
+          CGM.emitEndianConvert(Builder.CreateLoad(ValPtr)), ValueTy);
       switch (Ty->getCategory()) {
       case Type::Category::Address:
       case Type::Category::Bool:
@@ -145,7 +147,9 @@ public:
           llvm::Value *Val = CGM.emitEndianConvert(Builder.CreateLoad(ValPtr));
           Value = Builder.CreateOr(Builder.CreateAnd(Val, Mask1), Mask2);
         }
-        Builder.CreateStore(CGM.emitEndianConvert(Value), ValPtr);
+        Builder.CreateStore(CGM.emitEndianConvert(
+                                Builder.CreateZExtOrTrunc(Value, CGM.Int256Ty)),
+                            ValPtr);
         Builder.CreateCall(StorageStore, {KeyPtr, ValPtr});
         return;
       }
