@@ -260,7 +260,6 @@ void CodeGenModule::initEEIDeclaration() {
   Func_log->addFnAttr(Ethereum);
   Func_log->addFnAttr(
       llvm::Attribute::get(VMContext, "wasm-import-name", "log"));
-  Func_log->addFnAttr(llvm::Attribute::ReadOnly);
   Func_log->addFnAttr(llvm::Attribute::NoUnwind);
   Func_log->addParamAttr(0, llvm::Attribute::ReadOnly);
   Func_log->addParamAttr(3, llvm::Attribute::ReadOnly);
