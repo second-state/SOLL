@@ -76,6 +76,7 @@ private:
   void emitCallRequire(const CallExpr *CE);
   void emitCallAssert(const CallExpr *CE);
   void emitCallRevert(const CallExpr *CE);
+  void emitCheckPayable(const FunctionDecl *FD);
 
   ExprValue emitCallExpr(const CallExpr *CE);
 

@@ -760,43 +760,69 @@ void CodeGenFunction::emitCallRevert(const CallExpr *CE) {
   Builder.CreateUnreachable();
 }
 
+void CodeGenFunction::emitCheckPayable(const FunctionDecl *FD) {
+  if (StateMutability::Payable != FD->getStateMutability()) {
+    llvm::Function *getCallValue =
+        CGM.getModule().getFunction("ethereum.getCallValue");
+    llvm::Value *ValPtr = Builder.CreateAlloca(Int128Ty);
+    Builder.CreateCall(getCallValue, {ValPtr});
+    llvm::BasicBlock *Continue = createBasicBlock("continue");
+    llvm::BasicBlock *Revert = createBasicBlock("revert");
+
+    llvm::Value *Cond = Builder.CreateICmpNE(Builder.CreateLoad(ValPtr),
+                                            Builder.getIntN(128, 0));
+    Builder.CreateCondBr(Cond, Revert, Continue);
+
+    using namespace std::string_literals;
+    static const std::string Message = "Function is not payable"s;
+    llvm::Value *MessageValue =
+        createGlobalStringPtr(getLLVMContext(), CGM.getModule(), Message);
+    Builder.SetInsertPoint(Revert);
+    Builder.CreateCall(CGM.getModule().getFunction("ethereum.revert"),
+                       {MessageValue, Builder.getInt32(Message.size())});
+    Builder.CreateUnreachable();
+
+    Builder.SetInsertPoint(Continue);
+  }
+}
+
 ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
   auto Callee = dynamic_cast<const Identifier *>(CE->getCalleeExpr());
   if (Callee->isSpecialIdentifier()) {
     switch (Callee->getSpecialIdentifier()) {
-      case Identifier::SpecialIdentifier::require:
-        emitCallRequire(CE);
-        return ExprValue();
-      case Identifier::SpecialIdentifier::assert_:
-        emitCallAssert(CE);
-        return ExprValue();
-      case Identifier::SpecialIdentifier::revert:
-        emitCallRevert(CE);
-        return ExprValue();
-      case Identifier::SpecialIdentifier::gasleft:
-        assert(CE->getArguments().empty() && "gasleft require no arguments");
-        return ExprValue::getRValue(CE, CGM.emitGetGasLeft());
-      case Identifier::SpecialIdentifier::addmod:
-        assert(false && "addmod not supported yet");
-        __builtin_unreachable();
-      case Identifier::SpecialIdentifier::mulmod:
-        assert(false && "addmod not supported yet");
-        __builtin_unreachable();
-      case Identifier::SpecialIdentifier::keccak256:
-        assert(false && "keccak256 not supported yet");
-        __builtin_unreachable();
-      case Identifier::SpecialIdentifier::sha256:
-        assert(false && "sha256 not supported yet");
-        __builtin_unreachable();
-      case Identifier::SpecialIdentifier::ripemd160:
-        assert(false && "ripemd160 not supported yet");
-        __builtin_unreachable();
-      case Identifier::SpecialIdentifier::ecrecover:
-        assert(false && "ecrecover not supported yet");
-        __builtin_unreachable();
-      default:
-        assert(false && "special function not supported yet");
-        __builtin_unreachable();
+    case Identifier::SpecialIdentifier::require:
+      emitCallRequire(CE);
+      return ExprValue();
+    case Identifier::SpecialIdentifier::assert_:
+      emitCallAssert(CE);
+      return ExprValue();
+    case Identifier::SpecialIdentifier::revert:
+      emitCallRevert(CE);
+      return ExprValue();
+    case Identifier::SpecialIdentifier::gasleft:
+      assert(CE->getArguments().empty() && "gasleft require no arguments");
+      return ExprValue::getRValue(CE, CGM.emitGetGasLeft());
+    case Identifier::SpecialIdentifier::addmod:
+      assert(false && "addmod not supported yet");
+      __builtin_unreachable();
+    case Identifier::SpecialIdentifier::mulmod:
+      assert(false && "addmod not supported yet");
+      __builtin_unreachable();
+    case Identifier::SpecialIdentifier::keccak256:
+      assert(false && "keccak256 not supported yet");
+      __builtin_unreachable();
+    case Identifier::SpecialIdentifier::sha256:
+      assert(false && "sha256 not supported yet");
+      __builtin_unreachable();
+    case Identifier::SpecialIdentifier::ripemd160:
+      assert(false && "ripemd160 not supported yet");
+      __builtin_unreachable();
+    case Identifier::SpecialIdentifier::ecrecover:
+      assert(false && "ecrecover not supported yet");
+      __builtin_unreachable();
+    default:
+      assert(false && "special function not supported yet");
+      __builtin_unreachable();
     }
   }
   std::vector<llvm::Value *> Args;
@@ -807,7 +833,9 @@ ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
           dynamic_cast<const FunctionDecl *>(Callee->getCorrespondDecl())) {
     llvm::Function *F = CGM.getModule().getFunction(CGM.getMangledName(FD));
     assert(F != nullptr && "undefined function");
-    return ExprValue::getRValue(CE, Builder.CreateCall(F, Args));
+    llvm::Value *Result = Builder.CreateCall(F, Args);
+    emitCheckPayable(FD);
+    return ExprValue::getRValue(CE, Result);
   }
   if (auto ED = dynamic_cast<const EventDecl *>(Callee->getCorrespondDecl())) {
     auto Params = ED->getParams()->getParams();
