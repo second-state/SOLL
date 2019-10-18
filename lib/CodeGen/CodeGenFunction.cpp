@@ -8,7 +8,7 @@ void CodeGenFunction::generateCode(const FunctionDecl *FD, llvm::Function *Fn) {
   llvm::BasicBlock *EntryBB = createBasicBlock("entry", Fn);
   ReturnBlock = createBasicBlock("return", Fn);
   Builder.SetInsertPoint(EntryBB);
-
+  emitCheckPayable(FD);
   llvm::Argument *PsLLVM = Fn->arg_begin();
   for (auto *VD : FD->getParams()->getParams()) {
     llvm::Argument *Arg = PsLLVM++;
@@ -233,6 +233,32 @@ void CodeGenFunction::emitBranchOnBoolExpr(const Expr *E,
                                            llvm::BasicBlock *FalseBlock) {
   Builder.CreateCondBr(emitBoolExpr(E).load(Builder, CGM), TrueBlock,
                        FalseBlock);
+}
+
+void CodeGenFunction::emitCheckPayable(const FunctionDecl *FD) {
+  if (StateMutability::Payable != FD->getStateMutability()) {
+    llvm::Function *getCallValue =
+        CGM.getModule().getFunction("ethereum.getCallValue");
+    llvm::Value *ValPtr = Builder.CreateAlloca(Int128Ty);
+    Builder.CreateCall(getCallValue, {ValPtr});
+    llvm::BasicBlock *Continue = createBasicBlock("continue");
+    llvm::BasicBlock *Revert = createBasicBlock("revert");
+
+    llvm::Value *Cond = Builder.CreateICmpNE(Builder.CreateLoad(ValPtr),
+                                             Builder.getIntN(128, 0));
+    Builder.CreateCondBr(Cond, Revert, Continue);
+
+    using namespace std::string_literals;
+    static const std::string Message = "Function is not payable"s;
+    llvm::Value *MessageValue =
+        createGlobalStringPtr(getLLVMContext(), CGM.getModule(), Message);
+    Builder.SetInsertPoint(Revert);
+    Builder.CreateCall(CGM.getModule().getFunction("ethereum.revert"),
+                       {MessageValue, Builder.getInt32(Message.size())});
+    Builder.CreateUnreachable();
+
+    Builder.SetInsertPoint(Continue);
+  }
 }
 
 } // namespace soll::CodeGen

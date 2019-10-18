@@ -3,34 +3,6 @@
 #include "CodeGenModule.h"
 #include <llvm/IR/CFG.h>
 
-namespace {
-inline llvm::GlobalVariable *createGlobalString(llvm::LLVMContext &Context,
-                                                llvm::Module &Module,
-                                                llvm::StringRef Str,
-                                                const llvm::Twine &Name = "") {
-  llvm::Constant *StrConstant =
-      llvm::ConstantDataArray::getString(Context, Str, false);
-  auto *GV = new llvm::GlobalVariable(Module, StrConstant->getType(), true,
-                                      llvm::GlobalValue::PrivateLinkage,
-                                      StrConstant, Name);
-  GV->setUnnamedAddr(llvm::GlobalValue::UnnamedAddr::Global);
-  GV->setAlignment(1);
-  return GV;
-}
-inline llvm::Constant *createGlobalStringPtr(llvm::LLVMContext &Context,
-                                             llvm::Module &Module,
-                                             llvm::StringRef Str,
-                                             const llvm::Twine &Name = "") {
-  llvm::GlobalVariable *GV = createGlobalString(Context, Module, Str, Name);
-  llvm::Constant *Zero =
-      llvm::ConstantInt::get(llvm::Type::getInt32Ty(Context), 0);
-  llvm::Constant *Indices[] = {Zero, Zero};
-  return llvm::ConstantExpr::getInBoundsGetElementPtr(GV->getValueType(), GV,
-                                                      Indices);
-}
-
-} // namespace
-
 namespace soll::CodeGen {
 
 class ExprEmitter {
@@ -772,32 +744,6 @@ void CodeGenFunction::emitCallRevert(const CallExpr *CE) {
   Builder.CreateUnreachable();
 }
 
-void CodeGenFunction::emitCheckPayable(const FunctionDecl *FD) {
-  if (StateMutability::Payable != FD->getStateMutability()) {
-    llvm::Function *getCallValue =
-        CGM.getModule().getFunction("ethereum.getCallValue");
-    llvm::Value *ValPtr = Builder.CreateAlloca(Int128Ty);
-    Builder.CreateCall(getCallValue, {ValPtr});
-    llvm::BasicBlock *Continue = createBasicBlock("continue");
-    llvm::BasicBlock *Revert = createBasicBlock("revert");
-
-    llvm::Value *Cond = Builder.CreateICmpNE(Builder.CreateLoad(ValPtr),
-                                            Builder.getIntN(128, 0));
-    Builder.CreateCondBr(Cond, Revert, Continue);
-
-    using namespace std::string_literals;
-    static const std::string Message = "Function is not payable"s;
-    llvm::Value *MessageValue =
-        createGlobalStringPtr(getLLVMContext(), CGM.getModule(), Message);
-    Builder.SetInsertPoint(Revert);
-    Builder.CreateCall(CGM.getModule().getFunction("ethereum.revert"),
-                       {MessageValue, Builder.getInt32(Message.size())});
-    Builder.CreateUnreachable();
-
-    Builder.SetInsertPoint(Continue);
-  }
-}
-
 ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
   auto Callee = dynamic_cast<const Identifier *>(CE->getCalleeExpr());
   if (Callee->isSpecialIdentifier()) {
@@ -846,7 +792,6 @@ ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
     llvm::Function *F = CGM.getModule().getFunction(CGM.getMangledName(FD));
     assert(F != nullptr && "undefined function");
     llvm::Value *Result = Builder.CreateCall(F, Args);
-    emitCheckPayable(FD);
     return ExprValue::getRValue(CE, Result);
   }
   if (auto ED = dynamic_cast<const EventDecl *>(Callee->getCorrespondDecl())) {

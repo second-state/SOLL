@@ -10,6 +10,32 @@
 #include <llvm/IR/IRBuilder.h>
 
 namespace soll::CodeGen {
+
+inline llvm::GlobalVariable *createGlobalString(llvm::LLVMContext &Context,
+                                                llvm::Module &Module,
+                                                llvm::StringRef Str,
+                                                const llvm::Twine &Name = "") {
+  llvm::Constant *StrConstant =
+      llvm::ConstantDataArray::getString(Context, Str, false);
+  auto *GV = new llvm::GlobalVariable(Module, StrConstant->getType(), true,
+                                      llvm::GlobalValue::PrivateLinkage,
+                                      StrConstant, Name);
+  GV->setUnnamedAddr(llvm::GlobalValue::UnnamedAddr::Global);
+  GV->setAlignment(1);
+  return GV;
+}
+inline llvm::Constant *createGlobalStringPtr(llvm::LLVMContext &Context,
+                                             llvm::Module &Module,
+                                             llvm::StringRef Str,
+                                             const llvm::Twine &Name = "") {
+  llvm::GlobalVariable *GV = createGlobalString(Context, Module, Str, Name);
+  llvm::Constant *Zero =
+      llvm::ConstantInt::get(llvm::Type::getInt32Ty(Context), 0);
+  llvm::Constant *Indices[] = {Zero, Zero};
+  return llvm::ConstantExpr::getInBoundsGetElementPtr(GV->getValueType(), GV,
+                                                      Indices);
+}
+
 class CodeGenFunction : public CodeGenTypeCache {
   struct BreakContinue {
     BreakContinue(llvm::BasicBlock *Break, llvm::BasicBlock *Continue)
