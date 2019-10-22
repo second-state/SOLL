@@ -1,30 +1,35 @@
 pragma solidity ^0.5.0;
 
 contract EEI_Test {
-  address sender;
-  uint128 value;
-  uint128 txGasPrice;
+  address msgSender;
+  uint msgValue;
+  bytes msgData;
+  uint txGasPrice;
   address txOrigin;
   address bkCoinbase;
   uint256 bkDifficulty;
-  uint64 bkGasLimit;
-  uint64 bkBlockNumber;
-  uint64 bkBlockTimestamp;
+  uint bkGasLimit;
+  uint bkBlockNumber;
+  uint bkBlockTimestamp;
   mapping (address => uint256) private hash;
   event Test(address indexed addr, uint256 indexed value, uint256 value2);
 
-  constructor() public {
-    sender = msg.sender;
-    // integer assignment with ImplicitCast has issue
-    msg.value;
-    tx.gasprice;
+  constructor() public payable {
+    msgSender = msg.sender;
+    msgValue = msg.value;
+    // msgData = msg.data;
+    txGasPrice = tx.gasprice;
     txOrigin = tx.origin;
     bkCoinbase = block.coinbase;
     bkDifficulty = block.difficulty;
-    block.gaslimit;
-    block.number;
-    block.timestamp;
-    hash[sender] = 54309531;
-    emit Test(sender, int(123), int(456));
+    bkGasLimit = block.gaslimit;
+    bkBlockNumber = block.number;
+    bkBlockTimestamp = block.timestamp;
+    hash[msgSender] = 54309531;
+    emit Test(msgSender, uint(123), uint(456));
+  }
+
+  function () payable {
+
   }
 }

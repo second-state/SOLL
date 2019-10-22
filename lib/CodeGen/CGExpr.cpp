@@ -554,9 +554,9 @@ private:
                 "ethereum.getCaller");
         llvm::Value *ValPtr = Builder.CreateAlloca(CGF.AddressTy);
         Builder.CreateCall(getCaller, {ValPtr});
-        llvm::Value *Val = Builder.CreateLoad(ValPtr);
-        return ExprValue::getRValue(
-            ME, CGF.getCodeGenModule().emitEndianConvert(Val));
+        llvm::Value *Val = CGF.getCodeGenModule().emitEndianConvert(
+            Builder.CreateLoad(ValPtr));
+        return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::msg_value: {
         llvm::Function *getCallValue =
@@ -565,7 +565,9 @@ private:
         llvm::Value *ValPtr = Builder.CreateAlloca(CGF.Int128Ty);
         Builder.CreateCall(getCallValue, {ValPtr});
         llvm::Value *Val =
-            Builder.CreateZExt(Builder.CreateLoad(ValPtr), CGF.Int256Ty);
+            Builder.CreateZExt(CGF.getCodeGenModule().emitEndianConvert(
+                                   Builder.CreateLoad(ValPtr)),
+                               CGF.Int256Ty);
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::msg_data: {
@@ -609,7 +611,9 @@ private:
         llvm::Value *ValPtr = Builder.CreateAlloca(CGF.Int128Ty);
         Builder.CreateCall(getTxGasPrice, {ValPtr});
         llvm::Value *Val =
-            Builder.CreateZExt(Builder.CreateLoad(ValPtr), CGF.Int256Ty);
+            Builder.CreateZExt(CGF.getCodeGenModule().emitEndianConvert(
+                                   Builder.CreateLoad(ValPtr)),
+                               CGF.Int256Ty);
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::tx_origin: {
@@ -619,7 +623,9 @@ private:
         llvm::Value *ValPtr = Builder.CreateAlloca(CGF.AddressTy);
         Builder.CreateCall(getTxOrigin, {ValPtr});
         llvm::Value *Val =
-            Builder.CreateZExt(Builder.CreateLoad(ValPtr), CGF.Int256Ty);
+            Builder.CreateZExt(CGF.getCodeGenModule().emitEndianConvert(
+                                   Builder.CreateLoad(ValPtr)),
+                               CGF.Int256Ty);
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::block_coinbase: {
@@ -628,7 +634,8 @@ private:
                 "ethereum.getBlockCoinbase");
         llvm::Value *ValPtr = Builder.CreateAlloca(CGF.AddressTy);
         Builder.CreateCall(getBlockCoinbase, {ValPtr});
-        llvm::Value *Val = Builder.CreateLoad(ValPtr);
+        llvm::Value *Val = CGF.getCodeGenModule().emitEndianConvert(
+            Builder.CreateLoad(ValPtr));
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::block_difficulty: {
@@ -637,7 +644,8 @@ private:
                 "ethereum.getBlockDifficulty");
         llvm::Value *ValPtr = Builder.CreateAlloca(CGF.Int256Ty);
         Builder.CreateCall(getBlockDifficulty, {ValPtr});
-        llvm::Value *Val = Builder.CreateLoad(ValPtr);
+        llvm::Value *Val = CGF.getCodeGenModule().emitEndianConvert(
+            Builder.CreateLoad(ValPtr));
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::block_gaslimit: {
