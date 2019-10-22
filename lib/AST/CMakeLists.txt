@@ -2,6 +2,7 @@
 add_llvm_library(sollAST
   ASTContext.cpp
   Decl.cpp
+  DeclYul.cpp
   DeclAccept.cpp
   DeclVisitor.cpp
   Expr.cpp

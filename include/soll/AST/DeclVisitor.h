@@ -4,6 +4,7 @@
 #include "soll/ADT/STLExtras.h"
 
 namespace soll {
+
 class SourceUnit;
 class PragmaDirective;
 class ContractDecl;
@@ -13,6 +14,12 @@ class ParamList;
 class CallableVarDecl;
 class VarDecl;
 class ModifierInvocation;
+
+class YulCode;
+class YulData;
+class YulObject;
+class YulTypedIdentifierList;
+class YulVarDecl;
 
 template <bool Const> class DeclVisitorBase {
 protected:
@@ -27,6 +34,13 @@ protected:
   using ModifierInvocationType =
       typename cond_const<Const, ModifierInvocation>::type;
 
+  using YulCodeType = typename cond_const<Const, YulCode>::type;
+  using YulDataType = typename cond_const<Const, YulData>::type;
+  using YulObjectType = typename cond_const<Const, YulObject>::type;
+  using YulTypedIdentifierListType =
+      typename cond_const<Const, YulTypedIdentifierList>::type;
+  using YulVarDeclType = typename cond_const<Const, YulVarDecl>::type;
+
 public:
   virtual ~DeclVisitorBase() noexcept {}
   virtual void visit(SourceUnitType &);
@@ -38,6 +52,12 @@ public:
   virtual void visit(CallableVarDeclType &);
   virtual void visit(VarDeclType &);
   virtual void visit(ModifierInvocationType &);
+
+  virtual void visit(YulCodeType &);
+  virtual void visit(YulDataType &);
+  virtual void visit(YulObjectType &);
+  virtual void visit(YulTypedIdentifierListType &);
+  virtual void visit(YulVarDeclType &);
 };
 
 using ConstDeclVisitor = DeclVisitorBase<true>;
