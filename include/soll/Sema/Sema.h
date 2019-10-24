@@ -2,6 +2,7 @@
 #pragma once
 
 #include "soll/AST/ASTContext.h"
+#include "soll/AST/ExprYul.h"
 #include "soll/Sema/Scope.h"
 #include <unordered_map>
 
@@ -62,6 +63,11 @@ public:
   std::unique_ptr<Identifier> CreateIdentifier(Token Tok);
   std::unique_ptr<MemberExpr> CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr,
                                                Token Tok);
+
+  /// ExprYul
+  std::unique_ptr<YulIdentifier> CreateYulIdentifier(llvm::StringRef Name);
+  std::unique_ptr<CallExpr>
+  CreateYulCallExpr(ExprPtr &&Callee, std::vector<ExprPtr> &&Args);
 
   /// type checking binary operators (subroutines of CreateBinOp)
   /// this may add type casting
