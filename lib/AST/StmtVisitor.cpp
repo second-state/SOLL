@@ -2,6 +2,8 @@
 #include "soll/AST/StmtVisitor.h"
 #include "soll/AST/Decl.h"
 #include "soll/AST/Expr.h"
+#include "soll/AST/ExprYul.h"
+#include "soll/AST/StmtYul.h"
 
 namespace soll {
 
@@ -110,6 +112,49 @@ template <bool Const> void StmtVisitorBase<Const>::visit(StringLiteralType &) {
 
 template <bool Const> void StmtVisitorBase<Const>::visit(NumberLiteralType &) {
   // leaf, do nothing
+}
+
+template <bool Const>
+void StmtVisitorBase<Const>::visit(YulIdentifierListType &L) {
+  for (auto i : L.getIdentifiers())
+    i->accept(*this);
+}
+
+template <bool Const> void StmtVisitorBase<Const>::visit(YulAssignmentType &A) {
+  A.getLHS()->accept(*this);
+  A.getRHS()->accept(*this);
+}
+
+template <bool Const> void StmtVisitorBase<Const>::visit(YulForStmtType &S) {
+  S.getInit()->accept(*this);
+  S.getCond()->accept(*this);
+  S.getLoop()->accept(*this);
+  S.getBody()->accept(*this);
+}
+
+template <bool Const> void StmtVisitorBase<Const>::visit(YulCaseStmtType &C) {
+  C.getSubExpr()->accept(*this);
+  if (C.getNextCase())
+    C.getNextCase()->accept(*this);
+}
+
+template <bool Const>
+void StmtVisitorBase<Const>::visit(YulDefaultStmtType &C) {
+  C.getSubExpr()->accept(*this);
+  if (C.getNextCase())
+    C.getNextCase()->accept(*this);
+}
+
+template <bool Const> void StmtVisitorBase<Const>::visit(YulSwitchStmtType &S) {
+  S.getFirstCase()->accept(*this);
+}
+
+template <bool Const> void StmtVisitorBase<Const>::visit(YulIdentifierType &) {
+  // leaf, do nothing
+}
+
+template <bool Const> void StmtVisitorBase<Const>::visit(YulLiteralType &L) {
+  L.getLiteral()->accept(*this);
 }
 
 } // namespace soll

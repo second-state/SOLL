@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "soll/AST/Decl.h"
 #include "soll/AST/Expr.h"
+#include "soll/AST/ExprYul.h"
 #include "soll/AST/StmtVisitor.h"
+#include "soll/AST/StmtYul.h"
 
 namespace soll {
 
@@ -95,6 +97,46 @@ void StringLiteral::accept(ConstStmtVisitor &visitor) const {
 
 void NumberLiteral::accept(StmtVisitor &visitor) { visitor.visit(*this); }
 void NumberLiteral::accept(ConstStmtVisitor &visitor) const {
+  visitor.visit(*this);
+}
+
+void YulIdentifierList::accept(soll::StmtVisitor &visitor) { visitor.visit(*this); }
+void YulIdentifierList::accept(soll::ConstStmtVisitor &visitor) const {
+  visitor.visit(*this);
+}
+
+void YulAssignment::accept(soll::StmtVisitor &visitor) { visitor.visit(*this); }
+void YulAssignment::accept(soll::ConstStmtVisitor &visitor) const {
+  visitor.visit(*this);
+}
+
+void YulForStmt::accept(soll::StmtVisitor &visitor) { visitor.visit(*this); }
+void YulForStmt::accept(soll::ConstStmtVisitor &visitor) const {
+  visitor.visit(*this);
+}
+
+void YulCaseStmt::accept(soll::StmtVisitor &visitor) { visitor.visit(*this); }
+void YulCaseStmt::accept(soll::ConstStmtVisitor &visitor) const {
+  visitor.visit(*this);
+}
+
+void YulDefaultStmt::accept(soll::StmtVisitor &visitor) { visitor.visit(*this); }
+void YulDefaultStmt::accept(soll::ConstStmtVisitor &visitor) const {
+  visitor.visit(*this);
+}
+
+void YulSwitchStmt::accept(soll::StmtVisitor &visitor) { visitor.visit(*this); }
+void YulSwitchStmt::accept(soll::ConstStmtVisitor &visitor) const {
+  visitor.visit(*this);
+}
+
+void YulIdentifier::accept(soll::StmtVisitor &visitor) { visitor.visit(*this); }
+void YulIdentifier::accept(soll::ConstStmtVisitor &visitor) const {
+  visitor.visit(*this);
+}
+
+void YulLiteral::accept(soll::StmtVisitor &visitor) { visitor.visit(*this); }
+void YulLiteral::accept(soll::ConstStmtVisitor &visitor) const {
   visitor.visit(*this);
 }
 

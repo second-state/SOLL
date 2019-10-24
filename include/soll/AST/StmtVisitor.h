@@ -27,6 +27,15 @@ class BooleanLiteral;
 class StringLiteral;
 class NumberLiteral;
 
+class YulIdentifierList;
+class YulAssignment;
+class YulForStmt;
+class YulCaseStmt;
+class YulDefaultStmt;
+class YulSwitchStmt;
+class YulIdentifier;
+class YulLiteral;
+
 template <bool Const> class StmtVisitorBase {
 protected:
   using BlockType = typename cond_const<Const, Block>::type;
@@ -53,6 +62,15 @@ protected:
   using StringLiteralType = typename cond_const<Const, StringLiteral>::type;
   using NumberLiteralType = typename cond_const<Const, NumberLiteral>::type;
 
+  using YulIdentifierListType = typename cond_const<Const, YulIdentifierList>::type;
+  using YulAssignmentType = typename cond_const<Const, YulAssignment>::type;
+  using YulForStmtType = typename cond_const<Const, YulForStmt>::type;
+  using YulCaseStmtType = typename cond_const<Const, YulCaseStmt>::type;
+  using YulDefaultStmtType = typename cond_const<Const, YulDefaultStmt>::type;
+  using YulSwitchStmtType = typename cond_const<Const, YulSwitchStmt>::type;
+  using YulIdentifierType = typename cond_const<Const, YulIdentifier>::type;
+  using YulLiteralType = typename cond_const<Const, YulLiteral>::type;
+
 public:
   virtual ~StmtVisitorBase() noexcept {}
   virtual void visit(BlockType &);
@@ -76,6 +94,15 @@ public:
   virtual void visit(BooleanLiteralType &);
   virtual void visit(StringLiteralType &);
   virtual void visit(NumberLiteralType &);
+
+  virtual void visit(YulIdentifierListType &);
+  virtual void visit(YulAssignmentType &);
+  virtual void visit(YulForStmtType &);
+  virtual void visit(YulCaseStmtType &);
+  virtual void visit(YulDefaultStmtType &);
+  virtual void visit(YulSwitchStmtType &);
+  virtual void visit(YulIdentifierType &);
+  virtual void visit(YulLiteralType &);
 };
 
 using ConstStmtVisitor = StmtVisitorBase<true>;
