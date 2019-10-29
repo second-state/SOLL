@@ -10,9 +10,11 @@ namespace soll {
 class ASTConsumer;
 class ASTContext;
 class DiagnosticsEngine;
+class DiagnosticBuilder;
 class Lexer;
 class Sema;
 class SourceManager;
+class Token;
 
 class Sema {
   Sema(const Sema &) = delete;
@@ -30,12 +32,15 @@ public:
 
   Sema(Lexer &lexer, ASTContext &ctxt, ASTConsumer &consumer);
 
+  DiagnosticBuilder Diag(SourceLocation Loc, unsigned DiagID);
+
   void SetFunRtnTys(std::vector<TypePtr> Tys) {
     this->FunRtnTys = std::vector(Tys);
   }
   void EraseFunRtnTys() { this->FunRtnTys.clear(); }
 
   // Stmt
+  StmtPtr CreateReturnStmt();
   StmtPtr CreateReturnStmt(ExprPtr &&Vaule);
 
   // Decl
@@ -54,9 +59,9 @@ public:
   ExprPtr CreateIndexAccess(ExprPtr &&LHS, ExprPtr &&RHS);
   std::unique_ptr<CallExpr>
   CreateCallExpr(ExprPtr &&Callee, std::vector<std::unique_ptr<Expr>> &&Args);
-  std::unique_ptr<Identifier> CreateIdentifier(llvm::StringRef Name);
+  std::unique_ptr<Identifier> CreateIdentifier(Token Tok);
   std::unique_ptr<MemberExpr> CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr,
-                                               std::string &&Name);
+                                               Token Tok);
 
   /// type checking binary operators (subroutines of CreateBinOp)
   /// this may add type casting

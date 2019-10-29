@@ -2,12 +2,12 @@
 #pragma once
 #include "soll/AST/AST.h"
 #include "soll/Basic/SourceManager.h"
+#include "soll/Lex/Lexer.h"
 #include "soll/Lex/Token.h"
 #include "soll/Sema/Sema.h"
 
 namespace soll {
 
-class Lexer;
 class AST;
 
 class Decl;
@@ -29,9 +29,12 @@ class Expr;
 class Parser {
   Lexer &TheLexer;
   Sema &Actions;
+  DiagnosticsEngine &Diags;
+  Token Tok;
+  unsigned short ParenCount = 0, BracketCount = 0, BraceCount = 0;
 
 public:
-  Parser(Lexer &, Sema &);
+  Parser(Lexer &TheLexer, Sema &Actions, DiagnosticsEngine &Diags);
   std::unique_ptr<SourceUnit> parse();
 
 private:
@@ -67,6 +70,8 @@ private:
   std::unique_ptr<ContractDecl> parseContractDefinition();
   Decl::Visibility parseVisibilitySpecifier();
   StateMutability parseStateMutability();
+  DataLocation parseDataLocation();
+
   FunctionHeaderParserResult parseFunctionHeader(bool ForceEmptyName,
                                                  bool AllowModifiers);
   std::unique_ptr<FunctionDecl>
@@ -117,7 +122,7 @@ private:
   /// but indices can be empty.
   struct IndexAccessedPath {
     TypePtr ElementaryType;
-    std::vector<std::string> Path;
+    std::vector<Token> Path;
     std::vector<std::unique_ptr<Expr>> Indices;
     bool empty() const;
   };
@@ -141,10 +146,105 @@ private:
   /// been supplied.
   std::unique_ptr<Expr>
   expressionFromIndexAccessStructure(IndexAccessedPath &PathAndIndices);
-  llvm::StringRef getLiteralAndAdvance(llvm::Optional<Token> Tok);
-  /// Creates an empty ParameterList at the current location (used if parameters
-  /// can be omitted).
-  std::unique_ptr<AST> createEmptyParameterList();
+
+  Token GetLookAheadToken(unsigned N) {
+    if (N == 0 || Tok.is(tok::eof))
+      return Tok;
+    return *TheLexer.LookAhead(N - 1);
+  }
+
+  Token NextToken() const { return *TheLexer.LookAhead(0); }
+
+  bool isTokenParen() const { return Tok.isOneOf(tok::l_paren, tok::r_paren); }
+  bool isTokenBracket() const {
+    return Tok.isOneOf(tok::l_square, tok::r_square);
+  }
+  bool isTokenBrace() const { return Tok.isOneOf(tok::l_brace, tok::r_brace); }
+  bool isTokenStringLiteral() const {
+    return tok::isStringLiteral(Tok.getKind());
+  }
+  bool isTokenSpecial() const {
+    return isTokenStringLiteral() || isTokenParen() || isTokenBracket() ||
+           isTokenBrace();
+  }
+
+  SourceLocation ConsumeToken() {
+    assert(!isTokenSpecial() &&
+           "Should consume special tokens with Consume*Token");
+    auto Location = Tok.getLocation();
+    Tok = *TheLexer.CachedLex();
+    return Location;
+  }
+
+  bool TryConsumeToken(tok::TokenKind Expected) {
+    if (Tok.isNot(Expected))
+      return false;
+    assert(!isTokenSpecial() &&
+           "Should consume special tokens with Consume*Token");
+    Tok = *TheLexer.CachedLex();
+    return true;
+  }
+
+  SourceLocation ConsumeParen() {
+    assert(isTokenParen() && "wrong consume method");
+    if (Tok.getKind() == tok::l_paren)
+      ++ParenCount;
+    else if (ParenCount) {
+      --ParenCount; // Don't let unbalanced )'s drive the count negative.
+    }
+    auto Location = Tok.getLocation();
+    Tok = *TheLexer.CachedLex();
+    return Location;
+  }
+
+  SourceLocation ConsumeBracket() {
+    assert(isTokenBracket() && "wrong consume method");
+    if (Tok.getKind() == tok::l_square)
+      ++BracketCount;
+    else if (BracketCount) {
+      --BracketCount; // Don't let unbalanced ]'s drive the count negative.
+    }
+    auto Location = Tok.getLocation();
+    Tok = *TheLexer.CachedLex();
+    return Location;
+  }
+
+  SourceLocation ConsumeBrace() {
+    assert(isTokenBrace() && "wrong consume method");
+    if (Tok.getKind() == tok::l_brace)
+      ++BraceCount;
+    else if (BraceCount) {
+      --BraceCount; // Don't let unbalanced }'s drive the count negative.
+    }
+    auto Location = Tok.getLocation();
+    Tok = *TheLexer.CachedLex();
+    return Location;
+  }
+
+  SourceLocation ConsumeStringToken() {
+    assert(isTokenStringLiteral() &&
+           "Should only consume string literals with this method");
+    auto Location = Tok.getLocation();
+    Tok = *TheLexer.CachedLex();
+    return Location;
+  }
+
+  SourceLocation ConsumeAnyToken() {
+    if (isTokenParen())
+      return ConsumeParen();
+    if (isTokenBracket())
+      return ConsumeBracket();
+    if (isTokenBrace())
+      return ConsumeBrace();
+    if (isTokenStringLiteral())
+      return ConsumeStringToken();
+    return ConsumeToken();
+  }
+
+  bool ExpectAndConsume(tok::TokenKind ExpectedTok,
+                        unsigned Diag = diag::err_expected,
+                        llvm::StringRef DiagMsg = "");
+  bool ExpectAndConsumeSemi(unsigned DiagID = diag::err_expected);
 
 public:
   class ParseScope {
@@ -193,6 +293,14 @@ private:
   }
   bool ConsumeAndStoreUntil(tok::TokenKind T1, tok::TokenKind T2,
                             llvm::SmallVector<Token, 4> &Toks);
+
+  DiagnosticBuilder Diag(SourceLocation Loc, unsigned DiagID);
+  DiagnosticBuilder Diag(const Token &Token, unsigned DiagID) {
+    return Diag(Token.getLocation(), DiagID);
+  }
+  DiagnosticBuilder Diag(unsigned DiagID) {
+    return Diag(Tok.getLocation(), DiagID);
+  }
 };
 
 } // namespace soll

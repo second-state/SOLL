@@ -386,8 +386,11 @@ void ASTPrinter::visit(IndexAccessType &ia) {
 void ASTPrinter::visit(IdentifierType &id) {
   os() << indent() << "Identifier \"" << id.getName() << "\" "
        << ToString(id.getType());
-  if (auto D = id.getCorrespondDecl())
+  if (id.isSpecialIdentifier()) {
+    os() << " as " << static_cast<unsigned>(id.getSpecialIdentifier());
+  } else if (auto D = id.getCorrespondDecl()) {
     os() << " from " << D;
+  }
   os() << "\n";
   ConstStmtVisitor::visit(id);
   unindent();

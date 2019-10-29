@@ -74,6 +74,13 @@ public:
     address_call,
     address_delegatecall,
     address_staticcall,
+    array_length,
+    array_push,
+    array_pop,
+    fixedbytes_length,
+    function_selector,
+    function_gas,
+    function_value,
   };
 
 private:

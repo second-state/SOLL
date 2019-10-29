@@ -8,10 +8,10 @@ namespace diag {
 enum {
 #define DIAG(ENUM, FLAGS, DEFAULT_MAPPING, DESC, GROUP, NOWERROR, CATEGORY)    \
   ENUM,
-#define LEXSTART
-#include "soll/Basic/DiagnosticLexKinds.inc"
+#define DRIVERSTART
+#include "soll/Basic/DiagnosticDriverKinds.inc"
 #undef DIAG
-  NUM_BUILTIN_LEX_DIAGNOSTICS
+  NUM_BUILTIN_DRIVER_DIAGNOSTICS
 };
 } // namespace diag
 } // namespace soll

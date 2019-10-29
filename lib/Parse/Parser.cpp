@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "soll/Parse/Parser.h"
 #include "soll/AST/AST.h"
+#include "soll/Basic/DiagnosticParse.h"
 #include "soll/Basic/OperatorPrecedence.h"
 #include "soll/Lex/Lexer.h"
 
@@ -134,8 +135,8 @@ std::string hexUnquote(const std::string &Quoted) {
 
 namespace soll {
 
-static BinaryOperatorKind token2bop(llvm::Optional<Token> Tok) {
-  switch (Tok->getKind()) {
+static BinaryOperatorKind token2bop(const Token &Tok) {
+  switch (Tok.getKind()) {
   case tok::starstar:
     return BO_Exp;
   case tok::star:
@@ -203,9 +204,8 @@ static BinaryOperatorKind token2bop(llvm::Optional<Token> Tok) {
   }
 }
 
-static UnaryOperatorKind token2uop(llvm::Optional<Token> Tok,
-                                   bool IsPreOp = true) {
-  switch (Tok->getKind()) {
+static UnaryOperatorKind token2uop(const Token &Tok, bool IsPreOp = true) {
+  switch (Tok.getKind()) {
   case tok::plusplus:
     if (IsPreOp)
       return UO_PreInc;
@@ -233,8 +233,8 @@ static UnaryOperatorKind token2uop(llvm::Optional<Token> Tok,
   }
 }
 
-static IntegerType::IntKind token2inttype(llvm::Optional<Token> Tok) {
-  switch (Tok->getKind()) {
+static IntegerType::IntKind token2inttype(const Token &Tok) {
+  switch (Tok.getKind()) {
   case tok::kw_uint8:
     return IntegerType::IntKind::U8;
   case tok::kw_uint16:
@@ -373,8 +373,8 @@ static IntegerType::IntKind token2inttype(llvm::Optional<Token> Tok) {
   LLVM_BUILTIN_UNREACHABLE;
 }
 
-static FixedBytesType::ByteKind token2bytetype(llvm::Optional<Token> Tok) {
-  switch (Tok->getKind()) {
+static FixedBytesType::ByteKind token2bytetype(const Token &Tok) {
+  switch (Tok.getKind()) {
   case tok::kw_bytes1:
     return FixedBytesType::ByteKind::B1;
   case tok::kw_bytes2:
@@ -445,33 +445,23 @@ static FixedBytesType::ByteKind token2bytetype(llvm::Optional<Token> Tok) {
   LLVM_BUILTIN_UNREACHABLE;
 }
 
-static DataLocation getLoc(llvm::Optional<Token> Tok) {
-  switch (Tok->getKind()) {
-  case tok::kw_storage:
-    return DataLocation::Storage;
-  case tok::kw_memory:
-    return DataLocation::Memory;
-  case tok::kw_calldata:
-    return DataLocation::CallData;
-  default:
-    return DataLocation::Storage;
-  }
+Parser::Parser(Lexer &TheLexer, Sema &Actions, DiagnosticsEngine &Diags)
+    : TheLexer(TheLexer), Actions(Actions), Diags(Diags) {
+  Tok = *TheLexer.CachedLex();
 }
-
-Parser::Parser(Lexer &lexer, Sema &sema) : TheLexer(lexer), Actions(sema) {}
 
 unique_ptr<SourceUnit> Parser::parse() {
   ParseScope SourceUnitScope{this, 0};
   llvm::Optional<Token> CurTok;
   vector<unique_ptr<Decl>> Nodes;
 
-  while ((CurTok = TheLexer.LookAhead(0))->isNot(tok::eof)) {
-    switch (CurTok->getKind()) {
+  while (Tok.isNot(tok::eof)) {
+    switch (Tok.getKind()) {
     case tok::kw_pragma:
       Nodes.push_back(parsePragmaDirective());
       break;
     case tok::kw_import:
-      TheLexer.CachedLex();
+      ConsumeToken();
       break;
     case tok::kw_interface:
     case tok::kw_library:
@@ -480,7 +470,7 @@ unique_ptr<SourceUnit> Parser::parse() {
       break;
     }
     default:
-      TheLexer.CachedLex();
+      ConsumeAnyToken();
       break;
     }
   }
@@ -492,124 +482,174 @@ unique_ptr<PragmaDirective> Parser::parsePragmaDirective() {
   // Currently supported:
   // pragma solidity ^0.4.0 || ^0.3.0;
   vector<string> Literals;
-  vector<llvm::Optional<Token>> Tokens;
-  TheLexer.CachedLex();
+  vector<Token> Tokens;
+  ConsumeToken(); // 'pragma'
   do {
-    tok::TokenKind Kind = TheLexer.LookAhead(0)->getKind();
-    if (Kind == tok::unknown) {
-      assert(false && "Solidity Error: Token incompatible with Solidity parser "
-                      "as part of pragma directive.");
-    } else if (tok::getPunctuatorSpelling(Kind) != nullptr) {
-      TheLexer.CachedLex();
-    } else {
-      assert((Kind == tok::identifier || tok::isLiteral(Kind)) &&
-             "except literal");
-      string literal = getLiteralAndAdvance(TheLexer.LookAhead(0)).str();
-      Literals.push_back(literal);
-      Tokens.push_back(TheLexer.LookAhead(0));
+    const tok::TokenKind Kind = Tok.getKind();
+    switch (Kind) {
+#define PUNCTUATOR(X, Y) case tok::X:
+#include "soll/Basic/TokenKinds.def"
+      Tokens.push_back(Tok);
+      Literals.push_back(tok::getPunctuatorSpelling(Kind));
+      ConsumeToken();
+      break;
+    case tok::raw_identifier:
+    case tok::identifier:
+      Tokens.push_back(Tok);
+      Literals.emplace_back(Tok.getIdentifierInfo()->getName().str());
+      ConsumeToken();
+      break;
+    case tok::numeric_constant:
+      Tokens.push_back(Tok);
+      Literals.emplace_back(Tok.getLiteralData(), Tok.getLength());
+      ConsumeToken();
+      break;
+    default:
+      Diag(diag::err_unknown_pragma);
+      ConsumeAnyToken();
+      break;
     }
-  } while (!TheLexer.LookAhead(0)->isOneOf(tok::semi, tok::eof));
-  TheLexer.CachedLex();
+  } while (!Tok.isOneOf(tok::semi, tok::eof));
+  if (ExpectAndConsumeSemi()) {
+    return nullptr;
+  }
 
   // TODO: Implement version recognize and compare. ref: parsePragmaVersion
   return std::make_unique<PragmaDirective>();
 }
 
 ContractDecl::ContractKind Parser::parseContractKind() {
-  ContractDecl::ContractKind Kind;
-  switch (TheLexer.LookAhead(0)->getKind()) {
+  switch (Tok.getKind()) {
   case tok::kw_interface:
-    Kind = ContractDecl::ContractKind::Interface;
-    break;
+    ConsumeToken();
+    return ContractDecl::ContractKind::Interface;
   case tok::kw_contract:
-    Kind = ContractDecl::ContractKind::Contract;
-    break;
+    ConsumeToken();
+    return ContractDecl::ContractKind::Contract;
   case tok::kw_library:
-    Kind = ContractDecl::ContractKind::Library;
-    break;
+    ConsumeToken();
+    return ContractDecl::ContractKind::Library;
   default:
-    assert(false && "Invalid contract kind.");
+    Diag(diag::err_expected_contract_kind);
+    ConsumeAnyToken();
+    return ContractDecl::ContractKind::Contract;
   }
-  TheLexer.CachedLex();
-  return Kind;
 }
 
 Decl::Visibility Parser::parseVisibilitySpecifier() {
-  Decl::Visibility Vsblty(Decl::Visibility::Default);
-  switch (TheLexer.LookAhead(0)->getKind()) {
+  switch (Tok.getKind()) {
   case tok::kw_public:
-    Vsblty = Decl::Visibility::Public;
-    break;
+    ConsumeToken();
+    return Decl::Visibility::Public;
   case tok::kw_internal:
-    Vsblty = Decl::Visibility::Internal;
-    break;
+    ConsumeToken();
+    return Decl::Visibility::Internal;
   case tok::kw_private:
-    Vsblty = Decl::Visibility::Private;
-    break;
+    ConsumeToken();
+    return Decl::Visibility::Private;
   case tok::kw_external:
-    Vsblty = Decl::Visibility::External;
-    break;
+    ConsumeToken();
+    return Decl::Visibility::External;
   default:
-    assert(false && "Invalid visibility specifier.");
+    Diag(diag::err_expected_visibility);
+    ConsumeAnyToken();
+    return Decl::Visibility::Default;
   }
-  TheLexer.CachedLex();
-  return Vsblty;
 }
 
 StateMutability Parser::parseStateMutability() {
   StateMutability stateMutability(StateMutability::NonPayable);
-  switch (TheLexer.LookAhead(0)->getKind()) {
+  switch (Tok.getKind()) {
   case tok::kw_payable:
-    stateMutability = StateMutability::Payable;
-    break;
+    ConsumeToken();
+    return StateMutability::Payable;
   case tok::kw_view:
-    stateMutability = StateMutability::View;
-    break;
+    ConsumeToken();
+    return StateMutability::View;
   case tok::kw_pure:
-    stateMutability = StateMutability::Pure;
-    break;
+    ConsumeToken();
+    return StateMutability::Pure;
   case tok::kw_constant:
-    stateMutability = StateMutability::View;
-    assert(false && "The state mutability modifier \"constant\" was removed in "
-                    "version 0.5.0. "
-                    "Use \"view\" or \"pure\" instead.");
-    break;
+    Diag(diag::warn_constant_removed);
+    ConsumeToken();
+    return StateMutability::View;
   default:
+    Diag(diag::err_expected_state_mutability);
+    ConsumeAnyToken();
+    return StateMutability::NonPayable;
     assert(false && "Invalid state mutability specifier.");
   }
-  TheLexer.CachedLex();
   return stateMutability;
+}
+
+DataLocation Parser::parseDataLocation() {
+  switch (Tok.getKind()) {
+  case tok::kw_storage:
+    ConsumeToken();
+    return DataLocation::Storage;
+  case tok::kw_memory:
+    ConsumeToken();
+    return DataLocation::Memory;
+  case tok::kw_calldata:
+    ConsumeToken();
+    return DataLocation::CallData;
+  default:
+    return DataLocation::Storage;
+  }
 }
 
 unique_ptr<ContractDecl> Parser::parseContractDefinition() {
   ParseScope ContractScope{this, 0};
   ContractDecl::ContractKind CtKind = parseContractKind();
-  llvm::StringRef Name;
+  if (!Tok.isAnyIdentifier()) {
+    Diag(diag::err_expected) << tok::identifier;
+    return nullptr;
+  }
+  llvm::StringRef Name = Tok.getIdentifierInfo()->getName();
+  ConsumeToken();
+
   vector<unique_ptr<InheritanceSpecifier>> BaseContracts;
   vector<unique_ptr<Decl>> SubNodes;
   unique_ptr<FunctionDecl> Constructor;
   unique_ptr<FunctionDecl> Fallback;
-  Name = TheLexer.CachedLex()->getIdentifierInfo()->getName();
 
-  if (TheLexer.LookAhead(0)->is(tok::kw_is)) {
+  if (TryConsumeToken(tok::kw_is)) {
     do {
-      TheLexer.CachedLex();
-      TheLexer.CachedLex();
       // TODO: Update vector<InheritanceSpecifier> baseContracts
-      BaseContracts.push_back(std::move(std::make_unique<InheritanceSpecifier>(
-          TheLexer.LookAhead(0)->getIdentifierInfo()->getName().str(),
-          vector<std::unique_ptr<Expr>>())));
-    } while ((TheLexer.LookAhead(0))->is(tok::comma));
+      if (!Tok.isAnyIdentifier()) {
+        Diag(diag::err_expected) << tok::identifier;
+        return nullptr;
+      }
+      string BaseName = Tok.getIdentifierInfo()->getName();
+      ConsumeToken(); // identifier
+
+      vector<std::unique_ptr<Expr>> Arguments;
+      if (isTokenParen()) {
+        ConsumeParen();
+        while (!isTokenParen()) {
+          if (ExpectAndConsume(tok::comma)) {
+            return nullptr;
+          }
+          Arguments.emplace_back(parseExpression());
+        }
+      }
+      BaseContracts.emplace_back(std::make_unique<InheritanceSpecifier>(
+          std::move(BaseName), std::move(Arguments)));
+    } while (TryConsumeToken(tok::comma));
   }
 
-  TheLexer.CachedLex(); // (
-  while (true) {
-    tok::TokenKind Kind = TheLexer.LookAhead(0)->getKind();
-    if (Kind == tok::r_brace) {
+  if (ExpectAndConsume(tok::l_brace)) {
+    return nullptr;
+  }
+
+  while (Tok.isNot(tok::eof)) {
+    if (Tok.is(tok::r_brace)) {
+      ConsumeBrace();
       break;
     }
+
     // TODO: < Parse all Types in contract's context >
-    if (Kind == tok::kw_function || Kind == tok::kw_constructor) {
+    if (Tok.isOneOf(tok::kw_function, tok::kw_constructor)) {
       auto FD = parseFunctionDefinitionOrFunctionTypeStateVariable();
       if (FD) {
         Actions.addDecl(FD.get());
@@ -624,30 +664,36 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
         }
       }
       Actions.EraseFunRtnTys();
-    } else if (Kind == tok::kw_struct) {
+    } else if (Tok.is(tok::kw_struct)) {
       // TODO: contract tok::kw_struct
-      assert(false && "struct not implemented");
-    } else if (Kind == tok::kw_enum) {
+      Diag(diag::err_unimplemented_token) << tok::kw_struct;
+      return nullptr;
+    } else if (Tok.is(tok::kw_enum)) {
       // TODO: contract tok::kw_enum
-      assert(false && "enum not implemented");
-    } else if (Kind == tok::identifier || Kind == tok::kw_mapping ||
-               TheLexer.LookAhead(0)->isElementaryTypeName()) {
+      Diag(diag::err_unimplemented_token) << tok::kw_enum;
+      return nullptr;
+    } else if (Tok.isElementaryTypeName() || Tok.isAnyIdentifier() ||
+               Tok.is(tok::kw_mapping)) {
       VarDeclParserOptions options;
       options.IsStateVariable = true;
       options.AllowInitialValue = true;
       SubNodes.push_back(parseVariableDeclaration(options));
-      TheLexer.CachedLex(); // ;
-    } else if (Kind == tok::kw_modifier) {
+      if (ExpectAndConsumeSemi()) {
+        return nullptr;
+      }
+    } else if (Tok.is(tok::kw_modifier)) {
       // TODO: contract tok::kw_modifier
-      assert(false && "modifier not implemented");
-    } else if (Kind == tok::kw_event) {
+      Diag(diag::err_unimplemented_token) << tok::kw_modifier;
+      return nullptr;
+    } else if (TryConsumeToken(tok::kw_event)) {
       SubNodes.push_back(parseEventDefinition());
-    } else if (Kind == tok::kw_using) {
+    } else if (Tok.is(tok::kw_using)) {
       // TODO: contract tok::kw_using
-      assert(false && "using not implemented");
+      Diag(diag::err_unimplemented_token) << tok::kw_using;
+      return nullptr;
     } else {
-      assert(false && "Solidity Error: Function, variable, struct or modifier "
-                      "declaration expected.");
+      Diag(diag::err_expected_contract_part);
+      return nullptr;
     }
   }
   auto CD = std::make_unique<ContractDecl>(
@@ -669,18 +715,23 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
   Result.IsConstructor = false;
   Result.IsFallback = false;
 
-  if (TheLexer.CachedLex()->is(tok::kw_constructor)) {
+  if (Tok.is(tok::kw_constructor)) {
     Result.IsConstructor = true;
+  } else {
+    assert(Tok.is(tok::kw_function));
   }
+  ConsumeToken();
 
-  llvm::Optional<Token> CurTok = TheLexer.LookAhead(0);
   if (Result.IsConstructor) {
     Result.Name = llvm::StringRef("solidity.constructor");
-  } else if (ForceEmptyName || CurTok->is(tok::l_paren)) {
+  } else if (ForceEmptyName || Tok.is(tok::l_paren)) {
     Result.Name = llvm::StringRef("solidity.fallback");
     Result.IsFallback = true;
+  } else if (Tok.isAnyIdentifier()) {
+    Result.Name = Tok.getIdentifierInfo()->getName();
+    ConsumeToken(); // identifier
   } else {
-    Result.Name = TheLexer.CachedLex()->getIdentifierInfo()->getName();
+    assert(false);
   }
 
   VarDeclParserOptions Options;
@@ -689,24 +740,22 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
   Result.Parameters = parseParameterList(Options);
 
   while (true) {
-    CurTok = TheLexer.LookAhead(0);
-    if (AllowModifiers && CurTok->is(tok::identifier)) {
+    if (AllowModifiers && Tok.is(tok::identifier)) {
       // TODO: Function Modifier
-    } else if (CurTok->isOneOf(tok::kw_public, tok::kw_private,
-                               tok::kw_internal, tok::kw_external)) {
+    } else if (Tok.isOneOf(tok::kw_public, tok::kw_private, tok::kw_internal,
+                           tok::kw_external)) {
       // TODO: Special case of a public state variable of function Type.
       Result.Vsblty = parseVisibilitySpecifier();
-    } else if (CurTok->isOneOf(tok::kw_constant, tok::kw_pure, tok::kw_view,
-                               tok::kw_payable)) {
+    } else if (Tok.isOneOf(tok::kw_constant, tok::kw_pure, tok::kw_view,
+                           tok::kw_payable)) {
       Result.SM = parseStateMutability();
     } else {
       break;
     }
   }
 
-  if (TheLexer.LookAhead(0)->is(tok::kw_returns)) {
+  if (TryConsumeToken(tok::kw_returns)) {
     bool const PermitEmptyParameterList = false;
-    TheLexer.CachedLex();
     Result.ReturnParameters =
         parseParameterList(Options, PermitEmptyParameterList);
     vector<TypePtr> Tys;
@@ -731,8 +780,15 @@ void Parser::ParseLexedMethodDef(LexedMethod &LM) {
     BodyEnd.setKind(tok::eof);
     BodyEnd.setLocation(LM.Toks.back().getEndLoc());
     LM.Toks.emplace_back(std::move(BodyEnd));
+    // Append the current token at the end of the new token stream so that it
+    // doesn't get lost.
+    LM.Toks.emplace_back(Tok);
   }
   TheLexer.EnterTokenStream(LM.Toks.data(), LM.Toks.size());
+
+  // Consume the previously pushed token.
+  ConsumeAnyToken();
+
   auto *FD = dynamic_cast<FunctionDecl *>(LM.D);
   ParseScope ArgumentScope{this, 0};
   for (auto *P : FD->getParams()->getParams()) {
@@ -747,10 +803,10 @@ void Parser::ParseLexedMethodDef(LexedMethod &LM) {
 
   ParseScope FunctionScope{this, Scope::FunctionScope};
   FD->setBody(parseBlock());
-  if (!TheLexer.LookAhead(0)->is(tok::eof)) {
+  if (!Tok.is(tok::eof)) {
     assert(false);
   }
-  TheLexer.CachedLex(); // eof
+  ConsumeToken(); // eof
   Actions.EraseFunRtnTys();
 }
 
@@ -759,8 +815,7 @@ Parser::parseFunctionDefinitionOrFunctionTypeStateVariable() {
   ParseScope ArgumentScope{this, 0};
   FunctionHeaderParserResult Header = parseFunctionHeader(false, true);
   if (Header.IsConstructor || !Header.Modifiers.empty() ||
-      !Header.Name.empty() ||
-      TheLexer.LookAhead(0)->isOneOf(tok::semi, tok::l_brace)) {
+      !Header.Name.empty() || Tok.isOneOf(tok::semi, tok::l_brace)) {
     // this has to be a function, consume the tokens and store them for later
     // parsing
     auto FD = Actions.CreateFunctionDecl(
@@ -768,13 +823,16 @@ Parser::parseFunctionDefinitionOrFunctionTypeStateVariable() {
         Header.IsFallback, std::move(Header.Parameters),
         std::move(Header.Modifiers), std::move(Header.ReturnParameters),
         nullptr);
-    if (TheLexer.LookAhead(0)->isNot(tok::semi)) {
+    if (Tok.is(tok::l_brace)) {
       auto LM = std::make_unique<LexedMethod>(this, FD.get());
-      LM->Toks.emplace_back(*TheLexer.CachedLex());
+      LM->Toks.push_back(Tok);
+      ConsumeBrace();
       if (!ConsumeAndStoreUntil(tok::r_brace, LM->Toks)) {
         assert(false);
       }
       LateParsedDeclarations.emplace_back(std::move(LM));
+    } else if (ExpectAndConsumeSemi()) {
+      return nullptr;
     }
     return FD;
   } else {
@@ -787,10 +845,9 @@ bool Parser::ConsumeAndStoreUntil(tok::TokenKind T1, tok::TokenKind T2,
                                   llvm::SmallVector<Token, 4> &Toks) {
   while (true) {
     // If we found one of the tokens, stop and return true.
-    Token Tok = *TheLexer.LookAhead(0);
     if (Tok.is(T1) || Tok.is(T2)) {
       Toks.push_back(Tok);
-      TheLexer.CachedLex(); // T1 | T2
+      ConsumeAnyToken(); // T1 | T2
       return true;
     }
 
@@ -802,36 +859,41 @@ bool Parser::ConsumeAndStoreUntil(tok::TokenKind T1, tok::TokenKind T2,
     case tok::l_paren:
       // Recursively consume properly-nested parens.
       Toks.push_back(Tok);
-      TheLexer.CachedLex(); // (
+      ConsumeParen();
       ConsumeAndStoreUntil(tok::r_paren, Toks);
       break;
     case tok::l_square:
       // Recursively consume properly-nested square brackets.
       Toks.push_back(Tok);
-      TheLexer.CachedLex(); // [
+      ConsumeBracket();
       ConsumeAndStoreUntil(tok::r_square, Toks);
       break;
     case tok::l_brace:
       // Recursively consume properly-nested braces.
       Toks.push_back(Tok);
-      TheLexer.CachedLex(); // {
+      ConsumeBrace();
       ConsumeAndStoreUntil(tok::r_brace, Toks);
       break;
 
     case tok::r_paren:
       Toks.push_back(Tok);
+      ConsumeParen();
       break;
+
     case tok::r_square:
       Toks.push_back(Tok);
+      ConsumeBracket();
       break;
+
     case tok::r_brace:
       Toks.push_back(Tok);
+      ConsumeBrace();
       break;
 
     default:
       // consume this token.
       Toks.push_back(Tok);
-      TheLexer.CachedLex();
+      ConsumeAnyToken();
       break;
     }
   }
@@ -852,54 +914,57 @@ Parser::parseVariableDeclaration(VarDeclParserOptions const &Options,
   Decl::Visibility Vsblty = Decl::Visibility::Default;
   VarDecl::Location Loc = VarDecl::Location::Unspecified;
   llvm::StringRef Name;
-  llvm::Optional<Token> CurTok;
-  while (CurTok = TheLexer.LookAhead(0), CurTok.hasValue()) {
+  while (!Tok.is(tok::eof)) {
     if (Options.IsStateVariable &&
-        CurTok->isOneOf(tok::kw_public, tok::kw_private, tok::kw_internal)) {
+        Tok.isOneOf(tok::kw_public, tok::kw_private, tok::kw_internal)) {
       Vsblty = parseVisibilitySpecifier();
-    } else {
-      if (Options.AllowIndexed && CurTok->is(tok::kw_indexed)) {
-        IsIndexed = true;
-      } else if (CurTok->is(tok::kw_constant)) {
-        IsDeclaredConst = true;
-      } else if (Options.AllowLocationSpecifier &&
-                 CurTok->isOneOf(tok::kw_memory, tok::kw_storage,
-                                 tok::kw_calldata)) {
-        if (Loc != VarDecl::Location::Unspecified)
-          assert(false && "Location already specified.");
-        else if (!T)
-          assert(false && "Location specifier needs explicit type name.");
-        else {
-          switch (TheLexer.LookAhead(0)->getKind()) {
-          case tok::kw_storage:
-            Loc = VarDecl::Location::Storage;
-            break;
-          case tok::kw_memory:
-            Loc = VarDecl::Location::Memory;
-            break;
-          case tok::kw_calldata:
-            Loc = VarDecl::Location::CallData;
-            break;
-          default:
-            assert(false && "Unknown data location.");
-          }
-        }
-      } else
+    } else if (Options.AllowIndexed && Tok.is(tok::kw_indexed)) {
+      IsIndexed = true;
+      ConsumeToken(); // 'indexed'
+    } else if (Tok.is(tok::kw_constant)) {
+      IsDeclaredConst = true;
+      ConsumeToken(); // 'constant'
+    } else if (Options.AllowLocationSpecifier &&
+               Tok.isOneOf(tok::kw_memory, tok::kw_storage, tok::kw_calldata)) {
+      if (Loc != VarDecl::Location::Unspecified) {
+        Diag(diag::err_multiple_variable_location);
+        return nullptr;
+      }
+      if (!T) {
+        Diag(diag::err_location_without_typename);
+        return nullptr;
+      }
+      switch (Tok.getKind()) {
+      case tok::kw_storage:
+        Loc = VarDecl::Location::Storage;
+        ConsumeToken(); // 'storage'
         break;
-      TheLexer.CachedLex();
+      case tok::kw_memory:
+        Loc = VarDecl::Location::Memory;
+        ConsumeToken(); // 'memory'
+        break;
+      case tok::kw_calldata:
+        Loc = VarDecl::Location::CallData;
+        ConsumeToken(); // 'calldata'
+        break;
+      default:
+        __builtin_unreachable();
+      }
+    } else {
+      break;
     }
   }
 
-  if (Options.AllowEmptyName && TheLexer.LookAhead(0)->isNot(tok::identifier)) {
+  if (Options.AllowEmptyName && !Tok.isAnyIdentifier()) {
     Name = llvm::StringRef("");
   } else {
-    Name = TheLexer.CachedLex()->getIdentifierInfo()->getName();
+    Name = Tok.getIdentifierInfo()->getName();
+    ConsumeToken();
   }
 
   unique_ptr<Expr> Value;
   if (Options.AllowInitialValue) {
-    if (TheLexer.LookAhead(0)->is(tok::equal)) {
-      TheLexer.CachedLex();
+    if (TryConsumeToken(tok::equal)) {
       Value = parseExpression();
     }
   }
@@ -913,15 +978,17 @@ Parser::parseVariableDeclaration(VarDeclParserOptions const &Options,
 }
 
 unique_ptr<EventDecl> Parser::parseEventDefinition() {
-  TheLexer.CachedLex(); // event
-  std::string Name = getLiteralAndAdvance(TheLexer.LookAhead(0)).str();
+  const std::string Name = Tok.getIdentifierInfo()->getName();
+  ConsumeToken(); // identifier
   VarDeclParserOptions Options;
   Options.AllowIndexed = true;
   std::unique_ptr<ParamList> Parameters = parseParameterList(Options);
   bool Anonymous = false;
-  if (TheLexer.CachedLex()->is(tok::kw_anonymous)) {
+  if (TryConsumeToken(tok::kw_anonymous)) {
     Anonymous = true;
-    TheLexer.CachedLex(); // ;
+  }
+  if (ExpectAndConsumeSemi()) {
+    return nullptr;
   }
   auto ED = Actions.CreateEventDecl(Name, std::move(Parameters), Anonymous);
   Actions.addDecl(ED.get());
@@ -929,21 +996,25 @@ unique_ptr<EventDecl> Parser::parseEventDefinition() {
 }
 
 TypePtr Parser::parseTypeNameSuffix(TypePtr T) {
-  while (TheLexer.LookAhead(0)->is(tok::l_square)) {
-    TheLexer.CachedLex(); // [
-    if (TheLexer.LookAhead(0)->isNot(tok::r_square)) {
+  while (TryConsumeToken(tok::l_square)) {
+    if (Tok.is(tok::numeric_constant)) {
       int NumValue;
-      if (getLiteralAndAdvance(TheLexer.LookAhead(0))
+      if (llvm::StringRef(Tok.getLiteralData(), Tok.getLength())
               .getAsInteger(0, NumValue)) {
         assert(false && "invalid array length");
         __builtin_unreachable();
       }
-      T = make_shared<ArrayType>(std::move(T), NumValue,
-                                 getLoc(TheLexer.LookAhead(0)));
+      ConsumeToken();
+      if (ExpectAndConsume(tok::r_square)) {
+        return nullptr;
+      }
+      T = make_shared<ArrayType>(std::move(T), NumValue, parseDataLocation());
     } else {
-      T = make_shared<ArrayType>(std::move(T), getLoc(TheLexer.LookAhead(0)));
+      if (ExpectAndConsume(tok::r_square)) {
+        return nullptr;
+      }
+      T = make_shared<ArrayType>(std::move(T), parseDataLocation());
     }
-    TheLexer.CachedLex(); // ]
   }
   return T;
 }
@@ -952,31 +1023,28 @@ TypePtr Parser::parseTypeNameSuffix(TypePtr T) {
 TypePtr Parser::parseTypeName(bool AllowVar) {
   TypePtr T;
   bool HaveType = false;
-  llvm::Optional<Token> CurTok = TheLexer.LookAhead(0);
-  tok::TokenKind Kind = CurTok->getKind();
-  if (CurTok->isElementaryTypeName()) {
-    if (CurTok->getKind() == tok::kw_bool) {
+  const tok::TokenKind Kind = Tok.getKind();
+  if (Tok.isElementaryTypeName()) {
+    if (Kind == tok::kw_bool) {
       T = std::make_shared<BooleanType>();
-      TheLexer.CachedLex();
-    } else if (tok::kw_int <= CurTok->getKind() &&
-               CurTok->getKind() <= tok::kw_uint256) {
-      T = std::make_shared<IntegerType>(token2inttype(CurTok));
-      TheLexer.CachedLex();
-    } else if (tok::kw_bytes1 <= CurTok->getKind() &&
-               CurTok->getKind() <= tok::kw_bytes32) {
-      T = std::make_shared<FixedBytesType>(token2bytetype(CurTok));
-      TheLexer.CachedLex();
-    } else if (CurTok->getKind() == tok::kw_bytes) {
+      ConsumeToken(); // 'bool'
+    } else if (tok::kw_int <= Kind && Kind <= tok::kw_uint256) {
+      T = std::make_shared<IntegerType>(token2inttype(Tok));
+      ConsumeToken(); // int or uint
+    } else if (tok::kw_bytes1 <= Kind && Kind <= tok::kw_bytes32) {
+      T = std::make_shared<FixedBytesType>(token2bytetype(Tok));
+      ConsumeToken(); // fixedbytes
+    } else if (Kind == tok::kw_bytes) {
       T = std::make_shared<BytesType>();
-      TheLexer.CachedLex();
-    } else if (CurTok->getKind() == tok::kw_string) {
+      ConsumeToken(); // 'bytes'
+    } else if (Kind == tok::kw_string) {
       T = std::make_shared<StringType>();
-      TheLexer.CachedLex();
-    } else if (CurTok->getKind() == tok::kw_address) {
-      TheLexer.CachedLex();
+      ConsumeToken(); // 'string'
+    } else if (Kind == tok::kw_address) {
+      ConsumeToken(); // 'address'
       StateMutability SM = StateMutability::NonPayable;
-      if (TheLexer.LookAhead(1)->isOneOf(tok::kw_constant, tok::kw_pure,
-                                         tok::kw_view, tok::kw_payable)) {
+      if (Tok.isOneOf(tok::kw_constant, tok::kw_pure, tok::kw_view,
+                      tok::kw_payable)) {
         SM = parseStateMutability();
       }
       T = std::make_shared<AddressType>(SM);
@@ -984,15 +1052,21 @@ TypePtr Parser::parseTypeName(bool AllowVar) {
     HaveType = true;
   } else if (Kind == tok::kw_var) {
     // TODO: parseTypeName tok::kw_var (var is deprecated)
-    assert(false && "Expected Type Name");
+    Diag(diag::err_unimplemented_token) << tok::kw_var;
+    return nullptr;
   } else if (Kind == tok::kw_function) {
     // TODO: parseTypeName tok::kw_function
+    Diag(diag::err_unimplemented_token) << tok::kw_function;
+    return nullptr;
   } else if (Kind == tok::kw_mapping) {
-    T = std::move(parseMapping());
-  } else if (Kind == tok::identifier) {
+    T = parseMapping();
+  } else if (Kind == tok::identifier || Kind == tok::raw_identifier) {
     // TODO: parseTypeName tok::identifier
+    Diag(diag::err_unimplemented_token) << Kind;
+    return nullptr;
   } else {
     assert(false && "Expected Type Name");
+    return nullptr;
   }
 
   if (T || HaveType) {
@@ -1002,16 +1076,24 @@ TypePtr Parser::parseTypeName(bool AllowVar) {
 }
 
 shared_ptr<MappingType> Parser::parseMapping() {
-  TheLexer.CachedLex(); // mapping
-  TheLexer.CachedLex(); // (
+  if (ExpectAndConsume(tok::kw_mapping)) {
+    return nullptr;
+  }
+  if (ExpectAndConsume(tok::l_paren)) {
+    return nullptr;
+  }
   bool const AllowVar = false;
   TypePtr KeyType;
-  if (TheLexer.LookAhead(0)->isElementaryTypeName()) {
+  if (Tok.isElementaryTypeName()) {
     KeyType = parseTypeName(AllowVar);
   }
-  TheLexer.CachedLex(); // =>
+  if (ExpectAndConsume(tok::equalgreater)) {
+    return nullptr;
+  }
   TypePtr ValueType = parseTypeName(AllowVar);
-  TheLexer.CachedLex(); // )
+  if (ExpectAndConsume(tok::r_paren)) {
+    return nullptr;
+  }
   return std::make_shared<MappingType>(std::move(KeyType),
                                        std::move(ValueType));
 }
@@ -1022,83 +1104,103 @@ Parser::parseParameterList(VarDeclParserOptions const &_Options,
   vector<unique_ptr<VarDecl>> Parameters;
   VarDeclParserOptions Options(_Options);
   Options.AllowEmptyName = true;
-  TheLexer.CachedLex(); // (
-  if (!AllowEmpty || TheLexer.LookAhead(0)->isNot(tok::r_paren)) {
+  if (ExpectAndConsume(tok::l_paren)) {
+    return nullptr;
+  }
+  if (!AllowEmpty || Tok.isNot(tok::r_paren)) {
     Parameters.push_back(parseVariableDeclaration(Options));
-    while (TheLexer.LookAhead(0)->isNot(tok::r_paren)) {
-      TheLexer.CachedLex(); // ,
+    while (Tok.isNot(tok::r_paren)) {
+      if (ExpectAndConsume(tok::comma)) {
+        return nullptr;
+      }
       Parameters.push_back(parseVariableDeclaration(Options));
     }
   }
-  TheLexer.CachedLex(); // )
+  if (ExpectAndConsume(tok::r_paren)) {
+    return nullptr;
+  }
+
   return std::make_unique<ParamList>(std::move(Parameters));
 }
 
 unique_ptr<Block> Parser::parseBlock() {
   ParseScope BlockScope{this, 0};
   vector<unique_ptr<Stmt>> Statements;
-  TheLexer.CachedLex();
-  while (TheLexer.LookAhead(0)->isNot(tok::r_brace)) {
-    Statements.push_back(parseStatement());
+  if (ExpectAndConsume(tok::l_brace)) {
+    return nullptr;
   }
-  TheLexer.CachedLex();
+  while (Tok.isNot(tok::r_brace)) {
+    auto Statement = parseStatement();
+    if (!Statement) {
+      break;
+    }
+    Statements.emplace_back(std::move(Statement));
+  }
+  ConsumeBrace(); // '}'
   return std::make_unique<Block>(std::move(Statements));
 }
 
 // TODO: < Parse all statements >
 unique_ptr<Stmt> Parser::parseStatement() {
   unique_ptr<Stmt> Statement;
-  llvm::Optional<Token> CurTok;
-  switch (TheLexer.LookAhead(0)->getKind()) {
+  switch (Tok.getKind()) {
   case tok::kw_if:
     return parseIfStatement();
   case tok::kw_while:
     return parseWhileStatement();
   case tok::kw_do:
     return parseDoWhileStatement();
-    break;
   case tok::kw_for:
     return parseForStatement();
   case tok::l_brace:
     return parseBlock();
   case tok::kw_continue:
+    ConsumeToken(); // 'continue'
     Statement = std::make_unique<ContinueStmt>();
-    TheLexer.CachedLex();
     break;
   case tok::kw_break:
+    ConsumeToken(); // 'break'
     Statement = std::make_unique<BreakStmt>();
-    TheLexer.CachedLex();
     break;
   case tok::kw_return:
-    TheLexer.CachedLex();
-    if (TheLexer.LookAhead(0)->isNot(tok::semi)) {
-      Statement = Actions.CreateReturnStmt(std::move(parseExpression()));
+    ConsumeToken(); // 'return'
+    if (Tok.isNot(tok::semi)) {
+      Statement = Actions.CreateReturnStmt(parseExpression());
+    } else {
+      Statement = Actions.CreateReturnStmt();
     }
     break;
   case tok::kw_assembly:
     // TODO: parseStatement kw_assembly
+    ConsumeToken(); // 'assembly'
     break;
   case tok::kw_emit:
     Statement = parseEmitStatement();
     break;
   case tok::identifier:
+  case tok::raw_identifier:
   default:
     Statement = parseSimpleStatement();
     break;
   }
-  TheLexer.CachedLex(); // ;
+  if (ExpectAndConsumeSemi()) {
+    return nullptr;
+  }
   return Statement;
 }
 
 unique_ptr<IfStmt> Parser::parseIfStatement() {
-  TheLexer.CachedLex(); // if
-  TheLexer.CachedLex(); // (
+  ConsumeToken(); // 'if'
+  if (ExpectAndConsume(tok::l_paren)) {
+    return nullptr;
+  }
   unique_ptr<Expr> Condition = parseExpression();
-  TheLexer.CachedLex(); // )
+  if (ExpectAndConsume(tok::r_paren)) {
+    return nullptr;
+  }
   unique_ptr<Stmt> TrueBody = parseStatement();
   unique_ptr<Stmt> FalseBody;
-  if (TheLexer.LookAhead(0)->is(tok::kw_else)) {
-    TheLexer.CachedLex();
+  if (TryConsumeToken(tok::kw_else)) {
     FalseBody = parseStatement();
   }
   return std::make_unique<IfStmt>(std::move(Condition), std::move(TrueBody),
@@ -1106,10 +1208,14 @@ unique_ptr<IfStmt> Parser::parseIfStatement() {
 }
 
 unique_ptr<WhileStmt> Parser::parseWhileStatement() {
-  TheLexer.CachedLex(); // while
-  TheLexer.CachedLex(); // (
+  ConsumeToken(); // 'while'
+  if (ExpectAndConsume(tok::l_brace)) {
+    return nullptr;
+  }
   unique_ptr<Expr> Condition = parseExpression();
-  TheLexer.CachedLex(); // )
+  if (ExpectAndConsume(tok::r_brace)) {
+    return nullptr;
+  }
   unique_ptr<Stmt> Body;
   {
     ParseScope WhileScope{this, Scope::BreakScope | Scope::ContinueScope};
@@ -1120,41 +1226,52 @@ unique_ptr<WhileStmt> Parser::parseWhileStatement() {
 }
 
 unique_ptr<WhileStmt> Parser::parseDoWhileStatement() {
-  TheLexer.CachedLex(); // do
+  ConsumeToken(); // 'do'
   unique_ptr<Stmt> Body;
   {
     ParseScope DoWhileScope{this, Scope::BreakScope | Scope::ContinueScope};
     Body = parseStatement();
   }
-  TheLexer.CachedLex(); // while
-  TheLexer.CachedLex(); // (
+  if (ExpectAndConsume(tok::kw_while)) {
+    return nullptr;
+  }
+  if (ExpectAndConsume(tok::l_brace)) {
+    return nullptr;
+  }
   unique_ptr<Expr> Condition = parseExpression();
-  TheLexer.CachedLex(); // )
-  TheLexer.CachedLex(); // ;
+  if (ExpectAndConsume(tok::r_brace)) {
+    return nullptr;
+  }
+  ExpectAndConsumeSemi();
   return std::make_unique<WhileStmt>(std::move(Condition), std::move(Body),
                                      true);
 }
 
 unique_ptr<ForStmt> Parser::parseForStatement() {
-  unique_ptr<Stmt> Init;
-  unique_ptr<Expr> Condition;
-  unique_ptr<Expr> Loop;
-  TheLexer.CachedLex(); // for
-  TheLexer.CachedLex(); // (
+  ConsumeToken(); // 'for'
+  if (ExpectAndConsume(tok::l_paren)) {
+    return nullptr;
+  }
 
-  // LTODO: Maybe here have some predicate like peekExpression() instead of
+  // TODO: Maybe here have some predicate like peekExpression() instead of
   // checking for semicolon and RParen?
-  if (TheLexer.LookAhead(0)->isNot(tok::semi))
+  unique_ptr<Stmt> Init;
+  if (Tok.isNot(tok::semi)) {
     Init = parseSimpleStatement();
-  TheLexer.CachedLex(); // ;
+  }
+  ExpectAndConsumeSemi();
 
-  if (TheLexer.LookAhead(0)->isNot(tok::semi))
+  unique_ptr<Expr> Condition;
+  if (Tok.isNot(tok::semi)) {
     Condition = parseExpression();
-  TheLexer.CachedLex(); // ;
+  }
+  ExpectAndConsumeSemi();
 
-  if (TheLexer.LookAhead(0)->isNot(tok::r_paren))
+  unique_ptr<Expr> Loop;
+  if (Tok.isNot(tok::r_paren)) {
     Loop = parseExpression();
-  TheLexer.CachedLex(); // )
+  }
+  ExpectAndConsume(tok::r_paren);
 
   unique_ptr<Stmt> Body;
   {
@@ -1166,27 +1283,32 @@ unique_ptr<ForStmt> Parser::parseForStatement() {
 }
 
 unique_ptr<EmitStmt> Parser::parseEmitStatement() {
-  TheLexer.CachedLex(); // emit
-
-  if (TheLexer.LookAhead(0)->isNot(tok::identifier)) {
-    assert(false && "Expected event name or path.");
-  }
+  ConsumeToken(); // 'emit'
 
   IndexAccessedPath Iap;
   while (true) {
-    Iap.Path.emplace_back(getLiteralAndAdvance(TheLexer.LookAhead(0)).str());
-    if (TheLexer.LookAhead(0)->isNot(tok::period))
+    if (Tok.isNot(tok::identifier)) {
+      Diag(diag::err_expected_event);
+      return nullptr;
+    }
+    Iap.Path.emplace_back(Tok);
+    ConsumeToken(); // identifier
+    if (Tok.isNot(tok::period))
       break;
-    TheLexer.CachedLex(); // .
+    ConsumeToken(); // '.'
   };
 
   auto EventName = expressionFromIndexAccessStructure(Iap);
 
-  TheLexer.CachedLex(); // (
+  if (ExpectAndConsume(tok::l_paren)) {
+    return nullptr;
+  }
   vector<unique_ptr<Expr>> Arguments;
   vector<llvm::StringRef> Names;
   tie(Arguments, Names) = parseFunctionCallArguments();
-  TheLexer.CachedLex(); // )
+  if (ExpectAndConsume(tok::r_paren)) {
+    return nullptr;
+  }
   unique_ptr<CallExpr> Call =
       Actions.CreateCallExpr(std::move(EventName), std::move(Arguments));
   return make_unique<EmitStmt>(std::move(Call));
@@ -1199,9 +1321,8 @@ unique_ptr<Stmt> Parser::parseSimpleStatement() {
   unique_ptr<Expr> Expression;
 
   bool IsParenExpr = false;
-  if (TheLexer.LookAhead(0)->is(tok::l_paren)) {
+  if (TryConsumeToken(tok::l_paren)) {
     IsParenExpr = true;
-    TheLexer.CachedLex(); // (
   }
 
   tie(StatementType, Iap) = tryParseIndexAccessedPath();
@@ -1216,7 +1337,9 @@ unique_ptr<Stmt> Parser::parseSimpleStatement() {
     assert(false && "Unhandle statement.");
   }
   if (IsParenExpr) {
-    TheLexer.CachedLex(); // )
+    if (ExpectAndConsume(tok::r_paren)) {
+      return nullptr;
+    }
     return parseExpression(std::make_unique<ParenExpr>(std::move(Expression)));
   }
   return Expression;
@@ -1230,12 +1353,12 @@ Parser::parseVariableDeclarationStatement(TypePtr &&LookAheadArrayType) {
   // distinguish from tuple expressions.
   vector<unique_ptr<VarDecl>> Variables;
   unique_ptr<Expr> Value;
-  if (!LookAheadArrayType && TheLexer.LookAhead(0)->is(tok::kw_var) &&
-      TheLexer.LookAhead(0)->is(tok::l_paren)) {
+  if (!LookAheadArrayType && Tok.is(tok::kw_var) &&
+      NextToken().is(tok::l_paren)) {
     // [0.4.20] The var keyword has been deprecated for security reasons.
     // https://github.com/ethereum/solidity/releases/tag/v0.4.20
-    assert(false &&
-           "The var keyword has been deprecated for security reasons.");
+    Diag(diag::err_unimplemented_token) << tok::kw_var;
+    return nullptr;
   } else {
     VarDeclParserOptions Options;
     Options.AllowVar = false;
@@ -1243,8 +1366,7 @@ Parser::parseVariableDeclarationStatement(TypePtr &&LookAheadArrayType) {
     Variables.push_back(
         parseVariableDeclaration(Options, std::move(LookAheadArrayType)));
   }
-  if (TheLexer.LookAhead(0)->is(tok::equal)) {
-    TheLexer.CachedLex();
+  if (TryConsumeToken(tok::equal)) {
     Value = parseExpression();
   }
 
@@ -1283,10 +1405,8 @@ Parser::tryParseIndexAccessedPath() {
   // VariableDeclarationStatement out of it.
   IndexAccessedPath Iap = parseIndexAccessedPath();
 
-  // if (m_scanner->currentToken() == Token::Identifier ||
-  // TokenTraits::isLocationSpecifier(m_scanner->currentToken()))
-  if (TheLexer.LookAhead(0)->isOneOf(tok::identifier, tok::kw_memory,
-                                     tok::kw_storage, tok::kw_calldata))
+  if (Tok.isOneOf(tok::identifier, tok::kw_memory, tok::kw_storage,
+                  tok::kw_calldata))
     return make_pair(LookAheadInfo::VariableDeclaration, move(Iap));
   else
     return make_pair(LookAheadInfo::Expression, move(Iap));
@@ -1301,30 +1421,29 @@ Parser::LookAheadInfo Parser::peekStatementType() const {
   // variable declaration. If we get an identifier followed by a "[" or ".", it
   // can be both ("lib.type[9] a;" or "variable.el[9] = 7;"). In all other
   // cases, we have an expression statement.
-  llvm::Optional<Token> CurTok, NextTok;
-  CurTok = TheLexer.LookAhead(0);
-  bool MightBeTypeName =
-      CurTok->isElementaryTypeName() || CurTok->is(tok::identifier);
-  if (CurTok->isOneOf(tok::kw_mapping, tok::kw_function, tok::kw_var))
+  if (Tok.isOneOf(tok::kw_mapping, tok::kw_function, tok::kw_var)) {
     return LookAheadInfo::VariableDeclaration;
+  }
+
+  bool MightBeTypeName = Tok.isElementaryTypeName() || Tok.is(tok::identifier);
 
   if (MightBeTypeName) {
-    NextTok = TheLexer.LookAhead(1);
+    const Token &NextTok = NextToken();
     // So far we only allow ``address payable`` in variable declaration
     // statements and in no other kind of statement. This means, for example,
     // that we do not allow type expressions of the form
     // ``address payable;``.
     // If we want to change this in the future, we need to consider another
     // scanner token here.
-    if (CurTok->isElementaryTypeName() &&
-        NextTok->isOneOf(tok::kw_pure, tok::kw_view, tok::kw_payable)) {
+    if (Tok.isElementaryTypeName() &&
+        NextTok.isOneOf(tok::kw_pure, tok::kw_view, tok::kw_payable)) {
       return LookAheadInfo::VariableDeclaration;
     }
-    if (NextTok->isOneOf(tok::identifier, tok::kw_memory, tok::kw_storage,
-                         tok::kw_calldata)) {
+    if (NextTok.isOneOf(tok::raw_identifier, tok::identifier, tok::kw_memory,
+                        tok::kw_storage, tok::kw_calldata)) {
       return LookAheadInfo::VariableDeclaration;
     }
-    if (NextTok->isOneOf(tok::l_square, tok::period)) {
+    if (NextTok.isOneOf(tok::l_square, tok::period)) {
       return LookAheadInfo::IndexAccessStructure;
     }
   }
@@ -1333,20 +1452,21 @@ Parser::LookAheadInfo Parser::peekStatementType() const {
 
 Parser::IndexAccessedPath Parser::parseIndexAccessedPath() {
   IndexAccessedPath Iap;
-  if (TheLexer.LookAhead(0)->is(tok::identifier)) {
-    Iap.Path.emplace_back(getLiteralAndAdvance(TheLexer.LookAhead(0)).str());
-    while (TheLexer.LookAhead(0)->is(tok::period)) {
-      TheLexer.CachedLex(); // .
-      Iap.Path.emplace_back(getLiteralAndAdvance(TheLexer.LookAhead(0)).str());
-    }
+  if (Tok.isAnyIdentifier()) {
+    do {
+      Iap.Path.emplace_back(Tok);
+      ConsumeToken(); // identifier
+    } while (TryConsumeToken(tok::period));
   } else {
     Iap.ElementaryType = parseTypeName(false);
   }
 
-  while (TheLexer.LookAhead(0)->is(tok::l_square)) {
-    TheLexer.CachedLex(); // [
+  while (Tok.is(tok::l_square)) {
+    ConsumeBracket();
     Iap.Indices.emplace_back(parseExpression());
-    TheLexer.CachedLex(); // ]
+    if (ExpectAndConsume(tok::r_square)) {
+      break;
+    }
   }
 
   return Iap;
@@ -1363,9 +1483,6 @@ Parser::typeNameFromIndexAccessStructure(Parser::IndexAccessedPath &Iap) {
   if (Iap.ElementaryType != nullptr) {
     T = std::move(Iap.ElementaryType);
   } else {
-    vector<std::string> Path;
-    for (auto const &el : Iap.Path)
-      Path.emplace_back(el);
     // TODO: UserDefinedTypeName
     // T = UserDefinedTypeName with Path
   }
@@ -1373,7 +1490,7 @@ Parser::typeNameFromIndexAccessStructure(Parser::IndexAccessedPath &Iap) {
     T = make_shared<ArrayType>(
         std::move(T),
         dynamic_cast<const NumberLiteral *>(Length.get())->getValue(),
-        getLoc(TheLexer.LookAhead(0)));
+        parseDataLocation());
   }
   return T;
 }
@@ -1382,17 +1499,26 @@ Parser::typeNameFromIndexAccessStructure(Parser::IndexAccessedPath &Iap) {
 unique_ptr<Expr>
 Parser::expressionFromIndexAccessStructure(Parser::IndexAccessedPath &Iap) {
   if (Iap.empty()) {
-    return {};
+    return nullptr;
   }
   unique_ptr<Expr> Expression = Actions.CreateIdentifier(Iap.Path.front());
+  if (!Expression) {
+    return nullptr;
+  }
   for (size_t i = 1; i < Iap.Path.size(); ++i) {
     Expression =
         Actions.CreateMemberExpr(std::move(Expression), std::move(Iap.Path[i]));
+    if (!Expression) {
+      return nullptr;
+    }
   }
 
   for (auto &Index : Iap.Indices) {
     Expression =
         Actions.CreateIndexAccess(std::move(Expression), std::move(Index));
+    if (!Expression) {
+      return nullptr;
+    }
   }
   return Expression;
 }
@@ -1401,21 +1527,26 @@ unique_ptr<Expr>
 Parser::parseExpression(unique_ptr<Expr> &&PartiallyParsedExpression) {
   unique_ptr<Expr> Expression =
       parseBinaryExpression(4, std::move(PartiallyParsedExpression));
-  if (tok::equal <= TheLexer.LookAhead(0)->getKind() &&
-      TheLexer.LookAhead(0)->getKind() < tok::percentequal) {
-    BinaryOperatorKind Op = token2bop(TheLexer.CachedLex());
+
+  if (tok::equal <= Tok.getKind() && Tok.getKind() < tok::percentequal) {
+    const BinaryOperatorKind Op = token2bop(Tok);
+    ConsumeToken();
     unique_ptr<Expr> RightHandSide = parseExpression();
     return std::move(Actions.CreateBinOp(Op, std::move(Expression),
                                          std::move(RightHandSide)));
-  } else if (TheLexer.LookAhead(0)->is(tok::question)) {
-    TheLexer.CachedLex();
+  }
+
+  if (TryConsumeToken(tok::question)) {
     unique_ptr<Expr> trueExpression = parseExpression();
-    TheLexer.CachedLex();
+    if (ExpectAndConsume(tok::colon)) {
+      return nullptr;
+    }
     unique_ptr<Expr> falseExpression = parseExpression();
     // TODO: Create ConditionExpression
     return nullptr;
-  } else
-    return Expression;
+  }
+
+  return Expression;
 }
 
 unique_ptr<Expr>
@@ -1423,11 +1554,11 @@ Parser::parseBinaryExpression(int MinPrecedence,
                               unique_ptr<Expr> &&PartiallyParsedExpression) {
   unique_ptr<Expr> Expression =
       parseUnaryExpression(std::move(PartiallyParsedExpression));
-  int Precedence =
-      static_cast<int>(getBinOpPrecedence(TheLexer.LookAhead(0)->getKind()));
+  int Precedence = static_cast<int>(getBinOpPrecedence(Tok.getKind()));
   for (; Precedence >= MinPrecedence; --Precedence) {
-    while (getBinOpPrecedence(TheLexer.LookAhead(0)->getKind()) == Precedence) {
-      BinaryOperatorKind Op = token2bop(TheLexer.CachedLex());
+    while (getBinOpPrecedence(Tok.getKind()) == Precedence) {
+      const BinaryOperatorKind Op = token2bop(Tok);
+      ConsumeToken(); // binary op
       unique_ptr<Expr> RightHandSide = parseBinaryExpression(Precedence + 1);
       Expression = std::move(Actions.CreateBinOp(Op, std::move(Expression),
                                                  std::move(RightHandSide)));
@@ -1438,11 +1569,10 @@ Parser::parseBinaryExpression(int MinPrecedence,
 
 unique_ptr<Expr>
 Parser::parseUnaryExpression(unique_ptr<Expr> &&PartiallyParsedExpression) {
-  UnaryOperatorKind Op = token2uop(TheLexer.LookAhead(0));
+  UnaryOperatorKind Op = token2uop(Tok);
 
-  if (!PartiallyParsedExpression && TheLexer.LookAhead(0)->isUnaryOp()) {
-    // prefix expression
-    TheLexer.CachedLex();
+  if (!PartiallyParsedExpression && Tok.isUnaryOp()) {
+    ConsumeToken(); // pre '++' or '--'
     unique_ptr<Expr> SubExps = parseUnaryExpression();
     return std::make_unique<UnaryOperator>(std::move(SubExps), Op,
                                            SubExps->getType());
@@ -1450,11 +1580,11 @@ Parser::parseUnaryExpression(unique_ptr<Expr> &&PartiallyParsedExpression) {
     // potential postfix expression
     unique_ptr<Expr> SubExps =
         parseLeftHandSideExpression(std::move(PartiallyParsedExpression));
-    Op = token2uop(TheLexer.LookAhead(0), false);
+    Op = token2uop(Tok, false);
     if (!(Op == UnaryOperatorKind::UO_PostInc ||
           Op == UnaryOperatorKind::UO_PostDec))
       return SubExps;
-    TheLexer.CachedLex();
+    ConsumeToken(); // post '++' or '--'
     return std::make_unique<UnaryOperator>(std::move(SubExps), Op,
                                            SubExps->getType());
   }
@@ -1465,38 +1595,46 @@ unique_ptr<Expr> Parser::parseLeftHandSideExpression(
   unique_ptr<Expr> Expression;
   if (PartiallyParsedExpression)
     Expression = std::move(PartiallyParsedExpression);
-  else if (TheLexer.LookAhead(0)->is(tok::kw_new)) {
-    TheLexer.CachedLex();
+  else if (TryConsumeToken(tok::kw_new)) {
     TypePtr typeName = parseTypeName(false);
     // [AST] create NewExpression
   } else
     Expression = std::move(parsePrimaryExpression());
 
   while (true) {
-    switch (TheLexer.LookAhead(0)->getKind()) {
+    switch (Tok.getKind()) {
     case tok::l_square: {
-      TheLexer.CachedLex(); // [
+      ConsumeBracket(); // '['
       unique_ptr<Expr> Index;
-      if (TheLexer.LookAhead(0)->isNot(tok::r_square))
+      if (Tok.isNot(tok::r_square))
         Index = std::move(parseExpression());
-      TheLexer.CachedLex(); // ]
+      if (ExpectAndConsume(tok::r_square)) {
+        return nullptr;
+      }
       Expression =
           Actions.CreateIndexAccess(std::move(Expression), std::move(Index));
       break;
     }
     case tok::period: {
-      TheLexer.CachedLex();
-      Expression = Actions.CreateMemberExpr(
-          std::move(Expression),
-          getLiteralAndAdvance(TheLexer.LookAhead(0)).str());
+      ConsumeToken(); // '.'
+      if (!Tok.isAnyIdentifier()) {
+        Diag(diag::err_expected) << tok::identifier;
+      }
+      Expression = Actions.CreateMemberExpr(std::move(Expression), Tok);
+      if (!Expression) {
+        return nullptr;
+      }
+      ConsumeToken(); // identifier
       break;
     }
     case tok::l_paren: {
-      TheLexer.CachedLex(); // (
+      ConsumeParen(); // '('
       vector<unique_ptr<Expr>> Arguments;
       vector<llvm::StringRef> Names;
       tie(Arguments, Names) = parseFunctionCallArguments();
-      TheLexer.CachedLex(); // )
+      if (ExpectAndConsume(tok::r_paren)) {
+        return nullptr;
+      }
       // TODO: Fix passs arguments' name fail.
       Expression =
           Actions.CreateCallExpr(std::move(Expression), std::move(Arguments));
@@ -1509,63 +1647,70 @@ unique_ptr<Expr> Parser::parseLeftHandSideExpression(
 }
 
 unique_ptr<Expr> Parser::parsePrimaryExpression() {
-  llvm::Optional<Token> CurTok = TheLexer.LookAhead(0);
   unique_ptr<Expr> Expression;
 
   // Explicit Type Casting
-  if (CurTok->isElementaryTypeName() &&
-      TheLexer.LookAhead(1)->is(tok::l_paren)) {
-    TheLexer.CachedLex(); // simple type, ex. address, int
-    TheLexer.CachedLex(); // (
-    if (CurTok->getKind() == tok::kw_address) {
+  if (Tok.isElementaryTypeName() && NextToken().is(tok::l_paren)) {
+    const auto TypeNameTok = Tok;
+    ConsumeToken(); // elementary typename
+    ConsumeParen(); // '('
+    if (TypeNameTok.is(tok::kw_address)) {
       Expression = make_unique<ExplicitCastExpr>(
-          std::move(parseExpression()), CastKind::TypeCast,
+          parseExpression(), CastKind::TypeCast,
           make_shared<AddressType>(StateMutability::Payable));
-    } else if (tok::kw_address < CurTok->getKind()) {
+    } else {
       Expression = make_unique<ExplicitCastExpr>(
-          std::move(parseExpression()), CastKind::IntegralCast,
-          make_shared<IntegerType>(token2inttype(CurTok)));
+          parseExpression(), CastKind::IntegralCast,
+          make_shared<IntegerType>(token2inttype(TypeNameTok)));
     }
-    TheLexer.CachedLex(); // )
+    if (ExpectAndConsume(tok::r_paren)) {
+      return nullptr;
+    }
     return Expression;
   }
 
-  switch (CurTok->getKind()) {
+  const auto Kind = Tok.getKind();
+  switch (Kind) {
   case tok::kw_true:
+    ConsumeToken(); // 'true'
     Expression = std::make_unique<BooleanLiteral>(true);
-    TheLexer.CachedLex();
     break;
   case tok::kw_false:
+    ConsumeToken(); // 'false'
     Expression = std::make_unique<BooleanLiteral>(false);
-    TheLexer.CachedLex();
     break;
   case tok::numeric_constant: {
     int NumValue;
-    if (getLiteralAndAdvance(CurTok).getAsInteger(0, NumValue)) {
+    if (llvm::StringRef(Tok.getLiteralData(), Tok.getLength())
+            .getAsInteger(0, NumValue)) {
       assert(false && "invalid numeric constant");
       __builtin_unreachable();
     }
     Expression = std::make_unique<NumberLiteral>(NumValue);
+    ConsumeToken(); // numeric constant
     break;
   }
   case tok::string_literal: {
-    string StrValue = getLiteralAndAdvance(CurTok).str();
+    std::string StrValue(Tok.getLiteralData(), Tok.getLength());
     Expression = make_unique<StringLiteral>(stringUnquote(std::move(StrValue)));
+    ConsumeStringToken(); // string literal
     break;
   }
   case tok::hex_string_literal: {
-    string StrValue = getLiteralAndAdvance(CurTok).str();
+    std::string StrValue(Tok.getLiteralData(), Tok.getLength());
     Expression = make_unique<StringLiteral>(hexUnquote(std::move(StrValue)));
+    ConsumeStringToken(); // hex string literal
     break;
   }
   case tok::identifier: {
-    Expression = Actions.CreateIdentifier(getLiteralAndAdvance(CurTok).str());
+    Expression = Actions.CreateIdentifier(Tok);
+    ConsumeToken(); // identifier
     break;
   }
   case tok::kw_type:
     // TODO: Type expression is globally-avariable function
-    assert(false && "Type not support right now\n");
-    break;
+    Diag(diag::err_unimplemented_token) << tok::kw_type;
+    return nullptr;
   case tok::l_paren:
   case tok::l_square: {
     // TODO: Tuple case
@@ -1574,30 +1719,29 @@ unique_ptr<Expr> Parser::parsePrimaryExpression() {
     // Special cases: ()/[] is empty tuple/array type, (x) is not a real tuple,
     // (x,) is one-dimensional tuple, elements in arrays cannot be left out,
     // only in tuples.
-    TheLexer.CachedLex(); // [ | (
-    tok::TokenKind OppositeToken =
-        (CurTok->getKind() == tok::l_paren ? tok::r_paren : tok::r_square);
-    Expression = std::make_unique<ParenExpr>(std::move(parseExpression()));
-    TheLexer.CachedLex();
+    const tok::TokenKind OppositeKind =
+        (Kind == tok::l_paren ? tok::r_paren : tok::r_square);
+    ConsumeAnyToken(); // '[' or '('
+    Expression = std::make_unique<ParenExpr>(parseExpression());
+    ExpectAndConsume(OppositeKind);
     break;
   }
-  case tok::unknown:
-    assert(false && "Unknown token");
-    __builtin_unreachable();
   default:
     // TODO: Type MxN case
-    assert(false && "Expected primary expression.");
-    __builtin_unreachable();
+    assert(false && "Unknown token");
+    return nullptr;
   }
   return Expression;
 }
 
 vector<unique_ptr<Expr>> Parser::parseFunctionCallListArguments() {
   vector<unique_ptr<Expr>> Arguments;
-  if (TheLexer.LookAhead(0)->isNot(tok::r_paren)) {
+  if (Tok.isNot(tok::r_paren)) {
     Arguments.push_back(parseExpression());
-    while (TheLexer.LookAhead(0)->isNot(tok::r_paren)) {
-      TheLexer.CachedLex();
+    while (Tok.isNot(tok::r_paren)) {
+      if (ExpectAndConsume(tok::comma)) {
+        return Arguments;
+      }
       Arguments.push_back(parseExpression());
     }
   }
@@ -1607,44 +1751,80 @@ vector<unique_ptr<Expr>> Parser::parseFunctionCallListArguments() {
 pair<vector<unique_ptr<Expr>>, vector<llvm::StringRef>>
 Parser::parseFunctionCallArguments() {
   pair<vector<unique_ptr<Expr>>, vector<llvm::StringRef>> Ret;
-  if (TheLexer.LookAhead(0)->is(tok::l_brace)) {
+  if (Tok.is(tok::l_brace)) {
     // TODO: Unverified function parameters case
     // call({arg1 : 1, arg2 : 2 })
-    TheLexer.CachedLex();
+    ConsumeBrace();
     bool First = true;
-    while (TheLexer.LookAhead(0)->isNot(tok::r_brace)) {
-      if (!First)
-        TheLexer.CachedLex();
+    while (Tok.isNot(tok::r_brace)) {
+      if (!First) {
+        if (ExpectAndConsume(tok::comma)) {
+          return Ret;
+        }
+      }
 
-      Ret.second.push_back(getLiteralAndAdvance(TheLexer.LookAhead(0)));
-      TheLexer.CachedLex();
-      Ret.first.push_back(parseExpression());
+      if (Tok.isNot(tok::identifier)) {
+        Diag(diag::err_expected) << tok::identifier;
+        return Ret;
+      }
+      Ret.second.emplace_back(Tok.getIdentifierInfo()->getName());
+      ConsumeToken(); // identifier
+      Ret.first.emplace_back(parseExpression());
 
-      if (TheLexer.LookAhead(0)->is(tok::comma) &&
-          TheLexer.LookAhead(1)->is(tok::r_brace)) {
-        assert(false && "Unexpected trailing comma.");
-        TheLexer.CachedLex();
+      if (Tok.is(tok::comma) && NextToken().is(tok::r_brace)) {
+        Diag(diag::err_trailing_comma);
+        ConsumeToken(); // ','
       }
       First = false;
     }
-    TheLexer.CachedLex();
-  } else
+    ConsumeToken(); // ')'
+  } else {
     Ret.first = std::move(parseFunctionCallListArguments());
+  }
   return Ret;
-}
-
-unique_ptr<AST> Parser::createEmptyParameterList() { return nullptr; }
-
-llvm::StringRef Parser::getLiteralAndAdvance(llvm::Optional<Token> Tok) {
-  TheLexer.CachedLex();
-  if (Tok->is(tok::identifier))
-    return Tok->getIdentifierInfo()->getName();
-  assert(Tok->isLiteral() && "except tok::literal");
-  return llvm::StringRef(Tok->getLiteralData(), Tok->getLength());
 }
 
 void Parser::EnterScope(unsigned ScopeFlags) { Actions.PushScope(ScopeFlags); }
 
 void Parser::ExitScope() { Actions.PopScope(); }
+
+bool Parser::ExpectAndConsumeSemi(unsigned DiagID) {
+  if (TryConsumeToken(tok::semi))
+    return false;
+
+  if ((Tok.is(tok::r_paren) || Tok.is(tok::r_square)) &&
+      NextToken().is(tok::semi)) {
+    Diag(diag::err_extraneous_token_before_semi);
+    ConsumeAnyToken(); // The ')' or ']'.
+    ConsumeToken();    // The ';'.
+    return false;
+  }
+
+  return ExpectAndConsume(tok::semi, DiagID);
+}
+
+bool Parser::ExpectAndConsume(tok::TokenKind ExpectedTok, unsigned DiagID,
+                              llvm::StringRef Msg) {
+  if (Tok.is(ExpectedTok)) {
+    ConsumeAnyToken();
+    return false;
+  }
+
+  // TODO: Detect common single-character typos and resume.
+
+  DiagnosticBuilder DB = Diag(DiagID);
+  if (DiagID == diag::err_expected)
+    DB << ExpectedTok;
+  else if (DiagID == diag::err_expected_after)
+    DB << Msg << ExpectedTok;
+  else
+    DB << Msg;
+
+  return true;
+}
+
+DiagnosticBuilder Parser::Diag(SourceLocation Loc, unsigned DiagID) {
+  return Diags.Report(Loc, DiagID);
+}
 
 } // namespace soll

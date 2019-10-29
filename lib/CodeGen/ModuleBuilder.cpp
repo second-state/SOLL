@@ -2,6 +2,7 @@
 #include "soll/CodeGen/ModuleBuilder.h"
 #include "CodeGenModule.h"
 #include "soll/AST/AST.h"
+#include "soll/Basic/Diagnostic.h"
 
 namespace {
 using namespace soll;
@@ -45,13 +46,21 @@ public:
   }
 
   void HandleSourceUnit(ASTContext &C, SourceUnit &S) override {
+    if (Diags.hasErrorOccurred()) {
+      return;
+    }
     for (auto &Node : S.getNodes()) {
+      if (!Node)
+        continue;
       HandleTopLevelDecl(Node);
     }
   }
 
   void HandleTopLevelDecl(Decl *D) {
     assert(Builder.get() && "CodeGenerator need to call Initialize first!");
+    if (Diags.hasErrorOccurred()) {
+      return;
+    }
     if (dynamic_cast<PragmaDirective *>(D)) {
     } else if (auto *CD = dynamic_cast<ContractDecl *>(D)) {
       Builder->emitContractDecl(CD);

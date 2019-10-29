@@ -21,14 +21,23 @@ Lexer::Lexer(FileID FID, const llvm::MemoryBuffer *InputFile, SourceManager &SM)
       BufferStart(InputFile->getBufferStart()),
       BufferPtr(InputFile->getBufferStart()),
       BufferEnd(InputFile->getBufferEnd()) {
+  skipBOM();
+}
+
+Lexer::Lexer(SourceLocation fileloc, const char *BufStart, const char *BufPtr,
+             const char *BufEnd, const SourceManager &SM)
+    : Diags(SM.getDiagnostics()), FileMgr(SM.getFileManager()),
+      SourceMgr(const_cast<SourceManager &>(SM)), FileLoc(fileloc),
+      BufferStart(BufStart), BufferPtr(BufPtr), BufferEnd(BufEnd) {
+  skipBOM();
+}
+
+void Lexer::skipBOM() {
   if (BufferStart == BufferPtr) {
-    // Determine the size of the BOM.
     llvm::StringRef Buf(BufferStart, BufferEnd - BufferStart);
     size_t BOMLength = llvm::StringSwitch<size_t>(Buf)
                            .StartsWith("\xEF\xBB\xBF", 3) // UTF-8 BOM
                            .Default(0);
-
-    // Skip the BOM.
     BufferPtr += BOMLength;
   }
 }
@@ -598,7 +607,7 @@ Token Lexer::LexStringLiteral(const char *CurPtr, char Quote,
 
   // Update the location of the token as well as the BufferPtr instance var.
   const char *TokStart = BufferPtr;
-  Token Result = FormTokenWithChars(CurPtr, tok::string_literal);
+  Token Result = FormTokenWithChars(CurPtr, Kind);
   Result.setLiteralData(TokStart);
   return Result;
 }
@@ -627,8 +636,6 @@ void Lexer::SkipWhitespace(const char *CurPtr) {
 
   BufferPtr = CurPtr;
 }
-
-bool Lexer::isCodeCompletionPoint(const char *CurPtr) const { return false; }
 
 void Lexer::SkipLineComment(const char *CurPtr) {
   // Scan over the body of the comment.  The common case, when scanning, is that
@@ -872,6 +879,24 @@ void Lexer::SkipBlockComment(const char *CurPtr) {
 void Lexer::EnterTokenStream(const Token *Toks, unsigned NumToks) {
   CachedTokens.insert(CachedTokens.begin() + CachedLexPos, Toks,
                       Toks + NumToks);
+}
+
+unsigned Lexer::MeasureTokenLength(SourceLocation Loc,
+                                   const SourceManager &SM) {
+  std::pair<FileID, unsigned> LocInfo = SM.getDecomposedLoc(Loc);
+
+  if (llvm::MemoryBuffer *MemoryBuffer = SM.getBuffer(LocInfo.first)) {
+    llvm::StringRef Buffer = MemoryBuffer->getBuffer();
+
+    Lexer TheLexer(Loc, Buffer.begin(), Buffer.begin() + LocInfo.second,
+                   Buffer.end(), SM);
+
+    if (auto Result = TheLexer.Lex()) {
+      return Result->getLength();
+    }
+  }
+
+  return 0;
 }
 
 } // namespace soll

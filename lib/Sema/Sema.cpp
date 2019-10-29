@@ -2,6 +2,7 @@
 #include "soll/Sema/Sema.h"
 #include "soll/AST/AST.h"
 #include "soll/AST/ASTConsumer.h"
+#include "soll/Basic/DiagnosticSema.h"
 #include "soll/Lex/Lexer.h"
 #include "soll/Sema/Scope.h"
 
@@ -51,6 +52,7 @@ Sema::Sema(Lexer &lexer, ASTContext &ctxt, ASTConsumer &consumer)
     : Lex(lexer), Context(ctxt), Consumer(consumer),
       Diags(Lex.getDiagnostics()), SourceMgr(Lex.getSourceManager()) {}
 
+StmtPtr Sema::CreateReturnStmt() { return std::make_unique<ReturnStmt>(); }
 StmtPtr Sema::CreateReturnStmt(ExprPtr &&Value) {
   TryImplicitCast(FunRtnTys.front(), Value);
   return std::make_unique<ReturnStmt>(
@@ -71,7 +73,6 @@ std::unique_ptr<EventDecl>
 Sema::CreateEventDecl(llvm::StringRef Name, std::unique_ptr<ParamList> &&Params,
                       bool Anonymous) {
   auto ED = std::make_unique<EventDecl>(Name, std::move(Params), Anonymous);
-  addDecl(ED.get());
   return ED;
 }
 
@@ -171,8 +172,9 @@ std::unique_ptr<CallExpr> Sema::CreateCallExpr(ExprPtr &&Callee,
                                     std::move(ResultTy));
 }
 
-std::unique_ptr<Identifier> Sema::CreateIdentifier(llvm::StringRef Name) {
+std::unique_ptr<Identifier> Sema::CreateIdentifier(Token Tok) {
   static const llvm::StringMap<Identifier::SpecialIdentifier> SpecialLookup{
+      {"abi", Identifier::SpecialIdentifier::abi},
       {"block", Identifier::SpecialIdentifier::block},
       {"blockhash", Identifier::SpecialIdentifier::blockhash},
       {"gasleft", Identifier::SpecialIdentifier::gasleft},
@@ -189,6 +191,7 @@ std::unique_ptr<Identifier> Sema::CreateIdentifier(llvm::StringRef Name) {
       {"ripemd160", Identifier::SpecialIdentifier::ripemd160},
       {"ecrecover", Identifier::SpecialIdentifier::ecrecover},
   };
+  llvm::StringRef Name = Tok.getIdentifierInfo()->getName();
   if (auto Iter = SpecialLookup.find(Name); Iter != SpecialLookup.end()) {
     TypePtr Ty;
     switch (Iter->second) {
@@ -262,16 +265,26 @@ std::unique_ptr<Identifier> Sema::CreateIdentifier(llvm::StringRef Name) {
       assert(false && "unknown special identifier");
       __builtin_unreachable();
     }
-    return std::make_unique<Identifier>(Name, Iter->second, std::move(Ty));
+    return std::make_unique<Identifier>(Name, Iter->second, Ty);
   }
   Decl *D = lookupName(Name);
-  assert(D != nullptr);
+  if (D == nullptr) {
+    Diag(Tok.getLocation(), diag::err_undefined_variable);
+    return nullptr;
+  }
   return std::make_unique<Identifier>(Name, D);
 }
 
 std::unique_ptr<MemberExpr>
-Sema::CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr, std::string &&Name) {
+Sema::CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr, Token Tok) {
   static const llvm::StringMap<Identifier::SpecialIdentifier> Lookup{
+      {"decode", Identifier::SpecialIdentifier::abi_decode},
+      {"encode", Identifier::SpecialIdentifier::abi_encode},
+      {"encodePacked", Identifier::SpecialIdentifier::abi_encodePacked},
+      {"encodeWithSelector",
+       Identifier::SpecialIdentifier::abi_encodeWithSelector},
+      {"encodeWithSignature",
+       Identifier::SpecialIdentifier::abi_encodeWithSignature},
       {"coinbase", Identifier::SpecialIdentifier::block_coinbase},
       {"difficulty", Identifier::SpecialIdentifier::block_difficulty},
       {"gaslimit", Identifier::SpecialIdentifier::block_gaslimit},
@@ -284,12 +297,32 @@ Sema::CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr, std::string &&Name) {
       {"gasprice", Identifier::SpecialIdentifier::tx_gasprice},
       {"origin", Identifier::SpecialIdentifier::tx_origin},
   };
+  static const llvm::StringMap<Identifier::SpecialIdentifier> ArrayLookup{
+      {"length", Identifier::SpecialIdentifier::array_length},
+  };
+  llvm::StringRef Name = Tok.getIdentifierInfo()->getName();
   const Expr *Base = BaseExpr.get();
   if (auto *I = dynamic_cast<const Identifier *>(Base)) {
     if (I->isSpecialIdentifier()) {
       if (auto Iter = Lookup.find(Name); Iter != Lookup.end()) {
         std::shared_ptr<Type> Ty;
         switch (I->getSpecialIdentifier()) {
+        case Identifier::SpecialIdentifier::abi:
+          switch (Iter->second) {
+          case Identifier::SpecialIdentifier::abi_decode:
+          case Identifier::SpecialIdentifier::block_difficulty:
+          case Identifier::SpecialIdentifier::block_gaslimit:
+          case Identifier::SpecialIdentifier::block_number:
+          case Identifier::SpecialIdentifier::block_timestamp:
+            Diag(Tok.getLocation(), diag::err_unimplemented_identifier)
+                << Tok.getIdentifierInfo();
+            return nullptr;
+            break;
+          default:
+            assert(false && "unknown member");
+            __builtin_unreachable();
+          }
+          break;
         case Identifier::SpecialIdentifier::block:
           switch (Iter->second) {
           case Identifier::SpecialIdentifier::block_coinbase:
@@ -344,6 +377,29 @@ Sema::CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr, std::string &&Name) {
         return std::make_unique<MemberExpr>(
             std::move(BaseExpr),
             std::make_unique<Identifier>(Name, Iter->second, Ty));
+      }
+    } else {
+      if (auto VD = dynamic_cast<const VarDecl *>(I->getCorrespondDecl())) {
+        switch (VD->GetType()->getCategory()) {
+        case Type::Category::Array:
+          if (auto Iter = ArrayLookup.find(Name); Iter != ArrayLookup.end()) {
+            std::shared_ptr<Type> Ty;
+            switch (Iter->second) {
+            case Identifier::SpecialIdentifier::array_length:
+              Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+              break;
+            default:
+              assert(false && "unknown member");
+              __builtin_unreachable();
+            }
+            return std::make_unique<MemberExpr>(
+                std::move(BaseExpr),
+                std::make_unique<Identifier>(Name, Iter->second, Ty));
+          } else {
+          }
+          break;
+        default:;
+        }
       }
     }
   }
@@ -457,4 +513,9 @@ ExprPtr Sema::DefaultLvalueConversion(ExprPtr &&E) {
   return std::make_unique<ImplicitCastExpr>(
       std::move(E), CastKind::LValueToRValue, E->getType());
 }
+
+DiagnosticBuilder Sema::Diag(SourceLocation Loc, unsigned DiagID) {
+  return Diags.Report(Loc, DiagID);
+}
+
 } // namespace soll

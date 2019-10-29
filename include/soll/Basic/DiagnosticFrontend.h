@@ -8,10 +8,10 @@ namespace diag {
 enum {
 #define DIAG(ENUM, FLAGS, DEFAULT_MAPPING, DESC, GROUP, NOWERROR, CATEGORY)    \
   ENUM,
-#define LEXSTART
-#include "soll/Basic/DiagnosticLexKinds.inc"
+#define FRONTENDSTART
+#include "soll/Basic/DiagnosticFrontendKinds.inc"
 #undef DIAG
-  NUM_BUILTIN_LEX_DIAGNOSTICS
+  NUM_BUILTIN_FRONTEND_DIAGNOSTICS
 };
 } // namespace diag
 } // namespace soll

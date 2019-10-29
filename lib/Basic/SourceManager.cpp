@@ -3,6 +3,66 @@
 
 namespace soll {
 
+static std::unique_ptr<std::vector<unsigned>>
+ComputeLineNumbers(llvm::MemoryBuffer *Buffer) {
+  llvm::SmallVector<unsigned, 256> LineOffsets;
+  LineOffsets.push_back(0);
+
+  auto *Buf = reinterpret_cast<const unsigned char *>(Buffer->getBufferStart());
+  auto *End = reinterpret_cast<const unsigned char *>(Buffer->getBufferEnd());
+  unsigned I = 0;
+
+  while (true) {
+    // Skip over the contents of the line.
+    while (Buf[I] != '\n' && Buf[I] != '\r' && Buf[I] != '\0')
+      ++I;
+
+    if (Buf[I] == '\n' || Buf[I] == '\r') {
+      // If this is \r\n, skip both characters.
+      if (Buf[I] == '\r' && Buf[I + 1] == '\n')
+        ++I;
+      ++I;
+      LineOffsets.push_back(I);
+    } else {
+      // Otherwise, this is a NUL. If end of file, exit.
+      if (Buf + I == End)
+        break;
+      ++I;
+    }
+  }
+
+  return std::make_unique<std::vector<unsigned>>(LineOffsets.begin(),
+                                                 LineOffsets.end());
+}
+
+llvm::Optional<unsigned>
+SrcMgr::FileInfo::getLineNumber(unsigned FilePos) const {
+  if (!Buffer) {
+    return llvm::None;
+  }
+  if (!SourceLineCache) {
+    SourceLineCache = ComputeLineNumbers(Buffer.get());
+  }
+  auto Pos = std::lower_bound(SourceLineCache->cbegin(),
+                              SourceLineCache->cend(), FilePos + 1);
+  return std::distance(SourceLineCache->cbegin(), Pos);
+}
+
+llvm::Optional<unsigned>
+SrcMgr::FileInfo::getColumnNumber(unsigned FilePos) const {
+  if (!Buffer) {
+    return llvm::None;
+  }
+  if (FilePos > Buffer->getBufferSize()) {
+    return llvm::None;
+  }
+  const char *Buf = Buffer->getBufferStart();
+  unsigned LineStart = FilePos;
+  while (LineStart && Buf[LineStart - 1] != '\n' && Buf[LineStart - 1] != '\r')
+    --LineStart;
+  return FilePos - LineStart + 1;
+}
+
 llvm::MemoryBuffer *SrcMgr::FileInfo::getBuffer(DiagnosticsEngine &Diag,
                                                 const SourceManager &SM,
                                                 SourceLocation Loc) const {
@@ -62,12 +122,162 @@ SourceManager::SourceManager(DiagnosticsEngine &Diag, FileManager &FileMgr)
     : Diag(Diag), FileMgr(FileMgr) {
   LocalSLocEntryTable.push_back(SrcMgr::SLocEntry::get(
       0, SrcMgr::FileInfo::get(SourceLocation(), nullptr)));
+  Diag.setSourceManager(this);
 }
 
 const SrcMgr::SLocEntry *SourceManager::loadSLocEntry(unsigned Index) const {
   assert(!SLocEntryLoaded[Index]);
 
   return &LoadedSLocEntryTable[Index];
+}
+
+FileID SourceManager::getFileIDSlow(unsigned SLocOffset) const {
+  if (!SLocOffset)
+    return FileID::get(0);
+
+  if (SLocOffset < NextLocalOffset)
+    return getFileIDLocal(SLocOffset);
+  return getFileIDLoaded(SLocOffset);
+}
+
+FileID SourceManager::getFileIDLocal(unsigned SLocOffset) const {
+  assert(SLocOffset < NextLocalOffset && "Bad function choice");
+
+  const SrcMgr::SLocEntry *I;
+
+  if (LastFileIDLookup.ID < 0 ||
+      LocalSLocEntryTable[LastFileIDLookup.ID].getOffset() < SLocOffset) {
+    // Neither loc prunes our search.
+    I = LocalSLocEntryTable.end();
+  } else {
+    // Perhaps it is near the file point.
+    I = LocalSLocEntryTable.begin() + LastFileIDLookup.ID;
+  }
+
+  // Find the FileID that contains this.  "I" is an iterator that points to a
+  // FileID whose offset is known to be larger than SLocOffset.
+  unsigned NumProbes = 0;
+  while (true) {
+    --I;
+    if (I->getOffset() <= SLocOffset) {
+      FileID Res = FileID::get(int(I - LocalSLocEntryTable.begin()));
+
+      // Remember it.  We have good locality across FileID lookups.
+      LastFileIDLookup = Res;
+      return Res;
+    }
+    if (++NumProbes == 8)
+      break;
+  }
+
+  // Convert "I" back into an index.  We know that it is an entry whose index is
+  // larger than the offset we are looking for.
+  unsigned GreaterIndex = I - LocalSLocEntryTable.begin();
+  // LessIndex - This is the lower bound of the range that we're searching.
+  // We know that the offset corresponding to the FileID is is less than
+  // SLocOffset.
+  unsigned LessIndex = 0;
+  NumProbes = 0;
+  while (true) {
+    unsigned MiddleIndex = (GreaterIndex - LessIndex) / 2 + LessIndex;
+    const SrcMgr::SLocEntry *SLoc = getLocalSLocEntry(MiddleIndex);
+    if (!SLoc)
+      return FileID::get(0);
+    unsigned MidOffset = SLoc->getOffset();
+
+    ++NumProbes;
+
+    // If the offset of the midpoint is too large, chop the high side of the
+    // range to the midpoint.
+    if (MidOffset > SLocOffset) {
+      GreaterIndex = MiddleIndex;
+      continue;
+    }
+
+    // If the middle index contains the value, succeed and return.
+    // FIXME: This could be made faster by using a function that's aware of
+    // being in the local area.
+    if (isOffsetInFileID(FileID::get(MiddleIndex), SLocOffset)) {
+      FileID Res = FileID::get(MiddleIndex);
+
+      // Remember it.  We have good locality across FileID lookups.
+      LastFileIDLookup = Res;
+      return Res;
+    }
+
+    // Otherwise, move the low-side up to the middle index.
+    LessIndex = MiddleIndex;
+  }
+}
+
+FileID SourceManager::getFileIDLoaded(unsigned SLocOffset) const {
+  // Sanity checking, otherwise a bug may lead to hanging in release build.
+  if (SLocOffset < CurrentLoadedOffset) {
+    assert(0 && "Invalid SLocOffset or bad function choice");
+    return FileID();
+  }
+
+  // Essentially the same as the local case, but the loaded array is sorted
+  // in the other direction.
+
+  // First do a linear scan from the last lookup position, if possible.
+  unsigned I;
+  int LastID = LastFileIDLookup.ID;
+  if (LastID >= 0 || getLoadedSLocEntryByID(LastID)->getOffset() < SLocOffset)
+    I = 0;
+  else
+    I = (-LastID - 2) + 1;
+
+  unsigned NumProbes;
+  for (NumProbes = 0; NumProbes < 8; ++NumProbes, ++I) {
+    // Make sure the entry is loaded!
+    const SrcMgr::SLocEntry *E = getLoadedSLocEntry(I);
+    if (E->getOffset() <= SLocOffset) {
+      FileID Res = FileID::get(-int(I) - 2);
+
+      LastFileIDLookup = Res;
+      return Res;
+    }
+  }
+
+  // Linear scan failed. Do the binary search. Note the reverse sorting of the
+  // table: GreaterIndex is the one where the offset is greater, which is
+  // actually a lower index!
+  unsigned GreaterIndex = I;
+  unsigned LessIndex = LoadedSLocEntryTable.size();
+  NumProbes = 0;
+  while (true) {
+    ++NumProbes;
+    unsigned MiddleIndex = (LessIndex - GreaterIndex) / 2 + GreaterIndex;
+    const SrcMgr::SLocEntry *E = getLoadedSLocEntry(MiddleIndex);
+    if (E->getOffset() == 0)
+      return FileID(); // invalid entry.
+
+    ++NumProbes;
+
+    if (E->getOffset() > SLocOffset) {
+      // Sanity checking, otherwise a bug may lead to hanging in release build.
+      if (GreaterIndex == MiddleIndex) {
+        assert(0 && "binary search missed the entry");
+        return FileID();
+      }
+      GreaterIndex = MiddleIndex;
+      continue;
+    }
+
+    if (isOffsetInFileID(FileID::get(-int(MiddleIndex) - 2), SLocOffset)) {
+      FileID Res = FileID::get(-int(MiddleIndex) - 2);
+      LastFileIDLookup = Res;
+      return Res;
+    }
+
+    // Sanity checking, otherwise a bug may lead to hanging in release build.
+    if (LessIndex == MiddleIndex) {
+      assert(0 && "binary search missed the entry");
+      return FileID();
+    }
+    LessIndex = MiddleIndex;
+  }
 }
 
 FileID SourceManager::getPreviousFileID(FileID FID) const {
@@ -141,6 +351,52 @@ FileID SourceManager::createFileID(const FileEntry *SourceFile,
   FileID FID = FileID::get(LocalSLocEntryTable.size() - 1);
   LastFileIDLookup = FID;
   return FID;
+}
+
+unsigned SourceManager::getFileIDSize(FileID FID) const {
+  const SrcMgr::SLocEntry *Entry = getSLocEntry(FID);
+  if (!Entry)
+    return 0;
+
+  int ID = FID.ID;
+  unsigned NextOffset;
+  if ((ID > 0 && unsigned(ID + 1) == local_sloc_entry_size()))
+    NextOffset = getNextLocalOffset();
+  else if (ID + 1 == -1)
+    NextOffset = MaxLoadedOffset;
+  else
+    NextOffset = getSLocEntry(FileID::get(ID + 1))->getOffset();
+
+  return NextOffset - Entry->getOffset() - 1;
+}
+
+llvm::Optional<unsigned> SourceManager::getLineNumber(FileID FID,
+                                                      unsigned FilePos) const {
+  if (FID.isInvalid()) {
+    return llvm::None;
+  }
+
+  const auto &Entry = getSLocEntry(FID);
+  if (!Entry) {
+    return llvm::None;
+  }
+
+  return Entry->getFile().getLineNumber(FilePos);
+}
+
+llvm::Optional<unsigned>
+SourceManager::getColumnNumber(FileID FID, unsigned FilePos) const {
+
+  if (FID.isInvalid()) {
+    return llvm::None;
+  }
+
+  const auto &Entry = getSLocEntry(FID);
+  if (!Entry) {
+    return llvm::None;
+  }
+
+  return Entry->getFile().getColumnNumber(FilePos);
 }
 
 FileID SourceManager::translateFile(const FileEntry *SourceFile) const {
@@ -228,9 +484,35 @@ FileID SourceManager::translateFile(const FileEntry *SourceFile) const {
   return FirstFID;
 }
 
-// XXX: implement
 PresumedLoc SourceManager::getPresumedLoc(SourceLocation Loc) const {
-  return PresumedLoc();
+  if (Loc.isInvalid()) {
+    return PresumedLoc();
+  }
+
+  std::pair<FileID, unsigned> LocInfo = getDecomposedExpansionLoc(Loc);
+
+  const SrcMgr::SLocEntry *Entry = getSLocEntry(LocInfo.first);
+  if (!Entry)
+    return PresumedLoc();
+
+  const SrcMgr::FileInfo &FI = Entry->getFile();
+
+  llvm::StringRef Filename;
+  if (FI.getFileEntry())
+    Filename = FI.getFileEntry()->getName();
+  else
+    Filename = FI.getBuffer(Diag, *this)->getBufferIdentifier();
+
+  auto LineNo = getLineNumber(LocInfo.first, LocInfo.second);
+  if (!LineNo)
+    return PresumedLoc();
+  auto ColNo = getColumnNumber(LocInfo.first, LocInfo.second);
+  if (!ColNo)
+    return PresumedLoc();
+
+  SourceLocation IncludeLoc = FI.getIncludeLoc();
+
+  return PresumedLoc(Filename.data(), *LineNo, *ColNo, IncludeLoc);
 }
 
 } // namespace soll

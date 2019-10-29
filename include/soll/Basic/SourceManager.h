@@ -17,6 +17,7 @@ namespace SrcMgr {
 class FileInfo {
   SourceLocation IncludeLoc;
   const FileEntry *File;
+  mutable std::unique_ptr<std::vector<unsigned>> SourceLineCache;
   mutable std::unique_ptr<llvm::MemoryBuffer> Buffer;
 
 public:
@@ -34,6 +35,8 @@ public:
   llvm::MemoryBuffer *getBuffer(DiagnosticsEngine &Diag,
                                 const SourceManager &SM,
                                 SourceLocation Loc = SourceLocation()) const;
+  llvm::Optional<unsigned> getLineNumber(unsigned FilePos) const;
+  llvm::Optional<unsigned> getColumnNumber(unsigned FilePos) const;
 };
 
 class SLocEntry {
@@ -61,9 +64,6 @@ class SourceManager : public llvm::RefCountedBase<SourceManager> {
   DiagnosticsEngine &Diag;
 
   FileManager &FileMgr;
-
-  llvm::DenseMap<const FileEntry *, std::unique_ptr<llvm::MemoryBuffer>>
-      FileBuffers;
 
   llvm::SmallVector<SrcMgr::SLocEntry, 0> LocalSLocEntryTable;
 
@@ -111,8 +111,26 @@ public:
     return Entry->getFile().getBuffer(Diag, *this, Loc);
   }
 
-  // TODO: implement
-  FileID getFileID(SourceLocation SpellingLoc) const { return FileID(); }
+  const FileEntry *getFileEntryForID(FileID FID) const {
+    const SrcMgr::SLocEntry *Entry = getSLocEntry(FID);
+    if (!Entry)
+      return nullptr;
+
+    return Entry->getFile().getFileEntry();
+  }
+
+  FileID getFileID(SourceLocation SpellingLoc) const {
+    unsigned SLocOffset = SpellingLoc.getOffset();
+
+    if (isOffsetInFileID(LastFileIDLookup, SLocOffset))
+      return LastFileIDLookup;
+
+    return getFileIDSlow(SLocOffset);
+  }
+
+  FileID getFileIDSlow(unsigned SLocOffset) const;
+  FileID getFileIDLocal(unsigned SLocOffset) const;
+  FileID getFileIDLoaded(unsigned SLocOffset) const;
 
   // TODO: implement
   llvm::StringRef getFilename(SourceLocation SpellingLoc) const {
@@ -143,6 +161,34 @@ public:
       return SourceLocation();
 
     return Entry->getFile().getIncludeLoc();
+  }
+
+  CharSourceRange getExpansionRange(SourceLocation Loc) const {
+    return CharSourceRange(SourceRange(Loc, Loc), true);
+  }
+
+  std::pair<FileID, unsigned> getDecomposedLoc(SourceLocation Loc) const {
+    FileID FID = getFileID(Loc);
+    bool Invalid = false;
+    const auto Entry = getSLocEntry(FID);
+    if (!Entry)
+      return std::make_pair(FileID(), 0);
+    return std::make_pair(FID, Loc.getOffset() - Entry->getOffset());
+  }
+
+  std::pair<FileID, unsigned>
+  getDecomposedExpansionLoc(SourceLocation Loc) const {
+    FileID FID = getFileID(Loc);
+    const SrcMgr::SLocEntry *E = getSLocEntry(FID);
+    if (!E)
+      return std::make_pair(FileID(), 0);
+
+    unsigned Offset = Loc.getOffset() - E->getOffset();
+    return std::make_pair(FID, Offset);
+  }
+
+  unsigned getFileOffset(SourceLocation Loc) const {
+    return getDecomposedLoc(Loc).second;
   }
 
   unsigned getFileIDSize(FileID FID) const;
@@ -202,6 +248,27 @@ private:
       return &LoadedSLocEntryTable[Index];
     return loadSLocEntry(Index);
   }
+
+  inline bool isOffsetInFileID(FileID FID, unsigned SLocOffset) const {
+    const SrcMgr::SLocEntry *Entry = getSLocEntry(FID);
+    // If the entry is after the offset, it can't contain it.
+    if (SLocOffset < Entry->getOffset())
+      return false;
+
+    // If this is the very last entry then it does.
+    if (FID.ID == -2)
+      return true;
+
+    // If it is the last local entry, then it does if the location is local.
+    if (FID.ID + 1 == static_cast<int>(LocalSLocEntryTable.size()))
+      return SLocOffset < NextLocalOffset;
+
+    // Otherwise, the entry after it has to not include it. This works for both
+    // local and loaded entries.
+    return SLocOffset < getSLocEntryByID(FID.ID + 1)->getOffset();
+  }
+
+  unsigned getNextLocalOffset() const { return NextLocalOffset; }
 
   const SrcMgr::SLocEntry *loadSLocEntry(unsigned Index) const;
 

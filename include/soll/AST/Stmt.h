@@ -166,6 +166,7 @@ class ReturnStmt : public Stmt {
   ExprPtr RetExpr;
 
 public:
+  ReturnStmt() = default;
   ReturnStmt(ExprPtr &&RetExpr) : RetExpr(std::move(RetExpr)) {}
 
   void setRetValue(ExprPtr &&E) { RetExpr = std::move(E); }

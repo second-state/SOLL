@@ -28,7 +28,6 @@ struct StaticDiagInfoRec {
   unsigned DefaultSeverity : 3;
   unsigned Class : 3;
   unsigned WarnNoWerror : 1;
-  unsigned WarnShowInSystemHeader : 1;
   unsigned Category : 6;
 
   uint16_t OptionGroupIndex;
@@ -53,23 +52,15 @@ struct StaticDiagInfoRec {
 };
 
 static const StaticDiagInfoRec StaticDiagInfo[] = {
-#define DIAG(ENUM, CLASS, DEFAULT_SEVERITY, DESC, GROUP, NOWERROR,             \
-             SHOWINSYSHEADER, CATEGORY)                                        \
-  {diag::ENUM, DEFAULT_SEVERITY,         CLASS,                                \
-   NOWERROR,   SHOWINSYSHEADER,          CATEGORY,                             \
+#define DIAG(ENUM, CLASS, DEFAULT_SEVERITY, DESC, GROUP, NOWERROR, CATEGORY)   \
+  {diag::ENUM, DEFAULT_SEVERITY,         CLASS, NOWERROR, CATEGORY,            \
    GROUP,      STR_SIZE(DESC, uint16_t), DESC},
 #include "soll/Basic/DiagnosticCommonKinds.inc"
-//#include "soll/Basic/DiagnosticDriverKinds.inc"
-//#include "soll/Basic/DiagnosticFrontendKinds.inc"
-//#include "soll/Basic/DiagnosticSerializationKinds.inc"
+#include "soll/Basic/DiagnosticDriverKinds.inc"
+#include "soll/Basic/DiagnosticFrontendKinds.inc"
 #include "soll/Basic/DiagnosticLexKinds.inc"
-//#include "soll/Basic/DiagnosticParseKinds.inc"
-//#include "soll/Basic/DiagnosticASTKinds.inc"
-//#include "soll/Basic/DiagnosticCommentKinds.inc"
-//#include "soll/Basic/DiagnosticCrossTUKinds.inc"
-//#include "soll/Basic/DiagnosticSemaKinds.inc"
-//#include "soll/Basic/DiagnosticAnalysisKinds.inc"
-//#include "soll/Basic/DiagnosticRefactoringKinds.inc"
+#include "soll/Basic/DiagnosticParseKinds.inc"
+#include "soll/Basic/DiagnosticSemaKinds.inc"
 #undef DIAG
 };
 
@@ -87,18 +78,11 @@ static const StaticDiagInfoRec *GetDiagInfo(unsigned DiagID) {
     Offset += NUM_BUILTIN_##PREV##_DIAGNOSTICS - DIAG_START_##PREV - 1;        \
     ID -= DIAG_START_##NAME - DIAG_START_##PREV;                               \
   }
-  CATEGORY(LEX, COMMON)
-// CATEGORY(DRIVER, COMMON)
-// CATEGORY(FRONTEND, DRIVER)
-// CATEGORY(SERIALIZATION, FRONTEND)
-// CATEGORY(LEX, SERIALIZATION)
-// CATEGORY(PARSE, LEX)
-// CATEGORY(AST, PARSE)
-// CATEGORY(COMMENT, AST)
-// CATEGORY(CROSSTU, COMMENT)
-// CATEGORY(SEMA, CROSSTU)
-// CATEGORY(ANALYSIS, SEMA)
-// CATEGORY(REFACTORING, ANALYSIS)
+  CATEGORY(DRIVER, COMMON)
+  CATEGORY(FRONTEND, DRIVER)
+  CATEGORY(LEX, FRONTEND)
+  CATEGORY(PARSE, LEX)
+  CATEGORY(SEMA, PARSE)
 #undef CATEGORY
 
   if (ID + Offset >= StaticDiagInfoSize)
@@ -116,6 +100,12 @@ static unsigned getBuiltinDiagClass(unsigned DiagID) {
   if (const StaticDiagInfoRec *Info = GetDiagInfo(DiagID))
     return Info->Class;
   return ~0U;
+}
+
+llvm::StringRef DiagnosticIDs::getDescription(unsigned DiagID) const {
+  const StaticDiagInfoRec *Info = GetDiagInfo(DiagID);
+  assert(Info != nullptr);
+  return Info->getDescription();
 }
 
 static DiagnosticIDs::Level toLevel(diag::Severity SV) {

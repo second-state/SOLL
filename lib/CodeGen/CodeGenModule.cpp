@@ -814,6 +814,7 @@ void CodeGenModule::emitABIStore(const Type *Ty, llvm::StringRef Name,
     Builder.CreateCall(Func_finish, {RetVPtr, Builder.getInt32(32)});
     break;
   }
+  case Type::Category::Bytes:
   case Type::Category::String: {
     llvm::Value *RetLen =
         Builder.CreateExtractValue(Result, {0}, Name + ".ret.len");

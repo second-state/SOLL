@@ -594,10 +594,8 @@ private:
                 "ethereum.getTxOrigin");
         llvm::Value *ValPtr = Builder.CreateAlloca(CGF.AddressTy);
         Builder.CreateCall(getTxOrigin, {ValPtr});
-        llvm::Value *Val =
-            Builder.CreateZExt(CGF.getCodeGenModule().emitEndianConvert(
-                                   Builder.CreateLoad(ValPtr)),
-                               CGF.Int256Ty);
+        llvm::Value *Val = CGF.getCodeGenModule().emitEndianConvert(
+            Builder.CreateLoad(ValPtr));
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::block_coinbase: {

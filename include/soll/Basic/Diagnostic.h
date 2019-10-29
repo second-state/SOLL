@@ -131,6 +131,8 @@ public:
     ak_attr
   };
 
+  using ArgumentValue = std::pair<ArgumentKind, intptr_t>;
+
 public:
   explicit DiagnosticsEngine(
       llvm::IntrusiveRefCntPtr<DiagnosticIDs> Diags,
@@ -206,14 +208,16 @@ class DiagnosticBuilder {
   friend class DiagnosticsEngine;
   friend class PartialDiagnostic;
 
-  mutable DiagnosticsEngine *DiagObj = nullptr;
-  mutable unsigned NumArgs = 0;
+  DiagnosticsEngine *DiagObj = nullptr;
+  unsigned NumArgs = 0;
 
-  mutable bool IsActive = false;
+  bool IsActive = false;
 
-  mutable bool IsForceEmit = false;
+  bool IsForceEmit = false;
 
   DiagnosticBuilder() = default;
+  DiagnosticBuilder(const DiagnosticBuilder &D) = delete;
+  DiagnosticBuilder &operator=(const DiagnosticBuilder &) = delete;
 
   explicit DiagnosticBuilder(DiagnosticsEngine *diagObj)
       : DiagObj(diagObj), IsActive(true) {
@@ -225,7 +229,7 @@ class DiagnosticBuilder {
 protected:
   void FlushCounts() { DiagObj->NumDiagArgs = NumArgs; }
 
-  void Clear() const {
+  void Clear() {
     DiagObj = nullptr;
     IsActive = false;
     IsForceEmit = false;
@@ -247,7 +251,7 @@ protected:
   }
 
 public:
-  DiagnosticBuilder(const DiagnosticBuilder &D) {
+  DiagnosticBuilder(DiagnosticBuilder &&D) {
     DiagObj = D.DiagObj;
     IsActive = D.IsActive;
     IsForceEmit = D.IsForceEmit;
@@ -255,20 +259,18 @@ public:
     NumArgs = D.NumArgs;
   }
 
-  DiagnosticBuilder &operator=(const DiagnosticBuilder &) = delete;
-
   ~DiagnosticBuilder() { Emit(); }
 
   static DiagnosticBuilder getEmpty() { return {}; }
 
-  const DiagnosticBuilder &setForceEmit() const {
+  DiagnosticBuilder &setForceEmit() {
     IsForceEmit = true;
     return *this;
   }
 
   operator bool() const { return true; }
 
-  void AddString(llvm::StringRef S) const {
+  void AddString(llvm::StringRef S) {
     assert(isActive() && "Clients must not add to cleared diagnostic!");
     assert(NumArgs < DiagnosticsEngine::MaxArguments &&
            "Too many arguments to diagnostic!");
@@ -277,7 +279,7 @@ public:
     DiagObj->DiagArgumentsStr[NumArgs++] = S;
   }
 
-  void AddTaggedVal(intptr_t V, DiagnosticsEngine::ArgumentKind Kind) const {
+  void AddTaggedVal(intptr_t V, DiagnosticsEngine::ArgumentKind Kind) {
     assert(isActive() && "Clients must not add to cleared diagnostic!");
     assert(NumArgs < DiagnosticsEngine::MaxArguments &&
            "Too many arguments to diagnostic!");
@@ -305,87 +307,103 @@ struct AddFlagValue {
   explicit AddFlagValue(llvm::StringRef V) : Val(V) {}
 };
 
-inline const DiagnosticBuilder &operator<<(const DiagnosticBuilder &DB,
-                                           const AddFlagValue V) {
+template <typename T, typename U>
+using enable_if_same_t = std::enable_if_t<
+    std::is_same_v<U, std::remove_cv_t<std::remove_reference_t<T>>>, T>;
+
+template <typename DBT>
+inline enable_if_same_t<DBT, DiagnosticBuilder>
+operator<<(DBT &&DB, const AddFlagValue V) {
   DB.addFlagValue(V.Val);
-  return DB;
+  return std::forward<DBT>(DB);
 }
 
-inline const DiagnosticBuilder &operator<<(const DiagnosticBuilder &DB,
-                                           llvm::StringRef S) {
+template <typename DBT>
+inline enable_if_same_t<DBT, DiagnosticBuilder> operator<<(DBT &&DB,
+                                                           llvm::StringRef S) {
   DB.AddString(S);
-  return DB;
+  return std::forward<DBT>(DB);
 }
 
-inline const DiagnosticBuilder &operator<<(const DiagnosticBuilder &DB,
-                                           const char *Str) {
+template <typename DBT>
+inline enable_if_same_t<DBT, DiagnosticBuilder> operator<<(DBT &&DB,
+                                                           const char *Str) {
   DB.AddTaggedVal(reinterpret_cast<intptr_t>(Str),
                   DiagnosticsEngine::ArgumentKind::ak_c_string);
-  return DB;
+  return std::forward<DBT>(DB);
 }
 
-inline const DiagnosticBuilder &operator<<(const DiagnosticBuilder &DB, int I) {
+template <typename DBT>
+inline enable_if_same_t<DBT, DiagnosticBuilder> operator<<(DBT &&DB, int I) {
   DB.AddTaggedVal(I, DiagnosticsEngine::ArgumentKind::ak_sint);
-  return DB;
+  return std::forward<DBT>(DB);
 }
 
-template <typename T>
-inline std::enable_if_t<std::is_same<T, bool>::value, const DiagnosticBuilder &>
-operator<<(const DiagnosticBuilder &DB, T I) {
+template <typename DBT, typename T,
+          std::enable_if_t<std::is_same_v<T, bool>> * = 0>
+inline enable_if_same_t<DBT, DiagnosticBuilder> operator<<(DBT &&DB, T I) {
   DB.AddTaggedVal(I, DiagnosticsEngine::ArgumentKind::ak_sint);
-  return DB;
+  return std::forward<DBT>(DB);
 }
 
-inline const DiagnosticBuilder &operator<<(const DiagnosticBuilder &DB,
-                                           unsigned I) {
+template <typename DBT>
+inline enable_if_same_t<DBT, DiagnosticBuilder> operator<<(DBT &&DB,
+                                                           unsigned I) {
   DB.AddTaggedVal(I, DiagnosticsEngine::ArgumentKind::ak_uint);
-  return DB;
+  return std::forward<DBT>(DB);
 }
 
-inline const DiagnosticBuilder &operator<<(const DiagnosticBuilder &DB,
-                                           tok::TokenKind I) {
+template <typename DBT>
+inline enable_if_same_t<DBT, DiagnosticBuilder> operator<<(DBT &&DB,
+                                                           tok::TokenKind I) {
   DB.AddTaggedVal(static_cast<unsigned>(I),
                   DiagnosticsEngine::ArgumentKind::ak_tokenkind);
-  return DB;
+  return std::forward<DBT>(DB);
 }
 
-inline const DiagnosticBuilder &operator<<(const DiagnosticBuilder &DB,
-                                           const IdentifierInfo *II) {
+template <typename DBT>
+inline enable_if_same_t<DBT, DiagnosticBuilder>
+operator<<(DBT &&DB, const IdentifierInfo *II) {
   DB.AddTaggedVal(reinterpret_cast<intptr_t>(II),
                   DiagnosticsEngine::ArgumentKind::ak_identifierinfo);
-  return DB;
+  return std::forward<DBT>(DB);
 }
 
-inline const DiagnosticBuilder &operator<<(const DiagnosticBuilder &DB,
-                                           SourceRange R) {
+template <typename DBT>
+inline enable_if_same_t<DBT, DiagnosticBuilder> operator<<(DBT &&DB,
+                                                           SourceRange R) {
   DB.AddSourceRange(CharSourceRange::getTokenRange(R));
-  return DB;
+  return std::forward<DBT>(DB);
 }
 
-inline const DiagnosticBuilder &operator<<(const DiagnosticBuilder &DB,
-                                           llvm::ArrayRef<SourceRange> Ranges) {
+template <typename DBT>
+inline enable_if_same_t<DBT, DiagnosticBuilder>
+operator<<(DBT &&DB, llvm::ArrayRef<SourceRange> Ranges) {
   for (SourceRange R : Ranges)
     DB.AddSourceRange(CharSourceRange::getTokenRange(R));
-  return DB;
+  return std::forward<DBT>(DB);
 }
 
-inline const DiagnosticBuilder &operator<<(const DiagnosticBuilder &DB,
-                                           const CharSourceRange &R) {
+template <typename DBT>
+inline enable_if_same_t<DBT, DiagnosticBuilder>
+operator<<(DBT &&DB, const CharSourceRange &R) {
   DB.AddSourceRange(R);
-  return DB;
+  return std::forward<DBT>(DB);
 }
 
-inline const DiagnosticBuilder &operator<<(const DiagnosticBuilder &DB,
-                                           const FixItHint &Hint) {
+template <typename DBT>
+inline enable_if_same_t<DBT, DiagnosticBuilder>
+operator<<(DBT &&DB, const FixItHint &Hint) {
   DB.AddFixItHint(Hint);
-  return DB;
+  return std::forward<DBT>(DB);
 }
 
-inline const DiagnosticBuilder &operator<<(const DiagnosticBuilder &DB,
-                                           llvm::ArrayRef<FixItHint> Hints) {
+template <typename DBT>
+inline enable_if_same_t<DBT, DiagnosticBuilder>
+operator<<(DBT &&DB, llvm::ArrayRef<FixItHint> Hints) {
   for (const FixItHint &Hint : Hints)
     DB.AddFixItHint(Hint);
-  return DB;
+  return std::forward<DBT>(DB);
 }
 
 inline DiagnosticBuilder DiagnosticsEngine::Report(SourceLocation Loc,
@@ -558,5 +576,7 @@ public:
   virtual void HandleDiagnostic(DiagnosticsEngine::Level DiagLevel,
                                 const Diagnostic &Info) {}
 };
+
+constexpr const char ToggleHighlight = 127;
 
 } // namespace soll

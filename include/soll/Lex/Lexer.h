@@ -30,6 +30,8 @@ class Lexer {
 
 public:
   Lexer(FileID FID, const llvm::MemoryBuffer *FromFile, SourceManager &SM);
+  Lexer(SourceLocation FileLoc, const char *BufStart, const char *BufPtr,
+        const char *BufEnd, const SourceManager &SM);
 
   Lexer(const Lexer &) = delete;
   Lexer &operator=(const Lexer &) = delete;
@@ -69,6 +71,8 @@ private:
   llvm::Optional<Token> Lex();
 
   llvm::Optional<Token> LexUnicode(uint32_t C, const char *CurPtr);
+
+  void skipBOM();
 
   Token FormTokenWithChars(const char *TokEnd, tok::TokenKind Kind) {
     Token Result;
@@ -123,7 +127,9 @@ private:
   void SkipLineComment(const char *CurPtr);
   void SkipBlockComment(const char *CurPtr);
 
-  bool isCodeCompletionPoint(const char *CurPtr) const;
+public:
+  static unsigned MeasureTokenLength(SourceLocation Loc,
+                                     const SourceManager &SM);
 };
 
 } // namespace soll

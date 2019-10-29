@@ -5,6 +5,7 @@
 #include "soll/Frontend/CompilerInstance.h"
 #include "soll/Frontend/FrontendActions.h"
 #include "soll/Frontend/TextDiagnostic.h"
+#include "soll/Frontend/TextDiagnosticPrinter.h"
 #include <llvm/Support/CommandLine.h>
 
 namespace cl = llvm::cl;

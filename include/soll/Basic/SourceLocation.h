@@ -45,6 +45,7 @@ class SourceLocation {
 public:
   bool isValid() const { return ID != 0; }
   bool isInvalid() const { return ID == 0; }
+  unsigned getOffset() const { return ID; }
 
 private:
   friend class SourceManager;
@@ -55,40 +56,33 @@ private:
   }
 
 public:
-  SourceLocation getLocWithOffset(int Offset) const {
-    SourceLocation L;
-    L.ID = ID + Offset;
-    return L;
-  }
-
   unsigned getRawEncoding() const { return ID; }
+
   static SourceLocation getFromRawEncoding(unsigned Encoding) {
     SourceLocation X;
     X.ID = Encoding;
     return X;
   }
 
-  void *getPtrEncoding() const {
-    return reinterpret_cast<void *>(static_cast<uintptr_t>(getRawEncoding()));
-  }
-  static SourceLocation getFromPtrEncoding(const void *Encoding) {
-    return getFromRawEncoding(
-        static_cast<unsigned>(reinterpret_cast<uintptr_t>(Encoding)));
+  SourceLocation getLocWithOffset(int Offset) const {
+    SourceLocation L;
+    L.ID = this->ID + Offset;
+    return L;
   }
 
   void print(llvm::raw_ostream &OS, const SourceManager &SM);
 };
 
 inline bool operator==(const SourceLocation &LHS, const SourceLocation &RHS) {
-  return LHS.getRawEncoding() == RHS.getRawEncoding();
+  return LHS.getOffset() == RHS.getOffset();
 }
 
 inline bool operator!=(const SourceLocation &LHS, const SourceLocation &RHS) {
-  return !(LHS == RHS);
+  return LHS.getOffset() != RHS.getOffset();
 }
 
 inline bool operator<(const SourceLocation &LHS, const SourceLocation &RHS) {
-  return LHS.getRawEncoding() < RHS.getRawEncoding();
+  return LHS.getOffset() < RHS.getOffset();
 }
 
 class SourceRange {
@@ -221,65 +215,24 @@ public:
   FullSourceLoc getExpansionLoc() const;
   FullSourceLoc getSpellingLoc() const;
   FullSourceLoc getFileLoc() const;
-  PresumedLoc getPresumedLoc(bool UseLineDirectives = true) const;
-  bool isMacroArgExpansion(FullSourceLoc *StartLoc = nullptr) const;
-  FullSourceLoc getImmediateMacroCallerLoc() const;
+  PresumedLoc getPresumedLoc() const;
   std::pair<FullSourceLoc, llvm::StringRef> getModuleImportLoc() const;
   unsigned getFileOffset() const;
 
-  unsigned getExpansionLineNumber() const;
-  unsigned getExpansionColumnNumber() const;
-
-  unsigned getSpellingLineNumber() const;
-  unsigned getSpellingColumnNumber() const;
-
-  const char *getCharacterData() const;
-
-  unsigned getLineNumber() const;
-  unsigned getColumnNumber() const;
+  llvm::Optional<unsigned> getLineNumber() const;
+  llvm::Optional<unsigned> getColumnNumber() const;
 
   const FileEntry *getFileEntry() const;
 
-  /// Return a StringRef to the source buffer data for the
-  /// specified FileID.
   llvm::StringRef getBufferData() const;
 
-  /// Decompose the specified location into a raw FileID + Offset pair.
-  ///
-  /// The first element is the FileID, the second is the offset from the
-  /// start of the buffer of the location.
   std::pair<FileID, unsigned> getDecomposedLoc() const;
 
-  bool isInSystemHeader() const;
-
-  /// Determines the order of 2 source locations in the translation unit.
-  ///
-  /// \returns true if this source location comes before 'Loc', false otherwise.
-  bool isBeforeInTranslationUnitThan(SourceLocation Loc) const;
-
-  /// Determines the order of 2 source locations in the translation unit.
-  ///
-  /// \returns true if this source location comes before 'Loc', false otherwise.
-  bool isBeforeInTranslationUnitThan(FullSourceLoc Loc) const {
-    assert(Loc.isValid());
-    assert(SrcMgr == Loc.SrcMgr && "Loc comes from another SourceManager!");
-    return isBeforeInTranslationUnitThan((SourceLocation)Loc);
-  }
-
-  /// Comparison function class, useful for sorting FullSourceLocs.
-  struct BeforeThanCompare {
-    bool operator()(const FullSourceLoc &lhs, const FullSourceLoc &rhs) const {
-      return lhs.isBeforeInTranslationUnitThan(rhs);
-    }
-  };
-
-  /// Prints information about this FullSourceLoc to stderr.
-  ///
-  /// This is useful for debugging.
   void dump() const;
 
   friend bool operator==(const FullSourceLoc &LHS, const FullSourceLoc &RHS) {
-    return LHS.getRawEncoding() == RHS.getRawEncoding() &&
+    return static_cast<const SourceLocation &>(LHS) ==
+               static_cast<const SourceLocation &>(RHS) &&
            LHS.SrcMgr == RHS.SrcMgr;
   }
 
@@ -310,17 +263,5 @@ template <> struct isPodLike<soll::SourceLocation> {
   static const bool value = true;
 };
 template <> struct isPodLike<soll::FileID> { static const bool value = true; };
-
-template <> struct PointerLikeTypeTraits<soll::SourceLocation> {
-  enum { NumLowBitsAvailable = 0 };
-
-  static void *getAsVoidPointer(soll::SourceLocation L) {
-    return L.getPtrEncoding();
-  }
-
-  static soll::SourceLocation getFromVoidPointer(void *P) {
-    return soll::SourceLocation::getFromRawEncoding((unsigned)(uintptr_t)P);
-  }
-};
 
 } // namespace llvm
