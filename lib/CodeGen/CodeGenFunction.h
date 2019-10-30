@@ -103,6 +103,11 @@ private:
   void emitCallAssert(const CallExpr *CE);
   void emitCallRevert(const CallExpr *CE);
   void emitCheckPayable(const FunctionDecl *FD);
+  llvm::Value *emitAddmod(const CallExpr *CE);
+  llvm::Value *emitMulmod(const CallExpr *CE);
+  llvm::Value *emitCallkeccak256(const CallExpr *CE);
+  llvm::Value *emitCallsha256(const CallExpr *CE);
+  llvm::Value *emitCallripemd160(const CallExpr *CE);
 
   ExprValue emitCallExpr(const CallExpr *CE);
 

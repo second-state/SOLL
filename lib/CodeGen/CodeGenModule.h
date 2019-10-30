@@ -46,6 +46,7 @@ class CodeGenModule : public CodeGenTypeCache {
   llvm::Function *Func_getBlockGasLimit = nullptr;
   llvm::Function *Func_getBlockNumber = nullptr;
   llvm::Function *Func_getBlockTimestamp = nullptr;
+  llvm::Function *Func_getBlockHash = nullptr;
 
   llvm::Function *Func_print32 = nullptr;
 

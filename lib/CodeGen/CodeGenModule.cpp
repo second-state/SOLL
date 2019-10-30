@@ -241,7 +241,7 @@ void CodeGenModule::initEEIDeclaration() {
   Func_getCaller->addFnAttr(llvm::Attribute::NoUnwind);
   Func_getCaller->addParamAttr(0, llvm::Attribute::WriteOnly);
 
-  // getCaller
+  // getGasLeft
   FT = llvm::FunctionType::get(Int64Ty, {}, false);
   Func_getGasLeft = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
                                            "ethereum.getGasLeft", TheModule);
@@ -251,10 +251,10 @@ void CodeGenModule::initEEIDeclaration() {
   Func_getGasLeft->addFnAttr(llvm::Attribute::NoUnwind);
 
   // log
-  FT = llvm::FunctionType::get(VoidTy,
-                               {Int8PtrTy, Int32Ty, Int32Ty, Int256PtrTy,
-                                Int256PtrTy, Int256PtrTy, Int256PtrTy},
-                               false);
+  FT =
+      llvm::FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty, Int32Ty, Int256PtrTy,
+                                       Int256PtrTy, Int256PtrTy, Int256PtrTy},
+                              false);
   Func_log = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
                                     "ethereum.log", TheModule);
   Func_log->addFnAttr(Ethereum);
@@ -371,6 +371,14 @@ void CodeGenModule::initEEIDeclaration() {
   Func_getBlockTimestamp->addFnAttr(Ethereum);
   Func_getBlockTimestamp->addFnAttr(
       llvm::Attribute::get(VMContext, "wasm-import-name", "getBlockTimestamp"));
+
+  // getBlockHash
+  FT = llvm::FunctionType::get(Int32Ty, {Int64Ty, Int256PtrTy}, false);
+  Func_getBlockHash = llvm::Function::Create(
+      FT, llvm::Function::ExternalLinkage, "ethereum.getBlockHash", TheModule);
+  Func_getBlockHash->addFnAttr(Ethereum);
+  Func_getBlockHash->addFnAttr(
+      llvm::Attribute::get(VMContext, "wasm-import-name", "getBlockHash"));
 
   // debug.print32
   FT = llvm::FunctionType::get(VoidTy, {Int32Ty}, false);

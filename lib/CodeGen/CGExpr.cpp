@@ -636,6 +636,7 @@ private:
             Builder.CreateCall(getBlockNumber, {}), CGF.Int256Ty);
         return ExprValue::getRValue(ME, Val);
       }
+      case Identifier::SpecialIdentifier::now:
       case Identifier::SpecialIdentifier::block_timestamp: {
         llvm::Function *getBlockTimestamp =
             CGF.getCodeGenModule().getModule().getFunction(
@@ -744,6 +745,52 @@ void CodeGenFunction::emitCallRevert(const CallExpr *CE) {
   Builder.CreateUnreachable();
 }
 
+llvm::Value *CodeGenFunction::emitAddmod(const CallExpr *CE) {
+  // addmod
+  auto Arguments = CE->getArguments();
+  llvm::Value *A = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *B = emitExpr(Arguments[1]).load(Builder, CGM);
+  llvm::Value *K = emitExpr(Arguments[2]).load(Builder, CGM);
+  llvm::Value *addAB = Builder.CreateAdd(A, B);
+  llvm::Value *res = Builder.CreateURem(addAB, K);
+  return res;
+}
+
+llvm::Value *CodeGenFunction::emitMulmod(const CallExpr *CE) {
+  // mulmod
+  auto Arguments = CE->getArguments();
+  llvm::Value *A = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *B = emitExpr(Arguments[1]).load(Builder, CGM);
+  llvm::Value *K = emitExpr(Arguments[2]).load(Builder, CGM);
+  llvm::Value *addAB = Builder.CreateMul(A, B);
+  llvm::Value *res = Builder.CreateURem(addAB, K);
+  return res;
+}
+
+llvm::Value *CodeGenFunction::emitCallkeccak256(const CallExpr *CE) {
+  // keccak256 function
+  auto Arguments = CE->getArguments();
+  llvm::Value *MessageValue = emitExpr(Arguments[0]).load(Builder, CGM);
+  return Builder.CreateCall(CGM.getModule().getFunction("solidity.keccak256"),
+                            {MessageValue});
+}
+
+llvm::Value *CodeGenFunction::emitCallsha256(const CallExpr *CE) {
+  // sha256 function
+  auto Arguments = CE->getArguments();
+  llvm::Value *MessageValue = emitExpr(Arguments[0]).load(Builder, CGM);
+  return Builder.CreateCall(CGM.getModule().getFunction("solidity.sha256"),
+                            {MessageValue});
+}
+
+llvm::Value *CodeGenFunction::emitCallripemd160(const CallExpr *CE) {
+  // ripemd160 function
+  auto Arguments = CE->getArguments();
+  llvm::Value *MessageValue = emitExpr(Arguments[0]).load(Builder, CGM);
+  return Builder.CreateCall(CGM.getModule().getFunction("solidity.ripemd160"),
+                            {MessageValue});
+}
+
 ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
   auto Callee = dynamic_cast<const Identifier *>(CE->getCalleeExpr());
   if (Callee->isSpecialIdentifier()) {
@@ -761,22 +808,20 @@ ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
       assert(CE->getArguments().empty() && "gasleft require no arguments");
       return ExprValue::getRValue(CE, CGM.emitGetGasLeft());
     case Identifier::SpecialIdentifier::addmod:
-      assert(false && "addmod not supported yet");
-      __builtin_unreachable();
+      return ExprValue::getRValue(CE, emitAddmod(CE));
     case Identifier::SpecialIdentifier::mulmod:
-      assert(false && "addmod not supported yet");
-      __builtin_unreachable();
+      return ExprValue::getRValue(CE, emitMulmod(CE));
     case Identifier::SpecialIdentifier::keccak256:
-      assert(false && "keccak256 not supported yet");
-      __builtin_unreachable();
+      return ExprValue::getRValue(CE, emitCallkeccak256(CE));
     case Identifier::SpecialIdentifier::sha256:
-      assert(false && "sha256 not supported yet");
-      __builtin_unreachable();
+      return ExprValue::getRValue(CE, emitCallsha256(CE));
     case Identifier::SpecialIdentifier::ripemd160:
-      assert(false && "ripemd160 not supported yet");
-      __builtin_unreachable();
+      return ExprValue::getRValue(CE, emitCallripemd160(CE));
     case Identifier::SpecialIdentifier::ecrecover:
       assert(false && "ecrecover not supported yet");
+      __builtin_unreachable();
+    case Identifier::SpecialIdentifier::blockhash:
+      assert(false && "blockhash not supported yet");
       __builtin_unreachable();
     default:
       assert(false && "special function not supported yet");
