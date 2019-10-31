@@ -114,6 +114,8 @@ private:
   llvm::Value *emitCallkeccak256(const CallExpr *CE);
   llvm::Value *emitCallsha256(const CallExpr *CE);
   llvm::Value *emitCallripemd160(const CallExpr *CE);
+  llvm::Value *emitCallecrecover(const CallExpr *CE);
+  llvm::Value *emitCallblockhash(const CallExpr *CE);
 
   ExprValue emitCallExpr(const CallExpr *CE);
 

@@ -14,7 +14,7 @@ struct CodeGenTypeCache {
   /// i1
   llvm::IntegerType *BoolTy;
   /// i160
-  llvm::IntegerType *AddressTy;
+  llvm::IntegerType *AddressTy, *Int160Ty;
 
   /// i8*, i32*, i64*, i128*, i256*
   llvm::PointerType *Int8PtrTy, *Int32PtrTy, *Int64PtrTy, *Int128PtrTy,

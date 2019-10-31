@@ -58,6 +58,8 @@ class CodeGenModule : public CodeGenTypeCache {
   llvm::Function *Func_keccak256 = nullptr;
   llvm::Function *Func_sha256 = nullptr;
   llvm::Function *Func_sha3 = nullptr;
+  llvm::Function *Func_ripemd160 = nullptr;
+  llvm::Function *Func_ecrecover = nullptr;
 
   llvm::Function *Func_bswap256 = nullptr;
   llvm::Function *Func_memcpy = nullptr;

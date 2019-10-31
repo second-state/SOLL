@@ -767,8 +767,36 @@ llvm::Value *CodeGenFunction::emitCallripemd160(const CallExpr *CE) {
   // ripemd160 function
   auto Arguments = CE->getArguments();
   llvm::Value *MessageValue = emitExpr(Arguments[0]).load(Builder, CGM);
-  return Builder.CreateCall(CGM.getModule().getFunction("solidity.ripemd160"),
-                            {MessageValue});
+  llvm::Value *Val = Builder.CreateCall(
+      CGM.getModule().getFunction("solidity.ripemd160"), {MessageValue});
+  return Builder.CreateZExt(Val, Int160Ty);
+}
+
+llvm::Value *CodeGenFunction::emitCallecrecover(const CallExpr *CE) {
+  // ecrecover function
+  auto Arguments = CE->getArguments();
+  llvm::Value *HashValue = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *RecoveryIdValue =
+      Builder.CreateZExt(emitExpr(Arguments[1]).load(Builder, CGM), Int8Ty);
+  llvm::Value *RValue = emitExpr(Arguments[2]).load(Builder, CGM);
+  llvm::Value *SValue = emitExpr(Arguments[3]).load(Builder, CGM);
+  llvm::Value *Val =
+      Builder.CreateCall(CGM.getModule().getFunction("solidity.ecrecover"),
+                         {HashValue, RecoveryIdValue, RValue, SValue});
+  return Builder.CreateZExt(Val, AddressTy);
+}
+
+llvm::Value *CodeGenFunction::emitCallblockhash(const CallExpr *CE) {
+  // blockhash function
+  auto Arguments = CE->getArguments();
+  llvm::Value *numberValue =
+      Builder.CreateZExt(emitExpr(Arguments[0]).load(Builder, CGM), Int64Ty);
+  llvm::Value *resultPtr = Builder.CreateAlloca(Int256Ty);
+  llvm::Function *getBlockHash =
+      CGM.getModule().getFunction("ethereum.getBlockHash");
+  Builder.CreateCall(getBlockHash, {numberValue, resultPtr});
+  llvm::Value *Val = Builder.CreateLoad(resultPtr);
+  return Val;
 }
 
 ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
@@ -798,11 +826,9 @@ ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
     case Identifier::SpecialIdentifier::ripemd160:
       return ExprValue::getRValue(CE, emitCallripemd160(CE));
     case Identifier::SpecialIdentifier::ecrecover:
-      assert(false && "ecrecover not supported yet");
-      __builtin_unreachable();
+      return ExprValue::getRValue(CE, emitCallecrecover(CE));
     case Identifier::SpecialIdentifier::blockhash:
-      assert(false && "blockhash not supported yet");
-      __builtin_unreachable();
+      return ExprValue::getRValue(CE, emitCallblockhash(CE));
     default:
       assert(false && "special function not supported yet");
       __builtin_unreachable();

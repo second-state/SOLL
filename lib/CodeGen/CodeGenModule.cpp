@@ -63,6 +63,7 @@ void CodeGenModule::initTypes() {
   Int64Ty = llvm::Type::getInt64Ty(VMContext);
   Int128Ty = llvm::Type::getInt128Ty(VMContext);
   AddressTy = llvm::Type::getIntNTy(VMContext, 160);
+  Int160Ty = llvm::Type::getIntNTy(VMContext, 160);
   Int256Ty = llvm::Type::getIntNTy(VMContext, 256);
 
   Int8PtrTy = llvm::Type::getInt8PtrTy(VMContext);
@@ -521,6 +522,19 @@ void CodeGenModule::initPrebuiltContract() {
   Func_sha256 = llvm::Function::Create(FT, llvm::Function::InternalLinkage,
                                        "solidity.sha256", TheModule);
   Func_sha256->addFnAttr(llvm::Attribute::NoUnwind);
+
+  // ripemd160
+  FT = llvm::FunctionType::get(Int256Ty, {BytesTy}, false);
+  Func_ripemd160 = llvm::Function::Create(FT, llvm::Function::InternalLinkage,
+                                          "solidity.ripemd160", TheModule);
+  Func_ripemd160->addFnAttr(llvm::Attribute::NoUnwind);
+
+  // ecrecover
+  FT = llvm::FunctionType::get(Int256Ty,
+                               {Int256Ty, Int256Ty, Int256Ty, Int256Ty}, false);
+  Func_ecrecover = llvm::Function::Create(FT, llvm::Function::InternalLinkage,
+                                          "solidity.ecrecover", TheModule);
+  Func_ecrecover->addFnAttr(llvm::Attribute::NoUnwind);
 
   initKeccak256();
   initSha256();
