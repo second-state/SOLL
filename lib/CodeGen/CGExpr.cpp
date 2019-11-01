@@ -55,6 +55,15 @@ public:
     if (auto NL = dynamic_cast<const NumberLiteral *>(E)) {
       return visit(NL);
     }
+    if (auto YI = dynamic_cast<const YulIdentifier *>(E)) {
+      return visit(YI);
+    }
+    if (auto YL = dynamic_cast<const YulLiteral *>(E)) {
+      return visit(YL);
+    }
+    if (auto YA = dynamic_cast<const YulAssignment *>(E)) {
+      return visit(YA);
+    }
     assert(false && "unknown Expr!");
     __builtin_unreachable();
   }
@@ -660,6 +669,18 @@ private:
   ExprValue visit(const NumberLiteral *NL) {
     return ExprValue::getRValue(
         NL, Builder.getIntN(NL->getType()->getBitNum(), NL->getValue()));
+  }
+
+  ExprValue visit(const YulIdentifier *YId) {
+    // TODO: implement this
+  }
+
+  ExprValue visit(const YulLiteral *YL) {
+    // TODO: implement this
+  }
+
+  ExprValue visit(const YulAssignment *YAssign) {
+    // TODO: implement this
   }
 
   const Identifier *resolveIdentifier(const Expr *E) {

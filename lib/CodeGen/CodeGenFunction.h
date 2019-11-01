@@ -4,6 +4,7 @@
 #include "CodeGenModule.h"
 #include "CodeGenTypeCache.h"
 #include "soll/AST/Decl.h"
+#include "soll/AST/StmtYul.h"
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/ConstantFolder.h>
@@ -94,6 +95,11 @@ private:
   void emitBreakStmt(const BreakStmt *S);
   void emitReturnStmt(const ReturnStmt *S);
   void emitEmitStmt(const EmitStmt *S);
+
+  void emitYulForStmt(const YulForStmt *S);
+  void emitYulCaseStmt(const YulCaseStmt *S);
+  void emitYulDefaultStmt(const YulDefaultStmt *S);
+  void emitYulSwitchStmt(const YulSwitchStmt *S);
 
   void emitBranchOnBoolExpr(const Expr *E, llvm::BasicBlock *TrueBlock,
                             llvm::BasicBlock *FalseBlock);

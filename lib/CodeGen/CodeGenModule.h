@@ -2,6 +2,7 @@
 #pragma once
 #include "CodeGenTypeCache.h"
 #include "soll/AST/Decl.h"
+#include "soll/AST/DeclYul.h"
 #include "soll/Basic/TargetOptions.h"
 #include <llvm/ADT/APInt.h>
 #include <llvm/IR/ConstantFolder.h>
@@ -90,6 +91,7 @@ public:
   bool isEWASM() const noexcept { return TargetOpts.BackendTarget == EWASM; }
 
   void emitContractDecl(const ContractDecl *CD);
+  void emitYulObject(const YulObject *YO);
   llvm::Value *emitEndianConvert(llvm::Value *Val);
   llvm::Value *getEndianlessValue(llvm::Value *Val);
 
@@ -111,6 +113,10 @@ private:
   void emitEventDecl(const EventDecl *ED);
   void emitFunctionDecl(const FunctionDecl *FD);
   void emitVarDecl(const VarDecl *VD);
+
+  void emitYulCode(const YulCode *YC);
+  void emitYulData(const YulData *YD);
+  void emitYulVarDecl(const YulVarDecl *VD);
 
   void emitABILoad(const FunctionDecl *FD, llvm::BasicBlock *Loader,
                    llvm::BasicBlock *Error, llvm::Value *callDataSize);

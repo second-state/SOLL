@@ -992,6 +992,30 @@ void CodeGenModule::emitVarDecl(const VarDecl *VD) {
   StateVarDeclMap.try_emplace(VD, StateVarAddr);
 }
 
+void CodeGenModule::emitYulObject(const YulObject *YO) {
+  // TODO: implement this
+  assert(nullptr != YO->getCode());
+  emitYulCode(YO->getCode());
+  for (const auto *O : YO->getObjectList()) {
+    emitYulObject(O);
+  }
+  for (const auto *D : YO->getDataList()) {
+    emitYulData(D);
+  }
+}
+
+void CodeGenModule::emitYulCode(const YulCode *YC) {
+  // TODO: implement this
+}
+
+void CodeGenModule::emitYulData(const YulData *YD) {
+  // TODO: implement this
+}
+
+void CodeGenModule::emitYulVarDecl(const YulVarDecl *VD) {
+  // TODO: implement this
+}
+
 std::string CodeGenModule::getMangledName(const CallableVarDecl *CVD) {
   // XXX: Implement mangling
   std::string Name = CVD->getName();

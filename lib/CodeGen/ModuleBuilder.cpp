@@ -64,6 +64,8 @@ public:
     if (dynamic_cast<PragmaDirective *>(D)) {
     } else if (auto *CD = dynamic_cast<ContractDecl *>(D)) {
       Builder->emitContractDecl(CD);
+    } else if (auto *YO = dynamic_cast<YulObject *>(D)) {
+      Builder->emitYulObject(YO);
     } else {
       assert(false && "invalid top level decl");
       __builtin_unreachable();
