@@ -88,22 +88,22 @@ void CodeGenFunction::emitDeclStmt(const DeclStmt *DS) {
     Builder.CreateStore(emitExpr(DS->getValue()).load(Builder, CGM), Addr);
   } else {
     switch (Ty->getCategory()) {
-      case Type::Category::Bool:
-      case Type::Category::Integer:
-      case Type::Category::Address:
-        Builder.CreateStore(llvm::ConstantInt::get(LLVMTy, 0), Addr);
-        break;
-      case Type::Category::String:
-      case Type::Category::Bytes:
-        Builder.CreateStore(llvm::ConstantAggregateZero::get(LLVMTy), Addr);
-        break;
-      case Type::Category::Array:
-        assert(false && "zero-init array not implement");
-        __builtin_unreachable();
-        break;
-      default:
-        assert(false && "unknown type");
-        __builtin_unreachable();
+    case Type::Category::Bool:
+    case Type::Category::Integer:
+    case Type::Category::Address:
+      Builder.CreateStore(llvm::ConstantInt::get(LLVMTy, 0), Addr);
+      break;
+    case Type::Category::String:
+    case Type::Category::Bytes:
+      Builder.CreateStore(llvm::ConstantAggregateZero::get(LLVMTy), Addr);
+      break;
+    case Type::Category::Array:
+      assert(false && "zero-init array not implement");
+      __builtin_unreachable();
+      break;
+    default:
+      assert(false && "unknown type");
+      __builtin_unreachable();
     }
   }
 }
@@ -237,15 +237,19 @@ void CodeGenFunction::emitBranchOnBoolExpr(const Expr *E,
 
 void CodeGenFunction::emitCheckPayable(const FunctionDecl *FD) {
   if (StateMutability::Payable != FD->getStateMutability()) {
-    llvm::Function *getCallValue =
-        CGM.getModule().getFunction("ethereum.getCallValue");
-    llvm::Value *ValPtr = Builder.CreateAlloca(Int128Ty);
-    Builder.CreateCall(getCallValue, {ValPtr});
     llvm::BasicBlock *Continue = createBasicBlock("continue");
     llvm::BasicBlock *Revert = createBasicBlock("revert");
 
-    llvm::Value *Cond = Builder.CreateICmpNE(Builder.CreateLoad(ValPtr),
-                                             Builder.getIntN(128, 0));
+    int N = 256;
+    if (CGM.isEVM()) {
+      N = 256;
+    } else if (CGM.isEWASM()) {
+      N = 128;
+    } else {
+      __builtin_unreachable();
+    }
+    llvm::Value *Cond =
+        Builder.CreateICmpNE(CGM.emitGetCallValue(), Builder.getIntN(N, 0));
     Builder.CreateCondBr(Cond, Revert, Continue);
 
     using namespace std::string_literals;
@@ -253,8 +257,7 @@ void CodeGenFunction::emitCheckPayable(const FunctionDecl *FD) {
     llvm::Value *MessageValue =
         createGlobalStringPtr(getLLVMContext(), CGM.getModule(), Message);
     Builder.SetInsertPoint(Revert);
-    Builder.CreateCall(CGM.getModule().getFunction("ethereum.revert"),
-                       {MessageValue, Builder.getInt32(Message.size())});
+    CGM.emitRevert(MessageValue, Builder.getInt32(Message.size()));
     Builder.CreateUnreachable();
 
     Builder.SetInsertPoint(Continue);

@@ -30,16 +30,10 @@ public:
     case ValueKind::VK_LValue:
       return Builder.CreateLoad(V, Name);
     case ValueKind::VK_SValue:
-      llvm::Function *StorageLoad =
-          CGM.getModule().getFunction("ethereum.storageLoad");
-      llvm::Value *ValPtr = Builder.CreateAlloca(CGM.Int256Ty, nullptr);
-      llvm::Value *KeyPtr = Builder.CreateAlloca(CGM.Int256Ty, nullptr);
-      llvm::Value *Key = CGM.emitEndianConvert(Builder.CreateLoad(V));
-      Builder.CreateStore(Key, KeyPtr);
-      Builder.CreateCall(StorageLoad, {KeyPtr, ValPtr});
+      llvm::Value *Key = CGM.getEndianlessValue(Builder.CreateLoad(V));
       llvm::Type *ValueTy = Builder.getIntNTy(Ty->getBitNum());
       llvm::Value *Val = Builder.CreateZExtOrTrunc(
-          CGM.emitEndianConvert(Builder.CreateLoad(ValPtr)), ValueTy);
+          CGM.getEndianlessValue(CGM.emitStorageLoad(Key)), ValueTy);
       switch (Ty->getCategory()) {
       case Type::Category::Address:
       case Type::Category::Bool:
@@ -80,7 +74,8 @@ public:
         Builder.SetInsertPoint(Loop);
         llvm::PHINode *PHIRemain = Builder.CreatePHI(CGM.Int256Ty, 2);
         llvm::PHINode *PHIPtr = Builder.CreatePHI(CGM.Int8PtrTy, 2);
-        Builder.CreateCall(StorageLoad, {AddressPtr, PHIPtr});
+        llvm::Value *PHIV = CGM.emitStorageLoad(Builder.CreateLoad(AddressPtr));
+        Builder.CreateStore(PHIV, PHIPtr);
         llvm::Value *CurrentAddress = Builder.CreateLoad(AddressPtr);
         llvm::Value *NextRemain =
             Builder.CreateSub(PHIRemain, Builder.getIntN(256, 32));
@@ -122,35 +117,26 @@ public:
       Builder.CreateStore(Value, V);
       return;
     case ValueKind::VK_SValue:
-      llvm::Function *StorageStore =
-          CGM.getModule().getFunction("ethereum.storageStore");
       switch (Ty->getCategory()) {
       case Type::Category::Address:
       case Type::Category::Bool:
       case Type::Category::FixedBytes:
       case Type::Category::Integer:
       case Type::Category::RationalNumber: {
-        llvm::Value *ValPtr = Builder.CreateAlloca(CGM.Int256Ty, nullptr);
-        llvm::Value *KeyPtr = Builder.CreateAlloca(CGM.Int256Ty, nullptr);
-        llvm::Value *Key = CGM.emitEndianConvert(Builder.CreateLoad(V));
-        Builder.CreateStore(Key, KeyPtr);
+        llvm::Value *Key = CGM.getEndianlessValue(Builder.CreateLoad(V));
         if (Shift != nullptr) {
-          llvm::Function *StorageLoad =
-              CGM.getModule().getFunction("ethereum.storageLoad");
           llvm::ConstantInt *Mask = Builder.getInt(
               llvm::APInt::getHighBitsSet(256, 256 - Ty->getBitNum()));
           llvm::Value *Mask1 = Builder.CreateShl(Mask, Shift);
           llvm::Value *Mask2 =
               Builder.CreateShl(Builder.CreateZExt(Value, CGM.Int256Ty), Shift);
 
-          Builder.CreateCall(StorageLoad, {KeyPtr, ValPtr});
-          llvm::Value *Val = CGM.emitEndianConvert(Builder.CreateLoad(ValPtr));
+          llvm::Value *Val = CGM.getEndianlessValue(CGM.emitStorageLoad(Key));
           Value = Builder.CreateOr(Builder.CreateAnd(Val, Mask1), Mask2);
         }
-        Builder.CreateStore(CGM.emitEndianConvert(
-                                Builder.CreateZExtOrTrunc(Value, CGM.Int256Ty)),
-                            ValPtr);
-        Builder.CreateCall(StorageStore, {KeyPtr, ValPtr});
+        CGM.emitStorageStore(
+            Key, CGM.getEndianlessValue(
+                     Builder.CreateZExtOrTrunc(Value, CGM.Int256Ty)));
         return;
       }
       case Type::Category::String:
@@ -172,9 +158,8 @@ public:
         llvm::Value *Ptr = Builder.CreateExtractValue(Value, {1});
         Ptr = Builder.CreateBitCast(Ptr, Array32Int8Ptr);
 
-        llvm::Value *LengthPtr = Builder.CreateAlloca(CGM.Int256Ty, nullptr);
-        Builder.CreateStore(CGM.emitEndianConvert(Length), LengthPtr);
-        Builder.CreateCall(StorageStore, {V, LengthPtr});
+        CGM.emitStorageStore(Builder.CreateLoad(V),
+                             CGM.getEndianlessValue(Length));
         Builder.CreateBr(LoopInit);
 
         Builder.SetInsertPoint(LoopInit);
@@ -191,9 +176,9 @@ public:
         Builder.SetInsertPoint(Loop);
         llvm::PHINode *PHIRemain = Builder.CreatePHI(CGM.Int256Ty, 2);
         llvm::PHINode *PHIPtr = Builder.CreatePHI(Array32Int8Ptr, 2);
-        Builder.CreateCall(
-            StorageStore,
-            {AddressPtr, Builder.CreateBitCast(PHIPtr, CGM.Int256PtrTy)});
+        CGM.emitStorageStore(
+            Builder.CreateLoad(AddressPtr),
+            Builder.CreateLoad(Builder.CreateBitCast(PHIPtr, CGM.Int256PtrTy)));
         llvm::Value *CurrentAddress = Builder.CreateLoad(AddressPtr);
         llvm::Value *NextRemain =
             Builder.CreateSub(PHIRemain, Builder.getIntN(256, 32));

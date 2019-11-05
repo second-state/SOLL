@@ -34,7 +34,11 @@ class CodeGenModule : public CodeGenTypeCache {
   llvm::Function *Func_getCaller = nullptr;
   llvm::Function *Func_getGasLeft = nullptr;
   llvm::Function *Func_log = nullptr;
+  llvm::Function *Func_log0 = nullptr;
+  llvm::Function *Func_log1 = nullptr;
+  llvm::Function *Func_log2 = nullptr;
   llvm::Function *Func_log3 = nullptr;
+  llvm::Function *Func_log4 = nullptr;
   llvm::Function *Func_returnDataCopy = nullptr;
   llvm::Function *Func_revert = nullptr;
   llvm::Function *Func_storageLoad = nullptr;
@@ -52,6 +56,7 @@ class CodeGenModule : public CodeGenTypeCache {
 
   llvm::Function *Func_keccak256 = nullptr;
   llvm::Function *Func_sha256 = nullptr;
+  llvm::Function *Func_sha3 = nullptr;
 
   llvm::Function *Func_bswap256 = nullptr;
   llvm::Function *Func_memcpy = nullptr;
@@ -86,11 +91,19 @@ public:
 
   void emitContractDecl(const ContractDecl *CD);
   llvm::Value *emitEndianConvert(llvm::Value *Val);
+  llvm::Value *getEndianlessValue(llvm::Value *Val);
 
   llvm::Value *emitGetGasLeft();
+  llvm::Value *emitGetCallValue();
+  llvm::Value *emitGetCaller();
   void emitFinish(llvm::Value *DataOffset, llvm::Value *Length);
+  void emitLog(llvm::Value *DataOffset, llvm::Value *DataLength,
+               std::vector<llvm::Value *> &Topics);
+  void emitRevert(llvm::Value *DataOffset, llvm::Value *Length);
   void emitCallDataCopy(llvm::Value *ResultOffset, llvm::Value *DataOffset,
                         llvm::Value *Length);
+  llvm::Value *emitStorageLoad(llvm::Value *Key);
+  void emitStorageStore(llvm::Value *Key, llvm::Value *Value);
 
 private:
   void emitContractConstructorDecl(const ContractDecl *CD);

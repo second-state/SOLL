@@ -16,8 +16,13 @@ enum {
   evm_sload,
   evm_caller,
   evm_callvalue,
+  evm_log0,
+  evm_log1,
+  evm_log2,
   evm_log3,
+  evm_log4,
   evm_gas,
+  evm_sha3,
   evm_return,
   evm_revert,
   evm_returndatacopy,
@@ -96,6 +101,10 @@ void CodeGenModule::initEVMOpcodeDeclaration() {
   FT = llvm::FunctionType::get(EVMIntTy, {}, false);
   Func_getCallDataSize = getIntrinsic(llvm::Intrinsic::evm_calldatasize, FT);
 
+  // evm_sha3
+  FT = llvm::FunctionType::get(EVMIntTy, {EVMIntTy, EVMIntTy}, false);
+  Func_sha3 = getIntrinsic(llvm::Intrinsic::evm_sha3, FT);
+
   // evm_staticcall
   FT = llvm::FunctionType::get(
       EVMIntTy, {EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy},
@@ -118,10 +127,29 @@ void CodeGenModule::initEVMOpcodeDeclaration() {
   FT = llvm::FunctionType::get(EVMIntTy, {}, false);
   Func_getCallValue = getIntrinsic(llvm::Intrinsic::evm_callvalue, FT);
 
+  // evm_log0
+  FT = llvm::FunctionType::get(VoidTy, {EVMIntTy, EVMIntTy}, false);
+  Func_log0 = getIntrinsic(llvm::Intrinsic::evm_log0, FT);
+
+  // evm_log1
+  FT = llvm::FunctionType::get(VoidTy, {EVMIntTy, EVMIntTy, EVMIntTy}, false);
+  Func_log1 = getIntrinsic(llvm::Intrinsic::evm_log1, FT);
+
+  // evm_log2
+  FT = llvm::FunctionType::get(VoidTy, {EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy},
+                               false);
+  Func_log2 = getIntrinsic(llvm::Intrinsic::evm_log2, FT);
+
   // evm_log3
   FT = llvm::FunctionType::get(
       VoidTy, {EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy}, false);
   Func_log3 = getIntrinsic(llvm::Intrinsic::evm_log3, FT);
+
+  // evm_log4
+  FT = llvm::FunctionType::get(
+      VoidTy, {EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy},
+      false);
+  Func_log4 = getIntrinsic(llvm::Intrinsic::evm_log4, FT);
 
   // evm_gas
   FT = llvm::FunctionType::get(EVMIntTy, {}, false);
@@ -251,10 +279,10 @@ void CodeGenModule::initEEIDeclaration() {
   Func_getGasLeft->addFnAttr(llvm::Attribute::NoUnwind);
 
   // log
-  FT =
-      llvm::FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty, Int32Ty, Int256PtrTy,
-                                       Int256PtrTy, Int256PtrTy, Int256PtrTy},
-                              false);
+  FT = llvm::FunctionType::get(VoidTy,
+                               {Int8PtrTy, Int32Ty, Int32Ty, Int256PtrTy,
+                                Int256PtrTy, Int256PtrTy, Int256PtrTy},
+                               false);
   Func_log = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
                                     "ethereum.log", TheModule);
   Func_log->addFnAttr(Ethereum);
@@ -512,17 +540,9 @@ void CodeGenModule::initKeccak256() {
   llvm::Value *Ptr = Builder.CreateExtractValue(Memory, {1}, "ptr");
 
   if (isEVM()) {
-    llvm::Value *ResultPtr =
-        Builder.CreateAlloca(Int256Ty, nullptr, "result.ptr");
-    llvm::Value *Fee = emitGetGasLeft();
-    Builder.CreateCall(Func_callStatic,
-                       {Fee, Builder.getIntN(256, 9),
-                        Builder.CreatePtrToInt(Ptr, EVMIntTy),
-                        Builder.CreateZExtOrTrunc(Length, EVMIntTy),
-                        Builder.CreatePtrToInt(ResultPtr, EVMIntTy),
-                        Builder.getIntN(256, 32)});
-    llvm::Value *Result = Builder.CreateLoad(ResultPtr);
-
+    llvm::Value *Result = Builder.CreateCall(
+        Func_sha3, {Builder.CreatePtrToInt(Ptr, EVMIntTy),
+                    Builder.CreateZExtOrTrunc(Length, EVMIntTy)});
     Builder.CreateRet(Result);
   } else if (isEWASM()) {
     llvm::Value *AddressPtr =
@@ -559,17 +579,9 @@ void CodeGenModule::initSha256() {
   llvm::Value *Ptr = Builder.CreateExtractValue(Memory, {1}, "ptr");
 
   if (isEVM()) {
-    llvm::Value *ResultPtr =
-        Builder.CreateAlloca(Int256Ty, nullptr, "result.ptr");
-    llvm::Value *Fee = emitGetGasLeft();
-    Builder.CreateCall(Func_callStatic,
-                       {Fee, Builder.getIntN(256, 2),
-                        Builder.CreatePtrToInt(Ptr, EVMIntTy),
-                        Builder.CreateZExtOrTrunc(Length, EVMIntTy),
-                        Builder.CreatePtrToInt(ResultPtr, EVMIntTy),
-                        Builder.getIntN(256, 32)});
-    llvm::Value *Result = Builder.CreateLoad(ResultPtr);
-
+    llvm::Value *Result = Builder.CreateCall(
+        Func_sha3, {Builder.CreatePtrToInt(Ptr, EVMIntTy),
+                    Builder.CreateZExtOrTrunc(Length, EVMIntTy)});
     Builder.CreateRet(Result);
   } else if (isEWASM()) {
     llvm::Value *AddressPtr =
@@ -674,8 +686,7 @@ void CodeGenModule::emitContractDispatcherDecl(const ContractDecl *CD) {
     emitFinish(llvm::ConstantPointerNull::get(Int8PtrTy), Builder.getInt32(0));
     Builder.CreateRetVoid();
   } else {
-    Builder.CreateCall(Func_revert, {llvm::ConstantPointerNull::get(Int8PtrTy),
-                                     Builder.getInt32(0)});
+    emitRevert(llvm::ConstantPointerNull::get(Int8PtrTy), Builder.getInt32(0));
     Builder.CreateUnreachable();
   }
 
@@ -698,8 +709,15 @@ void CodeGenModule::emitContractDispatcherDecl(const ContractDecl *CD) {
     Builder.SetInsertPoint(Entry);
     llvm::Value *callDataSize =
         Builder.CreateCall(Func_getCallDataSize, {}, "size");
-    llvm::Value *cmp =
-        Builder.CreateICmpUGE(callDataSize, Builder.getInt32(4), "cmp");
+    llvm::Value *CmpV = nullptr;
+    if (isEVM()) {
+      CmpV = Builder.getIntN(256, 4);
+    } else if (isEWASM()) {
+      CmpV = Builder.getInt32(4);
+    } else {
+      __builtin_unreachable();
+    }
+    llvm::Value *cmp = Builder.CreateICmpUGE(callDataSize, CmpV, "cmp");
     Builder.CreateCondBr(cmp, Switch, Error);
 
     Builder.SetInsertPoint(Switch);
@@ -747,7 +765,7 @@ llvm::Value *CodeGenModule::emitABILoadParamStatic(const Type *Ty,
       Buffer, {Builder.getInt32(Offset)}, Name + ".cptr");
   llvm::Value *Ptr = Builder.CreateBitCast(CPtr, Int256PtrTy, Name + ".ptr");
   llvm::Value *ValB = Builder.CreateLoad(Int256Ty, Ptr, Name + ".b");
-  llvm::Value *Val = Builder.CreateCall(Func_bswap256, {ValB}, Name + ".e");
+  llvm::Value *Val = getEndianlessValue(ValB);
   return Builder.CreateZExtOrTrunc(Val, getLLVMType(Ty), Name);
 }
 
@@ -801,9 +819,8 @@ void CodeGenModule::emitABIStore(const Type *Ty, llvm::StringRef Name,
   case Type::Category::FixedBytes:
   case Type::Category::Integer: {
     // XXX: check signed
-    llvm::Value *RetB = Builder.CreateCall(
-        Func_bswap256, {Builder.CreateZExtOrTrunc(Result, Int256Ty)},
-        Name + ".ret.b");
+    llvm::Value *RetB =
+        getEndianlessValue(Builder.CreateZExtOrTrunc(Result, Int256Ty));
 
     // put return value to returndata
     llvm::Value *RetPtr =
@@ -811,7 +828,7 @@ void CodeGenModule::emitABIStore(const Type *Ty, llvm::StringRef Name,
     Builder.CreateStore(RetB, RetPtr);
     llvm::Value *RetVPtr =
         Builder.CreateBitCast(RetPtr, Int8PtrTy, Name + ".ret.vptr");
-    Builder.CreateCall(Func_finish, {RetVPtr, Builder.getInt32(32)});
+    emitFinish(RetVPtr, Builder.getInt32(32));
     break;
   }
   case Type::Category::Bytes:
@@ -820,8 +837,7 @@ void CodeGenModule::emitABIStore(const Type *Ty, llvm::StringRef Name,
         Builder.CreateExtractValue(Result, {0}, Name + ".ret.len");
     llvm::Value *RetLenTrunc =
         Builder.CreateTrunc(RetLen, Int32Ty, Name + ".ret.len.trunc");
-    llvm::Value *RetLenB =
-        Builder.CreateCall(Func_bswap256, {RetLen}, Name + ".ret.len.b");
+    llvm::Value *RetLenB = getEndianlessValue(RetLen);
     llvm::Value *RetData =
         Builder.CreateExtractValue(Result, {1}, Name + ".ret.data");
 
@@ -844,8 +860,7 @@ void CodeGenModule::emitABIStore(const Type *Ty, llvm::StringRef Name,
 
     llvm::Value *RetVPtr =
         Builder.CreateBitCast(RetPtr, Int8PtrTy, Name + ".ret.vptr");
-    Builder.CreateCall(Func_finish,
-                       {RetVPtr, Builder.CreateTrunc(RetSize, Int32Ty)});
+    emitFinish(RetVPtr, Builder.CreateTrunc(RetSize, Int32Ty));
     break;
   }
   default:
@@ -928,8 +943,7 @@ void CodeGenModule::emitABILoad(const FunctionDecl *FD,
   const auto &Returns = FD->getReturnParams()->getParams();
   if (Returns.empty()) {
     Builder.CreateCall(F, ArgsVal);
-    Builder.CreateCall(Func_finish, {llvm::ConstantPointerNull::get(Int8PtrTy),
-                                     Builder.getInt32(0)});
+    emitFinish(llvm::ConstantPointerNull::get(Int8PtrTy), Builder.getInt32(0));
   } else if (Returns.size() == 1) {
     llvm::Value *Result = Builder.CreateCall(F, ArgsVal, MangledName + ".ret");
     emitABIStore(Returns.front()->GetType().get(), MangledName, Result);
@@ -1080,6 +1094,16 @@ llvm::Function *CodeGenModule::createLLVMFunction(const CallableVarDecl *CVD) {
   return F;
 }
 
+llvm::Value *CodeGenModule::getEndianlessValue(llvm::Value *Val) {
+  if (isEVM()) {
+    return Val;
+  } else if (isEWASM()) {
+    return emitEndianConvert(Val);
+  } else {
+    __builtin_unreachable();
+  }
+}
+
 llvm::Value *CodeGenModule::emitEndianConvert(llvm::Value *Val) {
   // XXX: Assume type of Val is integer
   llvm::Type *Ty = Val->getType();
@@ -1094,6 +1118,130 @@ llvm::Value *CodeGenModule::emitEndianConvert(llvm::Value *Val) {
 
 llvm::Value *CodeGenModule::emitGetGasLeft() {
   return Builder.CreateCall(Func_getGasLeft, {});
+}
+
+llvm::Value *CodeGenModule::emitGetCallValue() {
+  if (isEVM()) {
+    return Builder.CreateCall(Func_getCallValue, {});
+  } else if (isEWASM()) {
+    llvm::Value *ValPtr = Builder.CreateAlloca(Int128Ty);
+    Builder.CreateCall(Func_getCallValue, {ValPtr});
+    return Builder.CreateLoad(ValPtr);
+  } else {
+    __builtin_unreachable();
+  }
+}
+
+llvm::Value *CodeGenModule::emitGetCaller() {
+  if (isEVM()) {
+    return Builder.CreateCall(Func_getCaller, {});
+  } else if (isEWASM()) {
+    llvm::Value *ValPtr = Builder.CreateAlloca(AddressTy);
+    Builder.CreateCall(Func_getCaller, {ValPtr});
+    return getEndianlessValue(Builder.CreateLoad(ValPtr));
+  } else {
+    __builtin_unreachable();
+  }
+}
+
+void CodeGenModule::emitLog(llvm::Value *DataOffset, llvm::Value *DataLength,
+                            std::vector<llvm::Value *> &Topics) {
+  if (isEVM()) {
+    llvm::Value *Length = Builder.CreateZExtOrTrunc(DataLength, EVMIntTy);
+    switch (Topics.size()) {
+    case 0:
+      Builder.CreateCall(
+          Func_log0,
+          {Builder.CreatePtrToInt(
+               Builder.CreateBitCast(DataOffset, Builder.getInt8PtrTy()),
+               EVMIntTy),
+           Length});
+      break;
+    case 1:
+      Builder.CreateCall(
+          Func_log1,
+          {Builder.CreatePtrToInt(
+               Builder.CreateBitCast(DataOffset, Builder.getInt8PtrTy()),
+               EVMIntTy),
+           Length, Builder.CreateLoad(Topics[0])});
+      break;
+    case 2:
+      Builder.CreateCall(
+          Func_log2,
+          {Builder.CreatePtrToInt(
+               Builder.CreateBitCast(DataOffset, Builder.getInt8PtrTy()),
+               EVMIntTy),
+           Length, Builder.CreateLoad(Topics[0]),
+           Builder.CreateLoad(Topics[1])});
+      break;
+    case 3:
+      Builder.CreateCall(
+          Func_log3,
+          {Builder.CreatePtrToInt(
+               Builder.CreateBitCast(DataOffset, Builder.getInt8PtrTy()),
+               EVMIntTy),
+           Length, Builder.CreateLoad(Topics[0]), Builder.CreateLoad(Topics[1]),
+           Builder.CreateLoad(Topics[2])});
+      break;
+    case 4:
+      Builder.CreateCall(
+          Func_log4,
+          {Builder.CreatePtrToInt(
+               Builder.CreateBitCast(DataOffset, Builder.getInt8PtrTy()),
+               EVMIntTy),
+           Length, Builder.CreateLoad(Topics[0]), Builder.CreateLoad(Topics[1]),
+           Builder.CreateLoad(Topics[2]), Builder.CreateLoad(Topics[3])});
+      break;
+    default:
+      __builtin_unreachable();
+    }
+  } else if (isEWASM()) {
+    Builder.CreateCall(
+        Func_log, {Builder.CreateBitCast(DataOffset, Builder.getInt8PtrTy()),
+                   DataLength, Builder.getInt32(Topics.size()), Topics[0],
+                   Topics[1], Topics[2], Topics[3]});
+  } else {
+    __builtin_unreachable();
+  }
+}
+
+void CodeGenModule::emitStorageStore(llvm::Value *Key, llvm::Value *Value) {
+  if (isEVM()) {
+    Builder.CreateCall(Func_storageStore, {Key, Value});
+  } else if (isEWASM()) {
+    llvm::Value *KeyPtr = Builder.CreateAlloca(Int256Ty, nullptr);
+    llvm::Value *ValPtr = Builder.CreateAlloca(Int256Ty, nullptr);
+    Builder.CreateStore(Key, KeyPtr);
+    Builder.CreateStore(Value, ValPtr);
+    Builder.CreateCall(Func_storageStore, {KeyPtr, ValPtr});
+  } else {
+    __builtin_unreachable();
+  }
+}
+
+llvm::Value *CodeGenModule::emitStorageLoad(llvm::Value *Key) {
+  if (isEVM()) {
+    return Builder.CreateCall(Func_storageLoad, {Key});
+  } else if (isEWASM()) {
+    llvm::Value *KeyPtr = Builder.CreateAlloca(Int256Ty, nullptr);
+    llvm::Value *ValPtr = Builder.CreateAlloca(Int256Ty, nullptr);
+    Builder.CreateStore(Key, KeyPtr);
+    Builder.CreateCall(Func_storageLoad, {KeyPtr, ValPtr});
+    return Builder.CreateLoad(ValPtr);
+  } else {
+    __builtin_unreachable();
+  }
+}
+void CodeGenModule::emitRevert(llvm::Value *DataOffset, llvm::Value *Length) {
+  if (isEVM()) {
+    Builder.CreateCall(Func_revert,
+                       {Builder.CreatePtrToInt(DataOffset, EVMIntTy),
+                        Builder.CreateZExtOrTrunc(Length, EVMIntTy)});
+  } else if (isEWASM()) {
+    Builder.CreateCall(Func_revert, {DataOffset, Length});
+  } else {
+    __builtin_unreachable();
+  }
 }
 
 void CodeGenModule::emitFinish(llvm::Value *DataOffset, llvm::Value *Length) {
