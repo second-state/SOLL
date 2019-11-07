@@ -44,14 +44,10 @@ void VarDecl::accept(DeclVisitor &visitor) { visitor.visit(*this); }
 void VarDecl::accept(ConstDeclVisitor &visitor) const { visitor.visit(*this); }
 
 void YulCode::accept(DeclVisitor &visitor) { visitor.visit(*this); }
-void YulCode::accept(ConstDeclVisitor &visitor) const {
-  visitor.visit(*this);
-}
+void YulCode::accept(ConstDeclVisitor &visitor) const { visitor.visit(*this); }
 
 void YulData::accept(DeclVisitor &visitor) { visitor.visit(*this); }
-void YulData::accept(ConstDeclVisitor &visitor) const {
-  visitor.visit(*this);
-}
+void YulData::accept(ConstDeclVisitor &visitor) const { visitor.visit(*this); }
 
 void YulObject::accept(DeclVisitor &visitor) { visitor.visit(*this); }
 void YulObject::accept(ConstDeclVisitor &visitor) const {

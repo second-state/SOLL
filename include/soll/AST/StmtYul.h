@@ -49,8 +49,7 @@ class YulCaseStmt final : public YulSwitchCase {
   std::unique_ptr<YulLiteral> LHS;
 
 public:
-  YulCaseStmt(std::unique_ptr<YulLiteral> &&LHS, ExprPtr &&RHS)
-      : YulSwitchCase(std::move(RHS)), LHS(std::move(LHS)) {}
+  inline YulCaseStmt(std::unique_ptr<YulLiteral> &&LHS, ExprPtr &&RHS);
 
   void accept(StmtVisitor &) override;
   void accept(ConstStmtVisitor &) const override;
@@ -79,3 +78,7 @@ public:
 };
 
 } // namespace soll
+
+#include "ExprYul.h"
+soll::YulCaseStmt::YulCaseStmt(std::unique_ptr<YulLiteral> &&LHS, ExprPtr &&RHS)
+    : YulSwitchCase(std::move(RHS)), LHS(std::move(LHS)) {}

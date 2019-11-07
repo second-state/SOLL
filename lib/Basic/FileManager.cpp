@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "soll/Basic/FileManager.h"
+#include <utility>
 
 namespace soll {
 

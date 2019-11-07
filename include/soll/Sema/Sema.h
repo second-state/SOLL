@@ -4,7 +4,8 @@
 #include "soll/AST/ASTContext.h"
 #include "soll/AST/ExprYul.h"
 #include "soll/Sema/Scope.h"
-#include <unordered_map>
+#include <memory>
+#include <vector>
 
 namespace soll {
 
@@ -66,8 +67,8 @@ public:
 
   /// ExprYul
   std::unique_ptr<YulIdentifier> CreateYulIdentifier(llvm::StringRef Name);
-  std::unique_ptr<CallExpr>
-  CreateYulCallExpr(ExprPtr &&Callee, std::vector<ExprPtr> &&Args);
+  std::unique_ptr<CallExpr> CreateYulCallExpr(ExprPtr &&Callee,
+                                              std::vector<ExprPtr> &&Args);
 
   /// type checking binary operators (subroutines of CreateBinOp)
   /// this may add type casting

@@ -35,8 +35,8 @@ std::unique_ptr<YulIdentifier> Sema::CreateYulIdentifier(llvm::StringRef Name) {
   return std::make_unique<YulIdentifier>(Name, D);
 }
 
-std::unique_ptr<CallExpr>
-Sema::CreateYulCallExpr(ExprPtr &&Callee, std::vector<ExprPtr> &&Args) {
+std::unique_ptr<CallExpr> Sema::CreateYulCallExpr(ExprPtr &&Callee,
+                                                  std::vector<ExprPtr> &&Args) {
   FunctionType *FTy = nullptr;
   if (auto I = dynamic_cast<YulIdentifier *>(Callee.get())) {
     if (I->isSpecialIdentifier()) {

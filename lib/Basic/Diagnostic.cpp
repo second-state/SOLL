@@ -2,8 +2,10 @@
 #include "soll/Basic/Diagnostic.h"
 #include "soll/Basic/CharInfo.h"
 #include <cstring>
+#include <limits>
 #include <llvm/ADT/StringExtras.h>
 #include <llvm/Support/Locale.h>
+#include <utility>
 
 namespace {
 

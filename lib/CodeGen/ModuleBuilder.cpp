@@ -3,6 +3,7 @@
 #include "CodeGenModule.h"
 #include "soll/AST/AST.h"
 #include "soll/Basic/Diagnostic.h"
+#include <memory>
 
 namespace {
 using namespace soll;

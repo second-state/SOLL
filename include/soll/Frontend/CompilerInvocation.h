@@ -3,6 +3,7 @@
 #include "soll/Basic/Diagnostic.h"
 #include "soll/Basic/FileSystemOptions.h"
 #include "soll/Basic/TargetOptions.h"
+#include "soll/Frontend/DiagnosticRenderer.h"
 #include "soll/Frontend/FrontendOptions.h"
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/ADT/IntrusiveRefCntPtr.h>
@@ -12,7 +13,6 @@ namespace soll {
 
 class CompilerInstance;
 class DiagnosticOptions;
-class DiagnosticRenderer;
 
 class CompilerInvocation {
   llvm::IntrusiveRefCntPtr<DiagnosticOptions> DiagnosticOpts;

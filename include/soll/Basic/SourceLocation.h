@@ -12,6 +12,9 @@ class FileID {
   int ID = 0;
 
 public:
+  FileID() = default;
+  FileID(const FileID &) = default;
+
   bool isValid() const { return ID != 0; }
   bool isInvalid() const { return ID == 0; }
 
@@ -43,6 +46,9 @@ class SourceLocation {
   unsigned ID;
 
 public:
+  SourceLocation() = default;
+  SourceLocation(const SourceLocation &) = default;
+
   bool isValid() const { return ID != 0; }
   bool isInvalid() const { return ID == 0; }
   unsigned getOffset() const { return ID; }
@@ -256,12 +262,5 @@ template <> struct DenseMapInfo<soll::FileID> {
 
   static bool isEqual(soll::FileID LHS, soll::FileID RHS) { return LHS == RHS; }
 };
-
-template <typename T> struct isPodLike;
-
-template <> struct isPodLike<soll::SourceLocation> {
-  static const bool value = true;
-};
-template <> struct isPodLike<soll::FileID> { static const bool value = true; };
 
 } // namespace llvm

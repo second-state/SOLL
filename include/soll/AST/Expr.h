@@ -7,6 +7,7 @@
 
 #include <optional>
 #include <string>
+#include <utility>
 #include <variant>
 
 namespace soll {

@@ -62,7 +62,8 @@ protected:
   using StringLiteralType = typename cond_const<Const, StringLiteral>::type;
   using NumberLiteralType = typename cond_const<Const, NumberLiteral>::type;
 
-  using YulIdentifierListType = typename cond_const<Const, YulIdentifierList>::type;
+  using YulIdentifierListType =
+      typename cond_const<Const, YulIdentifierList>::type;
   using YulAssignmentType = typename cond_const<Const, YulAssignment>::type;
   using YulForStmtType = typename cond_const<Const, YulForStmt>::type;
   using YulCaseStmtType = typename cond_const<Const, YulCaseStmt>::type;

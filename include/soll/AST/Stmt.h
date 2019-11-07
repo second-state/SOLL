@@ -20,8 +20,7 @@ class EmitStmt : public Stmt {
   std::unique_ptr<CallExpr> EventCall;
 
 public:
-  EmitStmt(std::unique_ptr<CallExpr> &&EventCall)
-      : EventCall(std::move(EventCall)) {}
+  inline EmitStmt(std::unique_ptr<CallExpr> &&EventCall);
 
   CallExpr *getCall() { return EventCall.get(); }
   const CallExpr *getCall() const { return EventCall.get(); }
@@ -35,8 +34,7 @@ class DeclStmt : public Stmt {
   ExprPtr Value;
 
 public:
-  DeclStmt(std::vector<VarDeclPtr> &&VarDecls, ExprPtr &&Value)
-      : VarDecls(std::move(VarDecls)), Value(std::move(Value)) {}
+  inline DeclStmt(std::vector<VarDeclPtr> &&VarDecls, ExprPtr &&Value);
 
   std::vector<VarDecl *> getVarDecls();
   std::vector<const VarDecl *> getVarDecls() const;
@@ -179,3 +177,11 @@ public:
 };
 
 } // namespace soll
+
+#include "Expr.h"
+soll::EmitStmt::EmitStmt(std::unique_ptr<CallExpr> &&EventCall)
+    : EventCall(std::move(EventCall)) {}
+
+#include "Decl.h"
+soll::DeclStmt::DeclStmt(std::vector<VarDeclPtr> &&VarDecls, ExprPtr &&Value)
+    : VarDecls(std::move(VarDecls)), Value(std::move(Value)) {}

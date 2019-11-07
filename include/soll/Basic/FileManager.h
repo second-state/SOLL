@@ -4,6 +4,8 @@
 #include <llvm/ADT/IntrusiveRefCntPtr.h>
 #include <llvm/Support/VirtualFileSystem.h>
 #include <map>
+#include <memory>
+#include <string>
 
 namespace soll {
 

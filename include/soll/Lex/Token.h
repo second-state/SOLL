@@ -27,6 +27,9 @@ class Token {
   void *PtrData;
 
 public:
+  Token() = default;
+  Token(const Token &) = default;
+
   tok::TokenKind getKind() const { return Kind; }
   void setKind(tok::TokenKind K) { Kind = K; }
 
@@ -103,7 +106,3 @@ public:
 };
 
 } // namespace soll
-
-namespace llvm {
-template <> struct isPodLike<soll::Token> { static const bool value = true; };
-} // end namespace llvm

@@ -100,7 +100,9 @@ void NumberLiteral::accept(ConstStmtVisitor &visitor) const {
   visitor.visit(*this);
 }
 
-void YulIdentifierList::accept(soll::StmtVisitor &visitor) { visitor.visit(*this); }
+void YulIdentifierList::accept(soll::StmtVisitor &visitor) {
+  visitor.visit(*this);
+}
 void YulIdentifierList::accept(soll::ConstStmtVisitor &visitor) const {
   visitor.visit(*this);
 }
@@ -120,7 +122,9 @@ void YulCaseStmt::accept(soll::ConstStmtVisitor &visitor) const {
   visitor.visit(*this);
 }
 
-void YulDefaultStmt::accept(soll::StmtVisitor &visitor) { visitor.visit(*this); }
+void YulDefaultStmt::accept(soll::StmtVisitor &visitor) {
+  visitor.visit(*this);
+}
 void YulDefaultStmt::accept(soll::ConstStmtVisitor &visitor) const {
   visitor.visit(*this);
 }
