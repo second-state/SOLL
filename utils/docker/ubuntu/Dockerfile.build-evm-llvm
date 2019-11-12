@@ -1,4 +1,4 @@
-FROM yi2nd/ubuntu-soll-build:18.04-clang
+FROM secondstate/soll:ubuntu-clang
 
 RUN apt update \
     && apt install -y \
@@ -14,9 +14,9 @@ WORKDIR /evm_llvm_build
 RUN cmake -DCMAKE_INSTALL_PREFIX=/evm_llvm_build \
         -DLLVM_ENABLE_RTTI=ON \
         -DCMAKE_BUILD_TYPE="Debug" \
-        -DLLVM_TARGETS_TO_BUILD="EVM" -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD="EVM" \
+        -DLLVM_TARGETS_TO_BUILD="WebAssembly" -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD="EVM" \
         /evm_llvm \
-    && make -j4 \
+    && make -j8 \
     && cmake --build . --target install
 
 ENV LLVM_DIR=/evm_llvm_build
