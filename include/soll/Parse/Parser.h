@@ -179,9 +179,16 @@ private:
   bool TryConsumeToken(tok::TokenKind Expected) {
     if (Tok.isNot(Expected))
       return false;
-    assert(!isTokenSpecial() &&
-           "Should consume special tokens with Consume*Token");
-    Tok = *TheLexer.CachedLex();
+    if (isTokenParen())
+      ConsumeParen();
+    else if (isTokenBracket())
+      ConsumeBracket();
+    else if (isTokenBrace())
+      ConsumeBrace();
+    else if (isTokenStringLiteral())
+      ConsumeStringToken();
+    else
+      Tok = *TheLexer.CachedLex();
     return true;
   }
 
