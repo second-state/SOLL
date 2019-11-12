@@ -169,11 +169,13 @@ void CodeGenFunction::emitForStmt(const ForStmt *FS) {
     emitStmt(Init);
   }
 
-  llvm::BasicBlock *LoopExit = createBasicBlock("for.end");
-  llvm::BasicBlock *Continue = createBasicBlock("for.cond");
+  llvm::BasicBlock *ForCond = createBasicBlock("for.cond");
   llvm::BasicBlock *ForBody = createBasicBlock("for.body");
+  llvm::BasicBlock *Continue = createBasicBlock("for.cont");
+  llvm::BasicBlock *LoopExit = createBasicBlock("for.end");
 
-  Builder.SetInsertPoint(Continue);
+  Builder.CreateBr(ForCond);
+  Builder.SetInsertPoint(ForCond);
   if (const Expr *Cond = FS->getCond()) {
     emitBranchOnBoolExpr(Cond, ForBody, LoopExit);
   } else {
@@ -185,6 +187,12 @@ void CodeGenFunction::emitForStmt(const ForStmt *FS) {
   Builder.SetInsertPoint(ForBody);
   emitStmt(FS->getBody());
   Builder.CreateBr(Continue);
+
+  Builder.SetInsertPoint(Continue);
+  if (const Expr *Loop = FS->getLoop()) {
+    emitExpr(Loop);
+  }
+  Builder.CreateBr(ForCond);
 
   BreakContinueStack.pop_back();
   Builder.SetInsertPoint(LoopExit);
