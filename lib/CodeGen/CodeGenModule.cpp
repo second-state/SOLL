@@ -83,7 +83,7 @@ void CodeGenModule::initTypes() {
 llvm::Function *CodeGenModule::getIntrinsic(unsigned IID,
                                             llvm::ArrayRef<llvm::Type *> Typs) {
   return llvm::Intrinsic::getDeclaration(
-      &TheModule, static_cast<llvm::Intrinsic::ID>(IID), Typs);
+      &TheModule, static_cast<llvm::Intrinsic::ID>(IID), llvm::None);
 }
 
 void CodeGenModule::initEVMOpcodeDeclaration() {
