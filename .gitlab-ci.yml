@@ -35,7 +35,8 @@ stages:
     - ${BASE_BINDIR}/tools/soll/soll -action=EmitABI     ${TEST_SRCDIR}/0-0-2.sol
     - bash -c "${BASE_BINDIR}/tools/soll/soll ${TEST_ENVDIR}/test/safeMath.sol > ${BASE_BINDIR}/safeMath.ll"
     - bash -c "${BASE_BINDIR}/tools/soll/soll ${TEST_ENVDIR}/test/erc20.sol    > ${BASE_BINDIR}/erc20.ll"
-    - bash -c "./utils/compile -v ${BASE_BINDIR}/*.ll || test -f ${BASE_BINDIR}/safeMath.wasm -a -f ${BASE_BINDIR}/erc20.wasm"
+    - bash -c "${BASE_BINDIR}/tools/soll/soll ${TEST_ENVDIR}/test/forStmt.sol  > ${BASE_BINDIR}/forStmt.ll"
+    - bash -c "./utils/compile -v ${BASE_BINDIR}/*.ll || test -f ${BASE_BINDIR}/safeMath.wasm -a -f ${BASE_BINDIR}/erc20.wasm -a -f ${BASE_BINDIR}/forStmt.wasm"
   cache:
     key: ${OS}-${COMPILER}
     paths:
