@@ -196,6 +196,10 @@ void CodeGenModule::initEVMOpcodeDeclaration() {
   FT = llvm::FunctionType::get(Int64PtrTy, {}, false);
   Func_getBlockTimestamp = getIntrinsic(llvm::Intrinsic::evm_timestamp, FT);
 
+  // getExternalBalance
+  FT = llvm::FunctionType::get(Int64PtrTy, {}, false);
+  Func_getExternalBalance = getIntrinsic(llvm::Intrinsic::evm_balance, FT);
+
 #endif
 }
 
@@ -409,6 +413,15 @@ void CodeGenModule::initEEIDeclaration() {
   Func_getBlockHash->addFnAttr(
       llvm::Attribute::get(VMContext, "wasm-import-name", "getBlockHash"));
 
+  // getExternalBalance
+  FT = llvm::FunctionType::get(VoidTy, {AddressPtrTy, Int128PtrTy}, false);
+  Func_getExternalBalance =
+      llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                             "ethereum.getExternalBalance", TheModule);
+  Func_getExternalBalance->addFnAttr(Ethereum);
+  Func_getExternalBalance->addFnAttr(llvm::Attribute::get(
+      VMContext, "wasm-import-name", "getExternalBalance"));
+
   // debug.print32
   FT = llvm::FunctionType::get(VoidTy, {Int32Ty}, false);
   Func_print32 = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
@@ -600,6 +613,51 @@ void CodeGenModule::initSha256() {
     llvm::Value *AddressPtr =
         Builder.CreateAlloca(AddressTy, nullptr, "address.ptr");
     llvm::APInt Address = llvm::APInt(160, 2).byteSwap();
+    Builder.CreateStore(Builder.getInt(Address), AddressPtr);
+
+    llvm::Value *Fee = emitGetGasLeft();
+    Builder.CreateCall(Func_callStatic, {Fee, AddressPtr, Ptr, Length});
+    llvm::Value *ResultPtr =
+        Builder.CreateAlloca(Int256Ty, nullptr, "result.ptr");
+    llvm::Value *ResultVPtr =
+        Builder.CreateBitCast(ResultPtr, Int8PtrTy, "result.vptr");
+    Builder.CreateCall(Func_returnDataCopy,
+                       {ResultVPtr, Builder.getInt32(0), Builder.getInt32(32)});
+    llvm::Value *Result = Builder.CreateLoad(ResultPtr);
+
+    Builder.CreateRet(emitEndianConvert(Result));
+  } else {
+    __builtin_unreachable();
+  }
+}
+
+void CodeGenModule::initRipemd160() {
+  llvm::Argument *Memory = Func_ripemd160->arg_begin();
+  Memory->setName("memory");
+
+  llvm::BasicBlock *Entry =
+      llvm::BasicBlock::Create(VMContext, "entry", Func_ripemd160);
+  Builder.SetInsertPoint(Entry);
+
+  llvm::Value *Length = Builder.CreateTrunc(
+      Builder.CreateExtractValue(Memory, {0}), Int32Ty, "length");
+  llvm::Value *Ptr = Builder.CreateExtractValue(Memory, {1}, "ptr");
+
+  if (isEVM()) {
+    llvm::Value *ResultPtr =
+        Builder.CreateAlloca(Int256Ty, nullptr, "result.ptr");
+    llvm::Value *Fee = emitGetGasLeft();
+    Builder.CreateCall(Func_callStatic,
+                       {Fee, Builder.getIntN(256, 3),
+                        Builder.CreatePtrToInt(Ptr, EVMIntTy),
+                        Builder.CreateZExtOrTrunc(Length, EVMIntTy),
+                        Builder.CreatePtrToInt(ResultPtr, EVMIntTy),
+                        Builder.getIntN(256, 32)});
+    llvm::Value *Result = Builder.CreateLoad(ResultPtr);
+  } else if (isEWASM()) {
+    llvm::Value *AddressPtr =
+        Builder.CreateAlloca(AddressTy, nullptr, "address.ptr");
+    llvm::APInt Address = llvm::APInt(160, 3).byteSwap();
     Builder.CreateStore(Builder.getInt(Address), AddressPtr);
 
     llvm::Value *Fee = emitGetGasLeft();

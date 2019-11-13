@@ -52,6 +52,7 @@ class CodeGenModule : public CodeGenTypeCache {
   llvm::Function *Func_getBlockNumber = nullptr;
   llvm::Function *Func_getBlockTimestamp = nullptr;
   llvm::Function *Func_getBlockHash = nullptr;
+  llvm::Function *Func_getExternalBalance = nullptr;
 
   llvm::Function *Func_print32 = nullptr;
 
@@ -76,6 +77,7 @@ class CodeGenModule : public CodeGenTypeCache {
   void initPrebuiltContract();
   void initKeccak256();
   void initSha256();
+  void initRipemd160();
 
 public:
   CodeGenModule(const CodeGenModule &) = delete;

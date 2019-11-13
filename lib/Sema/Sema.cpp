@@ -134,7 +134,11 @@ std::unique_ptr<CallExpr> Sema::CreateCallExpr(ExprPtr &&Callee,
                                                std::vector<ExprPtr> &&Args) {
   TypePtr ResultTy = Callee->getType();
   FunctionType *FTy = nullptr;
-  if (auto I = dynamic_cast<Identifier *>(Callee.get())) {
+  Expr *expr = Callee.get();
+  if (auto M = dynamic_cast<MemberExpr *>(Callee.get())) {
+    expr = M->getName();
+  }
+  if (auto I = dynamic_cast<Identifier *>(expr)) {
     if (I->isSpecialIdentifier()) {
       FTy = dynamic_cast<FunctionType *>(I->getType().get());
     } else {
@@ -154,7 +158,7 @@ std::unique_ptr<CallExpr> Sema::CreateCallExpr(ExprPtr &&Callee,
       }
     }
   } else {
-    assert(false && "only support Identifier callee");
+    assert(false && "only support Identifier, member callee");
     __builtin_unreachable();
   }
 
@@ -300,6 +304,13 @@ Sema::CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr, Token Tok) {
   static const llvm::StringMap<Identifier::SpecialIdentifier> ArrayLookup{
       {"length", Identifier::SpecialIdentifier::array_length},
   };
+  static const llvm::StringMap<Identifier::SpecialIdentifier> AddressLookup{
+      {"balance", Identifier::SpecialIdentifier::address_balance},
+      {"transfer", Identifier::SpecialIdentifier::address_transfer},
+      {"send", Identifier::SpecialIdentifier::address_send},
+      {"call", Identifier::SpecialIdentifier::address_call},
+      {"delegatecall", Identifier::SpecialIdentifier::address_delegatecall},
+      {"staticcall", Identifier::SpecialIdentifier::address_staticcall}};
   llvm::StringRef Name = Tok.getIdentifierInfo()->getName();
   const Expr *Base = BaseExpr.get();
   if (auto *I = dynamic_cast<const Identifier *>(Base)) {
@@ -387,6 +398,43 @@ Sema::CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr, Token Tok) {
             switch (Iter->second) {
             case Identifier::SpecialIdentifier::array_length:
               Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+              break;
+            default:
+              assert(false && "unknown member");
+              __builtin_unreachable();
+            }
+            return std::make_unique<MemberExpr>(
+                std::move(BaseExpr),
+                std::make_unique<Identifier>(Name, Iter->second, Ty));
+          } else {
+          }
+          break;
+        case Type::Category::Address:
+          if (auto Iter = AddressLookup.find(Name); Iter != Lookup.end()) {
+            std::shared_ptr<Type> Ty;
+            switch (Iter->second) {
+            case Identifier::SpecialIdentifier::address_balance:
+              Ty = std::make_shared<AddressType>(StateMutability::Payable);
+              break;
+            case Identifier::SpecialIdentifier::address_transfer:
+              Ty = std::make_shared<FunctionType>(
+                  std::vector<TypePtr>{std::make_shared<IntegerType>(
+                      IntegerType::IntKind::U256)},
+                  std::vector<TypePtr>{});
+              break;
+            case Identifier::SpecialIdentifier::address_send:
+              Ty = std::make_shared<FunctionType>(
+                  std::vector<TypePtr>{std::make_shared<IntegerType>(
+                      IntegerType::IntKind::U256)},
+                  std::vector<TypePtr>{std::make_shared<BooleanType>()});
+              break;
+            case Identifier::SpecialIdentifier::address_call:
+            case Identifier::SpecialIdentifier::address_delegatecall:
+            case Identifier::SpecialIdentifier::address_staticcall:
+              Ty = std::make_shared<FunctionType>(
+                  std::vector<TypePtr>{std::make_shared<BytesType>()},
+                  std::vector<TypePtr>{std::make_shared<BooleanType>(),
+                                       std::make_shared<BytesType>()});
               break;
             default:
               assert(false && "unknown member");

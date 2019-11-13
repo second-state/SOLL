@@ -616,6 +616,18 @@ private:
             Builder.CreateCall(getBlockTimestamp, {}), CGF.Int256Ty);
         return ExprValue::getRValue(ME, Val);
       }
+      case Identifier::SpecialIdentifier::address_balance: {
+        llvm::Function *getExternalBalance =
+            CGF.getCodeGenModule().getModule().getFunction(
+                "ethereum.getExternalBalance");
+        llvm::Value *addressOffset =
+            CGF.emitExpr(ME->getBase()).load(Builder, CGF.CGM);
+        llvm::Value *ValPtr = Builder.CreateAlloca(CGF.Int128Ty);
+        Builder.CreateCall(getExternalBalance, {addressOffset, ValPtr});
+        llvm::Value *Val = CGF.getCodeGenModule().emitEndianConvert(
+            Builder.CreateLoad(ValPtr));
+        return ExprValue::getRValue(ME, Builder.CreateZExt(Val, CGF.Int256Ty));
+      }
       default:
         assert(false && "unsupported special member access");
         __builtin_unreachable();
@@ -800,7 +812,11 @@ llvm::Value *CodeGenFunction::emitCallblockhash(const CallExpr *CE) {
 }
 
 ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
-  auto Callee = dynamic_cast<const Identifier *>(CE->getCalleeExpr());
+  auto expr = CE->getCalleeExpr();
+  if (auto M = dynamic_cast<const MemberExpr *>(expr)) {
+    expr = M->getName();
+  }
+  auto Callee = dynamic_cast<const Identifier *>(expr);
   if (Callee->isSpecialIdentifier()) {
     switch (Callee->getSpecialIdentifier()) {
     case Identifier::SpecialIdentifier::require:
@@ -829,6 +845,9 @@ ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
       return ExprValue::getRValue(CE, emitCallecrecover(CE));
     case Identifier::SpecialIdentifier::blockhash:
       return ExprValue::getRValue(CE, emitCallblockhash(CE));
+    case Identifier::SpecialIdentifier::address_staticcall:
+      // Todo:
+      // return ExprValue::getRValue(CE, emitCalladdress_staticcall(CE));
     default:
       assert(false && "special function not supported yet");
       __builtin_unreachable();
