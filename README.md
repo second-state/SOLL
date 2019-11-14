@@ -1,58 +1,37 @@
-# Introduction
-**SOLL** is a new compiler for generating [ewasm](https://github.com/ewasm) (Ethereum flavored WebAssembly) files from Solidity.
+# 1. Introduction
+**SOLL** is a new compiler for generating [Ewasm](https://github.com/ewasm) (Ethereum flavored WebAssembly) files from Solidity.
 
-To support developers as many as possible, we design projects to not only support more smart contract programming languages, such as Rust and C++, but also support various VMs, such as ewasm VM and evm. To achieve this goal, in the very first step, we develop SOLL, a compiler for Solidity-based smart contract running on ewasm VM.
+To support developers as many as possible, we design projects to not only support more smart contract programming languages, such as Rust and C++, but also support various VMs, such as Ewasm VM and evm. To achieve this goal, in the very first step, we develop SOLL, a compiler for Solidity-based smart contract running on Ewasm VM.
 
-In SOLL, we design two phases of code generation flow. Generate *.ll (LLVM IR file) first, then generate *.wasm (EWASM file).
+SOLL has two phases in the code generation flow. Generate *.ll (LLVM IR file) first, then generate *.wasm (Ewasm file). We provide two documents for explaining how to use and develop SOLL compiler.
 
-In the Getting Started in following sections, we will show you several steps to use SOLL to generate ewasm file.
+For beginners, in the following sections of this document, we will show you how to use SOLL to generate a Ewasm file and then deploy the file to TestNet.
 
-1. Build SOLL from source code.
-2. Generate ewasm files from our demo contracts.
-    - [0-0-1.sol](./test/release/0-0-1.sol) - Safemath (simplified version)
-    - [0-0-2.sol](./test/release/0-0-2.sol) - [ERC20](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md) (simplified version)
-3. Execute those ewasm files in our test environment.
+For developers, we provide another document, Developer Guide, in "doc/guides/DevGuide.md". 
 
-# Getting Started
+# 2. Getting Started
 To get started with our demo, you will need two components at first.
 
-- Pre-install **Docker** and pull our [docker image](https://hub.docker.com/r/secondstate/soll) (optional)
+- Pre-install **Docker** and pull our [docker image](https://hub.docker.com/r/secondstate/soll) 
 > *We provide an image include build and execute environment (recommend).  
 > If you don't want to use docker directly you will need below tools (cmake, llvm, xxd, wabt, node.js).*
 
-- **Soll** https://github.com/second-state/soll
+- **SOLL** https://github.com/second-state/soll
 
-## Preparation
+## 2.1 Preparation
 - Pull official docker image to get an already established build/execute environment.
 ```Shell
 > docker pull secondstate/soll
 ```
 
-- Get Source Code from Github
+- Get Source Code from Github and checkout to this version, v0.0.3.
 ```Shell
 > git clone --recursive https://github.com/second-state/soll.git
+> cd soll
+> git checkout v0.0.3
 ```
 
-## Working Tree
-```
-soll
-├── (...)
-├── build                 // Build code path, manually create it
-├── test
-│   ├── (...)
-│   └── release           // Release Test Contract
-│       ├── 0-0-1.sol
-│       └── 0-0-2.sol
-├── (...)
-└── utils
-    ├── (...)
-    └── ewasm-testbench
-        ├── (...)
-        ├── safeMath.js   // 0-0-1.sol Test Environment
-        └── erc20.js      // 0-0-2.sol Test Environment
-```
-
-## Launch Environment
+## 2.3 Launch Environment
 Attach shell to container and bind volume with repositories' path.
 ```Shell
 > docker run -it --rm \
@@ -60,127 +39,78 @@ Attach shell to container and bind volume with repositories' path.
       secondstate/soll
 ```
 
-## Build SOLL
+## 2.4 Build SOLL
 Build SOLL first (we use cmake with llvm library)
 ```Shell
 (docker) $ cd ~/soll && mkdir -p build && cd build
 (docker) $ cmake .. && make
 ```
 
-## Demo with [0-0-1.sol](./test/release/0-0-1.sol)
+## 2.5 Compile an ERC20 smart contract
+
+As above-mentioned, to compile Solidity Smart Contract code, SOLL will generate *.ll (LLVM IR file) first, then generate *.wasm (Ewasm file). 
 
 **Phase 1. Use SOLL generate .ll from test contract**
 
-Execute SOLL to generate a *.ll file for the next step.
-```Shell
-(docker) $ ~/soll/build/tools/soll/soll ~/soll/test/release/0-0-1.sol > ~/soll/utils/ewasm-testbench/safeMath.ll
+Create your smart file by copying from our demo case "0-0-3.sol".
+```shell
+(docker) $ cd ~
+(docker) $ cp ~/soll/test/release/0-0-3.sol ~/contract.sol
 ```
-
-**Phase 2. Generate .wasm from .ll**
-
-```Shell
-(docker) $ ~/soll/utils/compile -v ~/soll/utils/ewasm-testbench/safeMath.ll
-```
-
-**Run in Test Env**
-
-We use "16 divides 7" as our smart contract function to check whether our "SafeMath" execute correctly or not.
-```Shell
-(docker) $ cd ~/soll/utils/ewasm-testbench
-(docker) $ ./safeMath.js safeMath.wasm div 16 7
-```
-
-The result should be the same as the following content.
-
-```Shell
-getCallDataSize()
-{ size: 68 }
-callDataCopy(66128, 0, 4)
-{ data: a391c15b }
-callDataCopy(66064, 4, 64)
-{ data: 00000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000007 }
-getCallValue(66048)
-{ value: 00000000000000000000000000000000 }
-finish(66032, 32)
-{ returnData:
-   '0000000000000000000000000000000000000000000000000000000000000002',
-  storage: '{}' }
-```
-
-## Demo with [0-0-2.sol](./test/release/0-0-2.sol)
-
-**Phase 1. Use SOLL generate .ll from test contract**
 
 Execute SOLL to generate a *.ll file for the next step.
-```Shell
-(docker) $ ~/soll/build/tools/soll/soll ~/soll/test/release/0-0-2.sol > ~/soll/utils/ewasm-testbench/erc20.ll
+```shell
+(docker) $ ~/soll/build/tools/soll/soll -action=EmitLLVM contract.sol > contract.ll
 ```
-
 **Phase 2. Generate .wasm from .ll**
 
-```Shell
-(docker) $ ~/soll/utils/compile -v ~/soll/utils/ewasm-testbench/erc20.ll
+```shell
+(docker) $ ~/soll/utils/compile -v contract.ll
 ```
 
-**Run in Test Env**
+After compiling "contract.ll", SOLL compiler will generate two files: "contract.deploy.wasm" for deploying and "contract.wasm" for normal uses. 
 
-We use `{"2":"f","13425c139e83d895e2b184742e4c3c48f19def0307be60e6900f6563e300a60f":"f"}` as our storage current state and use smart contract function **balanceOf** to check the balance of default **msg.sender**.
-> Here default msg.sender is address 0x1234567890123456789012345678901234567890  
-> [More](https://solidity.readthedocs.io/en/v0.5.3/miscellaneous.html#mappings-and-dynamic-arrays) about how storage layout
+We will use "contract.deploy.wasm" in the next section to deploy it to Ewasm TestNet.
 
-```Shell
-(docker) $ cd ~/soll/utils/ewasm-testbench/
-(docker) $ ./erc20.js erc20.wasm '{"2":"f","13425c139e83d895e2b184742e4c3c48f19def0307be60e6900f6563e300a60f":"f"}' balanceOf 0x1234567890123456789012345678901234567890
+## 2.6 Deploy an ERC20 smart contract to Ewasm TestNet
+
+** Step 1: Convert Wasm files to Hex Code files.
+
+To deploy our smart contract code to TestNet, we need to convert the WASM files to Hex Code files.
+
+```shell
+(docker) $ xxd -p contract.deploy.wasm | tr -d $'\n'
 ```
+** Step 2: Submit the Hex Code files to Ewasm TestNet.
 
-The result should be the same as the following content.
-```
-getCallDataSize()
-{ size: 36 }
-callDataCopy(66096, 0, 4)
-{ data: 70a08231 }
-callDataCopy(66064, 4, 32)
-{ data: 0000000000000000000000001234567890123456789012345678901234567890 }
-getCallValue(65992)
-{ value: 00000000000000000000000000000000 }
-getGasLeft()
-{ gas: 65522 }
-callStatic(65522, 66040, 65792, 64)
-{ address: 2, data: 00000000000000000000000012345678901234567890123456789012345678900000000000000000000000000000000000000000000000000000000000000000 }
-getCallDataSize()
-{ size: 64 }
-useGas(84)
-getCallDataSize()
-{ size: 64 }
-callDataCopy(1179584, 0, 64)
-{ data: 00000000000000000000000012345678901234567890123456789012345678900000000000000000000000000000000000000000000000000000000000000000 }
-finish(1048544, 32)
-returnDataCopy(66008, 0, 32)
-{ data: 13425c139e83d895e2b184742e4c3c48f19def0307be60e6900f6563e300a60f }
-storageLoad(65728, 65760)
-{ key: 13425c139e83d895e2b184742e4c3c48f19def0307be60e6900f6563e300a60f, value: f }
-finish(66032, 32)
-{ returnData:
-   '000000000000000000000000000000000000000000000000000000000000000f',
-  storage:
-   '{"2":"f","13425c139e83d895e2b184742e4c3c48f19def0307be60e6900f6563e300a60f":"f"}' }
-```
+Copy the Hex Code generated by the previous step.
 
-**Run in Test Env**
+![Find ToolsSubmitTx](doc/images/2-6-2-SubmitTx-1.png)
 
-We still use `{"2":"f","13425c139e83d895e2b184742e4c3c48f19def0307be60e6900f6563e300a60f":"f"}` as our storage current state and use smart contract function **transfer** to transfer amount(1) from default **msg.sender** to other address as 0x1234567890123456789012345678901234567891.
+Paste the Hex Code to Ewasm TestNet website and submit it.
 
-```Shell
-(docker) $ cd ~/soll/utils/ewasm-testbench/
-(docker) $ ./erc20.js erc20.wasm '{"2":"f","13425c139e83d895e2b184742e4c3c48f19def0307be60e6900f6563e300a60f":"f"}' transfer 0x1234567890123456789012345678901234567891 1
-```
+![Paste the Hex Code and submit it](doc/images/2-6-2-SubmitTx-2.png)
 
-The result should be the same as the following content.
-```
-(... omitted)
+Submit the Hex Code to Ewasm TestNet.
 
-{ returnData:
-   '0000000000000000000000000000000000000000000000000000000000000001',
-  storage:
-   '{"2":"f","13425c139e83d895e2b184742e4c3c48f19def0307be60e6900f6563e300a60f":"e","d3a40b027a96d16f0c9c02fdbf30dd031cb372ed53432958315b5da0226952e":"1"}' }
-```
+![Submiting the Hex Code](doc/images/2-6-2-SubmitTx-3.png)
+
+** Step 3: Check activities of TestNet to make sure our contracts executed successfully.
+
+Check whether the latest activity is our contract or not.
+
+![Check the latest activity](doc/images/2-6-3-CheckAct.png)
+![Check the latest transaction](doc/images/2-6-3-CheckLatestTx.png)
+
+Check the Bytecode of the latest activity.
+
+![Check the bytecode](doc/images/2-6-3-CheckBytecode.png)
+
+Check the Ewasm code of the latest activity.
+
+![Check the Ewasm code](doc/images/2-6-3-CheckEwasm.png)
+
+Check the Storage part of the latest activity.
+
+![Check the Storage](doc/images/2-6-3-CheckStorage.png)
+

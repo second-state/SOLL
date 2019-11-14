@@ -29,10 +29,6 @@ stages:
   stage: compile
   image: secondstate/soll:${OS}-compile
   script:
-    - ${BASE_BINDIR}/tools/soll/soll -action=EmitFuncSig ${TEST_SRCDIR}/0-0-1.sol
-    - ${BASE_BINDIR}/tools/soll/soll -action=EmitABI     ${TEST_SRCDIR}/0-0-1.sol
-    - ${BASE_BINDIR}/tools/soll/soll -action=EmitFuncSig ${TEST_SRCDIR}/0-0-2.sol
-    - ${BASE_BINDIR}/tools/soll/soll -action=EmitABI     ${TEST_SRCDIR}/0-0-2.sol
     - bash -c "${BASE_BINDIR}/tools/soll/soll ${TEST_ENVDIR}/test/safeMath.sol > ${BASE_BINDIR}/safeMath.ll"
     - bash -c "${BASE_BINDIR}/tools/soll/soll ${TEST_ENVDIR}/test/erc20.sol    > ${BASE_BINDIR}/erc20.ll"
     - bash -c "${BASE_BINDIR}/tools/soll/soll ${TEST_ENVDIR}/test/forStmt.sol  > ${BASE_BINDIR}/forStmt.ll"
