@@ -14,12 +14,12 @@ Language Features:
 Compiler Features:
 
 * Generate legal and can be deployed on testnet Ewasm file.  
-* Add diagnostic message support. 
+* Support diagnostic message. 
 * Add command-line options. (Generate ABI, function signature and evm bytecode)
 
 Bugfixes:
 
-* Fix endian issue when call EEI function from wasm.
+* Fix an endian issue that happened when someone calls the EEI function from wasm.
 
 ### 0.0.2 (2019-09-03)
 
@@ -36,8 +36,8 @@ Language Features:
 
 Compiler Features:
 
-* Test suite migrate into utils as submodule.
-* Add command line option. (Emit LLVM IR, Dump AST).
+* Migrate Test suite to utils as a submodule.
+* Add command-line option. (Emit LLVM IR, Dump AST).
 
 Bugfixes:
 
@@ -49,7 +49,7 @@ Bugfixes:
 Language Features:
 
 * Type
-    * 64bit integer type support only.
+    * Support 64bit integer type only.
 * Basic grammar support.
     * Binary operator, Unary Operator, If statement, Function call.
 * Builtin function
@@ -58,5 +58,5 @@ Language Features:
 
 Compiler Features:
 
-* Two phases compile flow to generate wasm file.
+* Provide two compiling phases for generating wasm files.
 
