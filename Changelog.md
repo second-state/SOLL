@@ -13,9 +13,9 @@ Language Features:
 
 Compiler Features:
 
-* Generate legal and can be deployed on testnet ewasm file.  
+* Generate legal and can be deployed on testnet Ewasm file.  
 * Add diagnostic message support. 
-* Add command line option. (Generate ABI, function signature and evm bytecode)
+* Add command-line options. (Generate ABI, function signature and evm bytecode)
 
 Bugfixes:
 
@@ -31,7 +31,7 @@ Language Features:
 * Basic grammar support
     * Support parentheses.
     * Loop (while, do...while, for)
-    * Implicit/Explicit type casting.
+    * Implicit/Explicit typecasting.
 * Support state variable.
 
 Compiler Features:
