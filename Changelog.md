@@ -13,7 +13,7 @@ Language Features:
 
 Compiler Features:
 
-* Generate legal and can be deployed on testnet Ewasm file.  
+* Be able to generate deployable Ewasm files.
 * Support diagnostic message. 
 * Add command-line options. (Generate ABI, function signature and evm bytecode)
 
