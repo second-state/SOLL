@@ -551,6 +551,8 @@ void CodeGenModule::initPrebuiltContract() {
 
   initKeccak256();
   initSha256();
+  initRipemd160();
+  initEcrecover();
 }
 
 void CodeGenModule::initKeccak256() {
@@ -644,20 +646,61 @@ void CodeGenModule::initRipemd160() {
   llvm::Value *Ptr = Builder.CreateExtractValue(Memory, {1}, "ptr");
 
   if (isEVM()) {
-    llvm::Value *ResultPtr =
-        Builder.CreateAlloca(Int256Ty, nullptr, "result.ptr");
-    llvm::Value *Fee = emitGetGasLeft();
-    Builder.CreateCall(Func_callStatic,
-                       {Fee, Builder.getIntN(256, 3),
-                        Builder.CreatePtrToInt(Ptr, EVMIntTy),
-                        Builder.CreateZExtOrTrunc(Length, EVMIntTy),
-                        Builder.CreatePtrToInt(ResultPtr, EVMIntTy),
-                        Builder.getIntN(256, 32)});
-    llvm::Value *Result = Builder.CreateLoad(ResultPtr);
+    llvm::Value *Result = Builder.CreateCall(
+        Func_sha3, {Builder.CreatePtrToInt(Ptr, EVMIntTy),
+                    Builder.CreateZExtOrTrunc(Length, EVMIntTy)});
+    Builder.CreateRet(Result);
   } else if (isEWASM()) {
     llvm::Value *AddressPtr =
         Builder.CreateAlloca(AddressTy, nullptr, "address.ptr");
     llvm::APInt Address = llvm::APInt(160, 3).byteSwap();
+    Builder.CreateStore(Builder.getInt(Address), AddressPtr);
+
+    llvm::Value *Fee = emitGetGasLeft();
+    Builder.CreateCall(Func_callStatic, {Fee, AddressPtr, Ptr, Length});
+    llvm::Value *ResultPtr =
+        Builder.CreateAlloca(Int256Ty, nullptr, "result.ptr");
+    llvm::Value *ResultVPtr =
+        Builder.CreateBitCast(ResultPtr, Int8PtrTy, "result.vptr");
+    Builder.CreateCall(Func_returnDataCopy,
+                       {ResultVPtr, Builder.getInt32(0), Builder.getInt32(32)});
+    llvm::Value *Result = Builder.CreateLoad(ResultPtr);
+
+    Builder.CreateRet(emitEndianConvert(Result));
+  } else {
+    __builtin_unreachable();
+  }
+}
+
+void CodeGenModule::initEcrecover() {
+  llvm::Argument *arg_begin = Func_ecrecover->arg_begin();
+  llvm::Argument *arg_end = Func_ecrecover->arg_end();
+
+  std::vector<llvm::Value *> args;
+  for (auto it = arg_begin; it != arg_end; ++it) {
+    args.emplace_back(it);
+  }
+
+  llvm::BasicBlock *Entry =
+      llvm::BasicBlock::Create(VMContext, "entry", Func_ecrecover);
+  Builder.SetInsertPoint(Entry);
+
+  llvm::Value *Bytes =
+      emitConcateBytes(Builder, llvm::ArrayRef<llvm::Value *>(args));
+
+  llvm::Value *Length = Builder.CreateTrunc(
+      Builder.CreateExtractValue(Bytes, {0}), Int32Ty, "length");
+  llvm::Value *Ptr = Builder.CreateExtractValue(Bytes, {1}, "ptr");
+
+  if (isEVM()) {
+    llvm::Value *Result = Builder.CreateCall(
+        Func_sha3, {Builder.CreatePtrToInt(Ptr, EVMIntTy),
+                    Builder.CreateZExtOrTrunc(Length, EVMIntTy)});
+    Builder.CreateRet(Result);
+  } else if (isEWASM()) {
+    llvm::Value *AddressPtr =
+        Builder.CreateAlloca(AddressTy, nullptr, "address.ptr");
+    llvm::APInt Address = llvm::APInt(160, 1).byteSwap();
     Builder.CreateStore(Builder.getInt(Address), AddressPtr);
 
     llvm::Value *Fee = emitGetGasLeft();

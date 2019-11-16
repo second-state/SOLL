@@ -78,6 +78,7 @@ class CodeGenModule : public CodeGenTypeCache {
   void initKeccak256();
   void initSha256();
   void initRipemd160();
+  void initEcrecover();
 
 public:
   CodeGenModule(const CodeGenModule &) = delete;
@@ -134,6 +135,40 @@ private:
                           llvm::StringRef Name, llvm::Value *Buffer,
                           llvm::Value *Offset);
   void emitABIStore(const Type *Ty, llvm::StringRef Name, llvm::Value *Result);
+
+  template <typename T>
+  llvm::Value *emitConcateBytes(T &Builder,
+                                llvm::ArrayRef<llvm::Value *> Values) const {
+    unsigned ArrayLength = 0;
+    for (llvm::Value *Value : Values) {
+      llvm::Type *Ty = Value->getType();
+      ArrayLength += Ty->getIntegerBitWidth() / 8;
+    }
+
+    llvm::ArrayType *ArrayTy = llvm::ArrayType::get(Int8Ty, ArrayLength);
+    llvm::Value *Array = Builder.CreateAlloca(ArrayTy, nullptr, "concat");
+
+    unsigned Index = 0;
+    for (llvm::Value *Value : Values) {
+      llvm::Type *Ty = Value->getType();
+      llvm::Value *Ptr = Builder.CreateInBoundsGEP(
+          Array, {Builder.getInt32(0), Builder.getInt32(Index)});
+      llvm::Value *CPtr =
+          Builder.CreatePointerCast(Ptr, llvm::PointerType::getUnqual(Ty));
+      Builder.CreateStore(Value, CPtr);
+      Index += Ty->getIntegerBitWidth() / 8;
+    }
+
+    llvm::Value *Bytes = llvm::ConstantAggregateZero::get(BytesTy);
+    Bytes = Builder.CreateInsertValue(Bytes, Builder.getIntN(256, ArrayLength),
+                                      {0});
+    Bytes = Builder.CreateInsertValue(
+        Bytes,
+        Builder.CreateInBoundsGEP(Array,
+                                  {Builder.getInt32(0), Builder.getInt32(0)}),
+        {1});
+    return Bytes;
+  }
 
 public:
   std::string getMangledName(const CallableVarDecl *CVD);
