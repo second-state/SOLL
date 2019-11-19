@@ -264,7 +264,8 @@ bool CompilerInstance::InitializeSourceManager(const FrontendInputFile &Input) {
   const FileEntry *File = FileMgr->getFile(InputFile, /*OpenFile=*/true);
   if (!File) {
     // Diagnostics->Report(diag::err_fe_error_reading) << InputFile;
-    Diagnostics->Report(diag::err_cannot_open_file) << InputFile;
+    Diagnostics->Report(diag::err_cannot_open_file)
+        << InputFile << std::strerror(errno);
     return false;
   }
 

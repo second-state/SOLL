@@ -996,7 +996,8 @@ unique_ptr<EventDecl> Parser::parseEventDefinition() {
 }
 
 TypePtr Parser::parseTypeNameSuffix(TypePtr T) {
-  while (TryConsumeToken(tok::l_square)) {
+  while (isTokenBracket()) {
+    ConsumeBracket();
     if (Tok.is(tok::numeric_constant)) {
       int NumValue;
       if (llvm::StringRef(Tok.getLiteralData(), Tok.getLength())
@@ -1321,7 +1322,8 @@ unique_ptr<Stmt> Parser::parseSimpleStatement() {
   unique_ptr<Expr> Expression;
 
   bool IsParenExpr = false;
-  if (TryConsumeToken(tok::l_paren)) {
+  if (isTokenParen()) {
+    ConsumeParen();
     IsParenExpr = true;
   }
 
