@@ -55,7 +55,7 @@ As above-mentioned, to compile Solidity Smart Contract code, SOLL will generate 
 Create your smart file by copying from our demo case "0-0-3.sol".
 ```shell
 (docker) $ cd ~
-(docker) $ cp ~/soll/test/release/0-0-3.sol ~/contract.sol
+(docker) $ cp ~/soll/doc/examples/0-0-3.sol ~/contract.sol
 ```
 
 Execute SOLL to generate a *.ll file for the next step.
