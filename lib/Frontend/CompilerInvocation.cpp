@@ -27,7 +27,7 @@ static cl::opt<ActionKind> Action("action", cl::Optional, cl::ValueRequired,
                                   cl::cat(SollCategory));
 static cl::opt<TargetKind>
     Target("target", cl::Optional, cl::ValueRequired, cl::init(EWASM),
-           cl::values(clEnumVal(EWASM, "Generate LLVM IR for eWASM backend")),
+           cl::values(clEnumVal(EWASM, "Generate LLVM IR for Ewasm backend")),
            cl::values(clEnumVal(EVM, "Generate LLVM IR for EVM backend")),
            cl::cat(SollCategory));
 
