@@ -94,6 +94,8 @@ public:
   void emitYulObject(const YulObject *YO);
   llvm::Value *emitEndianConvert(llvm::Value *Val);
   llvm::Value *getEndianlessValue(llvm::Value *Val);
+  bool isBytesType(llvm::Type *Ty);
+  llvm::Value *emitConcateBytes(llvm::ArrayRef<llvm::Value *> Values);
 
   llvm::Value *emitGetGasLeft();
   llvm::Value *emitGetCallValue();

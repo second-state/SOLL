@@ -275,10 +275,7 @@ public:
 
   Category getCategory() const override { return Category::Mapping; }
   std::string getName() const override { return "mapping"; }
-  bool isDynamic() const override {
-    assert(false && "mapping is not allowed here");
-    __builtin_unreachable();
-  }
+  bool isDynamic() const override { return false; }
   unsigned getABIStaticSize() const override {
     assert(false && "mapping is not allowed here");
     __builtin_unreachable();

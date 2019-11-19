@@ -17,7 +17,7 @@ contract EEI_Test {
   constructor() public payable {
     msgSender = msg.sender;
     msgValue = msg.value;
-    // msgData = msg.data;
+    msgData = msg.data;
     txGasPrice = tx.gasprice;
     txOrigin = tx.origin;
     bkCoinbase = block.coinbase;
@@ -29,7 +29,6 @@ contract EEI_Test {
     emit Test(msgSender, uint(123), uint(456));
   }
 
-  function () payable {
-
+  function () external payable {
   }
 }

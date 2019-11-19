@@ -31,16 +31,16 @@ public:
     case ValueKind::VK_LValue:
       return Builder.CreateLoad(V, Name);
     case ValueKind::VK_SValue:
-      llvm::Value *Key = CGM.getEndianlessValue(Builder.CreateLoad(V));
-      llvm::Type *ValueTy = Builder.getIntNTy(Ty->getBitNum());
-      llvm::Value *Val = Builder.CreateZExtOrTrunc(
-          CGM.getEndianlessValue(CGM.emitStorageLoad(Key)), ValueTy);
+      llvm::Value *Address = CGM.getEndianlessValue(Builder.CreateLoad(V));
+      llvm::Value *Val = CGM.emitStorageLoad(Address);
       switch (Ty->getCategory()) {
       case Type::Category::Address:
       case Type::Category::Bool:
       case Type::Category::FixedBytes:
       case Type::Category::Integer:
       case Type::Category::RationalNumber: {
+        llvm::Type *ValueTy = Builder.getIntNTy(Ty->getBitNum());
+        Val = Builder.CreateZExtOrTrunc(CGM.getEndianlessValue(Val), ValueTy);
         if (Shift != nullptr) {
           Val = Builder.CreateLShr(Val, Shift);
         }
@@ -49,55 +49,141 @@ public:
       case Type::Category::String:
       case Type::Category::Bytes: {
         llvm::Function *ThisFunc = Builder.GetInsertBlock()->getParent();
+        llvm::Function *StorageLoad =
+            CGM.getModule().getFunction("ethereum.storageLoad");
         llvm::Function *Keccak256 =
             CGM.getModule().getFunction("solidity.keccak256");
-        llvm::BasicBlock *LoopInit = llvm::BasicBlock::Create(
-            CGM.getLLVMContext(), "loop_init", ThisFunc);
+        llvm::Function *Memcpy = CGM.getModule().getFunction("solidity.memcpy");
+        llvm::BasicBlock *InlineSlot =
+            llvm::BasicBlock::Create(CGM.getLLVMContext(), "inline", ThisFunc);
+        llvm::BasicBlock *ExtendSlot =
+            llvm::BasicBlock::Create(CGM.getLLVMContext(), "extend", ThisFunc);
         llvm::BasicBlock *Loop =
             llvm::BasicBlock::Create(CGM.getLLVMContext(), "loop", ThisFunc);
         llvm::BasicBlock *LoopEnd = llvm::BasicBlock::Create(
-            CGM.getLLVMContext(), "loop_end", ThisFunc);
-        llvm::ConstantInt *WordWidth = Builder.getIntN(256, 32);
+            CGM.getLLVMContext(), "extend.loop_end", ThisFunc);
+        llvm::BasicBlock *Last = llvm::BasicBlock::Create(
+            CGM.getLLVMContext(), "extend.last_word", ThisFunc);
+        llvm::BasicBlock *Done =
+            llvm::BasicBlock::Create(CGM.getLLVMContext(), "done", ThisFunc);
 
-        Builder.CreateBr(LoopInit);
+        llvm::Value *ValPtr = Builder.CreateAlloca(CGM.Int256Ty, nullptr);
+        Builder.CreateStore(Val, ValPtr);
+        llvm::Value *LastBit = Builder.CreateAnd(
+            Val, Builder.CreateLShr(
+                     Builder.getInt(llvm::APInt::getHighBitsSet(256, 1)), 7));
+        llvm::Value *Condition =
+            Builder.CreateICmpEQ(LastBit, Builder.getIntN(256, 0));
+        Builder.CreateCondBr(Condition, InlineSlot, ExtendSlot);
 
-        Builder.SetInsertPoint(LoopInit);
-        llvm::Value *PaddedLength =
-            Builder.CreateAnd(Builder.CreateAdd(Val, Builder.getIntN(256, 31)),
-                              llvm::APInt::getHighBitsSet(256, 256 - 5));
-        llvm::Value *Bytes = emitConcateBytes(Builder, CGM, {V});
+        // InlineSlot case
+        // +----------+----------+-----------------+
+        // |          | 248 bits |      8 bits     |
+        // +----------+----------+---------+-------+
+        // |          |          |  7 bits | 1 bit |
+        // +----------+----------+---------+-------+
+        // | position |   data   |  length |   0   |
+        // +----------+----------+---------+-------+
+
+        Builder.SetInsertPoint(InlineSlot);
+        llvm::Value *InlineLength =
+            Builder.CreateLShr(Builder.CreateAnd(CGM.getEndianlessValue(Val),
+                                                 Builder.getIntN(256, 0xFF)),
+                               1);
+        llvm::Value *InlinePtr =
+            Builder.CreateAlloca(CGM.Int8Ty, Builder.getInt16(256));
+        Builder.CreateCall(
+            Memcpy, {Builder.CreateBitCast(InlinePtr, CGM.Int8PtrTy),
+                     Builder.CreateBitCast(ValPtr, CGM.Int8PtrTy),
+                     Builder.CreateZExtOrTrunc(InlineLength, CGM.Int32Ty)});
+        Builder.CreateBr(Done);
+
+        // ExtendSlot case
+        // +-----------------------+----------+-------+
+        // |                       | 255 bits | 1 bit |
+        // +-----------------------+----------+-------+
+        // |        position       |  length  |   1   |
+        // +-----------------------+----------+-------+
+        // |                       |    data length   |
+        // +-----------------------+------------------+
+        // |  keccak256(position)  |       data       |
+        // +-----------------------+------------------+
+        // | keccak256(position)+1 |         :        |
+        // +-----------------------+------------------+
+
+        Builder.SetInsertPoint(ExtendSlot);
+        llvm::Value *ExtendLength =
+            Builder.CreateLShr(CGM.getEndianlessValue(Val), 1);
+        llvm::Value *Bytes = CGM.emitConcateBytes({Address});
         llvm::Value *Address = Builder.CreateCall(Keccak256, {Bytes});
-        llvm::Value *Ptr = Builder.CreateAlloca(CGM.Int8PtrTy, PaddedLength);
         llvm::Value *AddressPtr = Builder.CreateAlloca(CGM.Int256Ty, nullptr);
-        Builder.CreateStore(Address, AddressPtr);
-        Builder.CreateBr(Loop);
+        llvm::Value *ExtendPtr = Builder.CreateAlloca(CGM.Int8Ty, ExtendLength);
+        Condition =
+            Builder.CreateICmpSGE(ExtendLength, Builder.getIntN(256, 32));
+        Builder.CreateCondBr(Condition, Loop, LoopEnd);
 
         Builder.SetInsertPoint(Loop);
         llvm::PHINode *PHIRemain = Builder.CreatePHI(CGM.Int256Ty, 2);
         llvm::PHINode *PHIPtr = Builder.CreatePHI(CGM.Int8PtrTy, 2);
-        llvm::Value *PHIV = CGM.emitStorageLoad(Builder.CreateLoad(AddressPtr));
-        Builder.CreateStore(PHIV, PHIPtr);
-        llvm::Value *CurrentAddress = Builder.CreateLoad(AddressPtr);
+        llvm::PHINode *PHIAddress = Builder.CreatePHI(CGM.Int256Ty, 2);
+        llvm::PHINode *PHIAddressPtr = Builder.CreatePHI(CGM.Int256PtrTy, 2);
+        Builder.CreateStore(CGM.getEndianlessValue(PHIAddress), PHIAddressPtr);
+        Builder.CreateCall(
+            StorageLoad,
+            {PHIAddressPtr, Builder.CreateBitCast(PHIPtr, CGM.Int256PtrTy)});
         llvm::Value *NextRemain =
             Builder.CreateSub(PHIRemain, Builder.getIntN(256, 32));
         llvm::Value *NextAddress =
-            Builder.CreateAdd(CurrentAddress, Builder.getIntN(256, 32));
-        Builder.CreateStore(NextAddress, AddressPtr);
-        llvm::Value *NextPtr = Builder.CreateInBoundsGEP(
-            Ptr, {Builder.getInt32(0), Builder.getInt32(32)});
-        llvm::Value *Condition =
-            Builder.CreateICmpNE(NextRemain, Builder.getIntN(256, 0));
+            Builder.CreateAdd(PHIAddress, Builder.getIntN(256, 1));
+        llvm::Value *NextendPtr =
+            Builder.CreateInBoundsGEP(PHIPtr, {Builder.getInt32(32)});
+        Condition = Builder.CreateICmpSGE(NextRemain, Builder.getIntN(256, 32));
         Builder.CreateCondBr(Condition, Loop, LoopEnd);
+        PHIRemain->addIncoming(ExtendLength, ExtendSlot);
+        PHIRemain->addIncoming(NextRemain, Loop);
+        PHIPtr->addIncoming(ExtendPtr, ExtendSlot);
+        PHIPtr->addIncoming(NextendPtr, Loop);
+        PHIAddress->addIncoming(Address, ExtendSlot);
+        PHIAddress->addIncoming(NextAddress, Loop);
+        PHIAddressPtr->addIncoming(AddressPtr, ExtendSlot);
+        PHIAddressPtr->addIncoming(PHIAddressPtr, Loop);
 
         Builder.SetInsertPoint(LoopEnd);
-        llvm::Value *Value = llvm::UndefValue::get(CGM.getLLVMType(Ty));
-        Bytes = Builder.CreateInsertValue(Bytes, Val, {0});
-        Bytes = Builder.CreateInsertValue(Bytes, Ptr, {1});
-
-        PHIRemain->addIncoming(PaddedLength, LoopInit);
+        PHIRemain = Builder.CreatePHI(CGM.Int256Ty, 2);
+        PHIPtr = Builder.CreatePHI(CGM.Int8PtrTy, 2);
+        PHIAddress = Builder.CreatePHI(CGM.Int256Ty, 2);
+        PHIRemain->addIncoming(ExtendLength, ExtendSlot);
         PHIRemain->addIncoming(NextRemain, Loop);
-        PHIPtr->addIncoming(Ptr, LoopInit);
-        PHIPtr->addIncoming(NextPtr, Loop);
+        PHIPtr->addIncoming(ExtendPtr, ExtendSlot);
+        PHIPtr->addIncoming(NextendPtr, Loop);
+        PHIAddress->addIncoming(Address, ExtendSlot);
+        PHIAddress->addIncoming(NextAddress, Loop);
+        Condition = Builder.CreateICmpSGE(PHIRemain, Builder.getIntN(256, 0));
+        Builder.CreateCondBr(Condition, Last, Done);
+
+        Builder.SetInsertPoint(Last);
+        AddressPtr = Builder.CreateAlloca(CGM.Int256Ty, nullptr);
+        Builder.CreateStore(CGM.getEndianlessValue(PHIAddress), AddressPtr);
+        ValPtr = Builder.CreateAlloca(CGM.Int256Ty);
+        Builder.CreateCall(StorageLoad, {AddressPtr, ValPtr});
+        Builder.CreateCall(Memcpy,
+                           {Builder.CreateBitCast(PHIPtr, CGM.Int8PtrTy),
+                            Builder.CreateBitCast(ValPtr, CGM.Int8PtrTy),
+                            Builder.CreateZExtOrTrunc(PHIRemain, CGM.Int32Ty)});
+        Builder.CreateBr(Done);
+
+        Builder.SetInsertPoint(Done);
+        llvm::PHINode *PHILength = Builder.CreatePHI(CGM.Int256Ty, 3);
+        PHIPtr = Builder.CreatePHI(CGM.Int8PtrTy, 3);
+        PHILength->addIncoming(InlineLength, InlineSlot);
+        PHILength->addIncoming(ExtendLength, LoopEnd);
+        PHILength->addIncoming(ExtendLength, Last);
+        PHIPtr->addIncoming(InlinePtr, InlineSlot);
+        PHIPtr->addIncoming(ExtendPtr, LoopEnd);
+        PHIPtr->addIncoming(ExtendPtr, Last);
+        Bytes = llvm::ConstantAggregateZero::get(CGM.BytesTy);
+        Bytes = Builder.CreateInsertValue(Bytes, PHILength, {0});
+        Bytes = Builder.CreateInsertValue(Bytes, PHIPtr, {1});
 
         return Bytes;
       }
@@ -118,13 +204,13 @@ public:
       Builder.CreateStore(Value, V);
       return;
     case ValueKind::VK_SValue:
+      llvm::Value *Address = CGM.getEndianlessValue(Builder.CreateLoad(V));
       switch (Ty->getCategory()) {
       case Type::Category::Address:
       case Type::Category::Bool:
       case Type::Category::FixedBytes:
       case Type::Category::Integer:
       case Type::Category::RationalNumber: {
-        llvm::Value *Key = CGM.getEndianlessValue(Builder.CreateLoad(V));
         if (Shift != nullptr) {
           llvm::ConstantInt *Mask = Builder.getInt(
               llvm::APInt::getHighBitsSet(256, 256 - Ty->getBitNum()));
@@ -132,12 +218,13 @@ public:
           llvm::Value *Mask2 =
               Builder.CreateShl(Builder.CreateZExt(Value, CGM.Int256Ty), Shift);
 
-          llvm::Value *Val = CGM.getEndianlessValue(CGM.emitStorageLoad(Key));
+          llvm::Value *Val =
+              CGM.getEndianlessValue(CGM.emitStorageLoad(Address));
           Value = Builder.CreateOr(Builder.CreateAnd(Val, Mask1), Mask2);
         }
         CGM.emitStorageStore(
-            Key, CGM.getEndianlessValue(
-                     Builder.CreateZExtOrTrunc(Value, CGM.Int256Ty)));
+            Address, CGM.getEndianlessValue(
+                         Builder.CreateZExtOrTrunc(Value, CGM.Int256Ty)));
         return;
       }
       case Type::Category::String:
@@ -145,59 +232,131 @@ public:
         llvm::Type *Array32Int8Ptr =
             llvm::PointerType::getUnqual(llvm::ArrayType::get(CGM.Int8Ty, 32));
         llvm::Function *ThisFunc = Builder.GetInsertBlock()->getParent();
+        llvm::Function *StorageStore =
+            CGM.getModule().getFunction("ethereum.storageStore");
         llvm::Function *Keccak256 =
             CGM.getModule().getFunction("solidity.keccak256");
-        llvm::BasicBlock *LoopInit = llvm::BasicBlock::Create(
-            CGM.getLLVMContext(), "loop_init", ThisFunc);
-        llvm::BasicBlock *Loop =
-            llvm::BasicBlock::Create(CGM.getLLVMContext(), "loop", ThisFunc);
+        llvm::Function *Memcpy = CGM.getModule().getFunction("solidity.memcpy");
+        llvm::BasicBlock *InlineSlot =
+            llvm::BasicBlock::Create(CGM.getLLVMContext(), "inline", ThisFunc);
+        llvm::BasicBlock *ExtendSlot =
+            llvm::BasicBlock::Create(CGM.getLLVMContext(), "extend", ThisFunc);
+        llvm::BasicBlock *Loop = llvm::BasicBlock::Create(
+            CGM.getLLVMContext(), "extend.loop", ThisFunc);
         llvm::BasicBlock *LoopEnd = llvm::BasicBlock::Create(
-            CGM.getLLVMContext(), "loop_end", ThisFunc);
-        llvm::ConstantInt *WordWidth = Builder.getIntN(256, 32);
+            CGM.getLLVMContext(), "extend.loop_end", ThisFunc);
+        llvm::BasicBlock *Last = llvm::BasicBlock::Create(
+            CGM.getLLVMContext(), "extend.last_word", ThisFunc);
+        llvm::BasicBlock *Done =
+            llvm::BasicBlock::Create(CGM.getLLVMContext(), "done", ThisFunc);
 
         llvm::Value *Length = Builder.CreateExtractValue(Value, {0});
+        llvm::Value *LengthEncode = Builder.CreateShl(Length, 1);
         llvm::Value *Ptr = Builder.CreateExtractValue(Value, {1});
         Ptr = Builder.CreateBitCast(Ptr, Array32Int8Ptr);
-
-        CGM.emitStorageStore(Builder.CreateLoad(V),
-                             CGM.getEndianlessValue(Length));
-        Builder.CreateBr(LoopInit);
-
-        Builder.SetInsertPoint(LoopInit);
-        llvm::Value *PaddedLength = Builder.CreateAnd(
-            Builder.CreateAdd(Length, Builder.getIntN(256, 31)),
-            llvm::APInt::getHighBitsSet(256, 256 - 5));
-        llvm::Value *Bytes =
-            emitConcateBytes(Builder, CGM, {Builder.CreateLoad(V)});
-        llvm::Value *Address = Builder.CreateCall(Keccak256, {Bytes});
         llvm::Value *AddressPtr = Builder.CreateAlloca(CGM.Int256Ty, nullptr);
         Builder.CreateStore(Address, AddressPtr);
-        Builder.CreateBr(Loop);
+        llvm::Value *ValPtr = Builder.CreateAlloca(CGM.Int256Ty);
+
+        llvm::Value *Condition =
+            Builder.CreateICmpSGE(Length, Builder.getIntN(256, 32));
+        Builder.CreateCondBr(Condition, ExtendSlot, InlineSlot);
+
+        // InlineSlot case
+        // +----------+----------+-----------------+
+        // |          | 248 bits |      8 bits     |
+        // +----------+----------+---------+-------+
+        // |          |          |  7 bits | 1 bit |
+        // +----------+----------+---------+-------+
+        // | position |   data   |  length |   0   |
+        // +----------+----------+---------+-------+
+
+        Builder.SetInsertPoint(InlineSlot);
+        Builder.CreateCall(Memcpy,
+                           {Builder.CreateBitCast(ValPtr, CGM.Int8PtrTy),
+                            Builder.CreateBitCast(Ptr, CGM.Int8PtrTy),
+                            Builder.CreateZExtOrTrunc(Length, CGM.Int32Ty)});
+        llvm::Value *Val = Builder.CreateLoad(ValPtr);
+        Val = Builder.CreateOr(Val, CGM.getEndianlessValue(LengthEncode));
+        Builder.CreateStore(Val, ValPtr);
+        Builder.CreateCall(StorageStore, {AddressPtr, ValPtr});
+        Builder.CreateBr(Done);
+
+        // ExtendSlot case
+        // +-----------------------+----------+-------+
+        // |                       | 255 bits | 1 bit |
+        // +-----------------------+----------+-------+
+        // |        position       |  length  |   1   |
+        // +-----------------------+----------+-------+
+        // |                       |    data length   |
+        // +-----------------------+------------------+
+        // |  keccak256(position)  |       data       |
+        // +-----------------------+------------------+
+        // | keccak256(position)+1 |         :        |
+        // +-----------------------+------------------+
+
+        Builder.SetInsertPoint(ExtendSlot);
+        LengthEncode = CGM.getEndianlessValue(
+            Builder.CreateOr(LengthEncode, Builder.getIntN(256, 1)));
+        Builder.CreateStore(LengthEncode, ValPtr);
+        Builder.CreateCall(StorageStore, {AddressPtr, ValPtr});
+        llvm::Value *Bytes = CGM.emitConcateBytes({Address});
+        Address = Builder.CreateCall(Keccak256, {Bytes});
+        Condition = Builder.CreateICmpSGE(Length, Builder.getIntN(256, 32));
+        Builder.CreateCondBr(Condition, Loop, LoopEnd);
 
         Builder.SetInsertPoint(Loop);
         llvm::PHINode *PHIRemain = Builder.CreatePHI(CGM.Int256Ty, 2);
         llvm::PHINode *PHIPtr = Builder.CreatePHI(Array32Int8Ptr, 2);
-        CGM.emitStorageStore(
-            Builder.CreateLoad(AddressPtr),
-            Builder.CreateLoad(Builder.CreateBitCast(PHIPtr, CGM.Int256PtrTy)));
-        llvm::Value *CurrentAddress = Builder.CreateLoad(AddressPtr);
+        llvm::PHINode *PHIAddress = Builder.CreatePHI(CGM.Int256Ty, 2);
+        llvm::PHINode *PHIAddressPtr = Builder.CreatePHI(CGM.Int256PtrTy, 2);
+        Builder.CreateStore(CGM.getEndianlessValue(PHIAddress), PHIAddressPtr);
+        Builder.CreateCall(
+            StorageStore,
+            {PHIAddressPtr, Builder.CreateBitCast(PHIPtr, CGM.Int256PtrTy)});
         llvm::Value *NextRemain =
             Builder.CreateSub(PHIRemain, Builder.getIntN(256, 32));
         llvm::Value *NextAddress =
-            Builder.CreateAdd(CurrentAddress, Builder.getIntN(256, 32));
-        Builder.CreateStore(NextAddress, AddressPtr);
-        llvm::Value *NextPtr = Builder.CreateInBoundsGEP(
+            Builder.CreateAdd(PHIAddress, Builder.getIntN(256, 1));
+        llvm::Value *NextendPtr = Builder.CreateInBoundsGEP(
             PHIPtr, {Builder.getInt32(0), Builder.getInt32(32)});
-        NextPtr = Builder.CreateBitCast(NextPtr, Array32Int8Ptr);
-        llvm::Value *Condition =
-            Builder.CreateICmpNE(NextRemain, Builder.getIntN(256, 0));
+        NextendPtr = Builder.CreateBitCast(NextendPtr, Array32Int8Ptr);
+        Condition = Builder.CreateICmpSGE(NextRemain, Builder.getIntN(256, 32));
         Builder.CreateCondBr(Condition, Loop, LoopEnd);
+        PHIRemain->addIncoming(Length, ExtendSlot);
+        PHIRemain->addIncoming(NextRemain, Loop);
+        PHIPtr->addIncoming(Ptr, ExtendSlot);
+        PHIPtr->addIncoming(NextendPtr, Loop);
+        PHIAddress->addIncoming(Address, ExtendSlot);
+        PHIAddress->addIncoming(NextAddress, Loop);
+        PHIAddressPtr->addIncoming(AddressPtr, ExtendSlot);
+        PHIAddressPtr->addIncoming(PHIAddressPtr, Loop);
 
         Builder.SetInsertPoint(LoopEnd);
-        PHIRemain->addIncoming(PaddedLength, LoopInit);
+        PHIRemain = Builder.CreatePHI(CGM.Int256Ty, 2);
+        PHIPtr = Builder.CreatePHI(Array32Int8Ptr, 2);
+        PHIAddress = Builder.CreatePHI(CGM.Int256Ty, 2);
+        PHIRemain->addIncoming(Length, ExtendSlot);
         PHIRemain->addIncoming(NextRemain, Loop);
-        PHIPtr->addIncoming(Ptr, LoopInit);
-        PHIPtr->addIncoming(NextPtr, Loop);
+        PHIPtr->addIncoming(Ptr, ExtendSlot);
+        PHIPtr->addIncoming(NextendPtr, Loop);
+        PHIAddress->addIncoming(Address, ExtendSlot);
+        PHIAddress->addIncoming(NextAddress, Loop);
+        Condition = Builder.CreateICmpSGE(PHIRemain, Builder.getIntN(256, 0));
+        Builder.CreateCondBr(Condition, Last, Done);
+
+        Builder.SetInsertPoint(Last);
+        AddressPtr = Builder.CreateAlloca(CGM.Int256Ty, nullptr);
+        Builder.CreateStore(CGM.getEndianlessValue(PHIAddress), AddressPtr);
+        ValPtr = Builder.CreateAlloca(CGM.Int256Ty);
+        Builder.CreateCall(Memcpy,
+                           {Builder.CreateBitCast(ValPtr, CGM.Int8PtrTy),
+                            Builder.CreateBitCast(PHIPtr, CGM.Int8PtrTy),
+                            Builder.CreateZExtOrTrunc(PHIRemain, CGM.Int32Ty)});
+        Builder.CreateCall(StorageStore, {AddressPtr, ValPtr});
+        Builder.CreateBr(Done);
+
+        Builder.SetInsertPoint(Done);
         return;
       }
       default:
@@ -206,41 +365,6 @@ public:
     }
     assert(false && "unknown kind!");
     __builtin_unreachable();
-  }
-
-private:
-  template <typename T>
-  llvm::Value *emitConcateBytes(T &Builder, CodeGenModule &CGM,
-                                llvm::ArrayRef<llvm::Value *> Values) const {
-    unsigned ArrayLength = 0;
-    for (llvm::Value *Value : Values) {
-      llvm::Type *Ty = Value->getType();
-      ArrayLength += Ty->getIntegerBitWidth() / 8;
-    }
-
-    llvm::ArrayType *ArrayTy = llvm::ArrayType::get(CGM.Int8Ty, ArrayLength);
-    llvm::Value *Array = Builder.CreateAlloca(ArrayTy, nullptr, "concat");
-
-    unsigned Index = 0;
-    for (llvm::Value *Value : Values) {
-      llvm::Type *Ty = Value->getType();
-      llvm::Value *Ptr = Builder.CreateInBoundsGEP(
-          Array, {Builder.getInt32(0), Builder.getInt32(Index)});
-      llvm::Value *CPtr =
-          Builder.CreatePointerCast(Ptr, llvm::PointerType::getUnqual(Ty));
-      Builder.CreateStore(Value, CPtr);
-      Index += Ty->getIntegerBitWidth() / 8;
-    }
-
-    llvm::Value *Bytes = llvm::ConstantAggregateZero::get(CGM.BytesTy);
-    Bytes = Builder.CreateInsertValue(Bytes, Builder.getIntN(256, ArrayLength),
-                                      {0});
-    Bytes = Builder.CreateInsertValue(
-        Bytes,
-        Builder.CreateInBoundsGEP(Array,
-                                  {Builder.getInt32(0), Builder.getInt32(0)}),
-        {1});
-    return Bytes;
   }
 };
 

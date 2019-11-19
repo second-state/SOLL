@@ -400,33 +400,6 @@ private:
 
   ExprValue visit(const CallExpr *CE) { return CGF.emitCallExpr(CE); }
 
-  llvm::Value *emitConcateBytes(llvm::ArrayRef<llvm::Value *> Values) {
-    unsigned ArrayLength = 0;
-    for (llvm::Value *Value : Values) {
-      llvm::Type *Ty = Value->getType();
-      ArrayLength += (Ty->getIntegerBitWidth() + 255) / 256;
-    }
-
-    llvm::Value *Array = Builder.CreateAlloca(
-        CGF.Int256Ty, Builder.getInt32(ArrayLength), "concat");
-
-    unsigned Index = 0;
-    for (llvm::Value *Value : Values) {
-      llvm::Type *Ty = Value->getType();
-      llvm::Value *Ptr =
-          Builder.CreateInBoundsGEP(Array, {Builder.getInt32(Index)});
-      Builder.CreateStore(Builder.CreateZExt(Value, CGF.Int256Ty), Ptr);
-      Index += (Ty->getIntegerBitWidth() + 255) / 256;
-    }
-
-    llvm::Value *Bytes = llvm::ConstantAggregateZero::get(CGF.BytesTy);
-    Bytes = Builder.CreateInsertValue(
-        Bytes, Builder.getIntN(256, ArrayLength * 32), {0});
-    Bytes = Builder.CreateInsertValue(
-        Bytes, Builder.CreateBitCast(Array, CGF.Int8PtrTy), {1});
-    return Bytes;
-  }
-
   void emitCheckArrayOutOfBound(llvm::Value *ArrSz, llvm::Value *Index) {
     using namespace std::string_literals;
     static const std::string Message = "Array out of bound"s;
@@ -452,19 +425,23 @@ private:
     ExprValue Index = visit(IA->getIndex());
     const Type *Ty = IA->getType().get();
 
-    llvm::Function *Sha256 =
-        CGF.getCodeGenModule().getModule().getFunction("solidity.sha256");
-
-    if (dynamic_cast<const MappingType *>(Base.getType())) {
-      // mapping : store i256 hash value in TempValueTable
-      llvm::Value *MapAddress = Builder.CreateLoad(Base.getValue());
-      llvm::Value *Bytes = emitConcateBytes(
-          {CGF.getCodeGenModule().getEndianlessValue(Builder.CreateZExtOrTrunc(
-               Index.load(Builder, CGF.getCodeGenModule()), CGF.Int256Ty)),
-           CGF.getCodeGenModule().getEndianlessValue(MapAddress)});
-      llvm::Value *Address = Builder.CreateAlloca(CGF.Int256Ty);
-      Builder.CreateStore(Builder.CreateCall(Sha256, {Bytes}), Address);
-      return ExprValue(Ty, ValueKind::VK_SValue, Address);
+    llvm::Function *Keccak256 =
+        CGF.getCodeGenModule().getModule().getFunction("solidity.keccak256");
+    if (const auto *MType = dynamic_cast<const MappingType *>(Base.getType())) {
+      llvm::Value *Pos = CGF.getCodeGenModule().getEndianlessValue(
+          Builder.CreateLoad(Base.getValue()));
+      llvm::Value *Key;
+      if (MType->getKeyType()->isDynamic()) {
+        Key = Index.load(Builder, CGF.getCodeGenModule());
+      } else {
+        Key =
+            CGF.getCodeGenModule().getEndianlessValue(Builder.CreateZExtOrTrunc(
+                Index.load(Builder, CGF.getCodeGenModule()), CGF.Int256Ty));
+      }
+      llvm::Value *Bytes = CGF.getCodeGenModule().emitConcateBytes({Key, Pos});
+      llvm::Value *AddressPtr = Builder.CreateAlloca(CGF.Int256Ty);
+      Builder.CreateStore(Builder.CreateCall(Keccak256, {Bytes}), AddressPtr);
+      return ExprValue(Ty, ValueKind::VK_SValue, AddressPtr);
     }
     if (const auto *ArrTy = dynamic_cast<const ArrayType *>(Base.getType())) {
       // Array Type : Fixed Size Mem Array, Fixed Sized Storage Array, Dynamic
@@ -482,7 +459,7 @@ private:
         return ExprValue(Ty, ValueKind::VK_LValue, Address);
       }
 
-      llvm::Value *ArrayAddress = Builder.CreateLoad(Base.getValue());
+      llvm::Value *Pos = Builder.CreateLoad(Base.getValue());
       if (ArrTy->isDynamicSized()) {
         // load array size and check
         auto LengthTy = IntegerType::getIntN(256);
@@ -492,9 +469,9 @@ private:
         emitCheckArrayOutOfBound(ArraySize, IndexValue);
 
         // load array position
-        llvm::Value *Bytes = emitConcateBytes(
-            {CGF.getCodeGenModule().getEndianlessValue(ArrayAddress)});
-        ArrayAddress = Builder.CreateCall(Sha256, {Bytes});
+        llvm::Value *Bytes = CGF.getCodeGenModule().emitConcateBytes(
+            {CGF.getCodeGenModule().getEndianlessValue(Pos)});
+        Pos = Builder.CreateCall(Keccak256, {Bytes});
       } else {
         // Fixed Size Storage Array
         llvm::Value *ArraySize = Builder.getIntN(256, ArrTy->getLength());
@@ -509,13 +486,12 @@ private:
             IndexValue, Builder.getIntN(256, ElementPerSlot));
         llvm::Value *Shift = Builder.CreateURem(
             IndexValue, Builder.getIntN(256, ElementPerSlot));
-        llvm::Value *ElemAddress =
-            Builder.CreateAdd(ArrayAddress, StorageIndex);
+        llvm::Value *ElemAddress = Builder.CreateAdd(Pos, StorageIndex);
         llvm::Value *Address = Builder.CreateAlloca(CGF.Int256Ty);
         Builder.CreateStore(ElemAddress, Address);
         return ExprValue(Ty, ValueKind::VK_SValue, Address, Shift);
       } else {
-        llvm::Value *ElemAddress = Builder.CreateAdd(ArrayAddress, IndexValue);
+        llvm::Value *ElemAddress = Builder.CreateAdd(Pos, IndexValue);
         llvm::Value *Address = Builder.CreateAlloca(CGF.Int256Ty);
         Builder.CreateStore(ElemAddress, Address);
         return ExprValue(Ty, ValueKind::VK_SValue, Address);
@@ -547,11 +523,7 @@ private:
                 "ethereum.callDataCopy");
 
         llvm::Value *CallDataSize = Builder.CreateCall(getCallDataSize, {});
-        llvm::Constant *AllocSize = llvm::ConstantExpr::getSizeOf(CGF.Int8Ty);
-        llvm::Instruction *Malloc = llvm::CallInst::CreateMalloc(
-            Builder.GetInsertBlock(), CGF.Int64Ty, CGF.Int8Ty, AllocSize,
-            CallDataSize, nullptr);
-        llvm::Value *ValPtr = Builder.Insert(Malloc);
+        llvm::Value *ValPtr = Builder.CreateAlloca(CGF.Int8Ty, CallDataSize);
         Builder.CreateCall(callDataCopy,
                            {ValPtr, Builder.getInt32(0), CallDataSize});
 
