@@ -1,4 +1,4 @@
-### 0.0.3 (unreleased)
+### 0.0.3 (2019-11-19)
 
 Language Features:
 
@@ -14,12 +14,17 @@ Language Features:
 Compiler Features:
 
 * Be able to generate deployable Ewasm files.
-* Support diagnostic message. 
-* Add command-line options. (Generate ABI, function signature and evm bytecode)
+* Support diagnostic message.
+* Add command-line options for generating metadata of Solidity contracts.
+    * `EmitABI`: Generate ABI
+    * `EmitFuncSig`: Generate function signatures
+* Support EVM1 bytecode target. (Depends on [EVM_LLVM](https://github.com/etclabscore/evm_llvm))
 
 Bugfixes:
 
 * Fix an endian issue that happened when someone calls the EEI function from wasm.
+* Fix a parsing issue on array type.
+
 
 ### 0.0.2 (2019-09-03)
 
@@ -41,7 +46,7 @@ Compiler Features:
 
 Bugfixes:
 
-* Provide correct binary operator precedence. 
+* Fix a precedence issue related to binary operator.
 
 
 ### 0.0.1 (2019-07-31)
