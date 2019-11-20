@@ -20,7 +20,7 @@ struct CodeGenTypeCache {
   llvm::PointerType *Int8PtrTy, *Int32PtrTy, *Int64PtrTy, *Int128PtrTy,
       *Int256PtrTy;
   /// i160*
-  llvm::PointerType *AddressPtrTy;
+  llvm::PointerType *AddressPtrTy, *Int160PtrTy;
 
   /// bytes
   llvm::StructType *BytesTy;

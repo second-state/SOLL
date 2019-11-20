@@ -63,7 +63,7 @@ void CodeGenModule::initTypes() {
   Int64Ty = llvm::Type::getInt64Ty(VMContext);
   Int128Ty = llvm::Type::getInt128Ty(VMContext);
   AddressTy = llvm::Type::getIntNTy(VMContext, 160);
-  Int160Ty = llvm::Type::getIntNTy(VMContext, 160);
+  Int160Ty = AddressTy;
   Int256Ty = llvm::Type::getIntNTy(VMContext, 256);
 
   Int8PtrTy = llvm::Type::getInt8PtrTy(VMContext);
@@ -71,6 +71,7 @@ void CodeGenModule::initTypes() {
   Int64PtrTy = llvm::Type::getInt64PtrTy(VMContext);
   Int128PtrTy = llvm::Type::getIntNPtrTy(VMContext, 128);
   AddressPtrTy = llvm::Type::getIntNPtrTy(VMContext, 160);
+  Int160PtrTy = AddressPtrTy;
   Int256PtrTy = llvm::Type::getIntNPtrTy(VMContext, 256);
 
   BytesTy = llvm::StructType::create(VMContext, {Int256Ty, Int8PtrTy}, "bytes");
@@ -685,8 +686,7 @@ void CodeGenModule::initEcrecover() {
       llvm::BasicBlock::Create(VMContext, "entry", Func_ecrecover);
   Builder.SetInsertPoint(Entry);
 
-  llvm::Value *Bytes =
-      emitConcateBytes(Builder, llvm::ArrayRef<llvm::Value *>(args));
+  llvm::Value *Bytes = emitConcateBytes(llvm::ArrayRef<llvm::Value *>(args));
 
   llvm::Value *Length = Builder.CreateTrunc(
       Builder.CreateExtractValue(Bytes, {0}), Int32Ty, "length");
@@ -1454,6 +1454,113 @@ void CodeGenModule::emitCallDataCopy(llvm::Value *ResultOffset,
                         Builder.CreateZExtOrTrunc(Length, EVMIntTy)});
   } else if (isEWASM()) {
     Builder.CreateCall(Func_callDataCopy, {ResultOffset, DataOffset, Length});
+  } else {
+    __builtin_unreachable();
+  }
+}
+
+llvm::Value *CodeGenModule::emitGetCallDataSize() {
+  if (isEVM() || isEWASM()) {
+    return Builder.CreateCall(Func_getCallDataSize, {});
+  } else {
+    __builtin_unreachable();
+  }
+}
+
+llvm::Value *CodeGenModule::emitGetTxGasPrice() {
+  if (isEVM()) {
+    return Builder.CreateCall(Func_getTxGasPrice, {});
+  } else if (isEWASM()) {
+    llvm::Value *ValPtr = Builder.CreateAlloca(Int128Ty);
+    Builder.CreateCall(Func_getTxGasPrice, {ValPtr});
+    return Builder.CreateLoad(ValPtr);
+  } else {
+    __builtin_unreachable();
+  }
+}
+
+llvm::Value *CodeGenModule::emitGetTxOrigin() {
+  if (isEVM()) {
+    return Builder.CreateCall(Func_getTxOrigin, {});
+  } else if (isEWASM()) {
+    llvm::Value *ValPtr = Builder.CreateAlloca(AddressTy);
+    Builder.CreateCall(Func_getTxOrigin, {ValPtr});
+    return Builder.CreateLoad(ValPtr);
+  } else {
+    __builtin_unreachable();
+  }
+}
+
+llvm::Value *CodeGenModule::emitGetBlockCoinbase() {
+  if (isEVM()) {
+    return Builder.CreateCall(Func_getBlockCoinbase, {});
+  } else if (isEWASM()) {
+    llvm::Value *ValPtr = Builder.CreateAlloca(AddressTy);
+    Builder.CreateCall(Func_getBlockCoinbase, {ValPtr});
+    return Builder.CreateLoad(ValPtr);
+  } else {
+    __builtin_unreachable();
+  }
+}
+
+llvm::Value *CodeGenModule::emitGetBlockDifficulty() {
+  if (isEVM()) {
+    return Builder.CreateCall(Func_getBlockDifficulty, {});
+  } else if (isEWASM()) {
+    llvm::Value *ValPtr = Builder.CreateAlloca(Int256Ty);
+    Builder.CreateCall(Func_getBlockDifficulty, {ValPtr});
+    return Builder.CreateLoad(ValPtr);
+  } else {
+    __builtin_unreachable();
+  }
+}
+
+llvm::Value *CodeGenModule::emitGetBlockGasLimit() {
+  if (isEVM() || isEWASM()) {
+    return Builder.CreateCall(Func_getBlockGasLimit, {});
+  } else {
+    __builtin_unreachable();
+  }
+}
+
+llvm::Value *CodeGenModule::emitGetBlockNumber() {
+  if (isEVM() || isEWASM()) {
+    return Builder.CreateCall(Func_getBlockNumber, {});
+  } else {
+    __builtin_unreachable();
+  }
+}
+
+llvm::Value *CodeGenModule::emitGetBlockTimestamp() {
+  if (isEVM() || isEWASM()) {
+    return Builder.CreateCall(Func_getBlockTimestamp, {});
+  } else {
+    __builtin_unreachable();
+  }
+}
+
+llvm::Value *CodeGenModule::emitGetBlockHash(llvm::Value *Number) {
+  if (isEVM()) {
+    return Builder.CreateCall(Func_getBlockHash,
+                              {Builder.CreateZExt(Number, Int256Ty)});
+  } else if (isEWASM()) {
+    llvm::Value *ValPtr = Builder.CreateAlloca(Int256Ty);
+    Builder.CreateCall(Func_getBlockHash,
+                       {Builder.CreateZExt(Number, Int64Ty), ValPtr});
+    return Builder.CreateLoad(ValPtr);
+  } else {
+    __builtin_unreachable();
+  }
+}
+
+llvm::Value *CodeGenModule::emitGetExternalBalance(llvm::Value *AddressOffset) {
+  if (isEVM()) {
+    return Builder.CreateCall(Func_getExternalBalance,
+                              {Builder.CreateZExt(AddressOffset, Int256Ty)});
+  } else if (isEWASM()) {
+    llvm::Value *ValPtr = Builder.CreateAlloca(Int128Ty);
+    Builder.CreateCall(Func_getExternalBalance, {AddressOffset, ValPtr});
+    return Builder.CreateLoad(ValPtr);
   } else {
     __builtin_unreachable();
   }
