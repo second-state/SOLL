@@ -16,11 +16,14 @@ std::unique_ptr<YulIdentifier> Sema::CreateYulIdentifier(llvm::StringRef Name) {
     TypePtr Ty;
     switch (Iter->second) {
     case YulIdentifier::SpecialIdentifier::not_:
+      Ty = std::make_shared<BooleanType>();
+      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty},
+                                          std::vector<TypePtr>{Ty});
     case YulIdentifier::SpecialIdentifier::and_:
     case YulIdentifier::SpecialIdentifier::or_:
     case YulIdentifier::SpecialIdentifier::xor_:
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty},
+      Ty = std::make_shared<BooleanType>();
+      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty},
                                           std::vector<TypePtr>{Ty});
       break;
     // TODO: implement the rest identifiers
