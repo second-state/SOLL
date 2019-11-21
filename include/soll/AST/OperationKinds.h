@@ -51,6 +51,8 @@ enum BinaryOperatorKind {
   BO_LAnd,
   // Logical OR operator.
   BO_LOr,
+  // Logical XOR operator.
+  BO_LXor,
   // Assignment operators.
   BO_Assign,
   BO_MulAssign,

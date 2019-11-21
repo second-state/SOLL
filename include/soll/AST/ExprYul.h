@@ -172,4 +172,17 @@ public:
   void accept(ConstStmtVisitor &) const override;
 };
 
+class YulUnaryOperator : public UnaryOperator {
+public:
+  YulUnaryOperator(ExprPtr &&Arg0, TypePtr Ty, UnaryOperatorKind opc)
+      : UnaryOperator(std::move(Arg0), opc, Ty) {}
+};
+
+class YulBinaryOperator : public BinaryOperator {
+public:
+  YulBinaryOperator(ExprPtr &&Arg0, ExprPtr &&Arg1, TypePtr Ty,
+                    BinaryOperatorKind opc)
+      : BinaryOperator(std::move(Arg0), std::move(Arg1), opc, Ty) {}
+};
+
 } // namespace soll

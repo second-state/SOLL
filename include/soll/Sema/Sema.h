@@ -67,8 +67,11 @@ public:
 
   /// ExprYul
   std::unique_ptr<YulIdentifier> CreateYulIdentifier(llvm::StringRef Name);
-  std::unique_ptr<CallExpr> CreateYulCallExpr(ExprPtr &&Callee,
-                                              std::vector<ExprPtr> &&Args);
+  std::unique_ptr<Expr> CreateYulCallExpr(ExprPtr &&Callee,
+                                          std::vector<ExprPtr> &&Args);
+  std::unique_ptr<Expr> CreateYulBuiltinCallExpr(const YulIdentifier &Callee,
+                                                 std::vector<ExprPtr> &&Args,
+                                                 TypePtr ReturnTy);
 
   /// type checking binary operators (subroutines of CreateBinOp)
   /// this may add type casting

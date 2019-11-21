@@ -323,6 +323,10 @@ private:
         PN->addIncoming(RHSCond, RHSBlock);
 
         V = PN;
+      } else if (BO->getOpcode() == BO_LXor) {
+        // TODO: implement LXor.
+        assert(false && "logical xor not implemented");
+        __builtin_unreachable();
       } else {
         assert(false && "unknown logical op");
         __builtin_unreachable();
