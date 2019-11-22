@@ -7,7 +7,6 @@
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/Support/Process.h>
 #include <llvm/Support/TargetSelect.h>
-#include <llvm/Support/raw_ostream.h>
 
 using namespace soll;
 

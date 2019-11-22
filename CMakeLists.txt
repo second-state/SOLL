@@ -8,6 +8,23 @@ endif()
 #set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
 #set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
 
+set(SOLL_VERSION_MAJOR 0)
+set(SOLL_VERSION_MINOR 0)
+set(SOLL_VERSION_PATCH 3)
+set(SOLL_VERSION_STRING
+  "${SOLL_VERSION_MAJOR}.${SOLL_VERSION_MINOR}.${SOLL_VERSION_PATCH}"
+  )
+
+project(SOLL
+  VERSION ${SOLL_VERSION_MAJOR}.${SOLL_VERSION_MINOR}.${SOLL_VERSION_PATCH}
+  LANGUAGES CXX
+  )
+
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/soll/Config/Config.h.cmake
+  ${CMAKE_CURRENT_BINARY_DIR}/include/soll/Config/Config.h
+  )
+
 find_package(LLVM REQUIRED HINTS "${LLVM_CMAKE_PATH}")
 list(APPEND CMAKE_MODULE_PATH ${LLVM_DIR})
 include(AddLLVM)

@@ -2,11 +2,13 @@
 #include "soll/Frontend/CompilerInvocation.h"
 #include "soll/Basic/TargetOptions.h"
 #include "soll/CodeGen/CodeGenAction.h"
+#include "soll/Config/Config.h"
 #include "soll/Frontend/CompilerInstance.h"
 #include "soll/Frontend/FrontendActions.h"
 #include "soll/Frontend/TextDiagnostic.h"
 #include "soll/Frontend/TextDiagnosticPrinter.h"
 #include <llvm/Support/CommandLine.h>
+#include <llvm/Support/raw_ostream.h>
 
 namespace cl = llvm::cl;
 
@@ -14,7 +16,7 @@ namespace soll {
 
 static cl::opt<bool> Help("h", cl::desc("Alias for -help"), cl::Hidden);
 
-static cl::OptionCategory SollCategory("Soll options");
+static cl::OptionCategory SollCategory("SOLL options");
 static cl::list<std::string> InputFilenames(cl::Positional,
                                             cl::desc("[<file> ...]"),
                                             cl::cat(SollCategory));
@@ -31,8 +33,13 @@ static cl::opt<TargetKind>
            cl::values(clEnumVal(EVM, "Generate LLVM IR for EVM backend")),
            cl::cat(SollCategory));
 
+static void printSOLLVersion(llvm::raw_ostream &OS) {
+  OS << "SOLL version " << SOLL_VERSION_STRING << "\n";
+}
+
 bool CompilerInvocation::ParseCommandLineOptions(
     llvm::ArrayRef<const char *> Arg, DiagnosticsEngine &Diags) {
+  llvm::cl::SetVersionPrinter(printSOLLVersion);
   llvm::cl::ParseCommandLineOptions(Arg.size(), Arg.data());
 
   DiagnosticOpts = new DiagnosticOptions();
