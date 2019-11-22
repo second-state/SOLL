@@ -40,11 +40,11 @@ soll
 > docker pull secondstate/soll
 ```
 
-- Get Source Code from Github and checkout to this version, v0.0.3.
+- Get Source Code from Github and checkout to this version, 0.0.3.
 ```Shell
 > git clone --recursive https://github.com/second-state/soll.git
 > cd soll
-> git checkout v0.0.3
+> git checkout 0.0.3
 ```
 
 ## Launch Environment
@@ -128,7 +128,7 @@ Execute SOLL to generate a *.ll file for the next step.
 
 We use `{"2":"f","13425c139e83d895e2b184742e4c3c48f19def0307be60e6900f6563e300a60f":"f"}` as our storage current state and use smart contract function **balanceOf** to check the balance of default **msg.sender**.
 
-> Here default msg.sender is address 0x1234567890123456789012345678901234567890  
+> Here default msg.sender is address 0x1234567890123456789012345678901234567890
 > [More](https://solidity.readthedocs.io/en/v0.5.3/miscellaneous.html#mappings-and-dynamic-arrays) about how storage layout
 
 ```Shell
