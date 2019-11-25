@@ -29,6 +29,7 @@ class CodeGenModule : public CodeGenTypeCache {
 
   llvm::Function *Func_callDataCopy = nullptr;
   llvm::Function *Func_callStatic = nullptr;
+  llvm::Function *Func_callDelegate = nullptr;
   llvm::Function *Func_finish = nullptr;
   llvm::Function *Func_getCallDataSize = nullptr;
   llvm::Function *Func_getCallValue = nullptr;
@@ -40,6 +41,7 @@ class CodeGenModule : public CodeGenTypeCache {
   llvm::Function *Func_log2 = nullptr;
   llvm::Function *Func_log3 = nullptr;
   llvm::Function *Func_log4 = nullptr;
+  llvm::Function *Func_returnDataSize = nullptr;
   llvm::Function *Func_returnDataCopy = nullptr;
   llvm::Function *Func_revert = nullptr;
   llvm::Function *Func_storageLoad = nullptr;
@@ -114,6 +116,13 @@ public:
   llvm::Value *emitStorageLoad(llvm::Value *Key);
   void emitStorageStore(llvm::Value *Key, llvm::Value *Value);
 
+  llvm::Value *emitReturnDataSize();
+  llvm::Value *emitReturnDataCopy(llvm::Value *dataOffset, llvm::Value *length);
+  llvm::Value *emitCallStatic(llvm::Value *Gas, llvm::Value *AddressOffset,
+                              llvm::Value *DataOffset, llvm::Value *DataLength);
+  llvm::Value *emitCallDelegate(llvm::Value *Gas, llvm::Value *AddressOffset,
+                                llvm::Value *DataOffset,
+                                llvm::Value *DataLength);
   llvm::Value *emitGetCallDataSize();
   llvm::Value *emitGetTxGasPrice();
   llvm::Value *emitGetTxOrigin();

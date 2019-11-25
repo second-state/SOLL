@@ -548,13 +548,13 @@ private:
       }
       case Identifier::SpecialIdentifier::tx_origin: {
         llvm::Value *Val =
-            Builder.CreateZExt(CGF.getCodeGenModule().getEndianlessValue(
-                                   CGF.getCodeGenModule().emitGetTxOrigin()),
-                               CGF.AddressTy);
+            Builder.CreateTrunc(CGF.getCodeGenModule().getEndianlessValue(
+                                    CGF.getCodeGenModule().emitGetTxOrigin()),
+                                CGF.AddressTy);
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::block_coinbase: {
-        llvm::Value *Val = Builder.CreateZExt(
+        llvm::Value *Val = Builder.CreateTrunc(
             CGF.getCodeGenModule().getEndianlessValue(
                 CGF.getCodeGenModule().emitGetBlockCoinbase()),
             CGF.AddressTy);
@@ -741,7 +741,7 @@ llvm::Value *CodeGenFunction::emitCallripemd160(const CallExpr *CE) {
   llvm::Value *MessageValue = emitExpr(Arguments[0]).load(Builder, CGM);
   llvm::Value *Val = Builder.CreateCall(
       CGM.getModule().getFunction("solidity.ripemd160"), {MessageValue});
-  return Builder.CreateZExt(Val, Int160Ty);
+  return Builder.CreateTrunc(Val, Int160Ty);
 }
 
 llvm::Value *CodeGenFunction::emitCallecrecover(const CallExpr *CE) {
@@ -749,13 +749,13 @@ llvm::Value *CodeGenFunction::emitCallecrecover(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
   llvm::Value *HashValue = emitExpr(Arguments[0]).load(Builder, CGM);
   llvm::Value *RecoveryIdValue =
-      Builder.CreateZExt(emitExpr(Arguments[1]).load(Builder, CGM), Int8Ty);
+      Builder.CreateZExt(emitExpr(Arguments[1]).load(Builder, CGM), Int256Ty);
   llvm::Value *RValue = emitExpr(Arguments[2]).load(Builder, CGM);
   llvm::Value *SValue = emitExpr(Arguments[3]).load(Builder, CGM);
   llvm::Value *Val =
       Builder.CreateCall(CGM.getModule().getFunction("solidity.ecrecover"),
                          {HashValue, RecoveryIdValue, RValue, SValue});
-  return Builder.CreateZExt(Val, AddressTy);
+  return Builder.CreateTrunc(Val, AddressTy);
 }
 
 llvm::Value *CodeGenFunction::emitCallblockhash(const CallExpr *CE) {
@@ -766,10 +766,88 @@ llvm::Value *CodeGenFunction::emitCallblockhash(const CallExpr *CE) {
   return Val;
 }
 
+llvm::Value *CodeGenFunction::emitCalladdress_staticcall(const CallExpr *CE,
+                                                         const MemberExpr *ME) {
+  // address_staticcall function
+  auto Arguments = CE->getArguments();
+  llvm::Value *addressOffset = emitExpr(ME->getBase()).load(Builder, CGM);
+  llvm::Value *memoryValue = emitExpr(Arguments[0]).load(Builder, CGM);
+
+  llvm::Value *Length = Builder.CreateTrunc(
+      Builder.CreateExtractValue(memoryValue, {0}), Int32Ty, "length");
+  llvm::Value *Ptr = Builder.CreateExtractValue(memoryValue, {1}, "ptr");
+  llvm::Value *Gas = getCodeGenModule().emitGetGasLeft();
+
+  llvm::Value *Val =
+      getCodeGenModule().emitCallStatic(Gas, addressOffset, Ptr, Length);
+
+  using namespace std::string_literals;
+  static const std::string Message = "StaticCall Fail"s;
+  llvm::Constant *MessageValue = createGlobalStringPtr(
+      getLLVMContext(), getCodeGenModule().getModule(), Message);
+
+  llvm::Value *cond = Builder.CreateICmpNE(Val, Builder.getInt32(2));
+  llvm::BasicBlock *Continue = createBasicBlock("continue");
+  llvm::BasicBlock *Revert = createBasicBlock("revert");
+  Builder.CreateCondBr(cond, Continue, Revert);
+
+  Builder.SetInsertPoint(Revert);
+  CGM.emitRevert(MessageValue, Builder.getInt32(Message.size()));
+  Builder.CreateUnreachable();
+
+  Builder.SetInsertPoint(Continue);
+  llvm::Value *returnDataSize = getCodeGenModule().emitReturnDataSize();
+  llvm::Value *returnData = getCodeGenModule().emitReturnDataCopy(
+      Builder.getInt32(0), returnDataSize);
+  // Todo:
+  // return tuple (~bool(Val), returnData)
+  return Builder.CreateNot(Builder.CreateTrunc(Val, BoolTy));
+}
+
+llvm::Value *
+CodeGenFunction::emitCalladdress_delegatecall(const CallExpr *CE,
+                                              const MemberExpr *ME) {
+  // address_staticcall function
+  auto Arguments = CE->getArguments();
+  llvm::Value *addressOffset = emitExpr(ME->getBase()).load(Builder, CGM);
+  llvm::Value *memoryValue = emitExpr(Arguments[0]).load(Builder, CGM);
+
+  llvm::Value *Length = Builder.CreateTrunc(
+      Builder.CreateExtractValue(memoryValue, {0}), Int32Ty, "length");
+  llvm::Value *Ptr = Builder.CreateExtractValue(memoryValue, {1}, "ptr");
+  llvm::Value *Gas = getCodeGenModule().emitGetGasLeft();
+
+  llvm::Value *Val =
+      getCodeGenModule().emitCallDelegate(Gas, addressOffset, Ptr, Length);
+
+  using namespace std::string_literals;
+  static const std::string Message = "DelegateCall Fail"s;
+  llvm::Constant *MessageValue = createGlobalStringPtr(
+      getLLVMContext(), getCodeGenModule().getModule(), Message);
+
+  llvm::Value *cond = Builder.CreateICmpNE(Val, Builder.getInt32(2));
+  llvm::BasicBlock *Continue = createBasicBlock("continue");
+  llvm::BasicBlock *Revert = createBasicBlock("revert");
+  Builder.CreateCondBr(cond, Continue, Revert);
+
+  Builder.SetInsertPoint(Revert);
+  CGM.emitRevert(MessageValue, Builder.getInt32(Message.size()));
+  Builder.CreateUnreachable();
+
+  Builder.SetInsertPoint(Continue);
+  llvm::Value *returnDataSize = getCodeGenModule().emitReturnDataSize();
+  llvm::Value *returnData = getCodeGenModule().emitReturnDataCopy(
+      Builder.getInt32(0), returnDataSize);
+  // Todo:
+  // return tuple (~bool(Val), returnData)
+  return Builder.CreateNot(Builder.CreateTrunc(Val, BoolTy));
+}
+
 ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
   auto expr = CE->getCalleeExpr();
-  if (auto M = dynamic_cast<const MemberExpr *>(expr)) {
-    expr = M->getName();
+  auto ME = dynamic_cast<const MemberExpr *>(expr);
+  if (ME) {
+    expr = ME->getName();
   }
   auto Callee = dynamic_cast<const Identifier *>(expr);
   if (Callee->isSpecialIdentifier()) {
@@ -801,8 +879,9 @@ ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
     case Identifier::SpecialIdentifier::blockhash:
       return ExprValue::getRValue(CE, emitCallblockhash(CE));
     case Identifier::SpecialIdentifier::address_staticcall:
-      // Todo:
-      // return ExprValue::getRValue(CE, emitCalladdress_staticcall(CE));
+      return ExprValue::getRValue(CE, emitCalladdress_staticcall(CE, ME));
+    case Identifier::SpecialIdentifier::address_delegatecall:
+      return ExprValue::getRValue(CE, emitCalladdress_delegatecall(CE, ME));
     default:
       assert(false && "special function not supported yet");
       __builtin_unreachable();
