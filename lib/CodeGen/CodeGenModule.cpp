@@ -107,6 +107,8 @@ void CodeGenModule::initEVMOpcodeDeclaration() {
   FT = llvm::FunctionType::get(EVMIntTy, {EVMIntTy, EVMIntTy}, false);
   Func_sha3 = getIntrinsic(llvm::Intrinsic::evm_sha3, FT);
 
+  // Todo: wait for LLVM EVM bug fixing
+  /*
   // evm_call
   FT = llvm::FunctionType::get(
       EVMIntTy,
@@ -125,6 +127,7 @@ void CodeGenModule::initEVMOpcodeDeclaration() {
       EVMIntTy, {EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy},
       false);
   Func_callDelegate = getIntrinsic(llvm::Intrinsic::evm_delegatecall, FT);
+  */
 
   // evm_sstore
   FT = llvm::FunctionType::get(VoidTy, {EVMIntTy, EVMIntTy}, false);
