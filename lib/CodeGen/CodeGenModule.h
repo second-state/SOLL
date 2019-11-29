@@ -27,6 +27,7 @@ class CodeGenModule : public CodeGenTypeCache {
   llvm::DenseMap<const VarDecl *, llvm::GlobalVariable *> StateVarDeclMap;
   std::size_t StateVarAddrCursor;
 
+  llvm::Function *Func_call = nullptr;
   llvm::Function *Func_callDataCopy = nullptr;
   llvm::Function *Func_callStatic = nullptr;
   llvm::Function *Func_callDelegate = nullptr;
@@ -117,12 +118,19 @@ public:
   void emitStorageStore(llvm::Value *Key, llvm::Value *Value);
 
   llvm::Value *emitReturnDataSize();
-  llvm::Value *emitReturnDataCopy(llvm::Value *dataOffset, llvm::Value *length);
-  llvm::Value *emitCallStatic(llvm::Value *Gas, llvm::Value *AddressOffset,
-                              llvm::Value *DataOffset, llvm::Value *DataLength);
-  llvm::Value *emitCallDelegate(llvm::Value *Gas, llvm::Value *AddressOffset,
-                                llvm::Value *DataOffset,
-                                llvm::Value *DataLength);
+  llvm::Value *emitReturnDataCopyBytes(llvm::Value *dataOffset,
+                                       llvm::Value *length);
+  llvm::Value *emitCall(llvm::Value *Gas, llvm::Value *AddressPtr,
+                        llvm::Value *ValuePtr, llvm::Value *DataPtr,
+                        llvm::Value *DataLength,
+                        llvm::Value *RetOffset = nullptr,
+                        llvm::Value *RetLength = nullptr);
+  llvm::Value *emitCallStatic(llvm::Value *Gas, llvm::Value *AddressPtr,
+                              llvm::Value *DataPtr, llvm::Value *DataLength,
+                              llvm::Value *RetOffset = nullptr,
+                              llvm::Value *RetLength = nullptr);
+  llvm::Value *emitCallDelegate(llvm::Value *Gas, llvm::Value *AddressPtr,
+                                llvm::Value *DataPtr, llvm::Value *DataLength);
   llvm::Value *emitGetCallDataSize();
   llvm::Value *emitGetTxGasPrice();
   llvm::Value *emitGetTxOrigin();

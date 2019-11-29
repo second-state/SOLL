@@ -771,6 +771,8 @@ llvm::Value *CodeGenFunction::emitCalladdress_staticcall(const CallExpr *CE,
   // address_staticcall function
   auto Arguments = CE->getArguments();
   llvm::Value *addressOffset = emitExpr(ME->getBase()).load(Builder, CGM);
+  llvm::Value *AddressPtr = Builder.CreateAlloca(AddressTy);
+  Builder.CreateStore(addressOffset, AddressPtr);
   llvm::Value *memoryValue = emitExpr(Arguments[0]).load(Builder, CGM);
 
   llvm::Value *Length = Builder.CreateTrunc(
@@ -779,7 +781,7 @@ llvm::Value *CodeGenFunction::emitCalladdress_staticcall(const CallExpr *CE,
   llvm::Value *Gas = getCodeGenModule().emitGetGasLeft();
 
   llvm::Value *Val =
-      getCodeGenModule().emitCallStatic(Gas, addressOffset, Ptr, Length);
+      getCodeGenModule().emitCallStatic(Gas, AddressPtr, Ptr, Length);
 
   using namespace std::string_literals;
   static const std::string Message = "StaticCall Fail"s;
@@ -797,7 +799,7 @@ llvm::Value *CodeGenFunction::emitCalladdress_staticcall(const CallExpr *CE,
 
   Builder.SetInsertPoint(Continue);
   llvm::Value *returnDataSize = getCodeGenModule().emitReturnDataSize();
-  llvm::Value *returnData = getCodeGenModule().emitReturnDataCopy(
+  llvm::Value *returnData = getCodeGenModule().emitReturnDataCopyBytes(
       Builder.getInt32(0), returnDataSize);
   // Todo:
   // return tuple (~bool(Val), returnData)
@@ -810,6 +812,8 @@ CodeGenFunction::emitCalladdress_delegatecall(const CallExpr *CE,
   // address_staticcall function
   auto Arguments = CE->getArguments();
   llvm::Value *addressOffset = emitExpr(ME->getBase()).load(Builder, CGM);
+  llvm::Value *AddressPtr = Builder.CreateAlloca(AddressTy);
+  Builder.CreateStore(addressOffset, AddressPtr);
   llvm::Value *memoryValue = emitExpr(Arguments[0]).load(Builder, CGM);
 
   llvm::Value *Length = Builder.CreateTrunc(
@@ -818,14 +822,98 @@ CodeGenFunction::emitCalladdress_delegatecall(const CallExpr *CE,
   llvm::Value *Gas = getCodeGenModule().emitGetGasLeft();
 
   llvm::Value *Val =
-      getCodeGenModule().emitCallDelegate(Gas, addressOffset, Ptr, Length);
+      getCodeGenModule().emitCallDelegate(Gas, AddressPtr, Ptr, Length);
+
+  llvm::Value *cond;
+  if (CGM.isEWASM()) {
+    cond = Builder.CreateICmpEQ(Val, Builder.getInt32(0));
+  } else if (CGM.isEVM()) {
+    cond = Builder.CreateICmpEQ(Val, Builder.getInt32(1));
+  } else {
+    __builtin_unreachable();
+  }
+
+  llvm::Value *returnDataSize = getCodeGenModule().emitReturnDataSize();
+  llvm::Value *returnData = getCodeGenModule().emitReturnDataCopyBytes(
+      Builder.getInt32(0), returnDataSize);
+  // Todo:
+  // return tuple (cond, returnData)
+  return Builder.CreateTrunc(cond, BoolTy);
+}
+
+llvm::Value *CodeGenFunction::emitCalladdress_call(const CallExpr *CE,
+                                                   const MemberExpr *ME) {
+  // address_call function
+  auto Arguments = CE->getArguments();
+  llvm::Value *addressOffset = emitExpr(ME->getBase()).load(Builder, CGM);
+  llvm::Value *AddressPtr = Builder.CreateAlloca(AddressTy);
+  Builder.CreateStore(addressOffset, AddressPtr);
+  llvm::Value *memoryValue = emitExpr(Arguments[0]).load(Builder, CGM);
+
+  llvm::Value *Length = Builder.CreateTrunc(
+      Builder.CreateExtractValue(memoryValue, {0}), Int32Ty, "length");
+  llvm::Value *Ptr = Builder.CreateExtractValue(memoryValue, {1}, "ptr");
+  llvm::Value *Gas = getCodeGenModule().emitGetGasLeft();
+  llvm::Value *ValuePtr = Builder.CreateAlloca(Int128Ty);
+  Builder.CreateStore(Builder.getIntN(128, 0), ValuePtr);
+
+  llvm::Value *Val =
+      getCodeGenModule().emitCall(Gas, AddressPtr, ValuePtr, Ptr, Length);
+
+  llvm::Value *cond;
+  if (CGM.isEWASM()) {
+    cond = Builder.CreateICmpEQ(Val, Builder.getInt32(0));
+  } else if (CGM.isEVM()) {
+    cond = Builder.CreateICmpEQ(Val, Builder.getInt32(1));
+  } else {
+    __builtin_unreachable();
+  }
+
+  llvm::Value *returnDataSize = getCodeGenModule().emitReturnDataSize();
+  llvm::Value *returnData = getCodeGenModule().emitReturnDataCopyBytes(
+      Builder.getInt32(0), returnDataSize);
+  // Todo:
+  // return tuple (cond, returnData)
+  return Builder.CreateTrunc(cond, BoolTy);
+}
+
+llvm::Value *CodeGenFunction::emitCalladdress_send(const CallExpr *CE,
+                                                   const MemberExpr *ME,
+                                                   bool needRevert) {
+  // address_call function
+  auto Arguments = CE->getArguments();
+  llvm::Value *addressOffset = emitExpr(ME->getBase()).load(Builder, CGM);
+  llvm::Value *AddressPtr = Builder.CreateAlloca(AddressTy);
+  Builder.CreateStore(addressOffset, AddressPtr);
+  llvm::Value *amount = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *amountPtr = Builder.CreateAlloca(Int128Ty);
+  Builder.CreateStore(amount, amountPtr);
+
+  llvm::Value *Length = Builder.getInt32(0);
+  llvm::Value *Ptr = Builder.CreateAlloca(Int8Ty, Length);
+  llvm::Value *Gas = Builder.getInt64(0);
+
+  llvm::Value *Val =
+      getCodeGenModule().emitCall(Gas, AddressPtr, amountPtr, Ptr, Length);
+
+  llvm::Value *cond;
+  if (CGM.isEWASM()) {
+    cond = Builder.CreateICmpEQ(Val, Builder.getInt32(0));
+  } else if (CGM.isEVM()) {
+    cond = Builder.CreateICmpEQ(Val, Builder.getInt32(1));
+  } else {
+    __builtin_unreachable();
+  }
+
+  if (!needRevert) {
+    return Builder.CreateTrunc(cond, BoolTy);
+  }
 
   using namespace std::string_literals;
-  static const std::string Message = "DelegateCall Fail"s;
+  static const std::string Message = "Transfer Fail"s;
   llvm::Constant *MessageValue = createGlobalStringPtr(
       getLLVMContext(), getCodeGenModule().getModule(), Message);
 
-  llvm::Value *cond = Builder.CreateICmpNE(Val, Builder.getInt32(2));
   llvm::BasicBlock *Continue = createBasicBlock("continue");
   llvm::BasicBlock *Revert = createBasicBlock("revert");
   Builder.CreateCondBr(cond, Continue, Revert);
@@ -833,14 +921,8 @@ CodeGenFunction::emitCalladdress_delegatecall(const CallExpr *CE,
   Builder.SetInsertPoint(Revert);
   CGM.emitRevert(MessageValue, Builder.getInt32(Message.size()));
   Builder.CreateUnreachable();
-
   Builder.SetInsertPoint(Continue);
-  llvm::Value *returnDataSize = getCodeGenModule().emitReturnDataSize();
-  llvm::Value *returnData = getCodeGenModule().emitReturnDataCopy(
-      Builder.getInt32(0), returnDataSize);
-  // Todo:
-  // return tuple (~bool(Val), returnData)
-  return Builder.CreateNot(Builder.CreateTrunc(Val, BoolTy));
+  return nullptr;
 }
 
 ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
@@ -882,6 +964,13 @@ ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
       return ExprValue::getRValue(CE, emitCalladdress_staticcall(CE, ME));
     case Identifier::SpecialIdentifier::address_delegatecall:
       return ExprValue::getRValue(CE, emitCalladdress_delegatecall(CE, ME));
+    case Identifier::SpecialIdentifier::address_call:
+      return ExprValue::getRValue(CE, emitCalladdress_call(CE, ME));
+    case Identifier::SpecialIdentifier::address_transfer:
+      emitCalladdress_send(CE, ME, true);
+      return ExprValue();
+    case Identifier::SpecialIdentifier::address_send:
+      return ExprValue::getRValue(CE, emitCalladdress_send(CE, ME, false));
     default:
       assert(false && "special function not supported yet");
       __builtin_unreachable();

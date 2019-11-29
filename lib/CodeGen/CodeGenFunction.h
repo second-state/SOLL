@@ -116,10 +116,13 @@ private:
   llvm::Value *emitCallripemd160(const CallExpr *CE);
   llvm::Value *emitCallecrecover(const CallExpr *CE);
   llvm::Value *emitCallblockhash(const CallExpr *CE);
+  llvm::Value *emitCalladdress_call(const CallExpr *CE, const MemberExpr *ME);
   llvm::Value *emitCalladdress_staticcall(const CallExpr *CE,
                                           const MemberExpr *ME);
   llvm::Value *emitCalladdress_delegatecall(const CallExpr *CE,
                                             const MemberExpr *ME);
+  llvm::Value *emitCalladdress_send(const CallExpr *CE, const MemberExpr *ME,
+                                    bool needRevert);
 
   ExprValue emitCallExpr(const CallExpr *CE);
 

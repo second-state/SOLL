@@ -107,6 +107,13 @@ void CodeGenModule::initEVMOpcodeDeclaration() {
   FT = llvm::FunctionType::get(EVMIntTy, {EVMIntTy, EVMIntTy}, false);
   Func_sha3 = getIntrinsic(llvm::Intrinsic::evm_sha3, FT);
 
+  // evm_call
+  FT = llvm::FunctionType::get(
+      EVMIntTy,
+      {EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy},
+      false);
+  Func_call = getIntrinsic(llvm::Intrinsic::evm_call, FT);
+
   // evm_staticcall
   FT = llvm::FunctionType::get(
       EVMIntTy, {EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy},
@@ -231,6 +238,18 @@ void CodeGenModule::initEEIDeclaration() {
   Func_callDataCopy->addFnAttr(llvm::Attribute::WriteOnly);
   Func_callDataCopy->addFnAttr(llvm::Attribute::NoUnwind);
   Func_callDataCopy->addParamAttr(0, llvm::Attribute::WriteOnly);
+
+  // call
+  FT = llvm::FunctionType::get(
+      Int32Ty, {Int64Ty, AddressPtrTy, Int128Ty, Int8PtrTy, Int32Ty}, false);
+  Func_call = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                     "ethereum.call", TheModule);
+  Func_call->addFnAttr(Ethereum);
+  Func_call->addFnAttr(
+      llvm::Attribute::get(VMContext, "wasm-import-name", "call"));
+  Func_call->addFnAttr(llvm::Attribute::NoUnwind);
+  Func_call->addParamAttr(1, llvm::Attribute::ReadOnly);
+  Func_call->addParamAttr(2, llvm::Attribute::ReadOnly);
 
   // callStatic
   FT = llvm::FunctionType::get(
@@ -678,9 +697,16 @@ void CodeGenModule::initRipemd160() {
   llvm::Value *Ptr = Builder.CreateExtractValue(Memory, {1}, "ptr");
 
   if (isEVM()) {
-    llvm::Value *Result = Builder.CreateCall(
-        Func_sha3, {Builder.CreatePtrToInt(Ptr, EVMIntTy),
-                    Builder.CreateZExtOrTrunc(Length, EVMIntTy)});
+    llvm::Value *Fee = emitGetGasLeft();
+    llvm::Value *ResultPtr = Builder.CreateAlloca(EVMIntTy);
+    llvm::Value *AddressPtr =
+        Builder.CreateAlloca(AddressTy, nullptr, "address.ptr");
+    llvm::APInt Address = llvm::APInt(160, 3);
+    Builder.CreateStore(Builder.getInt(Address), AddressPtr);
+    emitCallStatic(Fee, AddressPtr, Ptr, Length, ResultPtr,
+                   Builder.getIntN(256, 0x20));
+    llvm::Value *Result =
+        Builder.CreateZExtOrTrunc(Builder.CreateLoad(ResultPtr), Int160Ty);
     Builder.CreateRet(Result);
   } else if (isEWASM()) {
     llvm::Value *AddressPtr =
@@ -724,9 +750,16 @@ void CodeGenModule::initEcrecover() {
   llvm::Value *Ptr = Builder.CreateExtractValue(Bytes, {1}, "ptr");
 
   if (isEVM()) {
-    llvm::Value *Result = Builder.CreateCall(
-        Func_sha3, {Builder.CreatePtrToInt(Ptr, EVMIntTy),
-                    Builder.CreateZExtOrTrunc(Length, EVMIntTy)});
+    llvm::Value *Fee = emitGetGasLeft();
+    llvm::Value *ResultPtr = Builder.CreateAlloca(EVMIntTy);
+    llvm::Value *AddressPtr =
+        Builder.CreateAlloca(AddressTy, nullptr, "address.ptr");
+    llvm::APInt Address = llvm::APInt(160, 1);
+    Builder.CreateStore(Builder.getInt(Address), AddressPtr);
+    emitCallStatic(Fee, AddressPtr, Ptr, Length, ResultPtr,
+                   Builder.getIntN(256, 0x20));
+    llvm::Value *Result =
+        Builder.CreateZExtOrTrunc(Builder.CreateLoad(ResultPtr), AddressTy);
     Builder.CreateRet(Result);
   } else if (isEWASM()) {
     llvm::Value *AddressPtr =
@@ -1498,8 +1531,8 @@ llvm::Value *CodeGenModule::emitReturnDataSize() {
   }
 }
 
-llvm::Value *CodeGenModule::emitReturnDataCopy(llvm::Value *dataOffset,
-                                               llvm::Value *length) {
+llvm::Value *CodeGenModule::emitReturnDataCopyBytes(llvm::Value *dataOffset,
+                                                    llvm::Value *length) {
   llvm::Value *resultOffset = Builder.CreateAlloca(Int8Ty, length);
   if (isEVM()) {
     auto DestOffset = Builder.CreatePtrToInt(resultOffset, EVMIntTy);
@@ -1518,21 +1551,55 @@ llvm::Value *CodeGenModule::emitReturnDataCopy(llvm::Value *dataOffset,
   return Bytes;
 }
 
-llvm::Value *CodeGenModule::emitCallStatic(llvm::Value *Gas,
-                                           llvm::Value *AddressOffset,
-                                           llvm::Value *DataOffset,
-                                           llvm::Value *DataLength) {
+llvm::Value *CodeGenModule::emitCall(llvm::Value *Gas, llvm::Value *AddressPtr,
+                                     llvm::Value *ValuePtr,
+                                     llvm::Value *DataPtr,
+                                     llvm::Value *DataLength,
+                                     llvm::Value *RetOffset,
+                                     llvm::Value *RetLength) {
   if (isEVM()) {
-    auto Addr = Builder.CreatePtrToInt(AddressOffset, EVMIntTy);
-    auto ArgOffset = Builder.CreatePtrToInt(DataOffset, EVMIntTy);
+    auto Addr = Builder.CreatePtrToInt(AddressPtr, EVMIntTy);
+    auto Value = Builder.CreatePtrToInt(ValuePtr, EVMIntTy);
+    auto ArgOffset = Builder.CreatePtrToInt(DataPtr, EVMIntTy);
     auto ArgsLength = Builder.CreateZExtOrTrunc(DataLength, EVMIntTy);
-    auto RetLength = Builder.CreateZExtOrTrunc(Builder.getInt32(0), EVMIntTy);
-    return Builder.CreateCall(
-        Func_callStatic,
-        {Gas, Addr, ArgOffset, ArgsLength, ArgOffset, RetLength});
+    if (RetOffset == nullptr) {
+      RetOffset = ArgOffset;
+    }
+    if (RetLength == nullptr) {
+      RetLength = Builder.CreateZExtOrTrunc(Builder.getIntN(256, 0), EVMIntTy);
+    }
+    return Builder.CreateCall(Func_call, {Gas, Addr, Value, ArgOffset,
+                                          ArgsLength, RetOffset, RetLength});
   } else if (isEWASM()) {
     llvm::Value *Val = Builder.CreateCall(
-        Func_callStatic, {Gas, AddressOffset, DataOffset, DataLength});
+        Func_call, {Gas, AddressPtr, ValuePtr, DataPtr, DataLength});
+    return Val;
+  } else {
+    __builtin_unreachable();
+  }
+}
+
+llvm::Value *
+CodeGenModule::emitCallStatic(llvm::Value *Gas, llvm::Value *AddressPtr,
+                              llvm::Value *DataPtr, llvm::Value *DataLength,
+                              llvm::Value *RetOffset, llvm::Value *RetLength) {
+  if (isEVM()) {
+    Gas = Builder.CreateZExtOrTrunc(Gas, EVMIntTy);
+    auto Addr = Builder.CreatePtrToInt(AddressPtr, EVMIntTy);
+    auto ArgOffset = Builder.CreatePtrToInt(DataPtr, EVMIntTy);
+    auto ArgsLength = Builder.CreateZExtOrTrunc(DataLength, EVMIntTy);
+    if (RetOffset == nullptr) {
+      RetOffset = ArgOffset;
+    }
+    if (RetLength == nullptr) {
+      RetLength = Builder.CreateZExtOrTrunc(Builder.getIntN(256, 0), EVMIntTy);
+    }
+    return Builder.CreateCall(
+        Func_callStatic,
+        {Gas, Addr, ArgOffset, ArgsLength, RetOffset, RetLength});
+  } else if (isEWASM()) {
+    llvm::Value *Val = Builder.CreateCall(
+        Func_callStatic, {Gas, AddressPtr, DataPtr, DataLength});
     return Val;
   } else {
     __builtin_unreachable();
@@ -1540,12 +1607,13 @@ llvm::Value *CodeGenModule::emitCallStatic(llvm::Value *Gas,
 }
 
 llvm::Value *CodeGenModule::emitCallDelegate(llvm::Value *Gas,
-                                             llvm::Value *AddressOffset,
-                                             llvm::Value *DataOffset,
+                                             llvm::Value *AddressPtr,
+                                             llvm::Value *DataPtr,
                                              llvm::Value *DataLength) {
   if (isEVM()) {
-    auto Addr = Builder.CreatePtrToInt(AddressOffset, EVMIntTy);
-    auto ArgOffset = Builder.CreatePtrToInt(DataOffset, EVMIntTy);
+    Gas = Builder.CreateZExtOrTrunc(Gas, EVMIntTy);
+    auto Addr = Builder.CreatePtrToInt(AddressPtr, EVMIntTy);
+    auto ArgOffset = Builder.CreatePtrToInt(DataPtr, EVMIntTy);
     auto ArgsLength = Builder.CreateZExtOrTrunc(DataLength, EVMIntTy);
     auto RetLength = Builder.CreateZExtOrTrunc(Builder.getInt32(0), EVMIntTy);
     return Builder.CreateCall(
@@ -1553,7 +1621,7 @@ llvm::Value *CodeGenModule::emitCallDelegate(llvm::Value *Gas,
         {Gas, Addr, ArgOffset, ArgsLength, ArgOffset, RetLength});
   } else if (isEWASM()) {
     llvm::Value *Val = Builder.CreateCall(
-        Func_callDelegate, {Gas, AddressOffset, DataOffset, DataLength});
+        Func_callDelegate, {Gas, AddressPtr, DataPtr, DataLength});
     return Val;
   } else {
     __builtin_unreachable();
