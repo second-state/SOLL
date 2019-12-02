@@ -220,7 +220,8 @@ Sema::CreateYulBuiltinCallExpr(const YulIdentifier &Callee,
   case YulIdentifier::SpecialIdentifier::equ256:
     return std::make_unique<YulBinaryOperator>(
         std::move(Args[0]), std::move(Args[1]), ReturnTy, BO_EQ);
-  // TODO: case YulIdentifier::SpecialIdentifier::iszerou256:
+  case YulIdentifier::SpecialIdentifier::iszerou256:
+    return std::make_unique<YulIsZeroOperator>(std::move(Args[0]), ReturnTy);
   case YulIdentifier::SpecialIdentifier::notu256:
     return std::make_unique<YulUnaryOperator>(std::move(Args[0]), ReturnTy,
                                               UO_Not);

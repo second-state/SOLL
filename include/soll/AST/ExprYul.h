@@ -185,4 +185,15 @@ public:
       : BinaryOperator(std::move(Arg0), std::move(Arg1), opc, Ty) {}
 };
 
+/// iszerou256(u256) -> u256
+///
+/// Although it's an unary operator, the implementation here inherits from
+/// binary operator and compared the argument with the number literal 0.
+class YulIsZeroOperator : public BinaryOperator {
+public:
+  YulIsZeroOperator(ExprPtr &&Arg, TypePtr Ty)
+      : BinaryOperator(std::move(Arg), std::make_unique<NumberLiteral>(0),
+                       BinaryOperatorKind::BO_EQ, Ty) {}
+};
+
 } // namespace soll
