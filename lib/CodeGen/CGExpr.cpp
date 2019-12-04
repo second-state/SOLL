@@ -547,17 +547,13 @@ private:
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::tx_origin: {
-        llvm::Value *Val =
-            Builder.CreateTrunc(CGF.getCodeGenModule().getEndianlessValue(
-                                    CGF.getCodeGenModule().emitGetTxOrigin()),
-                                CGF.AddressTy);
+        llvm::Value *Val = CGF.getCodeGenModule().getEndianlessValue(
+            CGF.getCodeGenModule().emitGetTxOrigin());
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::block_coinbase: {
-        llvm::Value *Val = Builder.CreateTrunc(
-            CGF.getCodeGenModule().getEndianlessValue(
-                CGF.getCodeGenModule().emitGetBlockCoinbase()),
-            CGF.AddressTy);
+        llvm::Value *Val = CGF.getCodeGenModule().getEndianlessValue(
+            CGF.getCodeGenModule().emitGetBlockCoinbase());
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::block_difficulty: {
@@ -566,26 +562,23 @@ private:
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::block_gaslimit: {
-        llvm::Value *Val = Builder.CreateZExt(
-            CGF.getCodeGenModule().emitGetBlockGasLimit(), CGF.Int256Ty);
+        llvm::Value *Val = CGF.getCodeGenModule().emitGetBlockGasLimit();
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::block_number: {
-        llvm::Value *Val = Builder.CreateZExt(
-            CGF.getCodeGenModule().emitGetBlockNumber(), CGF.Int256Ty);
+        llvm::Value *Val = CGF.getCodeGenModule().emitGetBlockNumber();
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::now:
       case Identifier::SpecialIdentifier::block_timestamp: {
-        llvm::Value *Val = Builder.CreateZExt(
-            CGF.getCodeGenModule().emitGetBlockTimestamp(), CGF.Int256Ty);
+        llvm::Value *Val = CGF.getCodeGenModule().emitGetBlockTimestamp();
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::address_balance: {
         llvm::Value *addressOffset =
             CGF.emitExpr(ME->getBase()).load(Builder, CGF.CGM);
-        llvm::Value *Val = CGF.getCodeGenModule().emitEndianConvert(
-            CGF.getCodeGenModule().emitGetExternalBalance(addressOffset));
+        llvm::Value *Val =
+            CGF.getCodeGenModule().emitGetExternalBalance(addressOffset);
         return ExprValue::getRValue(ME, Builder.CreateZExt(Val, CGF.Int256Ty));
       }
       default:

@@ -1653,7 +1653,8 @@ llvm::Value *CodeGenModule::emitGetTxGasPrice() {
 
 llvm::Value *CodeGenModule::emitGetTxOrigin() {
   if (isEVM()) {
-    return Builder.CreateCall(Func_getTxOrigin, {});
+    return Builder.CreateTrunc(Builder.CreateCall(Func_getTxOrigin, {}),
+                               AddressTy);
   } else if (isEWASM()) {
     llvm::Value *ValPtr = Builder.CreateAlloca(AddressTy);
     Builder.CreateCall(Func_getTxOrigin, {ValPtr});
@@ -1665,7 +1666,8 @@ llvm::Value *CodeGenModule::emitGetTxOrigin() {
 
 llvm::Value *CodeGenModule::emitGetBlockCoinbase() {
   if (isEVM()) {
-    return Builder.CreateCall(Func_getBlockCoinbase, {});
+    return Builder.CreateTrunc(Builder.CreateCall(Func_getBlockCoinbase, {}),
+                               AddressTy);
   } else if (isEWASM()) {
     llvm::Value *ValPtr = Builder.CreateAlloca(AddressTy);
     Builder.CreateCall(Func_getBlockCoinbase, {ValPtr});
@@ -1689,7 +1691,8 @@ llvm::Value *CodeGenModule::emitGetBlockDifficulty() {
 
 llvm::Value *CodeGenModule::emitGetBlockGasLimit() {
   if (isEVM() || isEWASM()) {
-    return Builder.CreateCall(Func_getBlockGasLimit, {});
+    return Builder.CreateZExt(Builder.CreateCall(Func_getBlockGasLimit, {}),
+                              Int256Ty);
   } else {
     __builtin_unreachable();
   }
@@ -1697,7 +1700,8 @@ llvm::Value *CodeGenModule::emitGetBlockGasLimit() {
 
 llvm::Value *CodeGenModule::emitGetBlockNumber() {
   if (isEVM() || isEWASM()) {
-    return Builder.CreateCall(Func_getBlockNumber, {});
+    return Builder.CreateZExt(Builder.CreateCall(Func_getBlockNumber, {}),
+                              Int256Ty);
   } else {
     __builtin_unreachable();
   }
@@ -1705,7 +1709,8 @@ llvm::Value *CodeGenModule::emitGetBlockNumber() {
 
 llvm::Value *CodeGenModule::emitGetBlockTimestamp() {
   if (isEVM() || isEWASM()) {
-    return Builder.CreateCall(Func_getBlockTimestamp, {});
+    return Builder.CreateZExt(Builder.CreateCall(Func_getBlockTimestamp, {}),
+                              Int256Ty);
   } else {
     __builtin_unreachable();
   }
@@ -1732,7 +1737,7 @@ llvm::Value *CodeGenModule::emitGetExternalBalance(llvm::Value *AddressOffset) {
   } else if (isEWASM()) {
     llvm::Value *ValPtr = Builder.CreateAlloca(Int128Ty);
     Builder.CreateCall(Func_getExternalBalance, {AddressOffset, ValPtr});
-    return Builder.CreateLoad(ValPtr);
+    return emitEndianConvert(Builder.CreateLoad(ValPtr));
   } else {
     __builtin_unreachable();
   }
