@@ -134,14 +134,24 @@ std::unique_ptr<CallExpr> Sema::CreateCallExpr(ExprPtr &&Callee,
                                                std::vector<ExprPtr> &&Args) {
   TypePtr ResultTy = Callee->getType();
   FunctionType *FTy = nullptr;
-  Expr *expr = Callee.get();
+  Expr *expr = Callee.get(), *base = nullptr;
   if (auto M = dynamic_cast<MemberExpr *>(Callee.get())) {
     expr = M->getName();
+    base = M->getBase();
   }
   if (auto I = dynamic_cast<Identifier *>(expr)) {
     if (I->isSpecialIdentifier()) {
       FTy = dynamic_cast<FunctionType *>(I->getType().get());
     } else {
+      if (auto MI = dynamic_cast<Identifier *>(base)) {
+        if (MI && MI->getSpecialIdentifier() !=
+                      Identifier::SpecialIdentifier::this_) {
+          // TODO: we need to support other type with member call
+          assert(false &&
+                 "only support SpecialIdentifier::this member call now!");
+          __builtin_unreachable();
+        }
+      }
       const Decl *D = I->getCorrespondDecl();
       if (dynamic_cast<const EventDecl *>(D)) {
         return std::make_unique<CallExpr>(std::move(Callee), std::move(Args),
@@ -194,6 +204,7 @@ std::unique_ptr<Identifier> Sema::CreateIdentifier(Token Tok) {
       {"sha256", Identifier::SpecialIdentifier::sha256},
       {"ripemd160", Identifier::SpecialIdentifier::ripemd160},
       {"ecrecover", Identifier::SpecialIdentifier::ecrecover},
+      {"this", Identifier::SpecialIdentifier::this_},
   };
   llvm::StringRef Name = Tok.getIdentifierInfo()->getName();
   if (auto Iter = SpecialLookup.find(Name); Iter != SpecialLookup.end()) {
@@ -265,6 +276,9 @@ std::unique_ptr<Identifier> Sema::CreateIdentifier(Token Tok) {
           std::vector<TypePtr>{
               std::make_shared<AddressType>(StateMutability::NonPayable)});
       break;
+    case Identifier::SpecialIdentifier::this_:
+      Ty = std::make_shared<ContractType>();
+      break;
     default:
       assert(false && "unknown special identifier");
       __builtin_unreachable();
@@ -313,8 +327,14 @@ Sema::CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr, Token Tok) {
       {"staticcall", Identifier::SpecialIdentifier::address_staticcall}};
   llvm::StringRef Name = Tok.getIdentifierInfo()->getName();
   const Expr *Base = BaseExpr.get();
+  // TODO: address(this) is a CastExpr.
   if (auto *I = dynamic_cast<const Identifier *>(Base)) {
     if (I->isSpecialIdentifier()) {
+      if (I->getSpecialIdentifier() == Identifier::SpecialIdentifier::this_) {
+        return std::make_unique<MemberExpr>(
+            std::move(BaseExpr),
+            std::make_unique<Identifier>(Name, lookupName(Name)));
+      }
       if (auto Iter = Lookup.find(Name); Iter != Lookup.end()) {
         std::shared_ptr<Type> Ty;
         switch (I->getSpecialIdentifier()) {

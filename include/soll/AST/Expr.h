@@ -82,6 +82,7 @@ public:
     function_selector,
     function_gas,
     function_value,
+    this_,
   };
 
 private:
