@@ -1,3 +1,4 @@
+[//]: # (SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception)
 ### 0.0.3 (2019-11-19)
 
 Language Features:
@@ -64,4 +65,3 @@ Language Features:
 Compiler Features:
 
 * Provide two compiling phases for generating wasm files.
-

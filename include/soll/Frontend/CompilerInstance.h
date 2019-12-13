@@ -49,7 +49,7 @@ class CompilerInstance {
 
 public:
   explicit CompilerInstance();
-  CompilerInvocation &GetInvocation();
+  CompilerInvocation &getInvocation();
 
   FileSystemOptions &getFileSystemOpts() {
     return Invocation->getFileSystemOpts();

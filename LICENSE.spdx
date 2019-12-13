@@ -1,31 +1,99 @@
-## This file states the license of this package and possibly its subpackages
-## in machine and human readable format. The PackageName refers to the package
-## whose license is defined by PackageLicenseConcluded.
-## For more information about this file format visit the SPDX website at
-## https://spdx.org
+# This file states the license of this package and possibly its subpackages
+# in machine and human readable format. The PackageName refers to the package
+# whose license is defined by PackageLicenseConcluded.
+# For more information about this file format visit the SPDX website at
+# https://spdx.org
 
 SPDXVersion: SPDX-2.1
 DataLicense: CC0-1.0
-SPDXID: SPDXRef-DOCUMENT
 DocumentNamespace: https://secondstate.io/soll
 DocumentName: LICENSE.spdx
+SPDXID: SPDXRef-DOCUMENT
 
+## Creation Information
 Creator: Organization: Second State LCC (contact@secondstate.io)
+LicenseListVersion: 3.7
+## Relationships
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-soll
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-JSON-for-Modern-C++
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-Catch2
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-Catch2-CMake-Integration
+Relationship: SPDXRef-DOCUMENT DESCRIBES SPDXRef-SHA3
 
 ## Package Information
 PackageName: soll
 SPDXID: SPDXRef-soll
 PackageOriginator: Organization: Second State LCC (contact@secondstate.io)
-PackageLicenseDeclared: (Apache-2.0 WITH LLVM-exception)
+PackageDownloadLocation: git+https://github.com/second-state/soll.git
+PackageHomePage: https://github.com/second-state/soll
+PackageLicenseConcluded: Apache-2.0 WITH LLVM-exception
+PackageLicenseDeclared: Apache-2.0 WITH LLVM-exception
+PackageLicenseInfoFromFiles: Apache-2.0 WITH LLVM-exception
+PackageCopyrightText: <text>Copyright 2019 Second State LCC</text>
+## Relationships
+Relationship: SPDXRef-soll STATIC_LINK SPDXRef-SHA3
+Relationship: SPDXRef-soll STATIC_LINK SPDXRef-Catch2
+Relationship: SPDXRef-soll STATIC_LINK SPDXRef-JSON-for-Modern-C++
 FilesAnalyzed: false
 
+
+## Package Information
+PackageName: JSON for Modern C++
+SPDXID: SPDXRef-JSON-for-Modern-C++
+PackageVersion: 3.7.3
+PackageFileName: ./utils/json/json.hpp
+PackageOriginator: Person: Niels Lohmann
+PackageDownloadLocation: git+https://github.com/nlohmann/json.git
+PackageHomePage: https://github.com/nlohmann/json
+PackageLicenseConcluded: MIT
+PackageLicenseDeclared: MIT
+PackageLicenseInfoFromFiles: MIT
+PackageLicenseInfoFromFiles: CC0-1.0
+PackageCopyrightText: <text>Copyright (c) 2013-2019 Niels Lohmann <http://nlohmann.me></text>
+FilesAnalyzed: false
+
+
+## Package Information
+PackageName: Catch2
+SPDXID: SPDXRef-Catch2
+PackageVersion: 2.11.0
+PackageFileName: ./utils/unittests/catch.hpp
+PackageOriginator: Organization: Two Blue Cubes Ltd
+PackageDownloadLocation: git+https://github.com/catchorg/Catch2.git
+PackageHomePage: https://github.com/catchorg/Catch2
+PackageLicenseConcluded: BSL-1.0
+PackageLicenseDeclared: BSL-1.0
+PackageLicenseInfoFromFiles: BSL-1.0
+PackageCopyrightText: <text>Copyright 2010 Two Blue Cubes Ltd</text>
+FilesAnalyzed: false
+
+
+## Package Information
+PackageName: Catch2-CMake-Integration
+SPDXID: SPDXRef-Catch2-CMake-Integration
+PackageVersion: 2.11.0
+PackageFileName: ./utils/unittests/cmake
+PackageOriginator: Organization: Two Blue Cubes Ltd
+PackageDownloadLocation: git+https://github.com/catchorg/Catch2.git
+PackageHomePage: https://github.com/catchorg/Catch2
+PackageLicenseConcluded: BSD-3-Clause
+PackageLicenseDeclared: BSD-3-Clause
+PackageLicenseInfoFromFiles: BSD-3-Clause
+PackageCopyrightText: <text>Copyright 2000-2019 Kitware, Inc. and Contributors</text>
+## Relationships
+Relationship: SPDXRef-Catch2-CMake-Integration BUILD_TOOL_OF SPDXRef-soll
+FilesAnalyzed: false
+
+
+## Package Information
 PackageName: SHA3
 SPDXID: SPDXRef-SHA3
 PackageFileName: ./utils/SHA-3
-PackageOriginator: Daniel Horne
+PackageOriginator: Person: Daniel Horne
+PackageDownloadLocation: git+https://github.com/DuSTman31/SHA-3.git
 PackageHomePage: https://github.com/DuSTman31/SHA-3
-PackageLicenseDeclared: (BSD-3-Clause)
+PackageLicenseConcluded: BSD-3-Clause
+PackageLicenseDeclared: BSD-3-Clause
+PackageLicenseInfoFromFiles: BSD-3-Clause
+PackageCopyrightText: <text>Copyright 2017 Daniel Horne</text>
 FilesAnalyzed: false
-
-## Relationships
-Relationship: SPDXRef-soll CONTAINS SPDXRef-SHA3

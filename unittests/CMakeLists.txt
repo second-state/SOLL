@@ -10,14 +10,14 @@ set(LLVM_LINK_COMPONENTS
 add_llvm_executable(unittests
   main.cpp
   AST/ExprTest.cpp
+  Basic/CharInfoTest.cpp
+  CodeGen/CodeGenActionTest.cpp
   )
 
 target_link_libraries(unittests
   PRIVATE
   sollAST
+  sollCodeGen
   )
 
-add_test(NAME libsoll_unittests
-  COMMAND unittests
-  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-  )
+catch_discover_tests(unittests)

@@ -25,7 +25,7 @@ namespace soll {
 CompilerInstance::CompilerInstance()
     : Invocation(std::make_unique<CompilerInvocation>()) {}
 
-CompilerInvocation &CompilerInstance::GetInvocation() {
+CompilerInvocation &CompilerInstance::getInvocation() {
   assert(Invocation.get() != nullptr);
   return *Invocation;
 }

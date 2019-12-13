@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #ifdef LEXSTART
 __LEXSTART = DIAG_START_LEX,
 #undef LEXSTART

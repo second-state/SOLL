@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #ifdef FRONTENDSTART
 __FRONTENDRSTART = DIAG_START_FRONTEND,
 #undef FRONTENDSTART

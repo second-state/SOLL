@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #ifdef DRIVERSTART
 __DRIVERSTART = DIAG_START_DRIVER,
 #undef DRIVERSTART

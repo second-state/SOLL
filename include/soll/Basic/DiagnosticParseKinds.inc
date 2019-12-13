@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #ifdef PARSESTART
 __PARSESTART = DIAG_START_PARSE,
 #undef PARSESTART

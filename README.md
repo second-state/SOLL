@@ -1,3 +1,4 @@
+[//]: # (SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception)
 # 1. Introduction
 **SOLL** is a new compiler for generating [Ewasm](https://github.com/ewasm) (Ethereum flavored WebAssembly) files from Solidity.
 
@@ -113,4 +114,3 @@ Check the Ewasm code of the latest activity.
 Check the Storage part of the latest activity.
 
 ![Check the Storage](doc/images/2-6-3-CheckStorage.png)
-

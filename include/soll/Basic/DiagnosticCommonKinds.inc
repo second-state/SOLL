@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #ifdef COMMONSTART
 __COMMONSTART = DIAG_START_COMMON,
 #undef COMMONSTART

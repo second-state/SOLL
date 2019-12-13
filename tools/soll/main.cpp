@@ -22,7 +22,7 @@ int main(int argc, const char **argv) {
       new DiagnosticOptions();
   DiagnosticsEngine Diags(DiagID, &*DiagOpts);
 
-  if (!Soll->GetInvocation().ParseCommandLineOptions(Args, Diags)) {
+  if (!Soll->getInvocation().ParseCommandLineOptions(Args, Diags)) {
     return EXIT_FAILURE;
   }
 

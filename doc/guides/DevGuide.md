@@ -1,3 +1,4 @@
+[//]: # (SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception)
 # Developer Guide
 
 ## Introduction
@@ -188,4 +189,3 @@ The result should be the same as the following content.
    '0000000000000000000000000000000000000000000000000000000000000001',
   storage:
    '{"2":"f","13425c139e83d895e2b184742e4c3c48f19def0307be60e6900f6563e300a60f":"e","d3a40b027a96d16f0c9c02fdbf30dd031cb372ed53432958315b5da0226952e":"1"}' }
-```
