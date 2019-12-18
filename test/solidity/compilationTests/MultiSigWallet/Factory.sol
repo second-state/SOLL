@@ -1,3 +1,4 @@
+// RUN: %soll %s
 contract Factory {
 
     event ContractInstantiation(address sender, address instantiation);

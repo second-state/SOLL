@@ -1,3 +1,4 @@
+// RUN: %soll %s
 pragma solidity >=0.0;
 import "../Events/CategoricalEvent.sol";
 import "../Events/ScalarEvent.sol";

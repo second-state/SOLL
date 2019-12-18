@@ -1,3 +1,4 @@
+// RUN: %soll %s
 pragma solidity >=0.0;
 import "../Events/Event.sol";
 import "../Markets/StandardMarketFactory.sol";

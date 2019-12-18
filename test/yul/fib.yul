@@ -1,3 +1,4 @@
+// RUN: %soll --lang=Yul %s
 object "fib" {
   code {
     let f := 1

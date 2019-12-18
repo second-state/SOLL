@@ -1,3 +1,4 @@
+// RUN: %soll --lang=Yul %s
 object "feature" {
   code {
     function store(key, value) -> result {

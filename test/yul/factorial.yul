@@ -1,3 +1,4 @@
+// RUN: %soll --lang=Yul %s
 object "factorial" {
   code {
     let fact := 1

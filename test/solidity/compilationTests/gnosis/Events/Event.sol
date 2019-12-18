@@ -1,3 +1,4 @@
+// RUN: %soll %s
 pragma solidity >=0.0;
 import "../Tokens/Token.sol";
 import "../Tokens/OutcomeToken.sol";

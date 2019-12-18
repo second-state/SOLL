@@ -1,0 +1,41 @@
+@LIT_SITE_CFG_IN_HEADER@
+
+import sys
+
+config.llvm_src_root = "@LLVM_SOURCE_DIR@"
+config.llvm_obj_root = "@LLVM_BINARY_DIR@"
+config.llvm_tools_dir = "@LLVM_TOOLS_DIR@"
+config.llvm_libs_dir = "@LLVM_LIBS_DIR@"
+config.llvm_shlib_dir = "@SHLIBDIR@"
+config.llvm_plugin_ext = "@LLVM_PLUGIN_EXT@"
+config.lit_tools_dir = "@LLVM_LIT_TOOLS_DIR@"
+config.soll_obj_root = "@SOLL_BINARY_DIR@"
+config.soll_src_dir = "@SOLL_SOURCE_DIR@"
+config.soll_tools_dir = "@SOLL_TOOLS_DIR@"
+config.soll = "@SOLL_BINARY_DIR@/tools/soll/soll"
+config.host_triple = "@LLVM_HOST_TRIPLE@"
+config.target_triple = "@TARGET_TRIPLE@"
+config.host_cxx = "@CMAKE_CXX_COMPILER@"
+config.llvm_use_sanitizer = "@LLVM_USE_SANITIZER@"
+config.enable_shared = @ENABLE_SHARED@
+config.host_arch = "@HOST_ARCH@"
+config.python_executable = "@PYTHON_EXECUTABLE@"
+config.use_z3_solver = lit_config.params.get('USE_Z3_SOLVER', "@USE_Z3_SOLVER@")
+
+# Support substitution of the tools and libs dirs with user parameters. This is
+# used when we can't determine the tool dir at configuration time.
+try:
+    config.soll_tools_dir = config.soll_tools_dir % lit_config.params
+    config.llvm_tools_dir = config.llvm_tools_dir % lit_config.params
+    config.llvm_shlib_dir = config.llvm_shlib_dir % lit_config.params
+    config.llvm_libs_dir = config.llvm_libs_dir % lit_config.params
+except KeyError:
+    e = sys.exc_info()[1]
+    key, = e.args
+    lit_config.fatal("unable to find %r parameter, use '--param=%s=VALUE'" % (key,key))
+
+import lit.llvm
+lit.llvm.initialize(lit_config, config)
+
+# Let the main config do the real work.
+lit_config.load_config(config, "@SOLL_SOURCE_DIR@/test/lit.cfg.py")
