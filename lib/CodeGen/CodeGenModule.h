@@ -84,6 +84,7 @@ class CodeGenModule : public CodeGenTypeCache {
   llvm::Function *Func_getBlockTimestamp = nullptr;
   llvm::Function *Func_getBlockHash = nullptr;
   llvm::Function *Func_getExternalBalance = nullptr;
+  llvm::Function *Func_getAddress = nullptr;
 
   llvm::Function *Func_print32 = nullptr;
 
@@ -170,6 +171,7 @@ public:
   llvm::Value *emitGetBlockTimestamp();
   llvm::Value *emitGetBlockHash(llvm::Value *Number);
   llvm::Value *emitGetExternalBalance(llvm::Value *AddressOffset);
+  llvm::Value *emitGetAddress();
 
 private:
   void emitContractConstructorDecl(const ContractDecl *CD);

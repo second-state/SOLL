@@ -218,6 +218,10 @@ void CodeGenModule::initEVMOpcodeDeclaration() {
   FT = llvm::FunctionType::get(Int64PtrTy, {}, false);
   Func_getExternalBalance = getIntrinsic(llvm::Intrinsic::evm_balance, FT);
 
+  // getAddress
+  FT = llvm::FunctionType::get(VoidTy, {AddressPtrTy}, false);
+  Func_getAddress = getIntrinsic(llvm::Intrinsic::evm_address, FT);
+
 #endif
 }
 
@@ -482,6 +486,14 @@ void CodeGenModule::initEEIDeclaration() {
   Func_print32->addFnAttr(
       llvm::Attribute::get(VMContext, "wasm-import-name", "print32"));
   Func_print32->addFnAttr(llvm::Attribute::NoUnwind);
+
+  // getAddress
+  FT = llvm::FunctionType::get(VoidTy, {AddressPtrTy}, false);
+  Func_getAddress = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                           "ethereum.getAddress", TheModule);
+  Func_getAddress->addFnAttr(Ethereum);
+  Func_getAddress->addFnAttr(
+      llvm::Attribute::get(VMContext, "wasm-import-name", "getAddress"));
 }
 
 void CodeGenModule::initHelperDeclaration() {
@@ -1767,6 +1779,18 @@ llvm::Value *CodeGenModule::emitGetExternalBalance(llvm::Value *Address) {
     llvm::Value *AddressPtr = Builder.CreateAlloca(AddressTy);
     Builder.CreateStore(emitEndianConvert(Address), AddressPtr);
     Builder.CreateCall(Func_getExternalBalance, {AddressPtr, ValPtr});
+    return Builder.CreateLoad(ValPtr);
+  } else {
+    __builtin_unreachable();
+  }
+}
+
+llvm::Value *CodeGenModule::emitGetAddress() {
+  if (isEVM()) {
+    return Builder.CreateCall(Func_getAddress, {});
+  } else if (isEWASM()) {
+    llvm::Value *ValPtr = Builder.CreateAlloca(AddressTy);
+    Builder.CreateCall(Func_getAddress, {ValPtr});
     return Builder.CreateLoad(ValPtr);
   } else {
     __builtin_unreachable();

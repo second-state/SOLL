@@ -360,6 +360,11 @@ private:
           return ExprValue::getRValue(CE, Out);
         }
       }
+      if (auto InTy = dynamic_cast<const ContractType *>(OrigInTy)) {
+        if (auto OutTy = dynamic_cast<const AddressType *>(OrigOutTy)) {
+          return ExprValue::getRValue(CE, In);
+        }
+      }
       if (auto InTy = dynamic_cast<const IntegerType *>(OrigInTy)) {
         assert(!InTy->isSigned() && "Cannot cast from signed to address");
         if (auto OutTy = dynamic_cast<const AddressType *>(OrigOutTy)) {
@@ -385,6 +390,15 @@ private:
   ExprValue visit(const ParenExpr *PE) { return visit(PE->getSubExpr()); }
 
   ExprValue visit(const Identifier *ID) {
+    if (ID->isSpecialIdentifier()) {
+      switch (ID->getSpecialIdentifier()) {
+      case Identifier::SpecialIdentifier::this_: {
+        llvm::Value *Val = CGF.getCodeGenModule().getEndianlessValue(
+            CGF.getCodeGenModule().emitGetAddress());
+        return ExprValue::getRValue(ID, Val);
+      }
+      }
+    }
     const Decl *D = ID->getCorrespondDecl();
 
     if (auto *VD = dynamic_cast<const VarDecl *>(D)) {

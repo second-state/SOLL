@@ -209,7 +209,7 @@ Sema::CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr, Token Tok) {
   };
   llvm::StringRef Name = Tok.getIdentifierInfo()->getName();
   const Expr *Base = BaseExpr.get();
-  // TODO: address(this) is a CastExpr.
+
   if (auto *I = dynamic_cast<const Identifier *>(Base)) {
     if (I->isSpecialIdentifier()) {
       if (I->getSpecialIdentifier() == Identifier::SpecialIdentifier::this_) {
@@ -291,6 +291,8 @@ Sema::CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr, Token Tok) {
             L, std::move(BaseExpr),
             std::make_unique<Identifier>(Tok, Iter->second, Ty));
       }
+      break;
+    default:;
     }
   }
   // unresolvable now
