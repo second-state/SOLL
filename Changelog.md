@@ -1,4 +1,24 @@
 [//]: # (SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception)
+
+### 0.0.4 (2019-12-23)
+
+Language Features:
+
+* Support limited Yul language. [See detail here.](doc/guides/FeatureGuideForYul.md)
+    - Basic arithmetical, compare, sstore and sload built-in functions.
+    - For loop, If, Var declare and Assignment statements.
+
+Compiler Features:
+
+* Add command-line version option check current SOLL version.
+    * `-version`
+* Add command-line language options for Yul input file.
+    * `-lang=Sol`: Input file is written in Solidity.  (Default)
+    * `-lang=Yul`: Input file is written in Yul.
+* Add unittest framework.
+* Integrate Solidity compilation test and libyul test from ethereum/solidity.
+
+
 ### 0.0.3 (2019-11-19)
 
 Language Features:
@@ -16,9 +36,9 @@ Compiler Features:
 
 * Be able to generate deployable Ewasm files.
 * Support diagnostic message.
-* Add command-line options for generating metadata of Solidity contracts.
-    * `EmitABI`: Generate ABI
-    * `EmitFuncSig`: Generate function signatures
+* Add command-line action options for generating metadata of Solidity contracts.
+    * `-action=EmitABI`: Generate ABI
+    * `-action=EmitFuncSig`: Generate function signatures
 * Support EVM1 bytecode target. (Depends on [EVM_LLVM](https://github.com/etclabscore/evm_llvm))
 
 Bugfixes:
@@ -43,7 +63,9 @@ Language Features:
 Compiler Features:
 
 * Migrate Test suite to utils as a submodule.
-* Add command-line option. (Emit LLVM IR, Dump AST).
+* Add command-line action option.
+    * `-action=EmitLLVM`: Emit LLVM IR. (Default)
+    * `-action=ASTDump`: Dump AST.
 
 Bugfixes:
 

@@ -10,6 +10,12 @@ For beginners, in the following sections of this document, we will show you how 
 
 For developers, we provide another document, please refer to the [Developer Guide](doc/guides/DevGuide.md).
 
+And user can check all features and limitation in below documents.
+
+* [Feature Guide for Solidity](doc/guides/FeatureGuideForSolidity.md)
+* [Feature Guide for Yul](doc/guides/FeatureGuideForYul.md)
+* [Knwon Issue](doc/KnownIssues.md)
+
 # 2. Getting Started
 To get started with our demo, you will need two components at first.
 

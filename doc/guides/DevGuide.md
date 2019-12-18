@@ -10,10 +10,11 @@ In following sections, we provide three parts to show how to compile and execute
 1. Prepare required environment.
 2. Build SOLL compiler from source code.
 3. Generate Ewasm files from our demo contracts and execute them.
-    - [0-0-1.sol](./doc/examples/0-0-1.sol) - A basic smart contract example (SaftMath)
-    - [0-0-2.sol](./doc/examples/0-0-2.sol) - A partial function example of [ERC20](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md) contract.
-    - [0-0-3.sol](./doc/examples/0-0-3.sol) - A full function example of [ERC20](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md) contract.
-
+    - [0-0-1.sol](../../doc/examples/0-0-1.sol) - A basic smart contract example (SaftMath)
+    - [0-0-2.sol](../../doc/examples/0-0-2.sol) - A partial function example of [ERC20](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md) contract.
+    - [0-0-3.sol](../../doc/examples/0-0-3.sol) - A full function example of [ERC20](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md) contract.
+4. Generate Ewasm files from our Yul demo and execute them. **[(0.0.4 limited version)](FeatureGuideForYul.md)**
+    - [0-0-4.yul](../../doc/examples/0-0-4.yul) - A fibonacci sequence example written in Yul.
 
 ## Working Tree
 ```
@@ -24,8 +25,9 @@ soll
 │   ├── (...)
 │   └── example           // Examples of every release
 │       ├── 0-0-1.sol     // A basic smart contract example (SafeMath)
-|       ├── 0-0-1.sol     // A partial version of ERC20 contract
-│       └── 0-0-3.sol     // A full function example of ERC20 contract
+|       ├── 0-0-2.sol     // A partial version of ERC20 contract
+|       ├── 0-0-3.sol     // A full function example of ERC20 contract
+│       └── 0-0-4.yul     // A fibonacci sequence example written in Yul 
 ├── (...)
 └── utils
     ├── (...)
@@ -41,11 +43,11 @@ soll
 > docker pull secondstate/soll
 ```
 
-- Get Source Code from Github and checkout to this version, 0.0.3.
+- Get Source Code from Github and checkout to this version, 0.0.4.
 ```Shell
 > git clone --recursive https://github.com/second-state/soll.git
 > cd soll
-> git checkout 0.0.3
+> git checkout 0.0.4
 ```
 
 ## Launch Environment
@@ -65,7 +67,7 @@ Build SOLL first (we use cmake with llvm library)
 
 ## Compile and execute basic smart contracts 
 
-To show how to use SOLL to compile and execute smart contracts, we provide a very basic example to demostrate it. In this example, the smart contract will provide Safe Math machnism that will make sure that calculation results will not be overflow or divided by zero. In following steps, we will show how to compile this example and use our benchmark to run this smart contract.
+To show how to use SOLL to compile and execute smart contracts, we provide a very basic example to demonstrate it. In this example, the smart contract will provide Safe Math machnism that will make sure that calculation results will not be overflow or divided by zero. In following steps, we will show how to compile this example and use our benchmark to run this smart contract.
 
 **Phase 1. Use SOLL generate .ll from test contract**
 
@@ -109,7 +111,7 @@ finish(66032, 32)
 
 ## Execute an ERC20 smart contract compiled by SOLL
 
-We provide two examples, 0-0-2.sol and 0-0-3.sol, to demostrate how to use SOLL to compile and execute ERC20 contracts. In this example, we use 0-0-2.sol that contains very core functions of ERC20 contract to demostrate how to compile and execute ERC20 contracts.
+We provide two examples, 0-0-2.sol and 0-0-3.sol, to demonstrate how to use SOLL to compile and execute ERC20 contracts. In this example, we use 0-0-2.sol that contains very core functions of ERC20 contract to demonstrate how to compile and execute ERC20 contracts.
 
 **Phase 1. Use SOLL generate .ll from test contract**
 
@@ -189,3 +191,39 @@ The result should be the same as the following content.
    '0000000000000000000000000000000000000000000000000000000000000001',
   storage:
    '{"2":"f","13425c139e83d895e2b184742e4c3c48f19def0307be60e6900f6563e300a60f":"e","d3a40b027a96d16f0c9c02fdbf30dd031cb372ed53432958315b5da0226952e":"1"}' }
+```
+
+## Compile and execute Yul code
+
+To show how to use SOLL to compile and execute YUl code, we also provide a very basic example to demonstrate it. In this example, the code will calculate first ten numbers of fibonacci sequence and store them into storage with address 0 to 9 . In following steps, we will show how to compile this example and use our benchmark to run this code.
+
+**Phase 1. Use SOLL generate .ll from Yul code**
+
+Execute SOLL to generate a *.ll file for the next step.
+
+```Shell
+(docker) $ ~/soll/build/tools/soll/soll -lang=Yul ~/soll/doc/examples/0-0-4.yul > ~/soll/utils/ewasm-testbench/fib.ll
+```
+
+**Phase 2. Generate .wasm from .ll**
+
+```Shell
+(docker) $ ~/soll/utils/compile_yul -v ~/soll/utils/ewasm-testbench/fib.ll
+```
+
+**Run in Test Env**
+
+The Yul code section will automated run after wasm load by index.js.
+
+```Shell
+(docker) $ cd ~/soll/utils/ewasm-testbench
+(docker) $ ./index.js fib.wasm '' '{}'
+```
+
+The result should be the same as the following content.
+
+```Shell
+{ returnData: '',
+  storage:
+   '{"0":"1","1":"1","2":"2","3":"3","4":"5","5":"8","6":"d","7":"15","8":"22","9":"37"}' }
+```
