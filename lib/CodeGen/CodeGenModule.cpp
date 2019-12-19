@@ -107,7 +107,6 @@ void CodeGenModule::initEVMOpcodeDeclaration() {
   FT = llvm::FunctionType::get(EVMIntTy, {EVMIntTy, EVMIntTy}, false);
   Func_sha3 = getIntrinsic(llvm::Intrinsic::evm_sha3, FT);
 
-  // Todo: wait for LLVM EVM bug fixing
   // evm_call
   FT = llvm::FunctionType::get(
       EVMIntTy,
@@ -505,6 +504,7 @@ void CodeGenModule::initHelperDeclaration() {
 
 void CodeGenModule::initBswapI256() {
   auto *const Arg = Func_bswap256->arg_begin();
+  Arg->setName("data");
 
   llvm::BasicBlock *Entry =
       llvm::BasicBlock::Create(VMContext, "entry", Func_bswap256);
@@ -589,13 +589,13 @@ void CodeGenModule::initPrebuiltContract() {
   Func_sha256->addFnAttr(llvm::Attribute::NoUnwind);
 
   // ripemd160
-  FT = llvm::FunctionType::get(Int256Ty, {BytesTy}, false);
+  FT = llvm::FunctionType::get(Int160Ty, {BytesTy}, false);
   Func_ripemd160 = llvm::Function::Create(FT, llvm::Function::InternalLinkage,
                                           "solidity.ripemd160", TheModule);
   Func_ripemd160->addFnAttr(llvm::Attribute::NoUnwind);
 
   // ecrecover
-  FT = llvm::FunctionType::get(Int256Ty,
+  FT = llvm::FunctionType::get(Int160Ty,
                                {Int256Ty, Int256Ty, Int256Ty, Int256Ty}, false);
   Func_ecrecover = llvm::Function::Create(FT, llvm::Function::InternalLinkage,
                                           "solidity.ecrecover", TheModule);
@@ -707,7 +707,7 @@ void CodeGenModule::initRipemd160() {
     emitCallStatic(Fee, AddressPtr, Ptr, Length, ResultPtr,
                    Builder.getIntN(256, 0x20));
     llvm::Value *Result =
-        Builder.CreateZExtOrTrunc(Builder.CreateLoad(ResultPtr), Int160Ty);
+        Builder.CreateTrunc(Builder.CreateLoad(ResultPtr), Int160Ty);
     Builder.CreateRet(Result);
   } else if (isEWASM()) {
     llvm::Value *AddressPtr =
@@ -725,26 +725,37 @@ void CodeGenModule::initRipemd160() {
                        {ResultVPtr, Builder.getInt32(0), Builder.getInt32(32)});
     llvm::Value *Result = Builder.CreateLoad(ResultPtr);
 
-    Builder.CreateRet(emitEndianConvert(Result));
+    Builder.CreateRet(Builder.CreateTrunc(emitEndianConvert(Result), Int160Ty));
   } else {
     __builtin_unreachable();
   }
 }
 
 void CodeGenModule::initEcrecover() {
-  llvm::Argument *arg_begin = Func_ecrecover->arg_begin();
-  llvm::Argument *arg_end = Func_ecrecover->arg_end();
-
-  std::vector<llvm::Value *> args;
-  for (auto it = arg_begin; it != arg_end; ++it) {
-    args.emplace_back(it);
+  std::vector<llvm::Value *> Args;
+  if (Func_ecrecover->arg_end() - Func_ecrecover->arg_begin() == 4) {
+    llvm::Argument *CurrentArg = Func_ecrecover->arg_begin();
+    CurrentArg->setName("hash");
+    Args.emplace_back(CurrentArg);
+    CurrentArg++;
+    CurrentArg->setName("v");
+    Args.emplace_back(CurrentArg);
+    CurrentArg++;
+    CurrentArg->setName("r");
+    Args.emplace_back(CurrentArg);
+    CurrentArg++;
+    CurrentArg->setName("s");
+    Args.emplace_back(CurrentArg);
+  } else {
+    assert(false && "ECRecover should have 4 arguments!");
+    __builtin_unreachable();
   }
 
   llvm::BasicBlock *Entry =
       llvm::BasicBlock::Create(VMContext, "entry", Func_ecrecover);
   Builder.SetInsertPoint(Entry);
 
-  llvm::Value *Bytes = emitConcateBytes(llvm::ArrayRef<llvm::Value *>(args));
+  llvm::Value *Bytes = emitConcateBytes(llvm::ArrayRef<llvm::Value *>(Args));
 
   llvm::Value *Length = Builder.CreateTrunc(
       Builder.CreateExtractValue(Bytes, {0}), Int32Ty, "length");
@@ -760,7 +771,7 @@ void CodeGenModule::initEcrecover() {
     emitCallStatic(Fee, AddressPtr, Ptr, Length, ResultPtr,
                    Builder.getIntN(256, 0x20));
     llvm::Value *Result =
-        Builder.CreateZExtOrTrunc(Builder.CreateLoad(ResultPtr), AddressTy);
+        Builder.CreateTrunc(Builder.CreateLoad(ResultPtr), AddressTy);
     Builder.CreateRet(Result);
   } else if (isEWASM()) {
     llvm::Value *AddressPtr =
@@ -778,7 +789,7 @@ void CodeGenModule::initEcrecover() {
                        {ResultVPtr, Builder.getInt32(0), Builder.getInt32(32)});
     llvm::Value *Result = Builder.CreateLoad(ResultPtr);
 
-    Builder.CreateRet(emitEndianConvert(Result));
+    Builder.CreateRet(Builder.CreateTrunc(emitEndianConvert(Result), Int160Ty));
   } else {
     __builtin_unreachable();
   }
@@ -1607,6 +1618,8 @@ CodeGenModule::emitCallStatic(llvm::Value *Gas, llvm::Value *AddressPtr,
     auto ArgsLength = Builder.CreateZExtOrTrunc(DataLength, EVMIntTy);
     if (RetOffset == nullptr) {
       RetOffset = ArgOffset;
+    } else {
+      RetOffset = Builder.CreatePtrToInt(RetOffset, EVMIntTy);
     }
     if (RetLength == nullptr) {
       RetLength = Builder.CreateZExtOrTrunc(Builder.getIntN(256, 0), EVMIntTy);
