@@ -71,7 +71,7 @@ build:ubuntu-clang:
 
 build:ubuntu-clang-evm-backend:
   stage: build
-  image: hydai/ubuntu-soll-build-evm_llvm:20190918
+  image: secondstate/soll:ubuntu-evm-llvm
   tags:
     - evm
   before_script:
