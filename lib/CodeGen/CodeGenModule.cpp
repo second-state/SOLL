@@ -241,7 +241,7 @@ void CodeGenModule::initEEIDeclaration() {
 
   // call
   FT = llvm::FunctionType::get(
-      Int32Ty, {Int64Ty, AddressPtrTy, Int128Ty, Int8PtrTy, Int32Ty}, false);
+      Int32Ty, {Int64Ty, AddressPtrTy, Int128PtrTy, Int8PtrTy, Int32Ty}, false);
   Func_call = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
                                      "ethereum.call", TheModule);
   Func_call->addFnAttr(Ethereum);
@@ -250,6 +250,7 @@ void CodeGenModule::initEEIDeclaration() {
   Func_call->addFnAttr(llvm::Attribute::NoUnwind);
   Func_call->addParamAttr(1, llvm::Attribute::ReadOnly);
   Func_call->addParamAttr(2, llvm::Attribute::ReadOnly);
+  Func_call->addParamAttr(3, llvm::Attribute::ReadOnly);
 
   // callStatic
   FT = llvm::FunctionType::get(
