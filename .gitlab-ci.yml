@@ -71,7 +71,7 @@ build:ubuntu-clang:
 
 build:ubuntu-clang-evm-backend:
   stage: build
-  image: secondstate/soll:ubuntu-evm-llvm
+  image: secondstate/soll:ubuntu-evm-llvm-release
   tags:
     - evm
   before_script:
@@ -103,6 +103,21 @@ compile:ubuntu-clang:
     COMPILER: "clang"
   tags:
     - clang
+
+compile:ubuntu-clang-evm-backend:
+  stage: compile
+  image: secondstate/soll:ubuntu-evm-llvm-release
+  tags:
+    - evm
+  script:
+    - bash -c "${BASE_BINDIR}/tools/soll/soll --target=EVM ${TEST_ENVDIR}/test/safeMath.sol"
+    - bash -c "${BASE_BINDIR}/tools/soll/soll --target=EVM ${TEST_ENVDIR}/test/erc20.sol"
+    - bash -c "${BASE_BINDIR}/tools/soll/soll --target=EVM ${TEST_ENVDIR}/test/forStmt.sol"
+  cache:
+    key: ubuntu-clang-evm
+    paths:
+      - ${BASE_BINDIR}
+    policy: pull-push
 
 test:ubuntu-gcc:
   <<: *test_job
