@@ -16,7 +16,7 @@ RUN cmake -DCMAKE_INSTALL_PREFIX=/evm_llvm_build \
         -DCMAKE_BUILD_TYPE="Debug" \
         -DLLVM_TARGETS_TO_BUILD="WebAssembly" -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD="EVM" \
         /evm_llvm \
-    && make -j8 \
+    && make llc -j8 \
     && cmake --build . --target install
 
 ENV LLVM_DIR=/evm_llvm_build
