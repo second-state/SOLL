@@ -573,7 +573,7 @@ Token Lexer::LexIdentifier(const char *CurPtr) {
 Token Lexer::LexNumericConstant(const char *CurPtr) {
   unsigned Size;
   char C = getCharAndSize(CurPtr, Size);
-  while (isNumberBody(C)) {
+  while (isAlphanumeric(C)) {
     CurPtr = ConsumeChar(CurPtr, Size);
     C = getCharAndSize(CurPtr, Size);
   }
