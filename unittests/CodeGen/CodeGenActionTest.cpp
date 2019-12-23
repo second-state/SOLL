@@ -10,8 +10,8 @@ namespace {
 
 class NullCodeGenAction : public CodeGenAction {
 public:
-  NullCodeGenAction(llvm::LLVMContext *_VMContext = nullptr)
-      : CodeGenAction(_VMContext) {}
+  NullCodeGenAction()
+      : CodeGenAction() {}
 
   void ExecuteAction() override {
     CompilerInstance &CI = getCompilerInstance();
@@ -23,9 +23,18 @@ public:
 };
 
 TEST_CASE("TestNullCodeGen", "[CodeGenTest]") {
+  auto TempFile = llvm::sys::fs::TempFile::create("test-%%%%%%.sol");
+  REQUIRE(bool(TempFile));
+  {
+    llvm::raw_fd_ostream OS(TempFile->FD, /*shouldClose*/ true);
+    OS << "contract C {}";
+    OS.flush();
+  }
+
   CompilerInstance Compiler;
   auto &Invocation = Compiler.getInvocation();
-  Invocation.getFrontendOpts().Inputs.push_back(FrontendInputFile("test.soll"));
+  Invocation.getFrontendOpts().Inputs.push_back(
+      FrontendInputFile(TempFile->TmpName));
   Invocation.getFrontendOpts().ProgramAction = EmitLLVM;
   Invocation.getTargetOpts().BackendTarget = EWASM;
   Compiler.createDiagnostics();

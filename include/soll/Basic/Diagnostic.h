@@ -574,7 +574,7 @@ public:
   virtual void finish() {}
   virtual bool IncludeInDiagnosticCounts() const { return true; }
   virtual void HandleDiagnostic(DiagnosticsEngine::Level DiagLevel,
-                                const Diagnostic &Info) {}
+                                const Diagnostic &Info);
 };
 
 constexpr const char ToggleHighlight = 127;

@@ -469,4 +469,15 @@ void Diagnostic::FormatDiagnostic(const char *DiagStr, const char *DiagEnd,
   OutStr.append(Tree.begin(), Tree.end());
 }
 
+void DiagnosticConsumer::HandleDiagnostic(DiagnosticsEngine::Level DiagLevel,
+                                          const Diagnostic &Info) {
+  if (!IncludeInDiagnosticCounts())
+    return;
+
+  if (DiagLevel == DiagnosticsEngine::Level::Warning)
+    ++NumWarnings;
+  else if (DiagLevel >= DiagnosticsEngine::Level::Error)
+    ++NumErrors;
+}
+
 } // namespace soll
