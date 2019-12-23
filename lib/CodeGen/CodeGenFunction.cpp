@@ -42,6 +42,10 @@ void CodeGenFunction::generateCode(const FunctionDecl *FD, llvm::Function *Fn) {
   }
 }
 
+void CodeGenFunction::generateYulCode(const YulCode *YC) {
+  emitBlock(YC->getBody());
+}
+
 void CodeGenFunction::emitStmt(const Stmt *S) {
   if (auto DS = dynamic_cast<const DeclStmt *>(S)) {
     return emitDeclStmt(DS);
@@ -73,13 +77,26 @@ void CodeGenFunction::emitStmt(const Stmt *S) {
   if (auto ES = dynamic_cast<const EmitStmt *>(S)) {
     return emitEmitStmt(ES);
   }
+  if (auto FS = dynamic_cast<const AsmForStmt *>(S)) {
+    return emitAsmForStmt(FS);
+  }
+  if (auto SS = dynamic_cast<const AsmSwitchStmt *>(S)) {
+    return emitAsmSwitchStmt(SS);
+  }
+  if (auto AS = dynamic_cast<const AsmAssignmentStmt *>(S)) {
+    return emitAsmAssignmentStmt(AS);
+  }
 }
 
 void CodeGenFunction::emitDeclStmt(const DeclStmt *DS) {
   assert(DS->getVarDecls().size() == 1 && "unsupported tuple decoupling!");
   auto *VD = DS->getVarDecls().front();
-  auto *Ty = VD->GetType().get();
-  auto *LLVMTy = CGM.getLLVMType(Ty);
+  TypePtr Ty;
+  if (auto D = dynamic_cast<const VarDecl *>(VD))
+    Ty = D->GetType();
+  else if (auto D = dynamic_cast<const AsmVarDecl *>(VD))
+    Ty = D->GetType();
+  auto *LLVMTy = CGM.getLLVMType(Ty.get());
 
   llvm::Value *Addr =
       Builder.CreateAlloca(LLVMTy, nullptr, VD->getName() + ".addr");
@@ -226,6 +243,101 @@ void CodeGenFunction::emitReturnStmt(const ReturnStmt *RS) {
 
 void CodeGenFunction::emitEmitStmt(const EmitStmt *ES) {
   emitCallExpr(ES->getCall());
+}
+
+void CodeGenFunction::emitAsmForStmt(const AsmForStmt *FS) {
+  llvm::BasicBlock *ForCond = createBasicBlock("for.cond");
+  llvm::BasicBlock *ForBody = createBasicBlock("for.body");
+  llvm::BasicBlock *Continue = createBasicBlock("for.cont");
+  llvm::BasicBlock *LoopExit = createBasicBlock("for.end");
+
+  emitBlock(FS->getInit());
+  Builder.CreateBr(ForCond);
+
+  Builder.SetInsertPoint(ForCond);
+  emitBranchOnBoolExpr(FS->getCond(), ForBody, LoopExit);
+
+  BreakContinueStack.push_back(BreakContinue(LoopExit, Continue));
+
+  Builder.SetInsertPoint(ForBody);
+  emitBlock(FS->getBody());
+  Builder.CreateBr(Continue);
+
+  Builder.SetInsertPoint(Continue);
+  emitBlock(FS->getLoop());
+  Builder.CreateBr(ForCond);
+
+  BreakContinueStack.pop_back();
+  Builder.SetInsertPoint(LoopExit);
+}
+
+void CodeGenFunction::emitAsmSwitchCase(const AsmSwitchCase *SC,
+                                        llvm::SwitchInst *Switch) {
+  if (auto CS = dynamic_cast<const AsmCaseStmt *>(SC)) {
+    emitAsmCaseStmt(CS, Switch);
+  } else if (auto DS = dynamic_cast<const AsmDefaultStmt *>(SC)) {
+    emitAsmDefaultStmt(DS, Switch);
+  } else { ///< Got something not a "case" nor a "default".
+    __builtin_unreachable();
+  }
+  emitStmt(SC->getSubStmt());
+}
+
+void CodeGenFunction::emitAsmCaseStmt(const AsmCaseStmt *CS,
+                                      llvm::SwitchInst *Switch) {
+  // TODO:
+  // - handle non-integer case-value.
+  llvm::BasicBlock *CaseBB = createBasicBlock("switch.case");
+  llvm::Value *CaseV = emitExpr(CS->getLHS()).load(Builder, CGM);
+  if (auto ConstV = llvm::dyn_cast<llvm::ConstantInt>(CaseV)) {
+    Switch->addCase(ConstV, CaseBB);
+  } else { ///< wrong code
+    __builtin_unreachable();
+  }
+  Builder.CreateBr(CaseBB);
+  Builder.SetInsertPoint(CaseBB);
+}
+
+void CodeGenFunction::emitAsmDefaultStmt(const AsmDefaultStmt *DS,
+                                         llvm::SwitchInst *Switch) {
+  llvm::BasicBlock *DefaultBB = Switch->getDefaultDest();
+  Builder.CreateBr(DefaultBB);
+  Builder.SetInsertPoint(DefaultBB);
+}
+
+void CodeGenFunction::emitAsmSwitchStmt(const AsmSwitchStmt *SS) {
+  // TODO:
+  // - handle nested switch statements.
+  // - handle large case range.
+  llvm::Value *CondV = emitExpr(SS->getCond()).load(Builder, CGM);
+  llvm::BasicBlock *DefaultBB = createBasicBlock("switch.default");
+  llvm::BasicBlock *SwitchExit = createBasicBlock("switch.end");
+  llvm::SwitchInst *Switch = Builder.CreateSwitch(CondV, DefaultBB);
+
+  BreakContinueStack.push_back(BreakContinue(SwitchExit, nullptr));
+
+  for (auto *Case : SS->getSwitchCaseList()) {
+    emitAsmSwitchCase(Case, Switch);
+  }
+
+  Builder.CreateBr(SwitchExit);
+  BreakContinueStack.pop_back();
+
+  if (!DefaultBB->getParent()) { ///< default block was never emitted
+    DefaultBB->replaceAllUsesWith(SwitchExit);
+    delete DefaultBB;
+  }
+  Builder.SetInsertPoint(SwitchExit);
+}
+
+void CodeGenFunction::emitAsmAssignmentStmt(const AsmAssignmentStmt *AS) {
+  // TODO:
+  // - handle multiple assignment (only the first pair is handled here).
+  const AsmIdentifier *AI = AS->getLHS()->getIdentifiers().front();
+  ExprValue LHS = emitExpr(AI);
+  ExprValue RHS = emitExpr(AS->getRHS());
+  llvm::Value *RHSV = RHS.load(Builder, CGM);
+  LHS.store(Builder, CGM, RHSV);
 }
 
 ExprValue CodeGenFunction::emitBoolExpr(const Expr *E) {

@@ -409,7 +409,13 @@ LexNextToken:
     }
     break;
   case ':':
-    Kind = tok::colon;
+    Char = getCharAndSize(CurPtr, SizeTmp);
+    if (Char == '=') { // :=
+      CurPtr = ConsumeChar(CurPtr, SizeTmp);
+      Kind = tok::colonequal;
+    } else {
+      Kind = tok::colon;
+    }
     break;
   case ';':
     Kind = tok::semi;
@@ -421,6 +427,9 @@ LexNextToken:
       CurPtr = ConsumeChar(CurPtr, SizeTmp);
     } else if (Char == '>') {
       Kind = tok::equalgreater;
+      CurPtr = ConsumeChar(CurPtr, SizeTmp);
+    } else if (Char == ':') {
+      Kind = tok::equalcolon;
       CurPtr = ConsumeChar(CurPtr, SizeTmp);
     } else {
       Kind = tok::equal;

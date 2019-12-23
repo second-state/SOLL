@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "soll/AST/Decl.h"
 #include "soll/AST/Expr.h"
-#include "soll/AST/ExprYul.h"
+#include "soll/AST/ExprAsm.h"
+#include "soll/AST/StmtAsm.h"
 #include "soll/AST/StmtVisitor.h"
-#include "soll/AST/StmtYul.h"
 
 namespace soll {
 
@@ -100,47 +100,51 @@ void NumberLiteral::accept(ConstStmtVisitor &visitor) const {
   visitor.visit(*this);
 }
 
-void YulIdentifierList::accept(soll::StmtVisitor &visitor) {
-  visitor.visit(*this);
-}
-void YulIdentifierList::accept(soll::ConstStmtVisitor &visitor) const {
-  visitor.visit(*this);
-}
-
-void YulAssignment::accept(soll::StmtVisitor &visitor) { visitor.visit(*this); }
-void YulAssignment::accept(soll::ConstStmtVisitor &visitor) const {
+void AsmForStmt::accept(soll::StmtVisitor &visitor) { visitor.visit(*this); }
+void AsmForStmt::accept(soll::ConstStmtVisitor &visitor) const {
   visitor.visit(*this);
 }
 
-void YulForStmt::accept(soll::StmtVisitor &visitor) { visitor.visit(*this); }
-void YulForStmt::accept(soll::ConstStmtVisitor &visitor) const {
+void AsmCaseStmt::accept(soll::StmtVisitor &visitor) { visitor.visit(*this); }
+void AsmCaseStmt::accept(soll::ConstStmtVisitor &visitor) const {
   visitor.visit(*this);
 }
 
-void YulCaseStmt::accept(soll::StmtVisitor &visitor) { visitor.visit(*this); }
-void YulCaseStmt::accept(soll::ConstStmtVisitor &visitor) const {
+void AsmDefaultStmt::accept(soll::StmtVisitor &visitor) {
+  visitor.visit(*this);
+}
+void AsmDefaultStmt::accept(soll::ConstStmtVisitor &visitor) const {
   visitor.visit(*this);
 }
 
-void YulDefaultStmt::accept(soll::StmtVisitor &visitor) {
-  visitor.visit(*this);
-}
-void YulDefaultStmt::accept(soll::ConstStmtVisitor &visitor) const {
-  visitor.visit(*this);
-}
-
-void YulSwitchStmt::accept(soll::StmtVisitor &visitor) { visitor.visit(*this); }
-void YulSwitchStmt::accept(soll::ConstStmtVisitor &visitor) const {
+void AsmSwitchStmt::accept(soll::StmtVisitor &visitor) { visitor.visit(*this); }
+void AsmSwitchStmt::accept(soll::ConstStmtVisitor &visitor) const {
   visitor.visit(*this);
 }
 
-void YulIdentifier::accept(soll::StmtVisitor &visitor) { visitor.visit(*this); }
-void YulIdentifier::accept(soll::ConstStmtVisitor &visitor) const {
+void AsmAssignmentStmt::accept(soll::StmtVisitor &visitor) {
+  visitor.visit(*this);
+}
+void AsmAssignmentStmt::accept(soll::ConstStmtVisitor &visitor) const {
   visitor.visit(*this);
 }
 
-void YulLiteral::accept(soll::StmtVisitor &visitor) { visitor.visit(*this); }
-void YulLiteral::accept(soll::ConstStmtVisitor &visitor) const {
+void AsmFunctionDeclStmt::accept(soll::StmtVisitor &visitor) {
+  visitor.visit(*this);
+}
+void AsmFunctionDeclStmt::accept(soll::ConstStmtVisitor &visitor) const {
+  visitor.visit(*this);
+}
+
+void AsmIdentifierList::accept(soll::StmtVisitor &visitor) {
+  visitor.visit(*this);
+}
+void AsmIdentifierList::accept(soll::ConstStmtVisitor &visitor) const {
+  visitor.visit(*this);
+}
+
+void AsmIdentifier::accept(soll::StmtVisitor &visitor) { visitor.visit(*this); }
+void AsmIdentifier::accept(soll::ConstStmtVisitor &visitor) const {
   visitor.visit(*this);
 }
 

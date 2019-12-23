@@ -27,14 +27,14 @@ class BooleanLiteral;
 class StringLiteral;
 class NumberLiteral;
 
-class YulIdentifierList;
-class YulAssignment;
-class YulForStmt;
-class YulCaseStmt;
-class YulDefaultStmt;
-class YulSwitchStmt;
-class YulIdentifier;
-class YulLiteral;
+class AsmForStmt;
+class AsmCaseStmt;
+class AsmDefaultStmt;
+class AsmSwitchStmt;
+class AsmAssignmentStmt;
+class AsmFunctionDeclStmt;
+class AsmIdentifier;
+class AsmIdentifierList;
 
 template <bool Const> class StmtVisitorBase {
 protected:
@@ -62,15 +62,17 @@ protected:
   using StringLiteralType = typename cond_const<Const, StringLiteral>::type;
   using NumberLiteralType = typename cond_const<Const, NumberLiteral>::type;
 
-  using YulIdentifierListType =
-      typename cond_const<Const, YulIdentifierList>::type;
-  using YulAssignmentType = typename cond_const<Const, YulAssignment>::type;
-  using YulForStmtType = typename cond_const<Const, YulForStmt>::type;
-  using YulCaseStmtType = typename cond_const<Const, YulCaseStmt>::type;
-  using YulDefaultStmtType = typename cond_const<Const, YulDefaultStmt>::type;
-  using YulSwitchStmtType = typename cond_const<Const, YulSwitchStmt>::type;
-  using YulIdentifierType = typename cond_const<Const, YulIdentifier>::type;
-  using YulLiteralType = typename cond_const<Const, YulLiteral>::type;
+  using AsmForStmtType = typename cond_const<Const, AsmForStmt>::type;
+  using AsmCaseStmtType = typename cond_const<Const, AsmCaseStmt>::type;
+  using AsmDefaultStmtType = typename cond_const<Const, AsmDefaultStmt>::type;
+  using AsmSwitchStmtType = typename cond_const<Const, AsmSwitchStmt>::type;
+  using AsmAssignmentStmtType =
+      typename cond_const<Const, AsmAssignmentStmt>::type;
+  using AsmFunctionDeclStmtType =
+      typename cond_const<Const, AsmFunctionDeclStmt>::type;
+  using AsmIdentifierType = typename cond_const<Const, AsmIdentifier>::type;
+  using AsmIdentifierListType =
+      typename cond_const<Const, AsmIdentifierList>::type;
 
 public:
   virtual ~StmtVisitorBase() noexcept {}
@@ -96,14 +98,14 @@ public:
   virtual void visit(StringLiteralType &);
   virtual void visit(NumberLiteralType &);
 
-  virtual void visit(YulIdentifierListType &);
-  virtual void visit(YulAssignmentType &);
-  virtual void visit(YulForStmtType &);
-  virtual void visit(YulCaseStmtType &);
-  virtual void visit(YulDefaultStmtType &);
-  virtual void visit(YulSwitchStmtType &);
-  virtual void visit(YulIdentifierType &);
-  virtual void visit(YulLiteralType &);
+  virtual void visit(AsmForStmtType &);
+  virtual void visit(AsmCaseStmtType &);
+  virtual void visit(AsmDefaultStmtType &);
+  virtual void visit(AsmSwitchStmtType &);
+  virtual void visit(AsmAssignmentStmtType &);
+  virtual void visit(AsmFunctionDeclStmtType &);
+  virtual void visit(AsmIdentifierType &);
+  virtual void visit(AsmIdentifierListType &);
 };
 
 using ConstStmtVisitor = StmtVisitorBase<true>;

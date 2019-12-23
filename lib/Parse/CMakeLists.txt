@@ -2,6 +2,8 @@
 add_llvm_library(sollParse
   ParseAST.cpp
   Parser.cpp
+  ParseYul.cpp
+  ParseAsm.cpp
   LINK_LIBS
   sollBasic
   sollAST

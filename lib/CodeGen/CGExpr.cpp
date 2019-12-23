@@ -55,14 +55,8 @@ public:
     if (auto NL = dynamic_cast<const NumberLiteral *>(E)) {
       return visit(NL);
     }
-    if (auto YI = dynamic_cast<const YulIdentifier *>(E)) {
-      return visit(YI);
-    }
-    if (auto YL = dynamic_cast<const YulLiteral *>(E)) {
-      return visit(YL);
-    }
-    if (auto YA = dynamic_cast<const YulAssignment *>(E)) {
-      return visit(YA);
+    if (auto AI = dynamic_cast<const AsmIdentifier *>(E)) {
+      return visit(AI);
     }
     assert(false && "unknown Expr!");
     __builtin_unreachable();
@@ -612,16 +606,14 @@ private:
         NL, Builder.getIntN(NL->getType()->getBitNum(), NL->getValue()));
   }
 
-  ExprValue visit(const YulIdentifier *YId) {
-    // TODO: implement this
-  }
+  ExprValue visit(const AsmIdentifier *YI) {
+    const Decl *D = YI->getCorrespondDecl();
 
-  ExprValue visit(const YulLiteral *YL) {
-    // TODO: implement this
-  }
-
-  ExprValue visit(const YulAssignment *YAssign) {
-    // TODO: implement this
+    if (auto *VD = dynamic_cast<const AsmVarDecl *>(D)) {
+      return ExprValue(VD->GetType().get(), ValueKind::VK_LValue,
+                       CGF.getAddrOfLocalVar(VD));
+    }
+    __builtin_unreachable();
   }
 
   const Identifier *resolveIdentifier(const Expr *E) {
@@ -924,63 +916,33 @@ ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
   if (ME) {
     expr = ME->getName();
   }
-  auto Callee = dynamic_cast<const Identifier *>(expr);
-  if (Callee->isSpecialIdentifier()) {
-    switch (Callee->getSpecialIdentifier()) {
-    case Identifier::SpecialIdentifier::require:
-      emitCallRequire(CE);
-      return ExprValue();
-    case Identifier::SpecialIdentifier::assert_:
-      emitCallAssert(CE);
-      return ExprValue();
-    case Identifier::SpecialIdentifier::revert:
-      emitCallRevert(CE);
-      return ExprValue();
-    case Identifier::SpecialIdentifier::gasleft:
-      assert(CE->getArguments().empty() && "gasleft require no arguments");
-      return ExprValue::getRValue(CE, CGM.emitGetGasLeft());
-    case Identifier::SpecialIdentifier::addmod:
-      return ExprValue::getRValue(CE, emitAddmod(CE));
-    case Identifier::SpecialIdentifier::mulmod:
-      return ExprValue::getRValue(CE, emitMulmod(CE));
-    case Identifier::SpecialIdentifier::keccak256:
-      return ExprValue::getRValue(CE, emitCallkeccak256(CE));
-    case Identifier::SpecialIdentifier::sha256:
-      return ExprValue::getRValue(CE, emitCallsha256(CE));
-    case Identifier::SpecialIdentifier::ripemd160:
-      return ExprValue::getRValue(CE, emitCallripemd160(CE));
-    case Identifier::SpecialIdentifier::ecrecover:
-      return ExprValue::getRValue(CE, emitCallecrecover(CE));
-    case Identifier::SpecialIdentifier::blockhash:
-      return ExprValue::getRValue(CE, emitCallblockhash(CE));
-    case Identifier::SpecialIdentifier::address_staticcall:
-      return ExprValue::getRValue(CE, emitCalladdress_staticcall(CE, ME));
-    case Identifier::SpecialIdentifier::address_delegatecall:
-      return ExprValue::getRValue(CE, emitCalladdress_delegatecall(CE, ME));
-    case Identifier::SpecialIdentifier::address_call:
-      return ExprValue::getRValue(CE, emitCalladdress_call(CE, ME));
-    case Identifier::SpecialIdentifier::address_transfer:
-      emitCalladdress_send(CE, ME, true);
-      return ExprValue();
-    case Identifier::SpecialIdentifier::address_send:
-      return ExprValue::getRValue(CE, emitCalladdress_send(CE, ME, false));
-    default:
-      assert(false && "special function not supported yet");
-      __builtin_unreachable();
+  const Decl *D = nullptr;
+  if (auto *Callee = dynamic_cast<const Identifier *>(expr)) {
+    if (Callee->isSpecialIdentifier()) {
+      return emitSpecialCallExpr(Callee, CE, ME);
+    } else {
+      D = Callee->getCorrespondDecl();
     }
+  } else if (auto *Callee = dynamic_cast<const AsmIdentifier *>(expr)) {
+    if (Callee->isSpecialIdentifier()) {
+      return emitAsmSpecialCallExpr(Callee, CE);
+    } else {
+      D = Callee->getCorrespondDecl();
+    }
+  } else {
+    __builtin_unreachable();
   }
   std::vector<llvm::Value *> Args;
   for (auto Argument : CE->getArguments()) {
     Args.push_back(emitExpr(Argument).load(Builder, CGM));
   }
-  if (auto FD =
-          dynamic_cast<const FunctionDecl *>(Callee->getCorrespondDecl())) {
+  if (auto FD = dynamic_cast<const FunctionDecl *>(D)) {
     llvm::Function *F = CGM.getModule().getFunction(CGM.getMangledName(FD));
     assert(F != nullptr && "undefined function");
     llvm::Value *Result = Builder.CreateCall(F, Args);
     return ExprValue::getRValue(CE, Result);
   }
-  if (auto ED = dynamic_cast<const EventDecl *>(Callee->getCorrespondDecl())) {
+  if (auto ED = dynamic_cast<const EventDecl *>(D)) {
     auto Params = ED->getParams()->getParams();
     auto Arguments = CE->getArguments();
     std::vector<llvm::Value *> Data(
@@ -1003,7 +965,7 @@ ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
       Builder.CreateStore(
           CGM.getEndianlessValue(Builder.CreateZExtOrTrunc(Args[i], Int256Ty)),
           ValPtr);
-      if (Params[i]->isIndexed()) {
+      if (dynamic_cast<const VarDecl *>(Params[i])->isIndexed()) {
         Topics[IndexedCnt++] = ValPtr;
       } else {
         Data[DataCnt++] = ValPtr;
@@ -1014,6 +976,185 @@ ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
   }
   assert(false && "Unhandle CallExprType CodeGen case.");
   __builtin_unreachable();
+}
+
+ExprValue CodeGenFunction::emitSpecialCallExpr(const Identifier *SI,
+                                               const CallExpr *CE,
+                                               const MemberExpr *ME) {
+  switch (SI->getSpecialIdentifier()) {
+  case Identifier::SpecialIdentifier::require:
+    emitCallRequire(CE);
+    return ExprValue();
+  case Identifier::SpecialIdentifier::assert_:
+    emitCallAssert(CE);
+    return ExprValue();
+  case Identifier::SpecialIdentifier::revert:
+    emitCallRevert(CE);
+    return ExprValue();
+  case Identifier::SpecialIdentifier::gasleft:
+    assert(CE->getArguments().empty() && "gasleft require no arguments");
+    return ExprValue::getRValue(CE, CGM.emitGetGasLeft());
+  case Identifier::SpecialIdentifier::addmod:
+    return ExprValue::getRValue(CE, emitAddmod(CE));
+  case Identifier::SpecialIdentifier::mulmod:
+    return ExprValue::getRValue(CE, emitMulmod(CE));
+  case Identifier::SpecialIdentifier::keccak256:
+    return ExprValue::getRValue(CE, emitCallkeccak256(CE));
+  case Identifier::SpecialIdentifier::sha256:
+    return ExprValue::getRValue(CE, emitCallsha256(CE));
+  case Identifier::SpecialIdentifier::ripemd160:
+    return ExprValue::getRValue(CE, emitCallripemd160(CE));
+  case Identifier::SpecialIdentifier::ecrecover:
+    return ExprValue::getRValue(CE, emitCallecrecover(CE));
+  case Identifier::SpecialIdentifier::blockhash:
+    return ExprValue::getRValue(CE, emitCallblockhash(CE));
+  case Identifier::SpecialIdentifier::address_staticcall:
+    return ExprValue::getRValue(CE, emitCalladdress_staticcall(CE, ME));
+  case Identifier::SpecialIdentifier::address_delegatecall:
+    return ExprValue::getRValue(CE, emitCalladdress_delegatecall(CE, ME));
+  case Identifier::SpecialIdentifier::address_call:
+    return ExprValue::getRValue(CE, emitCalladdress_call(CE, ME));
+  case Identifier::SpecialIdentifier::address_transfer:
+    emitCalladdress_send(CE, ME, true);
+    return ExprValue();
+  case Identifier::SpecialIdentifier::address_send:
+    return ExprValue::getRValue(CE, emitCalladdress_send(CE, ME, false));
+  default:
+    assert(false && "special function not supported yet");
+    __builtin_unreachable();
+  }
+}
+
+void CodeGenFunction::emitSStore(const CallExpr *CE) {
+  auto Arguments = CE->getArguments();
+  CGM.emitStorageStore(
+      CGM.getEndianlessValue(Builder.CreateZExtOrTrunc(
+          emitExpr(Arguments[0]).load(Builder, CGM), CGM.Int256Ty)),
+      CGM.getEndianlessValue(Builder.CreateZExtOrTrunc(
+          emitExpr(Arguments[1]).load(Builder, CGM), CGM.Int256Ty)));
+}
+
+llvm::Value *CodeGenFunction::emitSLoad(const CallExpr *CE) {
+  auto Arguments = CE->getArguments();
+  return CGM.emitStorageLoad(
+      CGM.getEndianlessValue(Builder.CreateZExtOrTrunc(
+          emitExpr(Arguments[0]).load(Builder, CGM), CGM.Int256Ty)));
+}
+
+ExprValue CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
+                                                  const CallExpr *CE) {
+  switch (SI->getSpecialIdentifier()) {
+  /// logical
+  case AsmIdentifier::SpecialIdentifier::not_: ///< should be handled in Sema
+  case AsmIdentifier::SpecialIdentifier::and_:
+  case AsmIdentifier::SpecialIdentifier::or_:
+  case AsmIdentifier::SpecialIdentifier::xor_:
+  /// arithmetic
+  case AsmIdentifier::SpecialIdentifier::addu256:
+  case AsmIdentifier::SpecialIdentifier::subu256:
+  case AsmIdentifier::SpecialIdentifier::mulu256:
+  case AsmIdentifier::SpecialIdentifier::divu256:
+  case AsmIdentifier::SpecialIdentifier::divs256:
+  case AsmIdentifier::SpecialIdentifier::modu256:
+  case AsmIdentifier::SpecialIdentifier::mods256:
+  case AsmIdentifier::SpecialIdentifier::expu256:
+  case AsmIdentifier::SpecialIdentifier::ltu256:
+  case AsmIdentifier::SpecialIdentifier::gtu256:
+  case AsmIdentifier::SpecialIdentifier::lts256:
+  case AsmIdentifier::SpecialIdentifier::gts256:
+  case AsmIdentifier::SpecialIdentifier::equ256:
+  case AsmIdentifier::SpecialIdentifier::notu256:
+  case AsmIdentifier::SpecialIdentifier::andu256:
+  case AsmIdentifier::SpecialIdentifier::oru256:
+  case AsmIdentifier::SpecialIdentifier::xoru256:
+  case AsmIdentifier::SpecialIdentifier::shlu256:
+  case AsmIdentifier::SpecialIdentifier::shru256:
+    assert(false && "unexpected special identifiers");
+    __builtin_unreachable();
+  case AsmIdentifier::SpecialIdentifier::addmodu256:
+    return ExprValue::getRValue(CE, emitAddmod(CE));
+  case AsmIdentifier::SpecialIdentifier::mulmodu256:
+    return ExprValue::getRValue(CE, emitMulmod(CE));
+  /// execution control
+  case AsmIdentifier::SpecialIdentifier::revert:
+    emitCallRevert(CE);
+    return ExprValue();
+  case AsmIdentifier::SpecialIdentifier::blockcoinbase:
+    return ExprValue::getRValue(CE, CGM.emitGetBlockCoinbase());
+  case AsmIdentifier::SpecialIdentifier::blockdifficulty:
+    return ExprValue::getRValue(CE, CGM.emitGetBlockDifficulty());
+  case AsmIdentifier::SpecialIdentifier::blockgaslimit:
+    return ExprValue::getRValue(CE, CGM.emitGetBlockGasLimit());
+  case AsmIdentifier::SpecialIdentifier::blocknumber:
+    return ExprValue::getRValue(CE, CGM.emitGetBlockNumber());
+  case AsmIdentifier::SpecialIdentifier::blocktimestamp:
+    return ExprValue::getRValue(CE, CGM.emitGetBlockTimestamp());
+  case AsmIdentifier::SpecialIdentifier::txorigin:
+    return ExprValue::getRValue(CE, CGM.emitGetTxOrigin());
+  case AsmIdentifier::SpecialIdentifier::txgasprice:
+    return ExprValue::getRValue(CE, CGM.emitGetTxGasPrice());
+  /// memory and storage
+  case AsmIdentifier::SpecialIdentifier::sstore:
+    emitSStore(CE);
+    return ExprValue();
+  case AsmIdentifier::SpecialIdentifier::sload:
+    return ExprValue::getRValue(CE, emitSLoad(CE));
+  /// state
+  case AsmIdentifier::SpecialIdentifier::gasleft:
+    assert(CE->getArguments().empty() && "gasleft require no arguments");
+    return ExprValue::getRValue(CE, CGM.emitGetGasLeft());
+  /// object
+  /// misc
+  case AsmIdentifier::SpecialIdentifier::keccak256:
+    return ExprValue::getRValue(CE, emitCallkeccak256(CE));
+  // TODO:
+  // - implement special identifiers below and
+  //   move implemented ones above this TODO.
+  case AsmIdentifier::SpecialIdentifier::signextendu256:
+  case AsmIdentifier::SpecialIdentifier::iszerou256:
+  case AsmIdentifier::SpecialIdentifier::sars256:
+  case AsmIdentifier::SpecialIdentifier::byte:
+  case AsmIdentifier::SpecialIdentifier::mload:
+  case AsmIdentifier::SpecialIdentifier::mstore:
+  case AsmIdentifier::SpecialIdentifier::mstore8:
+  case AsmIdentifier::SpecialIdentifier::msize:
+  case AsmIdentifier::SpecialIdentifier::create:
+  case AsmIdentifier::SpecialIdentifier::create2:
+  case AsmIdentifier::SpecialIdentifier::call:
+  case AsmIdentifier::SpecialIdentifier::callcode:
+  case AsmIdentifier::SpecialIdentifier::delegatecall:
+  case AsmIdentifier::SpecialIdentifier::abort:
+  case AsmIdentifier::SpecialIdentifier::return_:
+  case AsmIdentifier::SpecialIdentifier::selfdestruct:
+  case AsmIdentifier::SpecialIdentifier::log0:
+  case AsmIdentifier::SpecialIdentifier::log1:
+  case AsmIdentifier::SpecialIdentifier::log2:
+  case AsmIdentifier::SpecialIdentifier::log3:
+  case AsmIdentifier::SpecialIdentifier::log4:
+  case AsmIdentifier::SpecialIdentifier::blockhash:
+  case AsmIdentifier::SpecialIdentifier::balance:
+  case AsmIdentifier::SpecialIdentifier::this_:
+  case AsmIdentifier::SpecialIdentifier::caller:
+  case AsmIdentifier::SpecialIdentifier::callvalue:
+  case AsmIdentifier::SpecialIdentifier::calldataload:
+  case AsmIdentifier::SpecialIdentifier::calldatasize:
+  case AsmIdentifier::SpecialIdentifier::calldatacopy:
+  case AsmIdentifier::SpecialIdentifier::codesize:
+  case AsmIdentifier::SpecialIdentifier::codecopy:
+  case AsmIdentifier::SpecialIdentifier::extcodesize:
+  case AsmIdentifier::SpecialIdentifier::extcodecopy:
+  case AsmIdentifier::SpecialIdentifier::extcodehash:
+  case AsmIdentifier::SpecialIdentifier::datasize:
+  case AsmIdentifier::SpecialIdentifier::dataoffset:
+  case AsmIdentifier::SpecialIdentifier::datacopy:
+  case AsmIdentifier::SpecialIdentifier::discard:
+  case AsmIdentifier::SpecialIdentifier::discardu256:
+  case AsmIdentifier::SpecialIdentifier::splitu256tou64:
+  case AsmIdentifier::SpecialIdentifier::combineu64tou256:
+  default:
+    assert(false && "special function not supported yet");
+    __builtin_unreachable();
+  }
 }
 
 } // namespace soll::CodeGen

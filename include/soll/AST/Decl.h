@@ -121,8 +121,8 @@ public:
   CallableVarDecl(
       llvm::StringRef name, Visibility visibility,
       std::unique_ptr<ParamList> &&params,
-      std::unique_ptr<ParamList> &&returnParams =
-          std::make_unique<ParamList>(std::vector<std::unique_ptr<VarDecl>>()))
+      std::unique_ptr<ParamList> &&returnParams = std::make_unique<ParamList>(
+          std::vector<std::unique_ptr<VarDeclBase>>()))
       : Decl(name, visibility), Params(std::move(params)),
         ReturnParams(std::move(returnParams)) {}
 
@@ -184,27 +184,41 @@ public:
 };
 
 class ParamList {
-  std::vector<std::unique_ptr<VarDecl>> Params;
+  std::vector<std::unique_ptr<VarDeclBase>> Params;
 
 public:
-  ParamList(std::vector<std::unique_ptr<VarDecl>> &&params)
+  ParamList(std::vector<std::unique_ptr<VarDeclBase>> &&params)
       : Params(std::move(params)) {}
 
-  std::vector<const VarDecl *> getParams() const;
-  std::vector<VarDecl *> getParams();
+  std::vector<const VarDeclBase *> getParams() const;
+  std::vector<VarDeclBase *> getParams();
   unsigned getABIStaticSize() const;
 
   void accept(DeclVisitor &visitor);
   void accept(ConstDeclVisitor &visitor) const;
 };
 
-class VarDecl : public Decl {
+class VarDeclBase : public Decl {
+  TypePtr TypeName;
+  ExprPtr Value;
+
+public:
+  VarDeclBase(TypePtr &&T, llvm::StringRef name, ExprPtr &&value,
+              Visibility visibility)
+      : Decl(name, visibility), TypeName(std::move(T)),
+        Value(std::move(value)) {}
+
+  TypePtr GetType() { return TypeName; }
+  const TypePtr &GetType() const { return TypeName; }
+  Expr *GetValue() { return Value.get(); }
+  const Expr *GetValue() const { return Value.get(); }
+};
+
+class VarDecl : public VarDeclBase {
 public:
   enum class Location { Unspecified, Storage, Memory, CallData };
 
 private:
-  TypePtr TypeName;
-  ExprPtr Value;
   bool IsStateVariable;
   bool IsIndexed;
   bool IsConstant;
@@ -215,15 +229,13 @@ public:
           Visibility visibility, bool isStateVar = false,
           bool isIndexed = false, bool isConstant = false,
           Location referenceLocation = Location::Unspecified)
-      : Decl(name, visibility), TypeName(std::move(T)), Value(std::move(value)),
+      : VarDeclBase(std::move(T), name, std::move(value), visibility),
         IsStateVariable(isStateVar), IsIndexed(isIndexed),
         IsConstant(isConstant), ReferenceLocation(referenceLocation) {}
 
   void accept(DeclVisitor &visitor) override;
   void accept(ConstDeclVisitor &visitor) const override;
 
-  TypePtr GetType() { return TypeName; }
-  const TypePtr &GetType() const { return TypeName; }
   Location getLoc() const { return ReferenceLocation; }
   bool isIndexed() const { return IsIndexed; }
   bool isStateVariable() const { return IsStateVariable; }

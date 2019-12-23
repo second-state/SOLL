@@ -1172,7 +1172,6 @@ void CodeGenModule::emitVarDecl(const VarDecl *VD) {
 }
 
 void CodeGenModule::emitYulObject(const YulObject *YO) {
-  // TODO: implement this
   assert(nullptr != YO->getCode());
   emitYulCode(YO->getCode());
   for (const auto *O : YO->getObjectList()) {
@@ -1184,15 +1183,20 @@ void CodeGenModule::emitYulObject(const YulObject *YO) {
 }
 
 void CodeGenModule::emitYulCode(const YulCode *YC) {
-  // TODO: implement this
+  llvm::FunctionType *FT = llvm::FunctionType::get(VoidTy, {}, false);
+  llvm::Function *Main = llvm::Function::Create(
+      FT, llvm::Function::ExternalLinkage, "main", TheModule);
+  llvm::BasicBlock *Entry = llvm::BasicBlock::Create(VMContext, "entry", Main);
+  Builder.SetInsertPoint(Entry);
+  CodeGenFunction(*this).generateYulCode(YC);
+  Builder.CreateRetVoid();
 }
 
 void CodeGenModule::emitYulData(const YulData *YD) {
-  // TODO: implement this
-}
-
-void CodeGenModule::emitYulVarDecl(const YulVarDecl *VD) {
-  // TODO: implement this
+  std::string Data = YD->getBody()->getValue();
+  llvm::Constant *DataValue =
+      createGlobalStringPtr(getLLVMContext(), getModule(), Data);
+  YulDataMap.try_emplace(YD, DataValue);
 }
 
 std::string CodeGenModule::getMangledName(const CallableVarDecl *CVD) {

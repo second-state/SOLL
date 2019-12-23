@@ -24,7 +24,7 @@ TOK(numeric_constant)    // 0x123
 TOK(char_constant)       // 'a'
 
 TOK(string_literal)      // "foo"
-TOK(hex_string_literal)      // hex"012ff"
+TOK(hex_string_literal)  // hex"012ff"
 
 PUNCTUATOR(l_square,            "[")
 PUNCTUATOR(r_square,            "]")
@@ -58,6 +58,7 @@ PUNCTUATOR(colonequal,          ":=")
 PUNCTUATOR(semi,                ";")
 PUNCTUATOR(equalequal,          "==")
 PUNCTUATOR(equalgreater,        "=>")
+PUNCTUATOR(equalcolon,          "=:")
 PUNCTUATOR(comma,               ",")
 
 // Solidity define assign op
@@ -86,10 +87,12 @@ KEYWORD(as                      , KEYALL)
 KEYWORD(assembly                , KEYALL)
 KEYWORD(break                   , KEYALL)
 KEYWORD(calldata                , KEYALL)
+KEYWORD(case                    , KEYALL)
 KEYWORD(constant                , KEYALL)
 KEYWORD(constructor             , KEYALL)
 KEYWORD(continue                , KEYALL)
 KEYWORD(contract                , KEYALL)
+KEYWORD(default                 , KEYALL)
 KEYWORD(delete                  , KEYALL)
 KEYWORD(do                      , KEYALL)
 KEYWORD(else                    , KEYALL)
@@ -106,6 +109,7 @@ KEYWORD(indexed                 , KEYALL)
 KEYWORD(interface               , KEYALL)
 KEYWORD(internal                , KEYALL)
 KEYWORD(is                      , KEYALL)
+KEYWORD(let                     , KEYALL)
 KEYWORD(library                 , KEYALL)
 KEYWORD(mapping                 , KEYALL)
 KEYWORD(memory                  , KEYALL)
@@ -120,6 +124,7 @@ KEYWORD(return                  , KEYALL)
 KEYWORD(returns                 , KEYALL)
 KEYWORD(storage                 , KEYALL)
 KEYWORD(struct                  , KEYALL)
+KEYWORD(switch                  , KEYALL)
 KEYWORD(throw                   , KEYALL)
 KEYWORD(type                    , KEYALL)
 KEYWORD(true                    , KEYALL)

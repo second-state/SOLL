@@ -6,6 +6,7 @@
 
 namespace soll {
 
+enum InputKind { Sol, Yul };
 enum ActionKind { ASTDump, EmitLLVM, EmitFuncSig, EmitABI };
 
 class FrontendInputFile {
@@ -38,6 +39,7 @@ public:
   bool ShowHelp;
   bool ShowVersion;
   std::vector<FrontendInputFile> Inputs;
+  InputKind Language = Sol;
   ActionKind ProgramAction = EmitLLVM;
 };
 

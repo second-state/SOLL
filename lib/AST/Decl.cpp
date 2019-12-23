@@ -120,7 +120,7 @@ std::vector<unsigned char> CallableVarDecl::getSignatureHash() const {
   h.addData(getName().bytes_begin(), 0, getName().size());
   h.addData('(');
   bool first = true;
-  for (const VarDecl *var : getParams()->getParams()) {
+  for (const VarDeclBase *var : getParams()->getParams()) {
     if (!first)
       h.addData(',');
     first = false;
@@ -140,15 +140,15 @@ std::uint32_t CallableVarDecl::getSignatureHashUInt32() const {
 ///
 /// ParamList
 ///
-std::vector<const VarDecl *> ParamList::getParams() const {
-  std::vector<const VarDecl *> Params;
+std::vector<const VarDeclBase *> ParamList::getParams() const {
+  std::vector<const VarDeclBase *> Params;
   for (auto &P : this->Params)
     Params.emplace_back(P.get());
   return Params;
 }
 
-std::vector<VarDecl *> ParamList::getParams() {
-  std::vector<VarDecl *> Params;
+std::vector<VarDeclBase *> ParamList::getParams() {
+  std::vector<VarDeclBase *> Params;
   for (auto &P : this->Params)
     Params.emplace_back(P.get());
   return Params;

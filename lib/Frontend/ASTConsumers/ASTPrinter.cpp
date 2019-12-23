@@ -233,6 +233,20 @@ public:
   void visit(NumberLiteralType &) override;
   void visit(ImplicitCastExprType &) override;
   void visit(ExplicitCastExprType &) override;
+
+  void visit(YulObjectType &) override;
+  void visit(YulCodeType &) override;
+  void visit(YulDataType &) override;
+
+  void visit(AsmCaseStmtType &) override;
+  void visit(AsmDefaultStmtType &) override;
+  void visit(AsmSwitchStmtType &) override;
+  void visit(AsmAssignmentStmtType &) override;
+  void visit(AsmFunctionDeclStmtType &) override;
+  void visit(AsmVarDeclType &) override;
+  void visit(AsmIdentifierType &) override;
+  void visit(AsmIdentifierListType &) override;
+
   llvm::raw_ostream &os() { return Out; }
 
 protected:
@@ -426,6 +440,90 @@ void ASTPrinter::visit(ExplicitCastExprType &EC) {
   os() << indent() << "ExplicitCastExpr " << ToString(EC.getType()) << " "
        << ToString(EC.getCastKind()) << "\n";
   ConstStmtVisitor::visit(EC);
+  unindent();
+}
+
+void ASTPrinter::visit(YulObjectType &YO) {
+  os() << indent() << "YulObject \"" << YO.getName() << "\"\n";
+  ConstDeclVisitor::visit(YO);
+  unindent();
+}
+
+void ASTPrinter::visit(YulCodeType &YC) {
+  os() << indent() << "YulCode\n";
+  YC.getBody()->accept(*this);
+  unindent();
+}
+
+void ASTPrinter::visit(YulDataType &YD) {
+  os() << indent() << "YulData \"" << YD.getName() << "\"\n";
+  ConstDeclVisitor::visit(YD);
+  YD.getBody()->accept(*this);
+  unindent();
+}
+
+void ASTPrinter::visit(AsmCaseStmtType &stmt) {
+  os() << indent() << "AsmCaseStmt\n";
+  ConstStmtVisitor::visit(stmt);
+  unindent();
+}
+
+void ASTPrinter::visit(AsmDefaultStmtType &stmt) {
+  os() << indent() << "AsmDefaultStmt\n";
+  ConstStmtVisitor::visit(stmt);
+  unindent();
+}
+
+void ASTPrinter::visit(AsmSwitchStmtType &stmt) {
+  os() << indent() << "AsmSwitchStmt\n";
+  ConstStmtVisitor::visit(stmt);
+  unindent();
+}
+
+void ASTPrinter::visit(AsmAssignmentStmtType &stmt) {
+  os() << indent() << "AsmAssignmentStmt\n";
+  ConstStmtVisitor::visit(stmt);
+  unindent();
+}
+
+void ASTPrinter::visit(AsmFunctionDeclStmtType &stmt) {
+  os() << indent() << "AsmFunctionDeclStmt \"" << stmt.getName() << "\" "
+       << ToString(stmt.getType()) << " \n";
+  if (stmt.getParams() != nullptr)
+    stmt.getParams()->accept(*this);
+  if (stmt.getReturnParams() != nullptr)
+    stmt.getReturnParams()->accept(*this);
+  stmt.getBody()->accept(*this);
+  unindent();
+}
+
+void ASTPrinter::visit(AsmVarDeclType &decl) {
+  os() << indent() << "AsmVarDecl "
+       << "\"" << decl.getName() << "\" " << ToString(decl.GetType()) << " "
+       << &decl << " \n";
+
+  if (auto V = decl.GetValue()) {
+    V->accept(*this);
+  }
+  unindent();
+}
+
+void ASTPrinter::visit(AsmIdentifierType &id) {
+  os() << indent() << "AsmIdentifier \"" << id.getName() << "\" "
+       << ToString(id.getType());
+  if (id.isSpecialIdentifier()) {
+    os() << " as " << static_cast<unsigned>(id.getSpecialIdentifier());
+  } else if (auto D = id.getCorrespondDecl()) {
+    os() << " from " << D;
+  }
+  os() << "\n";
+  ConstStmtVisitor::visit(id);
+  unindent();
+}
+
+void ASTPrinter::visit(AsmIdentifierListType &expr) {
+  os() << indent() << "AsmIdentifierList\n";
+  ConstStmtVisitor::visit(expr);
   unindent();
 }
 

@@ -17,9 +17,17 @@ namespace soll {
 static cl::opt<bool> Help("h", cl::desc("Alias for -help"), cl::Hidden);
 
 static cl::OptionCategory SollCategory("SOLL options");
+
 static cl::list<std::string> InputFilenames(cl::Positional,
                                             cl::desc("[<file> ...]"),
                                             cl::cat(SollCategory));
+
+static cl::opt<InputKind> Language("lang", cl::Optional, cl::ValueRequired,
+                                   cl::init(Sol),
+                                   cl::values(clEnumVal(Sol, "")),
+                                   cl::values(clEnumVal(Yul, "")),
+                                   cl::cat(SollCategory));
+
 static cl::opt<ActionKind> Action("action", cl::Optional, cl::ValueRequired,
                                   cl::init(EmitLLVM),
                                   cl::values(clEnumVal(ASTDump, "")),
@@ -27,6 +35,7 @@ static cl::opt<ActionKind> Action("action", cl::Optional, cl::ValueRequired,
                                   cl::values(clEnumVal(EmitFuncSig, "")),
                                   cl::values(clEnumVal(EmitABI, "")),
                                   cl::cat(SollCategory));
+
 static cl::opt<TargetKind>
     Target("target", cl::Optional, cl::ValueRequired, cl::init(EWASM),
            cl::values(clEnumVal(EWASM, "Generate LLVM IR for Ewasm backend")),
@@ -50,6 +59,7 @@ bool CompilerInvocation::ParseCommandLineOptions(
     FrontendOpts.Inputs.emplace_back(Filename);
   }
   FrontendOpts.ProgramAction = Action;
+  FrontendOpts.Language = Language;
 
   TargetOpts.BackendTarget = Target;
   return true;

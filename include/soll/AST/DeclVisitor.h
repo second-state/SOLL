@@ -18,8 +18,7 @@ class ModifierInvocation;
 class YulCode;
 class YulData;
 class YulObject;
-class YulTypedIdentifierList;
-class YulVarDecl;
+class AsmVarDecl;
 
 template <bool Const> class DeclVisitorBase {
 protected:
@@ -37,9 +36,7 @@ protected:
   using YulCodeType = typename cond_const<Const, YulCode>::type;
   using YulDataType = typename cond_const<Const, YulData>::type;
   using YulObjectType = typename cond_const<Const, YulObject>::type;
-  using YulTypedIdentifierListType =
-      typename cond_const<Const, YulTypedIdentifierList>::type;
-  using YulVarDeclType = typename cond_const<Const, YulVarDecl>::type;
+  using AsmVarDeclType = typename cond_const<Const, AsmVarDecl>::type;
 
 public:
   virtual ~DeclVisitorBase() noexcept {}
@@ -56,8 +53,7 @@ public:
   virtual void visit(YulCodeType &);
   virtual void visit(YulDataType &);
   virtual void visit(YulObjectType &);
-  virtual void visit(YulTypedIdentifierListType &);
-  virtual void visit(YulVarDeclType &);
+  virtual void visit(AsmVarDeclType &);
 };
 
 using ConstDeclVisitor = DeclVisitorBase<true>;

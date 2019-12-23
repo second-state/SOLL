@@ -6,9 +6,9 @@
 
 namespace soll {
 
-class YulIdentifier : public Expr {
+class AsmIdentifier : public Expr {
 public:
-  /// List of identifiers to predefined Yul functions.
+  /// List of identifiers to predefined low-level functions.
   enum class SpecialIdentifier {
     /// logical
     not_,
@@ -102,9 +102,11 @@ private:
   std::variant<Decl *, SpecialIdentifier> D;
 
 public:
-  YulIdentifier(const std::string &Name, SpecialIdentifier D, TypePtr Ty);
-  YulIdentifier(const std::string &Name, Decl *D);
+  AsmIdentifier(const std::string &Name, SpecialIdentifier D, TypePtr Ty);
+  AsmIdentifier(const std::string &Name, Decl *D);
 
+  void setName(const std::string &Name) { this->Name = Name; }
+  std::string getName() const { return Name; }
   bool isSpecialIdentifier() const {
     return std::holds_alternative<SpecialIdentifier>(D);
   }
@@ -118,69 +120,29 @@ public:
   void accept(soll::ConstStmtVisitor &) const override;
 };
 
-class YulLiteral : public Expr {
-  ExprPtr Literal; ///< NumberLiteral | StringLiteral | BooleanLiteral
+class AsmIdentifierList {
+  std::vector<std::unique_ptr<AsmIdentifier>> Ids;
 
 public:
-  YulLiteral(std::unique_ptr<NumberLiteral> &&Literal)
-      : Expr(ValueKind::VK_RValue, Literal->getType()),
-        Literal(std::move(Literal)) {}
-  YulLiteral(std::unique_ptr<StringLiteral> &&Literal)
-      : Expr(ValueKind::VK_RValue, Literal->getType()),
-        Literal(std::move(Literal)) {}
-  YulLiteral(std::unique_ptr<BooleanLiteral> &&Literal)
-      : Expr(ValueKind::VK_RValue, Literal->getType()),
-        Literal(std::move(Literal)) {}
-
-  Expr *getLiteral() { return Literal.get(); }
-  const Expr *getLiteral() const { return Literal.get(); }
-
-  void accept(soll::StmtVisitor &) override;
-  void accept(soll::ConstStmtVisitor &) const override;
-};
-
-class YulIdentifierList {
-  std::vector<std::unique_ptr<YulIdentifier>> Ids;
-
-public:
-  YulIdentifierList(std::vector<std::unique_ptr<YulIdentifier>> &&Ids)
+  AsmIdentifierList(std::vector<std::unique_ptr<AsmIdentifier>> &&Ids)
       : Ids(std::move(Ids)) {}
 
-  std::vector<YulIdentifier *> getIdentifiers();
-  std::vector<const YulIdentifier *> getIdentifiers() const;
+  std::vector<AsmIdentifier *> getIdentifiers();
+  std::vector<const AsmIdentifier *> getIdentifiers() const;
 
   void accept(StmtVisitor &);
   void accept(ConstStmtVisitor &) const;
 };
 
-class YulAssignment : public Expr {
-  std::unique_ptr<YulIdentifierList> LHS;
-  ExprPtr RHS;
-
+class AsmUnaryOperator : public UnaryOperator {
 public:
-  YulAssignment(std::unique_ptr<YulIdentifierList> &&LHS, ExprPtr &&RHS,
-                TypePtr Ty)
-      : Expr(ValueKind::VK_RValue, Ty), LHS(std::move(LHS)),
-        RHS(std::move(RHS)) {}
-
-  YulIdentifierList *getLHS() { return LHS.get(); }
-  const YulIdentifierList *getLHS() const { return LHS.get(); }
-  Expr *getRHS() { return RHS.get(); }
-  const Expr *getRHS() const { return RHS.get(); }
-
-  void accept(StmtVisitor &) override;
-  void accept(ConstStmtVisitor &) const override;
-};
-
-class YulUnaryOperator : public UnaryOperator {
-public:
-  YulUnaryOperator(ExprPtr &&Arg0, TypePtr Ty, UnaryOperatorKind opc)
+  AsmUnaryOperator(ExprPtr &&Arg0, TypePtr Ty, UnaryOperatorKind opc)
       : UnaryOperator(std::move(Arg0), opc, Ty) {}
 };
 
-class YulBinaryOperator : public BinaryOperator {
+class AsmBinaryOperator : public BinaryOperator {
 public:
-  YulBinaryOperator(ExprPtr &&Arg0, ExprPtr &&Arg1, TypePtr Ty,
+  AsmBinaryOperator(ExprPtr &&Arg0, ExprPtr &&Arg1, TypePtr Ty,
                     BinaryOperatorKind opc)
       : BinaryOperator(std::move(Arg0), std::move(Arg1), opc, Ty) {}
 };
@@ -189,9 +151,9 @@ public:
 ///
 /// Although it's an unary operator, the implementation here inherits from
 /// binary operator and compared the argument with the number literal 0.
-class YulIsZeroOperator : public BinaryOperator {
+class AsmIsZeroOperator : public BinaryOperator {
 public:
-  YulIsZeroOperator(ExprPtr &&Arg, TypePtr Ty)
+  AsmIsZeroOperator(ExprPtr &&Arg, TypePtr Ty)
       : BinaryOperator(std::move(Arg), std::make_unique<NumberLiteral>(0),
                        BinaryOperatorKind::BO_EQ, Ty) {}
 };

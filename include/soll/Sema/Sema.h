@@ -2,7 +2,7 @@
 #pragma once
 
 #include "soll/AST/ASTContext.h"
-#include "soll/AST/ExprYul.h"
+#include "soll/AST/ExprAsm.h"
 #include "soll/Sema/Scope.h"
 #include <memory>
 #include <vector>
@@ -65,11 +65,11 @@ public:
   std::unique_ptr<MemberExpr> CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr,
                                                Token Tok);
 
-  /// ExprYul
-  std::unique_ptr<YulIdentifier> CreateYulIdentifier(llvm::StringRef Name);
-  std::unique_ptr<Expr> CreateYulCallExpr(ExprPtr &&Callee,
+  /// ExprAsm
+  std::unique_ptr<AsmIdentifier> CreateAsmIdentifier(llvm::StringRef Name);
+  std::unique_ptr<Expr> CreateAsmCallExpr(ExprPtr &&Callee,
                                           std::vector<ExprPtr> &&Args);
-  std::unique_ptr<Expr> CreateYulBuiltinCallExpr(const YulIdentifier &Callee,
+  std::unique_ptr<Expr> CreateAsmBuiltinCallExpr(const AsmIdentifier &Callee,
                                                  std::vector<ExprPtr> &&Args,
                                                  TypePtr ReturnTy);
 

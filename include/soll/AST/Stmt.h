@@ -30,14 +30,14 @@ public:
 };
 
 class DeclStmt : public Stmt {
-  std::vector<VarDeclPtr> VarDecls;
+  std::vector<VarDeclBasePtr> VarDecls;
   ExprPtr Value;
 
 public:
-  inline DeclStmt(std::vector<VarDeclPtr> &&VarDecls, ExprPtr &&Value);
+  inline DeclStmt(std::vector<VarDeclBasePtr> &&VarDecls, ExprPtr &&Value);
 
-  std::vector<VarDecl *> getVarDecls();
-  std::vector<const VarDecl *> getVarDecls() const;
+  std::vector<VarDeclBase *> getVarDecls();
+  std::vector<const VarDeclBase *> getVarDecls() const;
   Expr *getValue() { return Value.get(); }
   const Expr *getValue() const { return Value.get(); }
 
@@ -183,5 +183,6 @@ soll::EmitStmt::EmitStmt(std::unique_ptr<CallExpr> &&EventCall)
     : EventCall(std::move(EventCall)) {}
 
 #include "Decl.h"
-soll::DeclStmt::DeclStmt(std::vector<VarDeclPtr> &&VarDecls, ExprPtr &&Value)
+soll::DeclStmt::DeclStmt(std::vector<VarDeclBasePtr> &&VarDecls,
+                         ExprPtr &&Value)
     : VarDecls(std::move(VarDecls)), Value(std::move(Value)) {}

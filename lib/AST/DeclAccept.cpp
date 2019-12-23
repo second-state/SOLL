@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "soll/AST/Decl.h"
+#include "soll/AST/DeclAsm.h"
 #include "soll/AST/DeclVisitor.h"
 #include "soll/AST/DeclYul.h"
 
@@ -54,15 +55,8 @@ void YulObject::accept(ConstDeclVisitor &visitor) const {
   visitor.visit(*this);
 }
 
-void YulTypedIdentifierList::accept(DeclVisitor &visitor) {
-  visitor.visit(*this);
-}
-void YulTypedIdentifierList::accept(ConstDeclVisitor &visitor) const {
-  visitor.visit(*this);
-}
-
-void YulVarDecl::accept(DeclVisitor &visitor) { visitor.visit(*this); }
-void YulVarDecl::accept(ConstDeclVisitor &visitor) const {
+void AsmVarDecl::accept(DeclVisitor &visitor) { visitor.visit(*this); }
+void AsmVarDecl::accept(ConstDeclVisitor &visitor) const {
   visitor.visit(*this);
 }
 

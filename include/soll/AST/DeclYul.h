@@ -3,7 +3,7 @@
 
 #include "soll/AST/ASTForward.h"
 #include "soll/AST/Decl.h"
-#include "soll/AST/ExprYul.h"
+#include "soll/AST/ExprAsm.h"
 
 namespace soll {
 
@@ -23,14 +23,14 @@ public:
 };
 
 class YulData : public Decl {
-  std::unique_ptr<YulLiteral> Body; ///< StringLiteral
+  std::unique_ptr<StringLiteral> Body;
 
 public:
-  YulData(llvm::StringRef Name, std::unique_ptr<YulLiteral> &&Body)
+  YulData(llvm::StringRef Name, std::unique_ptr<StringLiteral> &&Body)
       : Decl(Name), Body(std::move(Body)) {}
 
-  YulLiteral *getBody() { return Body.get(); }
-  const YulLiteral *getBody() const { return Body.get(); }
+  StringLiteral *getBody() { return Body.get(); }
+  const StringLiteral *getBody() const { return Body.get(); }
 
   void accept(DeclVisitor &visitor) override;
   void accept(ConstDeclVisitor &visitor) const override;
@@ -42,8 +42,11 @@ class YulObject : public Decl {
   std::vector<std::unique_ptr<YulData>> DataList;
 
 public:
-  YulObject(llvm::StringRef Name, std::unique_ptr<YulCode> &&Code)
-      : Decl(Name), Code(std::move(Code)) {}
+  YulObject(llvm::StringRef Name, std::unique_ptr<YulCode> &&Code,
+            std::vector<std::unique_ptr<YulObject>> &&ObjectList,
+            std::vector<std::unique_ptr<YulData>> &&DataList)
+      : Decl(Name), Code(std::move(Code)), ObjectList(std::move(ObjectList)),
+        DataList(std::move(DataList)) {}
 
   YulCode *getCode() { return Code.get(); }
   const YulCode *getCode() const { return Code.get(); }
@@ -51,31 +54,6 @@ public:
   std::vector<const YulObject *> getObjectList() const;
   std::vector<YulData *> getDataList();
   std::vector<const YulData *> getDataList() const;
-
-  void accept(DeclVisitor &visitor) override;
-  void accept(ConstDeclVisitor &visitor) const override;
-};
-
-class YulTypedIdentifierList {
-  using YulTypedIdentifier = std::pair<std::unique_ptr<YulIdentifier>, TypePtr>;
-
-  std::vector<YulTypedIdentifier> Ids;
-
-public:
-  YulTypedIdentifierList(std::vector<YulTypedIdentifier> &&Ids)
-      : Ids(std::move(Ids)) {}
-
-  void accept(DeclVisitor &visitor);
-  void accept(ConstDeclVisitor &visitor) const;
-};
-
-class YulVarDecl : public Decl {
-  std::unique_ptr<YulTypedIdentifierList> Ids;
-  ExprPtr Value;
-
-public:
-  YulVarDecl(std::unique_ptr<YulTypedIdentifierList> &&Ids, ExprPtr &&V)
-      : Ids(std::move(Ids)), Value(std::move(V)) {}
 
   void accept(DeclVisitor &visitor) override;
   void accept(ConstDeclVisitor &visitor) const override;

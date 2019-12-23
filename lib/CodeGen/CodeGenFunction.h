@@ -4,38 +4,13 @@
 #include "CodeGenModule.h"
 #include "CodeGenTypeCache.h"
 #include "soll/AST/Decl.h"
-#include "soll/AST/StmtYul.h"
+#include "soll/AST/StmtAsm.h"
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/ConstantFolder.h>
 #include <llvm/IR/IRBuilder.h>
 
 namespace soll::CodeGen {
-
-inline llvm::GlobalVariable *createGlobalString(llvm::LLVMContext &Context,
-                                                llvm::Module &Module,
-                                                llvm::StringRef Str,
-                                                const llvm::Twine &Name = "") {
-  llvm::Constant *StrConstant =
-      llvm::ConstantDataArray::getString(Context, Str, false);
-  auto *GV = new llvm::GlobalVariable(Module, StrConstant->getType(), true,
-                                      llvm::GlobalValue::PrivateLinkage,
-                                      StrConstant, Name);
-  GV->setUnnamedAddr(llvm::GlobalValue::UnnamedAddr::Global);
-  GV->setAlignment(1);
-  return GV;
-}
-inline llvm::Constant *createGlobalStringPtr(llvm::LLVMContext &Context,
-                                             llvm::Module &Module,
-                                             llvm::StringRef Str,
-                                             const llvm::Twine &Name = "") {
-  llvm::GlobalVariable *GV = createGlobalString(Context, Module, Str, Name);
-  llvm::Constant *Zero =
-      llvm::ConstantInt::get(llvm::Type::getInt32Ty(Context), 0);
-  llvm::Constant *Indices[] = {Zero, Zero};
-  return llvm::ConstantExpr::getInBoundsGetElementPtr(GV->getValueType(), GV,
-                                                      Indices);
-}
 
 class CodeGenFunction : public CodeGenTypeCache {
   struct BreakContinue {
@@ -50,13 +25,13 @@ class CodeGenFunction : public CodeGenTypeCache {
   llvm::BasicBlock *ReturnBlock;
   llvm::Value *ReturnValue;
 
-  using DeclMapTy = llvm::DenseMap<const VarDecl *, llvm::Value *>;
+  using DeclMapTy = llvm::DenseMap<const Decl *, llvm::Value *>;
   DeclMapTy LocalDeclMap;
-  void setAddrOfLocalVar(const VarDecl *VD, llvm::Value *Addr) {
+  void setAddrOfLocalVar(const Decl *VD, llvm::Value *Addr) {
     assert(!LocalDeclMap.count(VD) && "Decl already exists in LocalDeclMap!");
     LocalDeclMap.insert({VD, Addr});
   }
-  llvm::Value *getAddrOfLocalVar(const VarDecl *VD) {
+  llvm::Value *getAddrOfLocalVar(const Decl *VD) {
     auto it = LocalDeclMap.find(VD);
     assert(it != LocalDeclMap.end() &&
            "Invalid argument to getAddrOfLocalVar(), no decl!");
@@ -82,6 +57,7 @@ public:
   CodeGenModule &getCodeGenModule() const { return CGM; }
 
   void generateCode(const FunctionDecl *FD, llvm::Function *Fn);
+  void generateYulCode(const YulCode *YC);
 
 private:
   void emitStmt(const Stmt *S);
@@ -96,10 +72,12 @@ private:
   void emitReturnStmt(const ReturnStmt *S);
   void emitEmitStmt(const EmitStmt *S);
 
-  void emitYulForStmt(const YulForStmt *S);
-  void emitYulCaseStmt(const YulCaseStmt *S);
-  void emitYulDefaultStmt(const YulDefaultStmt *S);
-  void emitYulSwitchStmt(const YulSwitchStmt *S);
+  void emitAsmForStmt(const AsmForStmt *S);
+  void emitAsmSwitchCase(const AsmSwitchCase *S, llvm::SwitchInst *Switch);
+  void emitAsmCaseStmt(const AsmCaseStmt *S, llvm::SwitchInst *Switch);
+  void emitAsmDefaultStmt(const AsmDefaultStmt *S, llvm::SwitchInst *Switch);
+  void emitAsmSwitchStmt(const AsmSwitchStmt *S);
+  void emitAsmAssignmentStmt(const AsmAssignmentStmt *S);
 
   void emitBranchOnBoolExpr(const Expr *E, llvm::BasicBlock *TrueBlock,
                             llvm::BasicBlock *FalseBlock);
@@ -124,7 +102,13 @@ private:
   llvm::Value *emitCalladdress_send(const CallExpr *CE, const MemberExpr *ME,
                                     bool needRevert);
 
+  void emitSStore(const CallExpr *CE);
+  llvm::Value *emitSLoad(const CallExpr *CE);
+
   ExprValue emitCallExpr(const CallExpr *CE);
+  ExprValue emitSpecialCallExpr(const Identifier *SI, const CallExpr *CE,
+                                const MemberExpr *ME);
+  ExprValue emitAsmSpecialCallExpr(const AsmIdentifier *SI, const CallExpr *CE);
 
   friend class ExprEmitter;
 };

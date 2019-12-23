@@ -6,9 +6,9 @@ add_llvm_library(sollAST
   DeclAccept.cpp
   DeclVisitor.cpp
   Expr.cpp
-  ExprYul.cpp
+  ExprAsm.cpp
   Stmt.cpp
-  StmtYul.cpp
+  StmtAsm.cpp
   StmtAccept.cpp
   StmtVisitor.cpp
   Type.cpp

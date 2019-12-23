@@ -86,15 +86,15 @@ public:
   };
 
 private:
-  std::string name;
+  std::string Name;
   std::variant<Decl *, SpecialIdentifier> D;
 
 public:
   Identifier(const std::string &Name, Decl *D);
   Identifier(const std::string &Name, SpecialIdentifier D, TypePtr Ty);
 
-  void setName(const std::string &Name) { name = Name; }
-  std::string getName() const { return name; }
+  void setName(const std::string &Name) { this->Name = Name; }
+  std::string getName() const { return Name; }
   bool isSpecialIdentifier() const {
     return std::holds_alternative<SpecialIdentifier>(D);
   }
