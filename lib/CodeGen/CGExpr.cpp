@@ -452,7 +452,7 @@ private:
         llvm::Value *ArraySize = Builder.getIntN(256, ArrTy->getLength());
         emitCheckArrayOutOfBound(ArraySize, IndexValue);
         llvm::Value *Address = Builder.CreateInBoundsGEP(
-            CGF.getCodeGenModule().getLLVMType(Ty), Base.getValue(),
+            CGF.getCodeGenModule().getLLVMType(ArrTy), Base.getValue(),
             {Builder.getIntN(256, 0), IndexValue});
         return ExprValue(Ty, ValueKind::VK_LValue, Address);
       }
@@ -937,7 +937,7 @@ ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
     Args.push_back(emitExpr(Argument).load(Builder, CGM));
   }
   if (auto FD = dynamic_cast<const FunctionDecl *>(D)) {
-    llvm::Function *F = CGM.getModule().getFunction(CGM.getMangledName(FD));
+    llvm::Function *F = CGM.createOrGetLLVMFunction(FD);
     assert(F != nullptr && "undefined function");
     llvm::Value *Result = Builder.CreateCall(F, Args);
     return ExprValue::getRValue(CE, Result);

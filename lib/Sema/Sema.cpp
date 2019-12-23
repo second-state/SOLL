@@ -12,6 +12,9 @@ namespace soll {
 /// helper function of UsualArithmeticConversions
 static TypePtr handleIntegerConversion(Sema &S, ExprPtr &LHS, ExprPtr &RHS,
                                        bool isCompAssign) {
+  if (!LHS || !RHS)
+    return nullptr;
+
   assert(LHS->getType() != nullptr);
   assert(RHS->getType() != nullptr);
   auto LTy = dynamic_cast<IntegerType *>(LHS->getType().get());
@@ -78,6 +81,9 @@ Sema::CreateEventDecl(llvm::StringRef Name, std::unique_ptr<ParamList> &&Params,
 
 ExprPtr Sema::CreateBinOp(BinaryOperatorKind Opc, ExprPtr &&LHS,
                           ExprPtr &&RHS) {
+  if (!LHS || !RHS)
+    return nullptr;
+
   TypePtr ResultTy;
   if (BinaryOperator::isAdditiveOp(Opc)) {
     ResultTy = CheckAdditiveOperands(LHS, RHS, Opc);
@@ -575,6 +581,9 @@ ExprPtr Sema::UsualUnaryConversions(ExprPtr &&E) {
 }
 
 ExprPtr Sema::DefaultLvalueConversion(ExprPtr &&E) {
+  if (!E)
+    return std::move(E);
+
   if (E->isRValue())
     return std::move(E);
 

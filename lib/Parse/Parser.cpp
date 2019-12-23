@@ -613,7 +613,20 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
 
   while (true) {
     if (AllowModifiers && Tok.is(tok::identifier)) {
-      // TODO: Function Modifier
+      Diag(diag::err_unimplemented_token) << tok::identifier;
+
+      std::string ModifierName = Tok.getIdentifierInfo()->getName();
+      ConsumeToken(); // identifier
+
+      std::vector<ExprPtr> Arguments;
+      if (Tok.is(tok::l_paren)) {
+        ConsumeParen(); // (
+        vector<llvm::StringRef> Names;
+        tie(Arguments, Names) = parseFunctionCallArguments();
+        ConsumeParen(); // )
+      }
+      Result.Modifiers.push_back(std::make_unique<ModifierInvocation>(
+          ModifierName, std::move(Arguments)));
     } else if (Tok.isOneOf(tok::kw_public, tok::kw_private, tok::kw_internal,
                            tok::kw_external)) {
       // TODO: Special case of a public state variable of function Type.
@@ -936,6 +949,7 @@ TypePtr Parser::parseTypeName(bool AllowVar) {
   } else if (Kind == tok::identifier || Kind == tok::raw_identifier) {
     // TODO: parseTypeName tok::identifier
     Diag(diag::err_unimplemented_token) << Kind;
+    ConsumeToken(); // identifier
     return nullptr;
   } else {
     assert(false && "Expected Type Name");

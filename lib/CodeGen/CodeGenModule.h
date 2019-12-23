@@ -197,7 +197,7 @@ public:
   llvm::Type *getLLVMType(const Type *Ty);
   llvm::Type *getStaticLLVMType(const Type *Ty);
   llvm::FunctionType *getFunctionType(const CallableVarDecl *CVD);
-  llvm::Function *createLLVMFunction(const CallableVarDecl *CVD);
+  llvm::Function *createOrGetLLVMFunction(const CallableVarDecl *CVD);
   llvm::GlobalVariable *getStateVarAddr(const VarDecl *VD) {
     return StateVarDeclMap.lookup(VD);
   }

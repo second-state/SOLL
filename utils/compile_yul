@@ -2,12 +2,16 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 LLOPT=$(command -v opt-8)
+LLOPT=${LLOPT:-$(command -v opt-9)}
 LLOPT=${LLOPT:-$(command -v opt)}
 LLC=$(command -v llc-8)
+LLC=${LLC:-$(command -v llc-9)}
 LLC=${LLC:-$(command -v llc)}
 LLLINK=$(command -v llvm-link-8)
+LLLINK=${LLLINK:-$(command -v llvm-link-9)}
 LLLINK=${LLLINK:-$(command -v llvm-link)}
 WASM_LD=$(command -v wasm-ld-8)
+WASM_LD=${WASM_LD:-$(command -v wasm-ld-9)}
 WASM_LD=${WASM_LD:-$(command -v wasm-ld)}
 WASM_OPT=$(command -v wasm-opt)
 WASM2WAT=$(command -v wasm2wat)

@@ -112,11 +112,8 @@ void CodeGenFunction::emitDeclStmt(const DeclStmt *DS) {
       break;
     case Type::Category::String:
     case Type::Category::Bytes:
-      Builder.CreateStore(llvm::ConstantAggregateZero::get(LLVMTy), Addr);
-      break;
     case Type::Category::Array:
-      assert(false && "zero-init array not implement");
-      __builtin_unreachable();
+      Builder.CreateStore(llvm::ConstantAggregateZero::get(LLVMTy), Addr);
       break;
     default:
       assert(false && "unknown type");

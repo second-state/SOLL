@@ -926,6 +926,7 @@ llvm::Value *CodeGenModule::emitABILoadParamStatic(const Type *Ty,
                                                    llvm::StringRef Name,
                                                    llvm::Value *Buffer,
                                                    std::uint32_t Offset) {
+  llvm::Type *LLVMTy;
   if (const auto *ArrayTy = dynamic_cast<const ArrayType *>(Ty)) {
     if (!ArrayTy->isDynamicSized()) {
       const Type *ElemTy = ArrayTy->getElementType().get();
@@ -939,13 +940,20 @@ llvm::Value *CodeGenModule::emitABILoadParamStatic(const Type *Ty,
       }
       return Result;
     }
+    LLVMTy = Int256Ty;
+  } else if (dynamic_cast<const StringType *>(Ty)) {
+    LLVMTy = Int256Ty;
+  } else if (dynamic_cast<const BytesType *>(Ty)) {
+    LLVMTy = Int256Ty;
+  } else {
+    LLVMTy= getLLVMType(Ty);
   }
   llvm::Value *CPtr = Builder.CreateInBoundsGEP(
       Buffer, {Builder.getInt32(Offset)}, Name + ".cptr");
   llvm::Value *Ptr = Builder.CreateBitCast(CPtr, Int256PtrTy, Name + ".ptr");
   llvm::Value *ValB = Builder.CreateLoad(Int256Ty, Ptr, Name + ".b");
   llvm::Value *Val = getEndianlessValue(ValB);
-  return Builder.CreateZExtOrTrunc(Val, getLLVMType(Ty), Name);
+  return Builder.CreateZExtOrTrunc(Val, LLVMTy, Name);
 }
 
 std::pair<llvm::Value *, llvm::Value *> CodeGenModule::emitABILoadParamDynamic(
@@ -1157,7 +1165,7 @@ void CodeGenModule::emitFunctionDecl(const FunctionDecl *FD) {
            "no returns in fallback function!");
   }
 
-  llvm::Function *F = createLLVMFunction(FD);
+  llvm::Function *F = createOrGetLLVMFunction(FD);
   CodeGenFunction(*this).generateCode(FD, F);
 }
 
@@ -1292,11 +1300,15 @@ llvm::FunctionType *CodeGenModule::getFunctionType(const CallableVarDecl *CVD) {
   return llvm::FunctionType::get(RetTypes, ArgTypes, false);
 }
 
-llvm::Function *CodeGenModule::createLLVMFunction(const CallableVarDecl *CVD) {
+llvm::Function *
+CodeGenModule::createOrGetLLVMFunction(const CallableVarDecl *CVD) {
   const std::string &MangledName = getMangledName(CVD);
-  llvm::Function *F = llvm::Function::Create(getFunctionType(CVD),
-                                             llvm::Function::InternalLinkage,
-                                             MangledName, TheModule);
+  llvm::Function *F = getModule().getFunction(MangledName);
+  if (F == nullptr) {
+    F = llvm::Function::Create(getFunctionType(CVD),
+                               llvm::Function::InternalLinkage, MangledName,
+                               TheModule);
+  }
   assert(F->getName() == MangledName && "name was uniqued!");
   return F;
 }
