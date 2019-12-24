@@ -53,28 +53,6 @@ add_subdirectory(lib)
 add_subdirectory(tools)
 add_subdirectory(utils)
 
-if(EXISTS ${LLVM_BINARY_DIR}/build/utils/lit/lit.py)
-  # Note: path not really used, except for checking if lit was found
-  set(LLVM_LIT ${LLVM_BINARY_DIR}/build/utils/lit/lit.py)
-else()
-  # Seek installed Lit.
-  find_program(LLVM_LIT
-    NAMES llvm-lit lit.py lit
-    PATHS "${LLVM_BINARY_DIR}/build/utils/lit"
-    DOC "Path to lit.py")
-endif()
-
-if(LLVM_LIT)
-  set(LLVM_EXTERNAL_LIT "${LLVM_LIT}")
-  set(LIT_ARGS_DEFAULT "-sv")
-  if (MSVC OR XCODE)
-    set(LIT_ARGS_DEFAULT "${LIT_ARGS_DEFAULT} --no-progress-bar")
-  endif()
-  set(LLVM_LIT_ARGS "${LIT_ARGS_DEFAULT}" CACHE STRING "Default options for lit")
-else()
-  set(SOLL_INCLUDE_TESTS OFF)
-endif()
-
 if(SOLL_INCLUDE_TESTS)
   include(CTest)
   include(Catch)
