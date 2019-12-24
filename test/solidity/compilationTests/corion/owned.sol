@@ -21,7 +21,7 @@ contract ownedDB {
 
             @bool   Owner has called the contract or not
         */
-        if ( owner == address(0x00) ) {
+        if ( owner == address(0) ) {
             return true;
         }
         return owner == msg.sender;

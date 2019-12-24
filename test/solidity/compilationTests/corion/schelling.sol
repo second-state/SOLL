@@ -1,3 +1,7 @@
+// REQUIRES: import
+// REQUIRES: struct
+// REQUIRES: enum
+// REQUIRES: inheritance
 // RUN: %soll %s
 pragma solidity >=0.0;
 

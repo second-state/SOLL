@@ -1,3 +1,4 @@
+// REQUIRES: implicitCast
 // RUN: %soll %s
 /*
  * @title String & slice utility library for Solidity contracts.

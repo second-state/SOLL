@@ -1,3 +1,6 @@
+// REQUIRES: import
+// REQUIRES: struct
+// REQUIRES: inheritance
 // RUN: %soll %s
 pragma solidity >=0.0;
 

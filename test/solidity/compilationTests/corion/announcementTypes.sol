@@ -1,3 +1,4 @@
+// REQUIRES: enum
 // RUN: %soll %s
 pragma solidity >=0.0;
 

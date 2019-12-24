@@ -1,3 +1,4 @@
+// REQUIRES: import
 // RUN: %soll %s
 pragma solidity >=0.0;
 import "../Oracles/FutarchyOracle.sol";

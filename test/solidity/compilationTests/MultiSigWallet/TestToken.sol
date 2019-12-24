@@ -1,3 +1,4 @@
+// REQUIRES: implicitCast
 // RUN: %soll %s
 pragma solidity >=0.0;
 

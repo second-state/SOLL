@@ -1,3 +1,5 @@
+// REQUIRES: import
+// REQUIRES: struct
 // RUN: %soll %s
 pragma solidity >=0.0;
 import "MultiSigWallet.sol";

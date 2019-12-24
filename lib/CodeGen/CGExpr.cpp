@@ -631,9 +631,12 @@ ExprValue CodeGenFunction::emitExpr(const Expr *E) {
 void CodeGenFunction::emitCallRequire(const CallExpr *CE) {
   // require function
   auto Arguments = CE->getArguments();
+  assert(Arguments.size() == 1 || Arguments.size() == 2);
 
-  std::string Message =
-      dynamic_cast<const StringLiteral *>(Arguments[1])->getValue();
+  std::string Message;
+  if (Arguments.size() == 2) {
+    Message = dynamic_cast<const StringLiteral *>(Arguments[1])->getValue();
+  }
   llvm::Constant *MessageValue = createGlobalStringPtr(
       getLLVMContext(), getCodeGenModule().getModule(), Message);
 

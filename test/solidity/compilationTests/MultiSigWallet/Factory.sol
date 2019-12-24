@@ -1,3 +1,4 @@
+// REQUIRES: lvalueMember
 // RUN: %soll %s
 contract Factory {
 

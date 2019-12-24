@@ -1,3 +1,5 @@
+// REQUIRES: import
+// REQUIRES: inheritance
 // RUN: %soll %s
 pragma solidity >=0.0;
 

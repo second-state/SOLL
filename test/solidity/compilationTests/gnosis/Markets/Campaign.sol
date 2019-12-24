@@ -1,3 +1,5 @@
+// REQUIRES: import
+// REQUIRES: implicitCast
 // RUN: %soll %s
 pragma solidity >=0.0;
 import "../Events/Event.sol";

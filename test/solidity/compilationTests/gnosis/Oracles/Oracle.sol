@@ -1,3 +1,4 @@
+// REQUIRES: abstract
 // RUN: %soll %s
 pragma solidity >=0.0;
 
