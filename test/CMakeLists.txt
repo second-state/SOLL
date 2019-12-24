@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 if(EXISTS ${LLVM_EXTERNAL_LIT})
 else()
   if(EXISTS ${LLVM_BINARY_DIR}/build/utils/lit/lit.py)

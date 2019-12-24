@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 // REQUIRES: namedcall
 // RUN: %soll %s
 pragma solidity ^0.5.0;

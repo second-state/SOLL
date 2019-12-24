@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // REQUIRES: import
 // REQUIRES: inheritance
 // RUN: %soll %s

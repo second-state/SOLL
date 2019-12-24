@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // REQUIRES: abstract
 // RUN: %soll %s
 /// Implements ERC 20 Token standard: https://github.com/ethereum/EIPs/issues/20

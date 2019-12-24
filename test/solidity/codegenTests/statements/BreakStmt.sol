@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // REQUIRES: implicitCast
 // RUN: %soll %s
 pragma solidity >0.4.0 <=0.7.0;
