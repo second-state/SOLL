@@ -4,6 +4,7 @@ FROM ${BASE}
 RUN apt update \
     && apt install -y \
         cmake \
+        llvm-8-tools \
         python-psutil \
         software-properties-common
 
