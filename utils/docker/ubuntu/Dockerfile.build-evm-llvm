@@ -2,6 +2,7 @@ FROM secondstate/soll:ubuntu-clang
 
 RUN apt update \
     && apt install -y \
+        python-psutil \
         git
 RUN rm -rf /var/lib/apt/lists/*
 

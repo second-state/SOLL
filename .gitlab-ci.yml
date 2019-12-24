@@ -3,6 +3,9 @@ variables:
   BASE_BINDIR: build
   TEST_SRCDIR: test/release
   TEST_ENVDIR: utils/ewasm-testbench
+  EVM_BINDIR: /evm_llvm_build
+  LIT_PATH: /usr/lib/llvm-8/build/utils/lit/lit.py
+  EVM_LIT_PATH: ${EVM_BINDIR}/bin/llvm-lit
 
 stages:
   - build
@@ -17,7 +20,7 @@ stages:
     - mkdir ${BASE_BINDIR}
     - cd ${BASE_BINDIR}
   script:
-    - cmake .. -DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true
+    - cmake .. -DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true -DLLVM_EXTERNAL_LIT=${LIT_PATH}
     - make -j2
   cache:
     key: ${OS}-${COMPILER}
@@ -71,7 +74,7 @@ build:ubuntu-clang:
 
 build:ubuntu-clang-evm-backend:
   stage: build
-  image: secondstate/soll:ubuntu-evm-llvm-release
+  image: secondstate/soll:ubuntu-evm-llvm
   tags:
     - evm
   before_script:
@@ -79,7 +82,7 @@ build:ubuntu-clang-evm-backend:
     - mkdir ${BASE_BINDIR}
     - cd ${BASE_BINDIR}
   script:
-    - cmake .. -DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true -DSOLL_ENABLE_EVM=true -DLLVM_CMAKE_PATH=/evm_llvm_build
+    - cmake .. -DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true -DLLVM_EXTERNAL_LIT=${EVM_LIT_PATH} -DSOLL_ENABLE_EVM=true -DLLVM_CMAKE_PATH=${EVM_BINDIR}
     - make -j2
   cache:
     key: ubuntu-clang-evm
@@ -106,7 +109,7 @@ compile:ubuntu-clang:
 
 compile:ubuntu-clang-evm-backend:
   stage: compile
-  image: secondstate/soll:ubuntu-evm-llvm-release
+  image: secondstate/soll:ubuntu-evm-llvm
   tags:
     - evm
   script:

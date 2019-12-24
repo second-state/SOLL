@@ -4,6 +4,7 @@ FROM ${BASE}
 RUN apt update \
     && apt install -y \
         cmake \
+        python-psutil \
         software-properties-common
 
 RUN wget --quiet -O - https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add - \
