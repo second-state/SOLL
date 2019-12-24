@@ -114,3 +114,19 @@ PackageCopyrightText: <text>Copyright 2014-2019 Ethereum</text>
 ## Relationships
 Relationship: SPDXRef-SolidityCompilationTests TEST_CASE_OF SPDXRef-soll
 FilesAnalyzed: false
+
+
+## Package Information
+PackageName: YulCompilationTests
+SPDXID: SPDXRef-YulCompilationTests
+PackageFileName: ./test/libyul
+PackageOriginator: Organization: Ethereum
+PackageDownloadLocation: git+https://github.com/ethereum/solidity.git
+PackageHomePage: https://github.com/ethereum/solidity
+PackageLicenseConcluded: GPL-3.0-or-later
+PackageLicenseDeclared: GPL-3.0-or-later
+PackageLicenseInfoFromFiles: GPL-3.0-or-later
+PackageCopyrightText: <text>Copyright 2014-2019 Ethereum</text>
+## Relationships
+Relationship: SPDXRef-YulCompilationTests TEST_CASE_OF SPDXRef-soll
+FilesAnalyzed: false
