@@ -1,23 +1,46 @@
 [//]: # (SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception)
+
 # 1. Introduction
-**SOLL** is a new compiler for generating [Ewasm](https://github.com/ewasm) (Ethereum flavored WebAssembly) files from Solidity.
+**SOLL** is a new compiler for generating [Ewasm](https://github.com/ewasm) (Ethereum flavored WebAssembly) files from Solidity and Yul.
 
 To support developers as many as possible, we design projects to not only support more smart contract programming languages, such as Rust and C++, but also support various VMs, such as Ewasm VM and evm. To achieve this goal, in the very first step, we develop SOLL, a compiler for Solidity-based smart contract running on Ewasm VM.
 
-SOLL has two phases in the code generation flow. Generate *.ll (LLVM IR file) first, then generate *.wasm (Ewasm file). We provide two documents for explaining how to use and develop SOLL compiler.
+SOLL has two phases in the code generation flow. Generate LLVM IR files first, then leverage LLVM framework to generate Ewasm bytecode.
 
-For beginners, in the following sections of this document, we will show you how to use SOLL to generate a Ewasm file and then deploy the file to TestNet.
+For application users, please refer to this document. You will know how to use SOLL to generate Ewasm bytecode from your Solidity smart contract or Yul language, and then deploy the Ewasm bytecode to Ethereum Ewasm TestNet.
 
-For developers, we provide another document, please refer to the [Developer Guide](doc/guides/DevGuide.md).
+For developers, we provide another document for explaining the design of SOLL and how to develop and test the functionality of SOLL, please refer to the [Developer Guide](doc/guides/DevGuide.md) for more details.
 
-And user can check all features and limitation in below documents.
+
+# 2. Current Status and Limitations
+
+SOLL is still in early stage, and we’ve not fully supported Solidity and Yul. Please check features we’ve done and limitations in the following documents.
 
 * [Feature Guide for Solidity](doc/guides/FeatureGuideForSolidity.md)
 * [Feature Guide for Yul](doc/guides/FeatureGuideForYul.md)
 * [Known Issues](doc/KnownIssues.md)
 
-# 2. Getting Started
-To get started with our demo, you will need two components at first.
+And SOLL integrates Solidity and Yul test contracts from [ethereum/solidity](https://github.com/ethereum/solidity/tree/develop/test).
+
+Here is the pass rate of both language:
+
+Solidity test suite (Total 66 tests from compilationTests):
+```bash
+Expected Passes    : 10 # Solidity has 66 testing contract, and SOLL can pass 10.
+Unsupported Tests  : 56 # Unimplemented by SOLL
+Pass Rate: 15%
+```
+
+Yul test suite (Total 499 tests from libyul):
+```bash
+Expected Passes    : 63  # libyul has 499 testing contracts, and SOLL can pass 63.
+Unsupported Tests  : 436 # Unimplemented by SOLL
+Pass Rate: 13%
+```
+
+# 3. Getting Started
+
+To get started with our demonstration, you will need prepare two components at first.
 
 - Pre-install **Docker** and pull our [docker image](https://hub.docker.com/r/secondstate/soll)
 > *We provide an image include build and execute environment (recommend).
@@ -25,98 +48,108 @@ To get started with our demo, you will need two components at first.
 
 - **SOLL** https://github.com/second-state/soll
 
-## 2.1 Preparation
+## 3.1 Preparation
+
 - Pull official docker image to get an already established build/execute environment.
-```Shell
+```bash
 > docker pull secondstate/soll
 ```
 
-- Get Source Code from Github and checkout to this version, 0.0.3.
-```Shell
+- Get Source Code from Github and checkout to the latest version, 0.0.4.
+```bash
 > git clone --recursive https://github.com/second-state/soll.git
 > cd soll
-> git checkout 0.0.3
+> git checkout 0.0.4
 ```
 
-## 2.3 Launch Environment
+## 3.2 Launch Environment
+
 Attach shell to container and bind volume with repositories' path.
-```Shell
+```bash
 > docker run -it --rm \
       -v $(pwd)/soll:/root/soll \
       secondstate/soll
 ```
 
-## 2.4 Build SOLL
-Build SOLL first (we use cmake with llvm library)
-```Shell
+## 3.3 Build SOLL
+
+Build SOLL(we use cmake with llvm library)
+```bash
 (docker) $ cd ~/soll && mkdir -p build && cd build
 (docker) $ cmake .. && make
 ```
 
-## 2.5 Compile an ERC20 smart contract
+## 3.4 Compile an ERC20 smart contract
 
-As above-mentioned, to compile Solidity Smart Contract code, SOLL will generate *.ll (LLVM IR file) first, then generate *.wasm (Ewasm file).
+As above-mentioned, to compile Solidity Smart Contract code, SOLL will generate LLVM IR files(.ll), and then generate Ewasm bytecode(.wasm).
 
-**Phase 1. Use SOLL generate .ll from test contract**
+### **Phase 1. Use SOLL generate LLVM IR files(.ll) from the ERC20 contract**
 
-Create your smart file by copying from our demo case "0-0-3.sol".
-```shell
+Create your smart contract files by copying from our demonstration contract "0-0-3.sol".
+```bash
 (docker) $ cd ~
 (docker) $ cp ~/soll/doc/examples/0-0-3.sol ~/contract.sol
 ```
 
-Execute SOLL to generate a *.ll file for the next step.
-```shell
-(docker) $ ~/soll/build/tools/soll/soll -action=EmitLLVM contract.sol > contract.ll
+Execute SOLL to generate a LLVM IR file(.ll) for the next step.
+```bash
+(docker) $ ~/soll/build/tools/soll/soll contract.sol > contract.ll
 ```
-**Phase 2. Generate .wasm from .ll**
 
-```shell
+### **Phase 2. Generate Ewasm bytecode(.wasm) from a LLVM IR file**
+
+```bash
 (docker) $ ~/soll/utils/compile -v contract.ll
 ```
 
-After compiling "contract.ll", SOLL compiler will generate two files: "contract.deploy.wasm" for deploying and "contract.wasm" for normal uses.
+After compiling "contract.ll", SOLL compiler will generate two files:
+
+1. "contract.deploy.wasm": Contract bytecode with deployer. Use this for the deployment.
+2. "contract.wasm": Contract runtime bytecode only. You can execute it with Ewasm runtime directly.
 
 We will use "contract.deploy.wasm" in the next section to deploy it to Ewasm TestNet.
 
-## 2.6 Deploy an ERC20 smart contract to Ewasm TestNet
+## 3.5 Deploy an ERC20 smart contract to Ewasm TestNet
 
-** Step 1: Convert Wasm files to Hex Code files. **
+### **Step 1: Convert Wasm files to Hex Code files.**
 
-To deploy our smart contract code to TestNet, we need to convert the WASM files to Hex Code files.
+To deploy our smart contract to TestNet, we need to convert the WASM files to Hex Code files.
 
-```shell
+```bash
 (docker) $ xxd -p contract.deploy.wasm | tr -d $'\n'
 ```
-** Step 2: Submit the Hex Code files to Ewasm TestNet. **
+
+### **Step 2: Submit the Hex Code files to Ewasm TestNet.**
 
 Copy the Hex Code generated by the previous step.
 
-![Find ToolsSubmitTx](doc/images/2-6-2-SubmitTx-1.png)
+![Find ToolsSubmitTx](doc/images/3-5-2-SubmitTx-1.png)
 
 Paste the Hex Code to Ewasm TestNet website and submit it.
 
-![Paste the Hex Code and submit it](doc/images/2-6-2-SubmitTx-2.png)
+![Paste the Hex Code and submit it](doc/images/3-5-2-SubmitTx-2.png)
 
 Submit the Hex Code to Ewasm TestNet.
 
-![Submiting the Hex Code](doc/images/2-6-2-SubmitTx-3.png)
+![Submiting the Hex Code](doc/images/3-5-2-SubmitTx-3.png)
 
-** Step 3: Check activities of TestNet to make sure our contracts executed successfully. **
+### **Step 3: Check activities of TestNet to make sure our contracts executed successfully.**
 
 Check whether the latest activity is our contract or not.
 
-![Check the latest activity](doc/images/2-6-3-CheckAct.png)
-![Check the latest transaction](doc/images/2-6-3-CheckLatestTx.png)
+![Check the latest activity](doc/images/3-5-3-CheckAct.png)
+![Check the latest transaction](doc/images/3-5-3-CheckLatestTx.png)
 
 Check the Bytecode of the latest activity.
 
-![Check the bytecode](doc/images/2-6-3-CheckBytecode.png)
+![Check the bytecode](doc/images/3-5-3-CheckBytecode.png)
 
 Check the Ewasm code of the latest activity.
 
-![Check the Ewasm code](doc/images/2-6-3-CheckEwasm.png)
+![Check the Ewasm code](doc/images/3-5-3-CheckEwasm.png)
 
 Check the Storage part of the latest activity.
 
-![Check the Storage](doc/images/2-6-3-CheckStorage.png)
+![Check the Storage](doc/images/3-5-3-CheckStorage.png)
+
+Congratulations! Now you finished our user tutorial.
