@@ -14,7 +14,7 @@ In following sections, we provide three parts to show how to compile and execute
     - [0-0-2.sol](../../doc/examples/0-0-2.sol) - A partial function example of [ERC20](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md) contract.
     - [0-0-3.sol](../../doc/examples/0-0-3.sol) - A full function example of [ERC20](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md) contract.
 4. Generate Ewasm files from our Yul demo and execute them. **[(0.0.4 limited version)](FeatureGuideForYul.md)**
-    - [0-0-4.yul](../../doc/examples/0-0-4.yul) - A fibonacci sequence example written in Yul.
+    - [0-0-4.yul](../../doc/examples/0-0-4.yul) - A Fibonacci sequence example written in Yul.
 
 ## Working Tree
 ```
@@ -195,7 +195,7 @@ The result should be the same as the following content.
 
 ## Compile and execute Yul code
 
-To show how to use SOLL to compile and execute YUl code, we also provide a very basic example to demonstrate it. In this example, the code will calculate first ten numbers of fibonacci sequence and store them into storage with address 0 to 9 . In following steps, we will show how to compile this example and use our benchmark to run this code.
+To show how to use SOLL to compile and execute Yul code, we also provide a very basic example to demonstrate it. In this example, the code will calculate first ten numbers of the Fibonacci sequence and store them into storage with address 0 to 9 . In following steps, we will show how to compile this example and use our benchmark to run this code.
 
 **Phase 1. Use SOLL generate .ll from Yul code**
 
@@ -213,7 +213,7 @@ Execute SOLL to generate a *.ll file for the next step.
 
 **Run in Test Env**
 
-The Yul code section will automated run after wasm load by index.js.
+The Yul code section will run automatically after wasm load by index.js.
 
 ```Shell
 (docker) $ cd ~/soll/utils/ewasm-testbench

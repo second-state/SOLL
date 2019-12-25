@@ -5,7 +5,7 @@
 
 In this guide, we will list all Solidity language features and briefly summarize the current status and limitations about SOLL implementation.
 
-Below will describe some unplemented language features. 
+Below will describe some unimplemented language features. 
 
 - Library declaration
 - Modifier declaration

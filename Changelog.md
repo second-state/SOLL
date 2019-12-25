@@ -4,15 +4,15 @@
 
 Language Features:
 
-* Support limited Yul language. [See detail here.](doc/guides/FeatureGuideForYul.md)
+* Support limited Yul language. [See details here.](doc/guides/FeatureGuideForYul.md)
     - Basic arithmetical, compare, sstore and sload built-in functions.
     - For loop, If, Var declare and Assignment statements.
 
 Compiler Features:
 
-* Add command-line version option check current SOLL version.
+* Add command-line version option for check current SOLL version.
     * `-version`
-* Add command-line language options for Yul input file.
+* Add command-line language options for support Yul input file.
     * `-lang=Sol`: Input file is written in Solidity.  (Default)
     * `-lang=Yul`: Input file is written in Yul.
 * Add unittest framework.

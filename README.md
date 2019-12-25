@@ -14,7 +14,7 @@ And user can check all features and limitation in below documents.
 
 * [Feature Guide for Solidity](doc/guides/FeatureGuideForSolidity.md)
 * [Feature Guide for Yul](doc/guides/FeatureGuideForYul.md)
-* [Knwon Issue](doc/KnownIssues.md)
+* [Known Issues](doc/KnownIssues.md)
 
 # 2. Getting Started
 To get started with our demo, you will need two components at first.
