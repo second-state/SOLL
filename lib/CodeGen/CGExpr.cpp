@@ -350,6 +350,9 @@ private:
       return ExprValue::getRValue(CE, Out);
     }
     case CastKind::TypeCast: {
+      if(OrigInTy->getName()==OrigOutTy->getName()){
+        return ExprValue::getRValue(CE, In);
+      }
       // TODO : address to sign
       if (auto InTy = dynamic_cast<const AddressType *>(OrigInTy)) {
         if (auto OutTy = dynamic_cast<const IntegerType *>(OrigOutTy)) {
@@ -397,6 +400,9 @@ private:
             CGF.getCodeGenModule().emitGetAddress());
         return ExprValue::getRValue(ID, Val);
       }
+      default:
+        assert(false && "only SpecialIdentifier::this can change to address");
+        __builtin_unreachable();
       }
     }
     const Decl *D = ID->getCorrespondDecl();
