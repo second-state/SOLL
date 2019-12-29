@@ -231,7 +231,7 @@ The result should be the same as the following content.
    '{"0":"1","1":"1","2":"2","3":"3","4":"5","5":"8","6":"d","7":"15","8":"22","9":"37"}' }
 ```
 
-## Run SOLL regrasion tests and figure out our Solidity and Yul tests coverage
+## Run SOLL regression tests and figure out our Solidity and Yul tests coverage
 
 ### **Step 1. Build SOLL with enabling built-in test suite**
 ```bash
