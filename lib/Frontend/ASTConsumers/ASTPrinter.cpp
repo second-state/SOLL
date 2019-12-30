@@ -114,6 +114,9 @@ std::string ToString(soll::TypePtr type) {
     return (llvm::Twine(isUnsigned ? "u" : "") + "int" + llvm::Twine(bits))
         .str();
   }
+  case soll::Type::Category::Bytes: {
+    return "bytes";
+  }
   case soll::Type::Category::String:
     return "string";
   case soll::Type::Category::Bool:
@@ -429,7 +432,7 @@ void ASTPrinter::visit(IdentifierType &id) {
 
 void ASTPrinter::visit(BooleanLiteralType &literal) {
   os() << indent() << "BooleanLiteral "
-       << (literal.getValue() ? "true" : "false") << "\n ";
+       << (literal.getValue() ? "true" : "false") << "\n";
   ConstStmtVisitor::visit(literal);
   unindent();
 }

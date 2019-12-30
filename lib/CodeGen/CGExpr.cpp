@@ -509,7 +509,9 @@ private:
     if (ME->getName()->isSpecialIdentifier()) {
       switch (ME->getName()->getSpecialIdentifier()) {
       case Identifier::SpecialIdentifier::msg_sender: {
-        return ExprValue::getRValue(ME, CGF.getCodeGenModule().emitGetCaller());
+        llvm::Value *Val = CGF.getCodeGenModule().getEndianlessValue(
+            CGF.getCodeGenModule().emitGetCaller());
+        return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::msg_value: {
         llvm::Value *Val =
@@ -575,10 +577,10 @@ private:
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::address_balance: {
-        llvm::Value *addressOffset =
+        llvm::Value *Address =
             CGF.emitExpr(ME->getBase()).load(Builder, CGF.CGM);
-        llvm::Value *Val =
-            CGF.getCodeGenModule().emitGetExternalBalance(addressOffset);
+        llvm::Value *Val = CGF.getCodeGenModule().getEndianlessValue(
+            CGF.getCodeGenModule().emitGetExternalBalance(Address));
         return ExprValue::getRValue(ME, Builder.CreateZExt(Val, CGF.Int256Ty));
       }
       default:
@@ -751,7 +753,8 @@ llvm::Value *CodeGenFunction::emitCallblockhash(const CallExpr *CE) {
   // blockhash function
   auto Arguments = CE->getArguments();
   llvm::Value *numberValue = emitExpr(Arguments[0]).load(Builder, CGM);
-  llvm::Value *Val = getCodeGenModule().emitGetBlockHash(numberValue);
+  llvm::Value *Val =
+      CGM.getEndianlessValue(getCodeGenModule().emitGetBlockHash(numberValue));
   return Val;
 }
 
@@ -759,14 +762,14 @@ llvm::Value *CodeGenFunction::emitCalladdress_staticcall(const CallExpr *CE,
                                                          const MemberExpr *ME) {
   // address_staticcall function
   auto Arguments = CE->getArguments();
-  llvm::Value *addressOffset = emitExpr(ME->getBase()).load(Builder, CGM);
+  llvm::Value *Address = emitExpr(ME->getBase()).load(Builder, CGM);
   llvm::Value *AddressPtr = Builder.CreateAlloca(AddressTy);
-  Builder.CreateStore(addressOffset, AddressPtr);
-  llvm::Value *memoryValue = emitExpr(Arguments[0]).load(Builder, CGM);
+  Builder.CreateStore(CGM.getEndianlessValue(Address), AddressPtr);
+  llvm::Value *MemoryValue = emitExpr(Arguments[0]).load(Builder, CGM);
 
   llvm::Value *Length = Builder.CreateTrunc(
-      Builder.CreateExtractValue(memoryValue, {0}), Int32Ty, "length");
-  llvm::Value *Ptr = Builder.CreateExtractValue(memoryValue, {1}, "ptr");
+      Builder.CreateExtractValue(MemoryValue, {0}), Int32Ty, "length");
+  llvm::Value *Ptr = Builder.CreateExtractValue(MemoryValue, {1}, "ptr");
   llvm::Value *Gas = getCodeGenModule().emitGetGasLeft();
 
   llvm::Value *Val =
@@ -800,14 +803,14 @@ CodeGenFunction::emitCalladdress_delegatecall(const CallExpr *CE,
                                               const MemberExpr *ME) {
   // address_staticcall function
   auto Arguments = CE->getArguments();
-  llvm::Value *addressOffset = emitExpr(ME->getBase()).load(Builder, CGM);
+  llvm::Value *Address = emitExpr(ME->getBase()).load(Builder, CGM);
   llvm::Value *AddressPtr = Builder.CreateAlloca(AddressTy);
-  Builder.CreateStore(addressOffset, AddressPtr);
-  llvm::Value *memoryValue = emitExpr(Arguments[0]).load(Builder, CGM);
+  Builder.CreateStore(CGM.getEndianlessValue(Address), AddressPtr);
+  llvm::Value *MemoryValue = emitExpr(Arguments[0]).load(Builder, CGM);
 
   llvm::Value *Length = Builder.CreateTrunc(
-      Builder.CreateExtractValue(memoryValue, {0}), Int32Ty, "length");
-  llvm::Value *Ptr = Builder.CreateExtractValue(memoryValue, {1}, "ptr");
+      Builder.CreateExtractValue(MemoryValue, {0}), Int32Ty, "length");
+  llvm::Value *Ptr = Builder.CreateExtractValue(MemoryValue, {1}, "ptr");
   llvm::Value *Gas = getCodeGenModule().emitGetGasLeft();
 
   llvm::Value *Val =
@@ -834,14 +837,14 @@ llvm::Value *CodeGenFunction::emitCalladdress_call(const CallExpr *CE,
                                                    const MemberExpr *ME) {
   // address_call function
   auto Arguments = CE->getArguments();
-  llvm::Value *addressOffset = emitExpr(ME->getBase()).load(Builder, CGM);
+  llvm::Value *Address = emitExpr(ME->getBase()).load(Builder, CGM);
   llvm::Value *AddressPtr = Builder.CreateAlloca(AddressTy);
-  Builder.CreateStore(addressOffset, AddressPtr);
-  llvm::Value *memoryValue = emitExpr(Arguments[0]).load(Builder, CGM);
+  Builder.CreateStore(CGM.getEndianlessValue(Address), AddressPtr);
+  llvm::Value *MemoryValue = emitExpr(Arguments[0]).load(Builder, CGM);
 
   llvm::Value *Length = Builder.CreateTrunc(
-      Builder.CreateExtractValue(memoryValue, {0}), Int32Ty, "length");
-  llvm::Value *Ptr = Builder.CreateExtractValue(memoryValue, {1}, "ptr");
+      Builder.CreateExtractValue(MemoryValue, {0}), Int32Ty, "length");
+  llvm::Value *Ptr = Builder.CreateExtractValue(MemoryValue, {1}, "ptr");
   llvm::Value *Gas = getCodeGenModule().emitGetGasLeft();
   llvm::Value *ValuePtr = Builder.CreateAlloca(Int128Ty);
   Builder.CreateStore(Builder.getIntN(128, 0), ValuePtr);
@@ -871,19 +874,21 @@ llvm::Value *CodeGenFunction::emitCalladdress_send(const CallExpr *CE,
                                                    bool needRevert) {
   // address_call function
   auto Arguments = CE->getArguments();
-  llvm::Value *addressOffset = emitExpr(ME->getBase()).load(Builder, CGM);
+  llvm::Value *Address = emitExpr(ME->getBase()).load(Builder, CGM);
   llvm::Value *AddressPtr = Builder.CreateAlloca(AddressTy);
-  Builder.CreateStore(addressOffset, AddressPtr);
-  llvm::Value *amount = emitExpr(Arguments[0]).load(Builder, CGM);
-  llvm::Value *amountPtr = Builder.CreateAlloca(Int128Ty);
-  Builder.CreateStore(amount, amountPtr);
+  Builder.CreateStore(CGM.getEndianlessValue(Address), AddressPtr);
+  llvm::Value *Amount = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *AmountPtr = Builder.CreateAlloca(Int128Ty);
+  Builder.CreateStore(
+      CGM.getEndianlessValue(Builder.CreateZExtOrTrunc(Amount, Int128Ty)),
+      AmountPtr);
 
   llvm::Value *Length = Builder.getInt32(0);
   llvm::Value *Ptr = Builder.CreateAlloca(Int8Ty, Length);
   llvm::Value *Gas = Builder.getInt64(0);
 
   llvm::Value *Val =
-      getCodeGenModule().emitCall(Gas, AddressPtr, amountPtr, Ptr, Length);
+      getCodeGenModule().emitCall(Gas, AddressPtr, AmountPtr, Ptr, Length);
 
   llvm::Value *cond;
   if (CGM.isEWASM()) {
@@ -1040,8 +1045,10 @@ void CodeGenFunction::emitSStore(const CallExpr *CE) {
 
 llvm::Value *CodeGenFunction::emitSLoad(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
-  return CGM.emitStorageLoad(CGM.getEndianlessValue(Builder.CreateZExtOrTrunc(
-      emitExpr(Arguments[0]).load(Builder, CGM), CGM.Int256Ty)));
+  auto Val =
+      CGM.emitStorageLoad(CGM.getEndianlessValue(Builder.CreateZExtOrTrunc(
+          emitExpr(Arguments[0]).load(Builder, CGM), CGM.Int256Ty)));
+  return CGM.getEndianlessValue(Val);
 }
 
 ExprValue CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,

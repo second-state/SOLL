@@ -1417,7 +1417,7 @@ llvm::Value *CodeGenModule::emitGetCaller() {
   } else if (isEWASM()) {
     llvm::Value *ValPtr = Builder.CreateAlloca(AddressTy);
     Builder.CreateCall(Func_getCaller, {ValPtr});
-    return getEndianlessValue(Builder.CreateLoad(ValPtr));
+    return Builder.CreateLoad(ValPtr);
   } else {
     __builtin_unreachable();
   }
@@ -1758,14 +1758,16 @@ llvm::Value *CodeGenModule::emitGetBlockHash(llvm::Value *Number) {
   }
 }
 
-llvm::Value *CodeGenModule::emitGetExternalBalance(llvm::Value *AddressOffset) {
+llvm::Value *CodeGenModule::emitGetExternalBalance(llvm::Value *Address) {
   if (isEVM()) {
-    auto Addr = Builder.CreatePtrToInt(AddressOffset, EVMIntTy);
+    auto Addr = Builder.CreatePtrToInt(Address, EVMIntTy);
     return Builder.CreateCall(Func_getExternalBalance, {Addr});
   } else if (isEWASM()) {
     llvm::Value *ValPtr = Builder.CreateAlloca(Int128Ty);
-    Builder.CreateCall(Func_getExternalBalance, {AddressOffset, ValPtr});
-    return emitEndianConvert(Builder.CreateLoad(ValPtr));
+    llvm::Value *AddressPtr = Builder.CreateAlloca(AddressTy);
+    Builder.CreateStore(emitEndianConvert(Address), AddressPtr);
+    Builder.CreateCall(Func_getExternalBalance, {AddressPtr, ValPtr});
+    return Builder.CreateLoad(ValPtr);
   } else {
     __builtin_unreachable();
   }
