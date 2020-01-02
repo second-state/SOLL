@@ -350,7 +350,7 @@ private:
       return ExprValue::getRValue(CE, Out);
     }
     case CastKind::TypeCast: {
-      if(OrigInTy->getName()==OrigOutTy->getName()){
+      if (OrigInTy->getCategory() == OrigOutTy->getCategory()) {
         return ExprValue::getRValue(CE, In);
       }
       // TODO : address to sign

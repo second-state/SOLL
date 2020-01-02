@@ -106,6 +106,8 @@ std::string ToString(soll::TypePtr type) {
   switch (c) {
   case soll::Type::Category::Address:
     return "address";
+  case soll::Type::Category::Contract:
+    return "contract";
   case soll::Type::Category::Integer: {
     unsigned int kind = static_cast<unsigned int>(
         static_cast<const soll::IntegerType *>(type.get())->getKind());
