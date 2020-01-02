@@ -269,7 +269,8 @@ void CodeGenFunction::emitAsmForStmt(const AsmForStmt *FS) {
 }
 
 void CodeGenFunction::emitAsmSwitchCase(const AsmSwitchCase *SC,
-                                        llvm::SwitchInst *Switch) {
+                                        llvm::SwitchInst *Switch,
+                                        llvm::BasicBlock *SwitchExit) {
   if (auto CS = dynamic_cast<const AsmCaseStmt *>(SC)) {
     emitAsmCaseStmt(CS, Switch);
   } else if (auto DS = dynamic_cast<const AsmDefaultStmt *>(SC)) {
@@ -278,6 +279,7 @@ void CodeGenFunction::emitAsmSwitchCase(const AsmSwitchCase *SC,
     __builtin_unreachable();
   }
   emitStmt(SC->getSubStmt());
+  Builder.CreateBr(SwitchExit);
 }
 
 void CodeGenFunction::emitAsmCaseStmt(const AsmCaseStmt *CS,
@@ -291,14 +293,12 @@ void CodeGenFunction::emitAsmCaseStmt(const AsmCaseStmt *CS,
   } else { ///< wrong code
     __builtin_unreachable();
   }
-  Builder.CreateBr(CaseBB);
   Builder.SetInsertPoint(CaseBB);
 }
 
 void CodeGenFunction::emitAsmDefaultStmt(const AsmDefaultStmt *DS,
                                          llvm::SwitchInst *Switch) {
   llvm::BasicBlock *DefaultBB = Switch->getDefaultDest();
-  Builder.CreateBr(DefaultBB);
   Builder.SetInsertPoint(DefaultBB);
 }
 
@@ -311,18 +311,13 @@ void CodeGenFunction::emitAsmSwitchStmt(const AsmSwitchStmt *SS) {
   llvm::BasicBlock *SwitchExit = createBasicBlock("switch.end");
   llvm::SwitchInst *Switch = Builder.CreateSwitch(CondV, DefaultBB);
 
-  BreakContinueStack.push_back(BreakContinue(SwitchExit, nullptr));
-
   for (auto *Case : SS->getCases()) {
-    emitAsmSwitchCase(Case, Switch);
+    emitAsmSwitchCase(Case, Switch, SwitchExit);
   }
 
-  Builder.CreateBr(SwitchExit);
-  BreakContinueStack.pop_back();
-
-  if (!DefaultBB->getParent()) { ///< default block was never emitted
-    DefaultBB->replaceAllUsesWith(SwitchExit);
-    delete DefaultBB;
+  if (DefaultBB->empty()) { ///< default block was never emitted
+    Builder.SetInsertPoint(DefaultBB);
+    Builder.CreateBr(SwitchExit);
   }
   Builder.SetInsertPoint(SwitchExit);
 }

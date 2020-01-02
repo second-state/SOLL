@@ -73,7 +73,8 @@ private:
   void emitEmitStmt(const EmitStmt *S);
 
   void emitAsmForStmt(const AsmForStmt *S);
-  void emitAsmSwitchCase(const AsmSwitchCase *S, llvm::SwitchInst *Switch);
+  void emitAsmSwitchCase(const AsmSwitchCase *S, llvm::SwitchInst *Switch,
+                         llvm::BasicBlock *SwitchExit);
   void emitAsmCaseStmt(const AsmCaseStmt *S, llvm::SwitchInst *Switch);
   void emitAsmDefaultStmt(const AsmDefaultStmt *S, llvm::SwitchInst *Switch);
   void emitAsmSwitchStmt(const AsmSwitchStmt *S);
