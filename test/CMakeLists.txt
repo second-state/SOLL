@@ -36,34 +36,28 @@ get_llvm_lit_path(
 
 set(LIT_COMMAND "${PYTHON_EXECUTABLE};${lit_base_dir}/${lit_file_name}")
 
-add_test(check-soll-benchmark
-  ${LIT_COMMAND}
-  --timeout 10
-  --param soll_site_config=${CMAKE_CURRENT_BINARY_DIR}/lit.site.cfg
+function(add_lit_test name dir)
+  set(multival_args DEPENDS)
+  cmake_parse_arguments(PARSE_ARGV 0 "LIT_TEST" "" "" "${multival_args}")
+
+  add_test(${name}
+    ${LIT_COMMAND}
+    --timeout 10
+    --param soll_site_config=${CMAKE_CURRENT_BINARY_DIR}/lit.site.cfg
+    ${dir}
+  )
+  set_property(TEST ${name} APPEND PROPERTY DEPENDS ${LIT_TEST_DEPENDS})
+endfunction() # end of add_lit_test()
+
+add_lit_test(check-soll-benchmark
   ${CMAKE_CURRENT_BINARY_DIR}/benchmark
-  )
-set_property(TEST check-soll-benchmark APPEND PROPERTY DEPENDS soll)
-
-add_test(check-soll-solidity
-  ${LIT_COMMAND}
-  --timeout 10
-  --param soll_site_config=${CMAKE_CURRENT_BINARY_DIR}/lit.site.cfg
+  DEPENDS soll)
+add_lit_test(check-soll-solidity
   ${CMAKE_CURRENT_BINARY_DIR}/solidity
-  )
-set_property(TEST check-soll-solidity APPEND PROPERTY DEPENDS soll)
-
-add_test(check-soll-yul
-  ${LIT_COMMAND}
-  --timeout 10
-  --param soll_site_config=${CMAKE_CURRENT_BINARY_DIR}/lit.site.cfg
+  DEPENDS soll)
+add_lit_test(check-soll-yul
   ${CMAKE_CURRENT_BINARY_DIR}/yul
-  )
-set_property(TEST check-soll-yul APPEND PROPERTY DEPENDS soll)
-
-add_test(check-soll-libyul
-  ${LIT_COMMAND}
-  --timeout 10
-  --param soll_site_config=${CMAKE_CURRENT_BINARY_DIR}/lit.site.cfg
+  DEPENDS soll)
+add_lit_test(check-soll-libyul
   ${CMAKE_CURRENT_BINARY_DIR}/libyul
-  )
-set_property(TEST check-soll-libyul APPEND PROPERTY DEPENDS soll)
+  DEPENDS soll)
