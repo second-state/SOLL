@@ -4,8 +4,8 @@ variables:
   BASE_BINDIR: build
   TEST_SRCDIR: test/release
   TEST_ENVDIR: utils/ewasm-testbench
-  EVM_BINDIR: /evm_llvm_build
   LIT_PATH: /usr/lib/llvm-8/build/utils/lit/lit.py
+  EVM_BINDIR: /evm_llvm_build
   EVM_LIT_PATH: ${EVM_BINDIR}/bin/llvm-lit
 
 stages:
@@ -13,128 +13,100 @@ stages:
   - compile
   - test
 
+# Templates
+.before_build: &before_build
+  - rm -rf ${BASE_BINDIR}
+  - mkdir ${BASE_BINDIR}
+  - cd ${BASE_BINDIR}
+
+.cache_paths: &cache_paths
+  paths:
+    - ${BASE_BINDIR}
+
 .build_job_template: &build_job
   stage: build
   image: secondstate/soll:${OS}-${COMPILER}
   before_script:
-    - rm -rf ${BASE_BINDIR}
-    - mkdir ${BASE_BINDIR}
-    - cd ${BASE_BINDIR}
+    - *before_build
   script:
     - cmake .. -DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true -DLLVM_EXTERNAL_LIT=${LIT_PATH}
     - make -j2
   cache:
+    <<: *cache_paths
     key: ${OS}-${COMPILER}
-    paths:
-      - ${BASE_BINDIR}
     policy: push
 
-.compile_job_template: &compile_job
+# General Build Jobs
+ubuntu-gcc:
+  <<: *build_job
+  tags: ["gcc"]
+  variables:
+    OS: "ubuntu"
+    COMPILER: "gcc"
+
+ubuntu-clang:
+  <<: *build_job
+  tags: ["clang"]
+  variables:
+    OS: "ubuntu"
+    COMPILER: "clang"
+
+# Jobs for Ewasm Backend
+compile:wasm:
   stage: compile
-  image: secondstate/soll:${OS}-compile
+  image: secondstate/soll:ubuntu-compile
+  needs: ["ubuntu-clang"]
+  tags: ["clang"]
   script:
     - bash -c "${BASE_BINDIR}/tools/soll/soll ${TEST_ENVDIR}/test/safeMath.sol > ${BASE_BINDIR}/safeMath.ll"
     - bash -c "${BASE_BINDIR}/tools/soll/soll ${TEST_ENVDIR}/test/erc20.sol    > ${BASE_BINDIR}/erc20.ll"
     - bash -c "${BASE_BINDIR}/tools/soll/soll ${TEST_ENVDIR}/test/forStmt.sol  > ${BASE_BINDIR}/forStmt.ll"
     - bash -c "./utils/compile -v ${BASE_BINDIR}/*.ll || test -f ${BASE_BINDIR}/safeMath.wasm -a -f ${BASE_BINDIR}/erc20.wasm -a -f ${BASE_BINDIR}/forStmt.wasm"
   cache:
-    key: ${OS}-${COMPILER}
-    paths:
-      - ${BASE_BINDIR}
+    <<: *cache_paths
+    key: ubuntu-clang
     policy: pull-push
 
-.test_job_template: &test_job
+test:wasm:
   stage: test
-  image: secondstate/soll:${OS}-test
+  image: secondstate/soll:ubuntu-test
+  needs: ["compile:wasm"]
+  tags: ["clang"]
   before_script:
     - cp ${BASE_BINDIR}/*.wasm ${TEST_ENVDIR}/test
   script:
     - bash -c "cd ${BASE_BINDIR} && ctest"
     - bash -c "cd ${TEST_ENVDIR} && mocha"
   cache:
-    key: ${OS}-${COMPILER}
-    paths:
-      - ${BASE_BINDIR}
+    <<: *cache_paths
+    key: ubuntu-clang
     policy: pull
 
-build:ubuntu-gcc:
-  <<: *build_job
-  variables:
-    OS: "ubuntu"
-    COMPILER: "gcc"
-  tags:
-    - gcc
-
-build:ubuntu-clang:
-  <<: *build_job
-  variables:
-    OS: "ubuntu"
-    COMPILER: "clang"
-  tags:
-    - clang
-
-build:ubuntu-clang-evm-backend:
+# Jobs for EVM backend
+ubuntu-clang:evm:
   stage: build
   image: secondstate/soll:ubuntu-evm-llvm
-  tags:
-    - evm
+  tags: ["evm"]
   before_script:
-    - rm -rf ${BASE_BINDIR}
-    - mkdir ${BASE_BINDIR}
-    - cd ${BASE_BINDIR}
+    - *before_build
   script:
     - cmake .. -DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true -DLLVM_EXTERNAL_LIT=${EVM_LIT_PATH} -DSOLL_ENABLE_EVM=true -DLLVM_CMAKE_PATH=${EVM_BINDIR}
     - make -j2
   cache:
+    <<: *cache_paths
     key: ubuntu-clang-evm
-    paths:
-      - ${BASE_BINDIR}
     policy: push
 
-
-compile:ubuntu-gcc:
-  <<: *compile_job
-  variables:
-    OS: "ubuntu"
-    COMPILER: "gcc"
-  tags:
-    - gcc
-
-compile:ubuntu-clang:
-  <<: *compile_job
-  variables:
-    OS: "ubuntu"
-    COMPILER: "clang"
-  tags:
-    - clang
-
-compile:ubuntu-clang-evm-backend:
+compile:evm:
   stage: compile
   image: secondstate/soll:ubuntu-evm-llvm
-  tags:
-    - evm
+  needs: ["ubuntu-clang:evm"]
+  tags: ["evm"]
   script:
     - bash -c "${BASE_BINDIR}/tools/soll/soll --target=EVM ${TEST_ENVDIR}/test/safeMath.sol"
     - bash -c "${BASE_BINDIR}/tools/soll/soll --target=EVM ${TEST_ENVDIR}/test/erc20.sol"
     - bash -c "${BASE_BINDIR}/tools/soll/soll --target=EVM ${TEST_ENVDIR}/test/forStmt.sol"
   cache:
+    <<: *cache_paths
     key: ubuntu-clang-evm
-    paths:
-      - ${BASE_BINDIR}
     policy: pull-push
-
-test:ubuntu-gcc:
-  <<: *test_job
-  variables:
-    OS: "ubuntu"
-    COMPILER: "gcc"
-  tags:
-    - gcc
-
-test:ubuntu-clang:
-  <<: *test_job
-  variables:
-    OS: "ubuntu"
-    COMPILER: "clang"
-  tags:
-    - clang
