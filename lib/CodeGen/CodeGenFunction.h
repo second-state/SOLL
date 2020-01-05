@@ -104,7 +104,10 @@ private:
                                             const MemberExpr *ME);
   llvm::Value *emitCalladdress_send(const CallExpr *CE, const MemberExpr *ME,
                                     bool needRevert);
-
+  llvm::Value *emitMLoad(const CallExpr *CE);
+  void emitMStore(const CallExpr *CE);
+  void emitMStore8(const CallExpr *CE);
+  llvm::Value *emitMSize(const CallExpr *CE);
   void emitSStore(const CallExpr *CE);
   llvm::Value *emitSLoad(const CallExpr *CE);
 

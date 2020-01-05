@@ -64,6 +64,10 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
       {"sars256", AsmIdentifier::SpecialIdentifier::sars256},
       // TODO: implement the rest identifiers
       /// memory and storage
+      {"mload", AsmIdentifier::SpecialIdentifier::mload},
+      {"mstore", AsmIdentifier::SpecialIdentifier::mstore},
+      {"mstore8", AsmIdentifier::SpecialIdentifier::mstore8},
+      {"msize", AsmIdentifier::SpecialIdentifier::msize},
       {"sload", AsmIdentifier::SpecialIdentifier::sload},
       {"sstore", AsmIdentifier::SpecialIdentifier::sstore},
       /// execution control
@@ -146,6 +150,26 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
     case AsmIdentifier::SpecialIdentifier::sars256:
       Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
       Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty},
+                                          std::vector<TypePtr>{Ty});
+      break;
+    case AsmIdentifier::SpecialIdentifier::mload: ///< (u256) -> u256
+      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty},
+                                          std::vector<TypePtr>{Ty});
+      break;
+    case AsmIdentifier::SpecialIdentifier::mstore: ///< (u256, u256) -> void
+      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty},
+                                          std::vector<TypePtr>{});
+      break;
+    case AsmIdentifier::SpecialIdentifier::mstore8: ///< (u256, u256) -> void
+      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty},
+                                          std::vector<TypePtr>{});
+      break;
+    case AsmIdentifier::SpecialIdentifier::msize: ///< () -> u256
+      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{},
                                           std::vector<TypePtr>{Ty});
       break;
     case AsmIdentifier::SpecialIdentifier::sload: ///< (u256) -> u256

@@ -1047,6 +1047,48 @@ ExprValue CodeGenFunction::emitSpecialCallExpr(const Identifier *SI,
   }
 }
 
+llvm::Value *CodeGenFunction::emitMLoad(const CallExpr *CE) {
+  auto Arguments = CE->getArguments();
+  auto Ptr = Builder.CreateIntToPtr(emitExpr(Arguments[0]).load(Builder, CGM),
+                                    Int256PtrTy);
+  auto Value = CGM.getEndianlessValue(Builder.CreateLoad(Ptr));
+  llvm::Function *updateMemorySize =
+      CGM.getModule().getFunction("solidity.updateMemorySize");
+  Builder.CreateCall(
+      updateMemorySize,
+      {emitExpr(Arguments[0]).load(Builder, CGM), Builder.getIntN(256, 32)});
+  return Value;
+}
+
+void CodeGenFunction::emitMStore(const CallExpr *CE) {
+  auto Arguments = CE->getArguments();
+  auto Ptr = Builder.CreateIntToPtr(emitExpr(Arguments[0]).load(Builder, CGM),
+                                    Int256PtrTy);
+  Builder.CreateStore(
+      CGM.getEndianlessValue(emitExpr(Arguments[1]).load(Builder, CGM)), Ptr);
+  llvm::Function *updateMemorySize =
+      CGM.getModule().getFunction("solidity.updateMemorySize");
+  Builder.CreateCall(
+      updateMemorySize,
+      {emitExpr(Arguments[0]).load(Builder, CGM), Builder.getIntN(256, 32)});
+}
+
+void CodeGenFunction::emitMStore8(const CallExpr *CE) {
+  auto Arguments = CE->getArguments();
+  auto Ptr = Builder.CreateIntToPtr(emitExpr(Arguments[0]).load(Builder, CGM),
+                                    Int8PtrTy);
+  Builder.CreateStore(emitExpr(Arguments[0]).load(Builder, CGM), Ptr);
+  llvm::Function *updateMemorySize =
+      CGM.getModule().getFunction("solidity.updateMemorySize");
+  Builder.CreateCall(
+      updateMemorySize,
+      {emitExpr(Arguments[0]).load(Builder, CGM), Builder.getIntN(256, 8)});
+}
+
+llvm::Value *CodeGenFunction::emitMSize(const CallExpr *CE) {
+  return Builder.CreateLoad(CGM.getMemorySize());
+}
+
 void CodeGenFunction::emitSStore(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
   CGM.emitStorageStore(
@@ -1117,6 +1159,16 @@ ExprValue CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   case AsmIdentifier::SpecialIdentifier::txgasprice:
     return ExprValue::getRValue(CE, CGM.emitGetTxGasPrice());
   /// memory and storage
+  case AsmIdentifier::SpecialIdentifier::mload:
+    return ExprValue::getRValue(CE, emitMLoad(CE));
+  case AsmIdentifier::SpecialIdentifier::mstore:
+    emitMStore(CE);
+    return ExprValue();
+  case AsmIdentifier::SpecialIdentifier::mstore8:
+    emitMStore8(CE);
+    return ExprValue();
+  case AsmIdentifier::SpecialIdentifier::msize:
+    return ExprValue::getRValue(CE, emitMSize(CE));
   case AsmIdentifier::SpecialIdentifier::sstore:
     emitSStore(CE);
     return ExprValue();
@@ -1137,10 +1189,6 @@ ExprValue CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   case AsmIdentifier::SpecialIdentifier::iszerou256:
   case AsmIdentifier::SpecialIdentifier::sars256:
   case AsmIdentifier::SpecialIdentifier::byte:
-  case AsmIdentifier::SpecialIdentifier::mload:
-  case AsmIdentifier::SpecialIdentifier::mstore:
-  case AsmIdentifier::SpecialIdentifier::mstore8:
-  case AsmIdentifier::SpecialIdentifier::msize:
   case AsmIdentifier::SpecialIdentifier::create:
   case AsmIdentifier::SpecialIdentifier::create2:
   case AsmIdentifier::SpecialIdentifier::call:

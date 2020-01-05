@@ -48,6 +48,7 @@ CodeGenModule::CodeGenModule(ASTContext &C, llvm::Module &M,
   if (isEVM()) {
     initEVMOpcodeDeclaration();
   } else {
+    initMemorySection();
     initEEIDeclaration();
   }
   initHelperDeclaration();
@@ -80,6 +81,48 @@ void CodeGenModule::initTypes() {
 
   EVMIntTy = Int256Ty;
   EVMIntPtrTy = Int256PtrTy;
+}
+
+void CodeGenModule::initMemorySection() {
+  MemorySize = new llvm::GlobalVariable(TheModule, Int256Ty, false,
+                                        llvm::GlobalVariable::PrivateLinkage,
+                                        Builder.getIntN(256, 0), "memory.size");
+  MemorySize->setUnnamedAddr(llvm::GlobalVariable::UnnamedAddr::Local);
+  MemorySize->setAlignment(8);
+
+  Func_updateMemorySize = llvm::Function::Create(
+      llvm::FunctionType::get(VoidTy, {Int256Ty, Int256Ty}, false),
+      llvm::Function::InternalLinkage, "solidity.updateMemorySize", TheModule);
+  Func_updateMemorySize->addFnAttr(llvm::Attribute::NoUnwind);
+  initUpdateMemorySize();
+}
+
+void CodeGenModule::initUpdateMemorySize() {
+  auto *Address = Func_updateMemorySize->arg_begin();
+  Address->setName("memory.address");
+  auto *Range = Address++;
+  Range->setName("memory.range");
+  llvm::BasicBlock *Entry =
+      llvm::BasicBlock::Create(VMContext, "entry", Func_updateMemorySize);
+  llvm::BasicBlock *Update =
+      llvm::BasicBlock::Create(VMContext, "update", Func_updateMemorySize);
+  llvm::BasicBlock *Done =
+      llvm::BasicBlock::Create(VMContext, "done", Func_updateMemorySize);
+  Builder.SetInsertPoint(Entry);
+  auto OrigSize = Builder.CreateLoad(MemorySize, "memory.size");
+  auto EndAddress = Builder.CreateAdd(Address, Range);
+  auto Condition = Builder.CreateICmpUGT(EndAddress, OrigSize);
+  Builder.CreateCondBr(Condition, Update, Done);
+  Builder.SetInsertPoint(Update);
+  llvm::ConstantInt *Mask =
+      Builder.getInt(llvm::APInt::getHighBitsSet(256, 251));
+  auto Base = Builder.CreateAnd(EndAddress, Mask);
+  auto NewSize =
+      Builder.CreateAdd(Base, Builder.getIntN(256, 32), "memory.new_size");
+  Builder.CreateStore(NewSize, MemorySize);
+  Builder.CreateBr(Done);
+  Builder.SetInsertPoint(Done);
+  Builder.CreateRetVoid();
 }
 
 llvm::Function *CodeGenModule::getIntrinsic(unsigned IID,
@@ -1293,7 +1336,7 @@ void CodeGenModule::emitYulCode(const YulCode *YC) {
 void CodeGenModule::emitYulData(const YulData *YD) {
   std::string Data = YD->getBody()->getValue();
   llvm::Constant *DataValue =
-      createGlobalStringPtr(getLLVMContext(), getModule(), Data);
+      createGlobalStringPtr(VMContext, getModule(), Data);
   YulDataMap.try_emplace(YD, DataValue);
 }
 

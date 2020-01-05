@@ -51,6 +51,7 @@ class CodeGenModule : public CodeGenTypeCache {
   const TargetOptions &TargetOpts;
   llvm::LLVMContext &VMContext;
   llvm::IRBuilder<llvm::ConstantFolder> Builder;
+  llvm::GlobalVariable *MemorySize;
   llvm::DenseMap<const VarDecl *, llvm::GlobalVariable *> StateVarDeclMap;
   llvm::DenseMap<const YulData *, llvm::Constant *> YulDataMap;
   std::size_t StateVarAddrCursor;
@@ -97,8 +98,11 @@ class CodeGenModule : public CodeGenTypeCache {
   llvm::Function *Func_exp256 = nullptr;
   llvm::Function *Func_bswap256 = nullptr;
   llvm::Function *Func_memcpy = nullptr;
+  llvm::Function *Func_updateMemorySize = nullptr;
 
   void initTypes();
+  void initMemorySection();
+  void initUpdateMemorySize();
 
   void initEVMOpcodeDeclaration();
   void initEEIDeclaration();
@@ -204,6 +208,7 @@ public:
   llvm::Type *getStaticLLVMType(const Type *Ty);
   llvm::FunctionType *getFunctionType(const CallableVarDecl *CVD);
   llvm::Function *createOrGetLLVMFunction(const CallableVarDecl *CVD);
+  llvm::GlobalVariable *getMemorySize() { return MemorySize; }
   llvm::GlobalVariable *getStateVarAddr(const VarDecl *VD) {
     return StateVarDeclMap.lookup(VD);
   }
