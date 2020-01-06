@@ -36,7 +36,6 @@ public:
 
   // TODO: change the following following function to virtual pure function
   // return nonsense value due CE in tools/
-  virtual void setBitNum(unsigned) {}
   virtual unsigned int getBitNum() const { return 0; }
   virtual bool isImplicitlyConvertibleTo(Type const &_other) const {
     return _other.getCategory() == getCategory();
@@ -155,7 +154,6 @@ public:
     return static_cast<int>(getKind()) >= static_cast<int>(IntKind::I8);
   }
 
-  void setBitNum() = delete;
   unsigned int getBitNum() const override {
     return 8 * (static_cast<int>(getKind()) % 32 + 1);
   }

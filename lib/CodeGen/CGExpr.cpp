@@ -1039,9 +1039,8 @@ void CodeGenFunction::emitSStore(const CallExpr *CE) {
 
 llvm::Value *CodeGenFunction::emitSLoad(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
-  return CGM.emitStorageLoad(
-      CGM.getEndianlessValue(Builder.CreateZExtOrTrunc(
-          emitExpr(Arguments[0]).load(Builder, CGM), CGM.Int256Ty)));
+  return CGM.emitStorageLoad(CGM.getEndianlessValue(Builder.CreateZExtOrTrunc(
+      emitExpr(Arguments[0]).load(Builder, CGM), CGM.Int256Ty)));
 }
 
 ExprValue CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,

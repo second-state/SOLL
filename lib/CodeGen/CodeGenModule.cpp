@@ -958,7 +958,7 @@ llvm::Value *CodeGenModule::emitABILoadParamStatic(const Type *Ty,
   } else if (dynamic_cast<const BytesType *>(Ty)) {
     LLVMTy = Int256Ty;
   } else {
-    LLVMTy= getLLVMType(Ty);
+    LLVMTy = getLLVMType(Ty);
   }
   llvm::Value *CPtr = Builder.CreateInBoundsGEP(
       Buffer, {Builder.getInt32(Offset)}, Name + ".cptr");

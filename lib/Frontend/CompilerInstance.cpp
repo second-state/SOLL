@@ -250,12 +250,12 @@ std::unique_ptr<llvm::raw_pwrite_stream> CompilerInstance::createOutputFile(
     *TempPathName = TempFile;
 
   if (!Binary || OS->supportsSeeking())
-    return std::move(OS);
+    return OS;
 
   auto B = std::make_unique<llvm::buffer_ostream>(*OS);
   assert(!NonSeekStream);
   NonSeekStream = std::move(OS);
-  return std::move(B);
+  return B;
 }
 
 bool CompilerInstance::InitializeSourceManager(const FrontendInputFile &Input) {
