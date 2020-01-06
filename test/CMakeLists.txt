@@ -66,7 +66,7 @@ if(SOLL_COVERAGE)
   setup_target_for_coverage_gcovr_html(
     NAME coverage
     EXECUTABLE ctest -j ${PROCESSOR_COUNT}
-    DEPENDENCIES soll
+    DEPENDENCIES soll unittests
     BASE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
     )
 endif()

@@ -32,6 +32,8 @@ docker_build Dockerfile.compile     ubuntu-compile      \
     --build-arg "BASE=${NAME}:ubuntu-base"
 docker_build Dockerfile.test        ubuntu-test         \
     --build-arg "BASE=${NAME}:ubuntu-base"
+docker_build Dockerfile.coverage    ubuntu-coverage     \
+    --build-arg "BASE=${NAME}:ubuntu-base"
 docker_build Dockerfile.compile     im-gcc-compile      \
     --build-arg "BASE=${NAME}:ubuntu-gcc"
 docker_build Dockerfile.test        latest              \

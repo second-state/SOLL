@@ -12,6 +12,7 @@ stages:
   - build
   - compile
   - test
+  - coverage
 
 # Templates
 .before_build: &before_build
@@ -111,3 +112,32 @@ compile:evm:
     <<: *cache_paths
     key: ubuntu-clang-evm
     policy: pull-push
+
+test:ubuntu-coverage:
+  stage: test
+  image: secondstate/soll:ubuntu-coverage
+  before_script:
+    - *before_build
+  script:
+    - cmake .. -DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true -DSOLL_COVERAGE=true -DLLVM_EXTERNAL_LIT=${LIT_PATH} -DSOLL_ENABLE_EVM=true -DLLVM_CMAKE_PATH=${EVM_BINDIR}
+    - make -j2 all coverage
+    - mv -v coverage ../public
+  tags: ["evm"]
+  cache:
+    key: ubuntu-coverage
+    paths: ["public"]
+    policy: push
+
+pages:
+  stage: coverage
+  image: secondstate/soll:ubuntu-coverage
+  script: ["true"]
+  tags: ["evm"]
+  cache:
+    key: ubuntu-coverage
+    paths: ["coverage"]
+    policy: pull
+  artifacts:
+    paths: ["public"]
+  only:
+    - master
