@@ -43,7 +43,7 @@ tool_substitutions = [
 llvm_config.add_tool_substitutions(tool_substitutions)
 
 # For each occurrence of a soll tool name, replace it with the full path to
-# the build directory holding that tool.  We explicitly specify the directories
+# the build directory holding that tool. We explicitly specify the directories
 # to search to ensure that we get the tools just built and not some random
 # tools that might happen to be in the user's PATH.
 tool_dirs = [config.soll_tools_dir, config.llvm_tools_dir]
