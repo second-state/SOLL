@@ -10,8 +10,7 @@ namespace {
 
 class NullCodeGenAction : public CodeGenAction {
 public:
-  NullCodeGenAction()
-      : CodeGenAction() {}
+  NullCodeGenAction() : CodeGenAction() {}
 
   void ExecuteAction() override {
     CompilerInstance &CI = getCompilerInstance();

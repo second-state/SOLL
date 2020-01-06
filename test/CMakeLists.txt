@@ -61,3 +61,12 @@ add_lit_test(check-soll-yul
 add_lit_test(check-soll-libyul
   ${CMAKE_CURRENT_BINARY_DIR}/libyul
   DEPENDS soll)
+
+if(SOLL_COVERAGE)
+  setup_target_for_coverage_gcovr_html(
+    NAME coverage
+    EXECUTABLE ctest -j ${PROCESSOR_COUNT}
+    DEPENDENCIES soll
+    BASE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+    )
+endif()

@@ -12,6 +12,8 @@ add_llvm_executable(soll
   )
 
 target_link_libraries(soll
+  PUBLIC
+  gcov
   PRIVATE
   sollBasic
   sollFrontend

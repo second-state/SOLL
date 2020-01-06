@@ -44,10 +44,20 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(SOLL_INCLUDE_TESTS
   "Generate build targets for the Soll unit tests."
   ${LLVM_INCLUDE_TESTS})
+option(SOLL_COVERAGE
+  "Generate coverage report. \
+Require SOLL_INCLUDE_TESTS."
+  OFF)
 
 option(SOLL_ENABLE_EVM
-  "Enable EVM backend for the SOLL. This feature depends on EVM_LLVM project."
+  "Enable EVM backend for the SOLL. \
+This feature depends on EVM_LLVM project."
   ${SOLL_ENABLE_EVM})
+
+if(SOLL_COVERAGE)
+include(CodeCoverage)
+append_coverage_compiler_flags()
+endif()
 
 add_subdirectory(lib)
 add_subdirectory(tools)

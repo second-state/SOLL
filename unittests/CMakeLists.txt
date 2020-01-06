@@ -15,6 +15,8 @@ add_llvm_executable(unittests
   )
 
 target_link_libraries(unittests
+  PUBLIC
+  gcov
   PRIVATE
   sollAST
   sollCodeGen
