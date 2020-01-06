@@ -1,0 +1,114 @@
+#!/bin/bash
+# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+
+LLOPT=$(command -v opt-8)
+LLOPT=${LLOPT:-$(command -v opt-9)}
+LLOPT=${LLOPT:-$(command -v opt)}
+LLC=$(command -v llc-8)
+LLC=${LLC:-$(command -v llc-9)}
+LLC=${LLC:-$(command -v llc)}
+LLLINK=$(command -v llvm-link-8)
+LLLINK=${LLLINK:-$(command -v llvm-link-9)}
+LLLINK=${LLLINK:-$(command -v llvm-link)}
+WASM_LD=$(command -v wasm-ld-8)
+WASM_LD=${WASM_LD:-$(command -v wasm-ld-9)}
+WASM_LD=${WASM_LD:-$(command -v wasm-ld)}
+WASM_OPT=$(command -v wasm-opt)
+WASM2WAT=$(command -v wasm2wat)
+WAT2WASM=$(command -v wat2wasm)
+CUT=$(command -v cut)
+MKTEMP=$(command -v mktemp)
+SED=$(command -v sed)
+TR=$(command -v tr)
+WC=$(command -v wc)
+XXD=$(command -v xxd)
+
+VERBOSE=false
+
+while getopts 'vho:' OPT; do
+    case $OPT in
+        v)
+            VERBOSE=true
+            ;;
+        h|?)
+            echo "Usage: $0 [-v] INPUT"
+            exit 1
+            ;;
+    esac
+done
+
+shift $(("$OPTIND" - 1))
+
+run() {
+    if "$VERBOSE"; then
+        for arg in "$@"; do
+            echo -n \""$arg"\"' '
+        done
+        echo
+    fi
+    "$@"
+}
+
+entry() {
+    {
+        echo "source_filename = \"$2\""
+        echo 'target datalayout = "e-m:e-p:32:32-i64:64-n32:64-S128"'
+        echo 'target triple = "wasm32-unknown-unknown-wasm"'
+        echo "declare void @solidity.$1()"
+        echo 'define void @main() {'
+        echo "  tail call void @solidity.$1()"
+        echo '  ret void'
+        echo '}'
+    } > "$2"
+}
+
+remove_exports() {
+    local tmp
+    tmp="$("$MKTEMP")"
+    run "$WASM2WAT" "$1" -o "$tmp" || return 1
+    run "$SED" -i -e '/(export "__heap_base" (global 1))/d' "$tmp"
+    run "$SED" -i -e '/(export "__data_end" (global 2))/d' "$tmp"
+    run "$WAT2WASM" "$tmp" -o "$1" || return 1
+    run rm -v "$tmp" || return 1
+}
+
+bin2deploy() {
+    local data
+    local size
+    # data="$(hexdump -v -e '/1 "\\%02x"' "$1")"
+    # data="$(LANG=C awk 'BEGIN{FS="";RS=".";for(i=0;i<256;i++)ord[sprintf("%c",i)]=i}{for(i=1;i<=NF;++i)printf("\\%02x",ord[$i])}' "$1")"
+    data="$("$XXD" -ps "$1" | "$SED" -e 's@..@\\\0@g' | "$TR" -d \\n)"
+    size="$("$WC" -c "$1" | "$CUT" -d\  -f1)"
+    {
+        echo "source_filename = \"$2\""
+        echo 'target datalayout = "e-m:e-p:32:32-i64:64-n32:64-S128"'
+        echo 'target triple = "wasm32-unknown-unknown-wasm"'
+        echo "@deploy.data = local_unnamed_addr constant [$size x i8] c\"$data\", align 1"
+        echo "@deploy.size = local_unnamed_addr constant i32 $size, align 8"
+    } > "$2"
+}
+
+for INPUT in "$@"; do
+    BASE="${INPUT%.ll}"
+    entry main "$BASE.main.ll"
+    run "$LLLINK" "$BASE.ll" "$BASE.main.ll" -o "$BASE.bc" || exit 1
+    run "$LLOPT" -std-link-opts -Oz -polly "$BASE.bc" -o "$BASE.bc" || exit 1
+    run "$LLC" -O3 -filetype=obj "$BASE.bc" || exit 1
+    run "$WASM_LD" --entry main --gc-sections --allow-undefined "$BASE.o" -o "$BASE.wasm" || exit 1
+    remove_exports "$BASE.wasm" || exit 1
+    if [ "$WASM_OPT" ]; then
+        run "$WASM_OPT" -O4 "$BASE.wasm" -o "$BASE-opt.wasm" || exit 1
+        bin2deploy "$BASE-opt.wasm" "$BASE.deploy.ll"
+    else
+        bin2deploy "$BASE.wasm" "$BASE.deploy.ll"
+    fi
+    entry ctor "$BASE.ctor.ll"
+    run "$LLLINK" "$BASE.ll" "$BASE.deploy.ll" "$BASE.ctor.ll" -o "$BASE.deploy.bc" || exit 1
+    run "$LLOPT" -std-link-opts -Oz -polly "$BASE.deploy.bc" -o "$BASE.deploy.bc" || exit 1
+    run "$LLC" -O3 -filetype=obj "$BASE.deploy.bc" || exit 1
+    run "$WASM_LD" --entry main --gc-sections --allow-undefined "$BASE.deploy.o" -o "$BASE.deploy.wasm" || exit 1
+    remove_exports "$BASE.deploy.wasm" || exit 1
+    if [ "$WASM_OPT" ]; then
+        run "$WASM_OPT" -O4 "$BASE.deploy.wasm" -o "$BASE-opt.deploy.wasm" || exit 1
+    fi
+done
