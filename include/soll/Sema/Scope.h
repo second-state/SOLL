@@ -2,9 +2,14 @@
 #pragma once
 
 #include "soll/AST/Decl.h"
+#include "soll/AST/Expr.h"
+#include "soll/AST/ExprAsm.h"
+#include <cassert>
 #include <llvm/ADT/StringMap.h>
 #include <llvm/ADT/iterator_range.h>
 #include <memory>
+#include <variant>
+#include <vector>
 
 namespace soll {
 class Scope {
@@ -17,6 +22,8 @@ class Scope {
   Scope *ContinueParent;
 
   llvm::StringMap<Decl *> Decls;
+  std::vector<std::variant<Identifier *, AsmIdentifier *>>
+      UnresolvedIdentifiers, UnresolvedExternalIdentifiers;
 
 public:
   enum ScopeFlags : unsigned {
@@ -61,9 +68,16 @@ public:
   const Scope *getContinueParent() const { return ContinueParent; }
 
   bool addDecl(Decl *D) { return Decls.try_emplace(D->getName(), D).second; }
+  void addUnresolved(std::variant<Identifier *, AsmIdentifier *> I) {
+    UnresolvedIdentifiers.push_back(std::move(I));
+  }
+  void addUnresolvedExternal(std::variant<Identifier *, AsmIdentifier *> I) {
+    UnresolvedExternalIdentifiers.push_back(std::move(I));
+  }
+  std::vector<std::variant<Identifier *, AsmIdentifier *>> resolveIdentifiers();
   Decl *lookupName(llvm::StringRef Name) const {
-    if (auto iter = Decls.find(Name); iter != Decls.end()) {
-      return iter->second;
+    if (auto Iter = Decls.find(Name); Iter != Decls.end()) {
+      return Iter->second;
     }
     if (Parent) {
       return Parent->lookupName(Name);

@@ -313,7 +313,7 @@ void CodeGenFunction::emitAsmSwitchStmt(const AsmSwitchStmt *SS) {
 
   BreakContinueStack.push_back(BreakContinue(SwitchExit, nullptr));
 
-  for (auto *Case : SS->getSwitchCaseList()) {
+  for (auto *Case : SS->getCases()) {
     emitAsmSwitchCase(Case, Switch);
   }
 

@@ -51,7 +51,7 @@ template <bool Const> void StmtVisitorBase<Const>::visit(BreakStmtType &) {
 }
 
 template <bool Const> void StmtVisitorBase<Const>::visit(ReturnStmtType &stmt) {
-  if (stmt.getRetValue() != nullptr) {
+  if (stmt.getRetValue()) {
     stmt.getRetValue()->accept(*this);
   }
 }
@@ -123,19 +123,15 @@ template <bool Const> void StmtVisitorBase<Const>::visit(AsmForStmtType &S) {
 
 template <bool Const> void StmtVisitorBase<Const>::visit(AsmCaseStmtType &C) {
   C.getSubStmt()->accept(*this);
-  // if (C.getNextCase())
-  //   C.getNextCase()->accept(*this);
 }
 
 template <bool Const>
 void StmtVisitorBase<Const>::visit(AsmDefaultStmtType &C) {
   C.getSubStmt()->accept(*this);
-  // if (C.getNextCase())
-  //   C.getNextCase()->accept(*this);
 }
 
 template <bool Const> void StmtVisitorBase<Const>::visit(AsmSwitchStmtType &S) {
-  for (auto Case : S.getSwitchCaseList()) {
+  for (auto Case : S.getCases()) {
     Case->accept(*this);
   }
 }

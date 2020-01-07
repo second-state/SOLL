@@ -64,67 +64,58 @@ public:
 
 private:
   ExprValue visit(const UnaryOperator *UO) {
-    ExprValue V;
+    const Expr *SubExpr = UO->getSubExpr();
+    ExprValue SubVal = visit(SubExpr);
+    llvm::Value *Value = SubVal.load(Builder, CGF.getCodeGenModule());
     if (UO->isArithmeticOp()) {
-      const Expr *SubExpr = UO->getSubExpr();
-      ExprValue subVal = visit(SubExpr);
       switch (UO->getOpcode()) {
       case UnaryOperatorKind::UO_Plus:
-        V = subVal;
         break;
       case UnaryOperatorKind::UO_Minus:
-        V = ExprValue::getRValue(
-            SubExpr,
-            Builder.CreateNeg(subVal.load(Builder, CGF.getCodeGenModule())));
+        Value = Builder.CreateNeg(Value);
         break;
       case UnaryOperatorKind::UO_Not:
-        V = ExprValue::getRValue(
-            SubExpr,
-            Builder.CreateNot(subVal.load(Builder, CGF.getCodeGenModule())));
+        Value = Builder.CreateNot(Value);
         break;
       case UnaryOperatorKind::UO_LNot:
-        V = ExprValue::getRValue(
-            SubExpr,
-            Builder.CreateICmpEQ(subVal.load(Builder, CGF.getCodeGenModule()),
-                                 Builder.getInt1(false)));
+        Value = Builder.CreateICmpEQ(Value, Builder.getInt1(false));
         break;
-      default:;
+      case UnaryOperatorKind::UO_IsZero:
+        Value = Builder.CreateICmpNE(
+            Value, llvm::ConstantInt::get(Value->getType(), 0));
+        break;
+      default:
+        assert(false && "unknown op");
+        __builtin_unreachable();
       }
     } else {
-      const Expr *SubExpr = UO->getSubExpr();
-      ExprValue subVal = visit(SubExpr);
-      llvm::Value *Value = subVal.load(Builder, CGF.getCodeGenModule());
       switch (UO->getOpcode()) {
       case UnaryOperatorKind::UO_PostInc:
-        subVal.store(Builder, CGF.getCodeGenModule(),
+        SubVal.store(Builder, CGF.getCodeGenModule(),
                      Builder.CreateAdd(
                          Value, llvm::ConstantInt::get(Value->getType(), 1)));
-        V = ExprValue::getRValue(SubExpr, Value);
         break;
       case UnaryOperatorKind::UO_PostDec:
-        subVal.store(Builder, CGF.getCodeGenModule(),
+        SubVal.store(Builder, CGF.getCodeGenModule(),
                      Builder.CreateSub(
                          Value, llvm::ConstantInt::get(Value->getType(), 1)));
-        V = ExprValue::getRValue(SubExpr, Value);
         break;
       case UnaryOperatorKind::UO_PreInc:
         Value = Builder.CreateAdd(Value,
                                   llvm::ConstantInt::get(Value->getType(), 1));
-        subVal.store(Builder, CGF.getCodeGenModule(), Value);
-        V = ExprValue::getRValue(SubExpr, Value);
+        SubVal.store(Builder, CGF.getCodeGenModule(), Value);
         break;
       case UnaryOperatorKind::UO_PreDec:
         Value = Builder.CreateSub(Value,
                                   llvm::ConstantInt::get(Value->getType(), 1));
-        subVal.store(Builder, CGF.getCodeGenModule(), Value);
-        V = ExprValue::getRValue(SubExpr, Value);
+        SubVal.store(Builder, CGF.getCodeGenModule(), Value);
         break;
       default:
         assert(false && "unknown op");
         __builtin_unreachable();
       }
     }
-    return V;
+    return ExprValue::getRValue(SubExpr, Value);
   }
 
   static bool isSigned(const Type *Ty) {
@@ -330,12 +321,19 @@ private:
   }
 
   ExprValue visit(const CastExpr *CE) {
+    ExprValue InVal = visit(CE->getSubExpr());
+    if (CE->getCastKind() == CastKind::None) {
+      return InVal;
+    }
+
     const Type *OrigInTy = CE->getSubExpr()->getType().get();
     const Type *OrigOutTy = CE->getType().get();
-    llvm::Value *In =
-        visit(CE->getSubExpr()).load(Builder, CGF.getCodeGenModule());
+    llvm::Value *In = InVal.load(Builder, CGF.getCodeGenModule());
 
     switch (CE->getCastKind()) {
+    case CastKind::None:
+      assert(false);
+      __builtin_unreachable();
     case CastKind::LValueToRValue: {
       return ExprValue::getRValue(CE, In);
     }
@@ -372,6 +370,14 @@ private:
           return ExprValue::getRValue(CE, Out);
         }
       }
+      if (auto InTy = dynamic_cast<const IntegerType *>(OrigInTy)) {
+        if (auto OutTy = dynamic_cast<const BooleanType *>(OrigOutTy)) {
+          llvm::Value *Out = Builder.CreateICmpNE(
+              In, llvm::ConstantInt::get(In->getType(), 0));
+          return ExprValue::getRValue(CE, Out);
+        }
+      }
+      assert(false);
       break;
     }
     }
@@ -633,20 +639,18 @@ void CodeGenFunction::emitCallRequire(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
   assert(Arguments.size() == 1 || Arguments.size() == 2);
 
-  std::string Message;
-  if (Arguments.size() == 2) {
-    Message = dynamic_cast<const StringLiteral *>(Arguments[1])->getValue();
-  }
-  llvm::Constant *MessageValue = createGlobalStringPtr(
-      getLLVMContext(), getCodeGenModule().getModule(), Message);
-
   llvm::BasicBlock *Continue = createBasicBlock("continue");
   llvm::BasicBlock *Revert = createBasicBlock("revert");
 
   emitBranchOnBoolExpr(Arguments[0], Continue, Revert);
 
   Builder.SetInsertPoint(Revert);
-  CGM.emitRevert(MessageValue, Builder.getInt32(Message.size()));
+  if (Arguments.size() == 2) {
+    llvm::Value *Message = emitExpr(Arguments[1]).load(Builder, CGM);
+    CGM.emitRevert(
+        Builder.CreateExtractValue(Message, {1}),
+        Builder.CreateTrunc(Builder.CreateExtractValue(Message, {0}), Int32Ty));
+  }
   Builder.CreateUnreachable();
 
   Builder.SetInsertPoint(Continue);
@@ -655,11 +659,7 @@ void CodeGenFunction::emitCallRequire(const CallExpr *CE) {
 void CodeGenFunction::emitCallAssert(const CallExpr *CE) {
   // assert function
   auto Arguments = CE->getArguments();
-
-  using namespace std::string_literals;
-  static const std::string Message = "Assertion Fail"s;
-  llvm::Constant *MessageValue = createGlobalStringPtr(
-      getLLVMContext(), getCodeGenModule().getModule(), Message);
+  assert(Arguments.size() == 1);
 
   llvm::BasicBlock *Continue = createBasicBlock("continue");
   llvm::BasicBlock *Revert = createBasicBlock("revert");
@@ -667,7 +667,6 @@ void CodeGenFunction::emitCallAssert(const CallExpr *CE) {
   emitBranchOnBoolExpr(Arguments[0], Continue, Revert);
 
   Builder.SetInsertPoint(Revert);
-  CGM.emitRevert(MessageValue, Builder.getInt32(Message.size()));
   Builder.CreateUnreachable();
 
   Builder.SetInsertPoint(Continue);
@@ -676,12 +675,14 @@ void CodeGenFunction::emitCallAssert(const CallExpr *CE) {
 void CodeGenFunction::emitCallRevert(const CallExpr *CE) {
   // revert function
   auto Arguments = CE->getArguments();
-  llvm::StringRef Message =
-      dynamic_cast<const StringLiteral *>(Arguments[0])->getValue();
+  assert(Arguments.size() == 0 || Arguments.size() == 1);
 
-  llvm::Constant *MessageValue = createGlobalStringPtr(
-      getLLVMContext(), getCodeGenModule().getModule(), Message);
-  CGM.emitRevert(MessageValue, Builder.getInt32(Message.size()));
+  if (Arguments.size() == 1) {
+    llvm::Value *Message = emitExpr(Arguments[0]).load(Builder, CGM);
+    CGM.emitRevert(
+        Builder.CreateExtractValue(Message, {1}),
+        Builder.CreateTrunc(Builder.CreateExtractValue(Message, {0}), Int32Ty));
+  }
   Builder.CreateUnreachable();
 }
 

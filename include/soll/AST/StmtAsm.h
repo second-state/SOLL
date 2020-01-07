@@ -15,9 +15,10 @@ class AsmForStmt : public Stmt {
   BlockPtr Body;
 
 public:
-  AsmForStmt(BlockPtr &&Init, ExprPtr &&Cond, BlockPtr &&Loop, BlockPtr &&Body)
-      : Init(std::move(Init)), Cond(std::move(Cond)), Loop(std::move(Loop)),
-        Body(std::move(Body)) {}
+  AsmForStmt(SourceRange L, BlockPtr &&Init, ExprPtr &&Cond, BlockPtr &&Loop,
+             BlockPtr &&Body)
+      : Stmt(L), Init(std::move(Init)), Cond(std::move(Cond)),
+        Loop(std::move(Loop)), Body(std::move(Body)) {}
 
   Block *getInit() { return Init.get(); }
   const Block *getInit() const { return Init.get(); }
@@ -34,26 +35,20 @@ public:
 
 class AsmSwitchCase : public Stmt {
   BlockPtr SubStmt;
-  std::unique_ptr<AsmSwitchCase> NextCase;
 
 public:
-  AsmSwitchCase(BlockPtr &&SubStmt)
-      : SubStmt(std::move(SubStmt)), NextCase(nullptr) {}
+  AsmSwitchCase(SourceRange L, BlockPtr &&SubStmt)
+      : Stmt(L), SubStmt(std::move(SubStmt)) {}
 
-  void setNextCase(std::unique_ptr<AsmSwitchCase> &&SC) {
-    NextCase = std::move(SC);
-  }
   Block *getSubStmt() { return SubStmt.get(); }
   const Block *getSubStmt() const { return SubStmt.get(); }
-  AsmSwitchCase *getNextCase() { return NextCase.get(); }
-  const AsmSwitchCase *getNextCase() const { return NextCase.get(); }
 };
 
 class AsmCaseStmt final : public AsmSwitchCase {
   ExprPtr LHS;
 
 public:
-  inline AsmCaseStmt(ExprPtr &&LHS, BlockPtr &&SubStmt);
+  inline AsmCaseStmt(SourceRange L, ExprPtr &&LHS, BlockPtr &&SubStmt);
 
   Expr *getLHS() { return LHS.get(); }
   const Expr *getLHS() const { return LHS.get(); }
@@ -64,7 +59,8 @@ public:
 
 class AsmDefaultStmt final : public AsmSwitchCase {
 public:
-  AsmDefaultStmt(BlockPtr &&SubStmt) : AsmSwitchCase(std::move(SubStmt)) {}
+  AsmDefaultStmt(SourceRange L, BlockPtr &&SubStmt)
+      : AsmSwitchCase(L, std::move(SubStmt)) {}
 
   void accept(StmtVisitor &) override;
   void accept(ConstStmtVisitor &) const override;
@@ -72,19 +68,17 @@ public:
 
 class AsmSwitchStmt final : public Stmt {
   ExprPtr Cond;
-  std::unique_ptr<AsmSwitchCase> FirstCase;
+  std::vector<std::unique_ptr<AsmSwitchCase>> Cases;
 
 public:
-  AsmSwitchStmt(ExprPtr &&Cond, std::unique_ptr<AsmSwitchCase> &&FirstCase)
-      : Cond(std::move(Cond)), FirstCase(std::move(FirstCase)) {}
+  AsmSwitchStmt(SourceRange L, ExprPtr &&Cond,
+                std::vector<std::unique_ptr<AsmSwitchCase>> &&Cases)
+      : Stmt(L), Cond(std::move(Cond)), Cases(std::move(Cases)) {}
 
   Expr *getCond() { return Cond.get(); }
   const Expr *getCond() const { return Cond.get(); }
-  AsmSwitchCase *getFirstCase() { return FirstCase.get(); }
-  const AsmSwitchCase *getFirstCase() const { return FirstCase.get(); }
-  std::list<AsmSwitchCase *> getSwitchCaseList();
-  std::list<const AsmSwitchCase *> getSwitchCaseList() const;
-  void addSwitchCase(std::unique_ptr<AsmSwitchCase> &&SC);
+  std::vector<AsmSwitchCase *> getCases();
+  std::vector<const AsmSwitchCase *> getCases() const;
 
   void accept(StmtVisitor &) override;
   void accept(ConstStmtVisitor &) const override;
@@ -95,8 +89,9 @@ class AsmAssignmentStmt : public Stmt {
   ExprPtr RHS;
 
 public:
-  AsmAssignmentStmt(std::unique_ptr<AsmIdentifierList> &&LHS, ExprPtr &&RHS)
-      : LHS(std::move(LHS)), RHS(std::move(RHS)) {}
+  AsmAssignmentStmt(SourceRange L, std::unique_ptr<AsmIdentifierList> &&LHS,
+                    ExprPtr &&RHS)
+      : Stmt(L), LHS(std::move(LHS)), RHS(std::move(RHS)) {}
 
   AsmIdentifierList *getLHS() { return LHS.get(); }
   const AsmIdentifierList *getLHS() const { return LHS.get(); }
@@ -116,7 +111,8 @@ class AsmFunctionDeclStmt : public Stmt {
   TypePtr FuncTy;
 
 public:
-  AsmFunctionDeclStmt(llvm::StringRef name, std::unique_ptr<ParamList> &&params,
+  AsmFunctionDeclStmt(SourceRange L, llvm::StringRef name,
+                      std::unique_ptr<ParamList> &&params,
                       std::unique_ptr<ParamList> &&returnParams,
                       std::unique_ptr<Block> &&body);
 
@@ -139,5 +135,5 @@ public:
 } // namespace soll
 
 #include "ExprAsm.h"
-soll::AsmCaseStmt::AsmCaseStmt(ExprPtr &&LHS, BlockPtr &&SubStmt)
-    : AsmSwitchCase(std::move(SubStmt)), LHS(std::move(LHS)) {}
+soll::AsmCaseStmt::AsmCaseStmt(SourceRange L, ExprPtr &&LHS, BlockPtr &&SubStmt)
+    : AsmSwitchCase(L, std::move(SubStmt)), LHS(std::move(LHS)) {}

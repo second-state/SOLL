@@ -3,24 +3,30 @@
 
 #include "soll/AST/ASTForward.h"
 #include "soll/AST/StmtVisitor.h"
+#include "soll/Basic/SourceLocation.h"
 #include <llvm/ADT/APInt.h>
 #include <vector>
 
 namespace soll {
 
 class Stmt {
+  SourceRange Location;
+
 public:
+  explicit Stmt(SourceRange L) : Location(L) {}
   virtual ~Stmt() noexcept {}
 
   virtual void accept(StmtVisitor &visitor) = 0;
   virtual void accept(ConstStmtVisitor &visitor) const = 0;
+
+  const SourceRange &getLocation() const { return Location; }
 };
 
 class EmitStmt : public Stmt {
   std::unique_ptr<CallExpr> EventCall;
 
 public:
-  inline EmitStmt(std::unique_ptr<CallExpr> &&EventCall);
+  inline EmitStmt(SourceRange L, std::unique_ptr<CallExpr> &&EventCall);
 
   CallExpr *getCall() { return EventCall.get(); }
   const CallExpr *getCall() const { return EventCall.get(); }
@@ -34,7 +40,8 @@ class DeclStmt : public Stmt {
   ExprPtr Value;
 
 public:
-  inline DeclStmt(std::vector<VarDeclBasePtr> &&VarDecls, ExprPtr &&Value);
+  inline DeclStmt(SourceRange L, std::vector<VarDeclBasePtr> &&VarDecls,
+                  ExprPtr &&Value);
 
   std::vector<VarDeclBase *> getVarDecls();
   std::vector<const VarDeclBase *> getVarDecls() const;
@@ -45,13 +52,17 @@ public:
   void accept(ConstStmtVisitor &visitor) const override;
 };
 
-class ExprStmt : public Stmt {};
+class ExprStmt : public Stmt {
+public:
+  explicit ExprStmt(SourceRange L) : Stmt(L) {}
+};
 
 class Block : public Stmt {
   std::vector<StmtPtr> Stmts;
 
 public:
-  Block(std::vector<StmtPtr> &&Stmts) : Stmts(std::move(Stmts)) {}
+  Block(SourceRange L, std::vector<StmtPtr> &&Stmts)
+      : Stmt(L), Stmts(std::move(Stmts)) {}
 
   /// this setter transfers the ownerships of Stmt from function argument to
   /// class instance
@@ -70,8 +81,9 @@ class IfStmt : public Stmt {
   StmtPtr Else; /// optional
 
 public:
-  IfStmt(ExprPtr &&Cond, StmtPtr &&Then, StmtPtr &&Else)
-      : Cond(std::move(Cond)), Then(std::move(Then)), Else(std::move(Else)) {}
+  IfStmt(SourceRange L, ExprPtr &&Cond, StmtPtr &&Then, StmtPtr &&Else)
+      : Stmt(L), Cond(std::move(Cond)), Then(std::move(Then)),
+        Else(std::move(Else)) {}
 
   void setCond(ExprPtr &&Cond) { this->Cond = std::move(Cond); }
   void setThen(StmtPtr &&Then) { this->Then = std::move(Then); }
@@ -90,16 +102,15 @@ public:
   void accept(ConstStmtVisitor &visitor) const override;
 };
 
-class BreakableStmt : public Stmt {};
-
 class WhileStmt : public Stmt {
   ExprPtr Cond;
   StmtPtr Body;
   bool DoWhile;
 
 public:
-  WhileStmt(ExprPtr &&Cond, StmtPtr &&Body, bool DoWhile)
-      : Cond(std::move(Cond)), Body(std::move(Body)), DoWhile(DoWhile) {}
+  WhileStmt(SourceRange L, ExprPtr &&Cond, StmtPtr &&Body, bool DoWhile)
+      : Stmt(L), Cond(std::move(Cond)), Body(std::move(Body)),
+        DoWhile(DoWhile) {}
 
   void setCond(ExprPtr &&Cond) { this->Cond = std::move(Cond); }
   void setBody(StmtPtr &&Body) { this->Body = std::move(Body); }
@@ -122,9 +133,10 @@ class ForStmt : public Stmt {
   StmtPtr Body;
 
 public:
-  ForStmt(StmtPtr &&Init, ExprPtr &&Cond, ExprPtr &&Loop, StmtPtr &&Body)
-      : Init(std::move(Init)), Cond(std::move(Cond)), Loop(std::move(Loop)),
-        Body(std::move(Body)) {}
+  ForStmt(SourceRange L, StmtPtr &&Init, ExprPtr &&Cond, ExprPtr &&Loop,
+          StmtPtr &&Body)
+      : Stmt(L), Init(std::move(Init)), Cond(std::move(Cond)),
+        Loop(std::move(Loop)), Body(std::move(Body)) {}
 
   void setInit(StmtPtr &&Init) { this->Init = std::move(Init); }
   void setCond(ExprPtr &&Cond) { this->Cond = std::move(Cond); }
@@ -146,7 +158,7 @@ public:
 
 class ContinueStmt : public Stmt {
 public:
-  ContinueStmt() = default;
+  ContinueStmt(SourceRange L) : Stmt(L) {}
 
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
@@ -154,7 +166,7 @@ public:
 
 class BreakStmt : public Stmt {
 public:
-  BreakStmt() = default;
+  BreakStmt(SourceRange L) : Stmt(L){};
 
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
@@ -164,8 +176,8 @@ class ReturnStmt : public Stmt {
   ExprPtr RetExpr;
 
 public:
-  ReturnStmt() = default;
-  ReturnStmt(ExprPtr &&RetExpr) : RetExpr(std::move(RetExpr)) {}
+  ReturnStmt(SourceRange L, ExprPtr &&RetExpr)
+      : Stmt(L), RetExpr(std::move(RetExpr)) {}
 
   void setRetValue(ExprPtr &&E) { RetExpr = std::move(E); }
 
@@ -179,10 +191,10 @@ public:
 } // namespace soll
 
 #include "Expr.h"
-soll::EmitStmt::EmitStmt(std::unique_ptr<CallExpr> &&EventCall)
-    : EventCall(std::move(EventCall)) {}
+soll::EmitStmt::EmitStmt(SourceRange L, std::unique_ptr<CallExpr> &&EventCall)
+    : Stmt(L), EventCall(std::move(EventCall)) {}
 
 #include "Decl.h"
-soll::DeclStmt::DeclStmt(std::vector<VarDeclBasePtr> &&VarDecls,
+soll::DeclStmt::DeclStmt(SourceRange L, std::vector<VarDeclBasePtr> &&VarDecls,
                          ExprPtr &&Value)
-    : VarDecls(std::move(VarDecls)), Value(std::move(Value)) {}
+    : Stmt(L), VarDecls(std::move(VarDecls)), Value(std::move(Value)) {}

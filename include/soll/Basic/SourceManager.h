@@ -169,7 +169,6 @@ public:
 
   std::pair<FileID, unsigned> getDecomposedLoc(SourceLocation Loc) const {
     FileID FID = getFileID(Loc);
-    bool Invalid = false;
     const auto Entry = getSLocEntry(FID);
     if (!Entry)
       return std::make_pair(FileID(), 0);

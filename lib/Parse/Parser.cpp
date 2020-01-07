@@ -4,8 +4,6 @@
 #include "soll/Basic/OperatorPrecedence.h"
 #include "soll/Lex/Lexer.h"
 
-using namespace std;
-
 namespace soll {
 
 static BinaryOperatorKind token2bop(const Token &Tok) {
@@ -323,38 +321,46 @@ Parser::Parser(Lexer &TheLexer, Sema &Actions, DiagnosticsEngine &Diags)
   Tok = *TheLexer.CachedLex();
 }
 
-unique_ptr<SourceUnit> Parser::parse() {
-  ParseScope SourceUnitScope{this, 0};
-  vector<unique_ptr<Decl>> Nodes;
+std::unique_ptr<SourceUnit> Parser::parse() {
+  std::unique_ptr<SourceUnit> SU;
+  {
+    ParseScope SourceUnitScope{this, 0};
+    std::vector<std::unique_ptr<Decl>> Nodes;
+    const SourceLocation Begin = Tok.getLocation();
 
-  while (Tok.isNot(tok::eof)) {
-    switch (Tok.getKind()) {
-    case tok::kw_pragma:
-      Nodes.push_back(parsePragmaDirective());
-      break;
-    case tok::kw_import:
-      ConsumeToken();
-      break;
-    case tok::kw_interface:
-    case tok::kw_library:
-    case tok::kw_contract: {
-      Nodes.push_back(parseContractDefinition());
-      break;
+    while (Tok.isNot(tok::eof)) {
+      switch (Tok.getKind()) {
+      case tok::kw_pragma:
+        Nodes.push_back(parsePragmaDirective());
+        break;
+      case tok::kw_import:
+        ConsumeToken();
+        break;
+      case tok::kw_interface:
+      case tok::kw_library:
+      case tok::kw_contract: {
+        Nodes.push_back(parseContractDefinition());
+        break;
+      }
+      default:
+        ConsumeAnyToken();
+        break;
+      }
     }
-    default:
-      ConsumeAnyToken();
-      break;
-    }
+    SU = std::make_unique<SourceUnit>(SourceRange(Begin, Tok.getLocation()),
+                                      std::move(Nodes));
   }
-  return make_unique<SourceUnit>(std::move(Nodes));
+  Actions.resolveType(*SU);
+  return SU;
 }
 
-unique_ptr<PragmaDirective> Parser::parsePragmaDirective() {
+std::unique_ptr<PragmaDirective> Parser::parsePragmaDirective() {
   // pragma anything* ;
   // Currently supported:
   // pragma solidity ^0.4.0 || ^0.3.0;
-  vector<string> Literals;
-  vector<Token> Tokens;
+  const SourceLocation Begin = Tok.getLocation();
+  std::vector<std::string> Literals;
+  std::vector<Token> Tokens;
   ConsumeToken(); // 'pragma'
   do {
     const tok::TokenKind Kind = Tok.getKind();
@@ -382,12 +388,13 @@ unique_ptr<PragmaDirective> Parser::parsePragmaDirective() {
       break;
     }
   } while (!Tok.isOneOf(tok::semi, tok::eof));
+  const SourceLocation End = Tok.getEndLoc();
   if (ExpectAndConsumeSemi()) {
     return nullptr;
   }
 
   // TODO: Implement version recognize and compare. ref: parsePragmaVersion
-  return std::make_unique<PragmaDirective>();
+  return std::make_unique<PragmaDirective>(SourceRange(Begin, End));
 }
 
 ContractDecl::ContractKind Parser::parseContractKind() {
@@ -470,7 +477,8 @@ DataLocation Parser::parseDataLocation() {
   }
 }
 
-unique_ptr<ContractDecl> Parser::parseContractDefinition() {
+std::unique_ptr<ContractDecl> Parser::parseContractDefinition() {
+  const SourceLocation Begin = Tok.getLocation();
   ParseScope ContractScope{this, 0};
   ContractDecl::ContractKind CtKind = parseContractKind();
   if (!Tok.isAnyIdentifier()) {
@@ -480,10 +488,10 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
   llvm::StringRef Name = Tok.getIdentifierInfo()->getName();
   ConsumeToken();
 
-  vector<unique_ptr<InheritanceSpecifier>> BaseContracts;
-  vector<unique_ptr<Decl>> SubNodes;
-  unique_ptr<FunctionDecl> Constructor;
-  unique_ptr<FunctionDecl> Fallback;
+  std::vector<std::unique_ptr<InheritanceSpecifier>> BaseContracts;
+  std::vector<std::unique_ptr<Decl>> SubNodes;
+  std::unique_ptr<FunctionDecl> Constructor;
+  std::unique_ptr<FunctionDecl> Fallback;
 
   if (TryConsumeToken(tok::kw_is)) {
     do {
@@ -492,10 +500,10 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
         Diag(diag::err_expected) << tok::identifier;
         return nullptr;
       }
-      string BaseName = Tok.getIdentifierInfo()->getName();
+      std::string BaseName = Tok.getIdentifierInfo()->getName();
       ConsumeToken(); // identifier
 
-      vector<std::unique_ptr<Expr>> Arguments;
+      std::vector<std::unique_ptr<Expr>> Arguments;
       if (isTokenParen()) {
         ConsumeParen();
         while (!isTokenParen()) {
@@ -514,8 +522,10 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
     return nullptr;
   }
 
+  SourceLocation End = Tok.getEndLoc();
   while (Tok.isNot(tok::eof)) {
     if (Tok.is(tok::r_brace)) {
+      End = Tok.getEndLoc();
       ConsumeBrace();
       break;
     }
@@ -569,13 +579,9 @@ unique_ptr<ContractDecl> Parser::parseContractDefinition() {
     }
   }
   auto CD = std::make_unique<ContractDecl>(
-      Name, std::move(BaseContracts), std::move(SubNodes),
-      std::move(Constructor), std::move(Fallback), CtKind);
+      SourceRange(Begin, End), Name, std::move(BaseContracts),
+      std::move(SubNodes), std::move(Constructor), std::move(Fallback), CtKind);
   Actions.addDecl(CD.get());
-  for (auto &LPD : LateParsedDeclarations) {
-    LPD->ParseLexedMethodDefs();
-  }
-  LateParsedDeclarations.clear();
   return CD;
 }
 
@@ -621,8 +627,8 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
       std::vector<ExprPtr> Arguments;
       if (Tok.is(tok::l_paren)) {
         ConsumeParen(); // (
-        vector<llvm::StringRef> Names;
-        tie(Arguments, Names) = parseFunctionCallArguments();
+        std::vector<llvm::StringRef> Names;
+        std::tie(Arguments, Names) = parseFunctionCallArguments();
         ConsumeParen(); // )
       }
       Result.Modifiers.push_back(std::make_unique<ModifierInvocation>(
@@ -643,82 +649,42 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
     bool const PermitEmptyParameterList = false;
     Result.ReturnParameters =
         parseParameterList(Options, PermitEmptyParameterList);
-    vector<TypePtr> Tys;
+    std::vector<TypePtr> Tys;
     for (auto &&Return : Result.ReturnParameters->getParams())
       Tys.push_back(Return->GetType());
-    Actions.SetFunRtnTys(Tys);
+    Actions.SetFunRtnTys(std::move(Tys));
   } else {
-    Result.ReturnParameters =
-        make_unique<ParamList>(std::vector<std::unique_ptr<VarDeclBase>>());
+    Result.ReturnParameters = std::make_unique<ParamList>(
+        std::vector<std::unique_ptr<VarDeclBase>>());
   }
 
   return Result;
 }
 
-void Parser::LexedMethod::ParseLexedMethodDefs() {
-  Self->ParseLexedMethodDef(*this);
-}
-
-void Parser::ParseLexedMethodDef(LexedMethod &LM) {
-  {
-    Token BodyEnd;
-    BodyEnd.setKind(tok::eof);
-    BodyEnd.setLocation(LM.Toks.back().getEndLoc());
-    LM.Toks.emplace_back(std::move(BodyEnd));
-    // Append the current token at the end of the new token stream so that it
-    // doesn't get lost.
-    LM.Toks.emplace_back(Tok);
-  }
-  TheLexer.EnterTokenStream(LM.Toks.data(), LM.Toks.size());
-
-  // Consume the previously pushed token.
-  ConsumeAnyToken();
-
-  auto *FD = dynamic_cast<FunctionDecl *>(LM.D);
-  ParseScope ArgumentScope{this, 0};
-  for (auto *P : FD->getParams()->getParams()) {
-    Actions.addDecl(P);
-  }
-  {
-    vector<TypePtr> Tys;
-    for (auto &&Return : FD->getReturnParams()->getParams())
-      Tys.push_back(Return->GetType());
-    Actions.SetFunRtnTys(Tys);
-  }
-
-  ParseScope FunctionScope{this, Scope::FunctionScope};
-  FD->setBody(parseBlock());
-  if (!Tok.is(tok::eof)) {
-    assert(false);
-  }
-  ConsumeToken(); // eof
-  Actions.EraseFunRtnTys();
-}
-
-unique_ptr<FunctionDecl>
+std::unique_ptr<FunctionDecl>
 Parser::parseFunctionDefinitionOrFunctionTypeStateVariable() {
+  const SourceLocation Begin = Tok.getLocation();
   ParseScope ArgumentScope{this, 0};
   FunctionHeaderParserResult Header = parseFunctionHeader(false, true);
   if (Header.IsConstructor || !Header.Modifiers.empty() ||
       !Header.Name.empty() || Tok.isOneOf(tok::semi, tok::l_brace)) {
     // this has to be a function, consume the tokens and store them for later
     // parsing
-    auto FD = Actions.CreateFunctionDecl(
-        Header.Name, Header.Vsblty, Header.SM, Header.IsConstructor,
-        Header.IsFallback, std::move(Header.Parameters),
-        std::move(Header.Modifiers), std::move(Header.ReturnParameters),
-        nullptr);
+    SourceLocation End = Tok.getEndLoc();
+    std::unique_ptr<Block> B;
     if (Tok.is(tok::l_brace)) {
-      auto LM = std::make_unique<LexedMethod>(this, FD.get());
-      LM->Toks.push_back(Tok);
-      ConsumeBrace();
-      if (!ConsumeAndStoreUntil(tok::r_brace, LM->Toks)) {
-        assert(false);
-      }
-      LateParsedDeclarations.emplace_back(std::move(LM));
+      ParseScope FunctionScope{this, Scope::FunctionScope};
+      B = parseBlock();
+      End = B->getLocation().getEnd();
     } else if (ExpectAndConsumeSemi()) {
+      Diag(diag::err_expected_event);
       return nullptr;
     }
+    auto FD = Actions.CreateFunctionDecl(
+        SourceRange(Begin, End), Header.Name, Header.Vsblty, Header.SM,
+        Header.IsConstructor, Header.IsFallback, std::move(Header.Parameters),
+        std::move(Header.Modifiers), std::move(Header.ReturnParameters),
+        std::move(B));
     return FD;
   } else {
     // TODO: State Variable case.
@@ -784,9 +750,10 @@ bool Parser::ConsumeAndStoreUntil(tok::TokenKind T1, tok::TokenKind T2,
   }
 }
 
-unique_ptr<VarDecl>
+std::unique_ptr<VarDecl>
 Parser::parseVariableDeclaration(VarDeclParserOptions const &Options,
                                  TypePtr &&LookAheadArrayType) {
+  const SourceLocation Begin = Tok.getLocation();
   TypePtr T;
   if (LookAheadArrayType) {
     T = std::move(LookAheadArrayType);
@@ -847,22 +814,24 @@ Parser::parseVariableDeclaration(VarDeclParserOptions const &Options,
     ConsumeToken();
   }
 
-  unique_ptr<Expr> Value;
+  std::unique_ptr<Expr> Value;
   if (Options.AllowInitialValue) {
     if (TryConsumeToken(tok::equal)) {
-      Value = parseExpression();
+      Value = Actions.CreateDummy(parseExpression());
     }
   }
 
-  auto VD = std::make_unique<VarDecl>(std::move(T), Name, std::move(Value),
-                                      Vsblty, Options.IsStateVariable,
-                                      IsIndexed, IsDeclaredConst, Loc);
+  auto VD = std::make_unique<VarDecl>(SourceRange(Begin, Tok.getEndLoc()), Name,
+                                      Vsblty, std::move(T), std::move(Value),
+                                      Options.IsStateVariable, IsIndexed,
+                                      IsDeclaredConst, Loc);
 
   Actions.addDecl(VD.get());
   return VD;
 }
 
-unique_ptr<EventDecl> Parser::parseEventDefinition() {
+std::unique_ptr<EventDecl> Parser::parseEventDefinition() {
+  const SourceLocation Begin = Tok.getLocation();
   const std::string Name = Tok.getIdentifierInfo()->getName();
   ConsumeToken(); // identifier
   VarDeclParserOptions Options;
@@ -875,7 +844,8 @@ unique_ptr<EventDecl> Parser::parseEventDefinition() {
   if (ExpectAndConsumeSemi()) {
     return nullptr;
   }
-  auto ED = Actions.CreateEventDecl(Name, std::move(Parameters), Anonymous);
+  auto ED = Actions.CreateEventDecl(SourceRange(Begin, Tok.getEndLoc()), Name,
+                                    std::move(Parameters), Anonymous);
   Actions.addDecl(ED.get());
   return ED;
 }
@@ -894,12 +864,13 @@ TypePtr Parser::parseTypeNameSuffix(TypePtr T) {
       if (ExpectAndConsume(tok::r_square)) {
         return nullptr;
       }
-      T = make_shared<ArrayType>(std::move(T), NumValue, parseDataLocation());
+      T = std::make_shared<ArrayType>(std::move(T), NumValue,
+                                      parseDataLocation());
     } else {
       if (ExpectAndConsume(tok::r_square)) {
         return nullptr;
       }
-      T = make_shared<ArrayType>(std::move(T), parseDataLocation());
+      T = std::make_shared<ArrayType>(std::move(T), parseDataLocation());
     }
   }
   return T;
@@ -962,7 +933,7 @@ TypePtr Parser::parseTypeName(bool AllowVar) {
   return T;
 }
 
-shared_ptr<MappingType> Parser::parseMapping() {
+std::shared_ptr<MappingType> Parser::parseMapping() {
   if (ExpectAndConsume(tok::kw_mapping)) {
     return nullptr;
   }
@@ -985,10 +956,10 @@ shared_ptr<MappingType> Parser::parseMapping() {
                                        std::move(ValueType));
 }
 
-unique_ptr<ParamList>
+std::unique_ptr<ParamList>
 Parser::parseParameterList(VarDeclParserOptions const &_Options,
                            bool AllowEmpty) {
-  vector<unique_ptr<VarDeclBase>> Parameters;
+  std::vector<std::unique_ptr<VarDeclBase>> Parameters;
   VarDeclParserOptions Options(_Options);
   Options.AllowEmptyName = true;
   if (ExpectAndConsume(tok::l_paren)) {
@@ -1010,9 +981,10 @@ Parser::parseParameterList(VarDeclParserOptions const &_Options,
   return std::make_unique<ParamList>(std::move(Parameters));
 }
 
-unique_ptr<Block> Parser::parseBlock() {
+std::unique_ptr<Block> Parser::parseBlock() {
+  const SourceLocation Begin = Tok.getLocation();
   ParseScope BlockScope{this, 0};
-  vector<unique_ptr<Stmt>> Statements;
+  std::vector<std::unique_ptr<Stmt>> Statements;
   if (ExpectAndConsume(tok::l_brace)) {
     return nullptr;
   }
@@ -1023,13 +995,15 @@ unique_ptr<Block> Parser::parseBlock() {
     }
     Statements.emplace_back(std::move(Statement));
   }
+  const SourceLocation End = Tok.getEndLoc();
   ConsumeBrace(); // '}'
-  return std::make_unique<Block>(std::move(Statements));
+  return std::make_unique<Block>(SourceRange(Begin, End),
+                                 std::move(Statements));
 }
 
 // TODO: < Parse all statements >
-unique_ptr<Stmt> Parser::parseStatement() {
-  unique_ptr<Stmt> Statement;
+std::unique_ptr<Stmt> Parser::parseStatement() {
+  std::unique_ptr<Stmt> S;
   switch (Tok.getKind()) {
   case tok::kw_if:
     return parseIfStatement();
@@ -1041,80 +1015,109 @@ unique_ptr<Stmt> Parser::parseStatement() {
     return parseForStatement();
   case tok::l_brace:
     return parseBlock();
-  case tok::kw_continue:
+  case tok::kw_continue: {
+    const SourceLocation Begin = Tok.getLocation();
     ConsumeToken(); // 'continue'
-    Statement = std::make_unique<ContinueStmt>();
-    break;
-  case tok::kw_break:
-    ConsumeToken(); // 'break'
-    Statement = std::make_unique<BreakStmt>();
-    break;
-  case tok::kw_return:
-    ConsumeToken(); // 'return'
-    if (Tok.isNot(tok::semi)) {
-      Statement = Actions.CreateReturnStmt(parseExpression());
-    } else {
-      Statement = Actions.CreateReturnStmt();
+    const SourceLocation End = Tok.getEndLoc();
+    if (ExpectAndConsumeSemi()) {
+      return nullptr;
     }
+    S = std::make_unique<ContinueStmt>(SourceRange(Begin, End));
     break;
+  }
+  case tok::kw_break: {
+    const SourceLocation Begin = Tok.getLocation();
+    ConsumeToken(); // 'break'
+    const SourceLocation End = Tok.getEndLoc();
+    if (ExpectAndConsumeSemi()) {
+      return nullptr;
+    }
+    S = std::make_unique<BreakStmt>(SourceRange(Begin, End));
+    break;
+  }
+  case tok::kw_return: {
+    const SourceLocation Begin = Tok.getLocation();
+    ConsumeToken(); // 'return'
+    std::unique_ptr<Expr> E;
+    if (Tok.isNot(tok::semi)) {
+      E = parseExpression();
+    }
+    const SourceLocation End = Tok.getEndLoc();
+    if (ExpectAndConsumeSemi()) {
+      return nullptr;
+    }
+    S = std::make_unique<ReturnStmt>(SourceRange(Begin, End), std::move(E));
+    break;
+  }
   case tok::kw_assembly:
     // TODO: parseStatement kw_assembly
+    Diag(diag::err_unimplemented_token) << tok::kw_assembly;
     ConsumeToken(); // 'assembly'
     break;
   case tok::kw_emit:
-    Statement = parseEmitStatement();
+    S = parseEmitStatement();
+    if (ExpectAndConsumeSemi()) {
+      return nullptr;
+    }
     break;
   case tok::identifier:
   case tok::raw_identifier:
   default:
-    Statement = parseSimpleStatement();
+    S = parseSimpleStatement();
+    if (ExpectAndConsumeSemi()) {
+      return nullptr;
+    }
     break;
   }
-  if (ExpectAndConsumeSemi()) {
-    return nullptr;
-  }
-  return Statement;
+  return S;
 }
 
-unique_ptr<IfStmt> Parser::parseIfStatement() {
+std::unique_ptr<IfStmt> Parser::parseIfStatement() {
+  const SourceLocation Begin = Tok.getLocation();
   ConsumeToken(); // 'if'
   if (ExpectAndConsume(tok::l_paren)) {
     return nullptr;
   }
-  unique_ptr<Expr> Condition = parseExpression();
+  std::unique_ptr<Expr> Condition = parseExpression();
   if (ExpectAndConsume(tok::r_paren)) {
     return nullptr;
   }
-  unique_ptr<Stmt> TrueBody = parseStatement();
-  unique_ptr<Stmt> FalseBody;
+  std::unique_ptr<Stmt> TrueBody = parseStatement();
+  SourceLocation End = TrueBody->getLocation().getEnd();
+
+  std::unique_ptr<Stmt> FalseBody;
   if (TryConsumeToken(tok::kw_else)) {
     FalseBody = parseStatement();
+    End = FalseBody->getLocation().getEnd();
   }
-  return std::make_unique<IfStmt>(std::move(Condition), std::move(TrueBody),
-                                  std::move(FalseBody));
+  return std::make_unique<IfStmt>(SourceRange(Begin, End), std::move(Condition),
+                                  std::move(TrueBody), std::move(FalseBody));
 }
 
-unique_ptr<WhileStmt> Parser::parseWhileStatement() {
+std::unique_ptr<WhileStmt> Parser::parseWhileStatement() {
+  const SourceLocation Begin = Tok.getLocation();
   ConsumeToken(); // 'while'
   if (ExpectAndConsume(tok::l_paren)) {
     return nullptr;
   }
-  unique_ptr<Expr> Condition = parseExpression();
+  std::unique_ptr<Expr> Condition = parseExpression();
   if (ExpectAndConsume(tok::r_paren)) {
     return nullptr;
   }
-  unique_ptr<Stmt> Body;
+  std::unique_ptr<Stmt> Body;
   {
     ParseScope WhileScope{this, Scope::BreakScope | Scope::ContinueScope};
     Body = parseStatement();
   }
-  return std::make_unique<WhileStmt>(std::move(Condition), std::move(Body),
-                                     false);
+  const SourceLocation End = Body->getLocation().getEnd();
+  return std::make_unique<WhileStmt>(
+      SourceRange(Begin, End), std::move(Condition), std::move(Body), false);
 }
 
-unique_ptr<WhileStmt> Parser::parseDoWhileStatement() {
+std::unique_ptr<WhileStmt> Parser::parseDoWhileStatement() {
+  const SourceLocation Begin = Tok.getLocation();
   ConsumeToken(); // 'do'
-  unique_ptr<Stmt> Body;
+  std::unique_ptr<Stmt> Body;
   {
     ParseScope DoWhileScope{this, Scope::BreakScope | Scope::ContinueScope};
     Body = parseStatement();
@@ -1125,16 +1128,20 @@ unique_ptr<WhileStmt> Parser::parseDoWhileStatement() {
   if (ExpectAndConsume(tok::l_brace)) {
     return nullptr;
   }
-  unique_ptr<Expr> Condition = parseExpression();
+  std::unique_ptr<Expr> Condition = parseExpression();
   if (ExpectAndConsume(tok::r_brace)) {
     return nullptr;
   }
-  ExpectAndConsumeSemi();
-  return std::make_unique<WhileStmt>(std::move(Condition), std::move(Body),
-                                     true);
+  const SourceLocation End = Tok.getEndLoc();
+  if (ExpectAndConsumeSemi()) {
+    return nullptr;
+  }
+  return std::make_unique<WhileStmt>(
+      SourceRange(Begin, End), std::move(Condition), std::move(Body), true);
 }
 
-unique_ptr<ForStmt> Parser::parseForStatement() {
+std::unique_ptr<ForStmt> Parser::parseForStatement() {
+  const SourceLocation Begin = Tok.getLocation();
   ConsumeToken(); // 'for'
   if (ExpectAndConsume(tok::l_paren)) {
     return nullptr;
@@ -1142,35 +1149,45 @@ unique_ptr<ForStmt> Parser::parseForStatement() {
 
   // TODO: Maybe here have some predicate like peekExpression() instead of
   // checking for semicolon and RParen?
-  unique_ptr<Stmt> Init;
+  std::unique_ptr<Stmt> Init;
   if (Tok.isNot(tok::semi)) {
     Init = parseSimpleStatement();
   }
-  ExpectAndConsumeSemi();
+  if (ExpectAndConsumeSemi()) {
+    return nullptr;
+  }
 
-  unique_ptr<Expr> Condition;
+  std::unique_ptr<Expr> Condition;
   if (Tok.isNot(tok::semi)) {
     Condition = parseExpression();
   }
-  ExpectAndConsumeSemi();
+  if (ExpectAndConsumeSemi()) {
+    return nullptr;
+  }
 
-  unique_ptr<Expr> Loop;
+  std::unique_ptr<Expr> Loop;
   if (Tok.isNot(tok::r_paren)) {
     Loop = parseExpression();
   }
-  ExpectAndConsume(tok::r_paren);
+  if (ExpectAndConsume(tok::r_paren)) {
+    return nullptr;
+  }
 
-  unique_ptr<Stmt> Body;
+  std::unique_ptr<Stmt> Body;
   {
     ParseScope ForScope{this, Scope::BreakScope | Scope::ContinueScope};
     Body = parseStatement();
   }
-  return std::make_unique<ForStmt>(std::move(Init), std::move(Condition),
-                                   std::move(Loop), std::move(Body));
+  const SourceLocation End = Body->getLocation().getEnd();
+  return std::make_unique<ForStmt>(SourceRange(Begin, End), std::move(Init),
+                                   std::move(Condition), std::move(Loop),
+                                   std::move(Body));
 }
 
-unique_ptr<EmitStmt> Parser::parseEmitStatement() {
+std::unique_ptr<EmitStmt> Parser::parseEmitStatement() {
+  const SourceLocation Begin = Tok.getLocation();
   ConsumeToken(); // 'emit'
+  const SourceLocation CallBegin = Tok.getLocation();
 
   IndexAccessedPath Iap;
   while (true) {
@@ -1190,21 +1207,23 @@ unique_ptr<EmitStmt> Parser::parseEmitStatement() {
   if (ExpectAndConsume(tok::l_paren)) {
     return nullptr;
   }
-  vector<unique_ptr<Expr>> Arguments;
-  vector<llvm::StringRef> Names;
-  tie(Arguments, Names) = parseFunctionCallArguments();
+  std::vector<std::unique_ptr<Expr>> Arguments;
+  std::vector<llvm::StringRef> Names;
+  std::tie(Arguments, Names) = parseFunctionCallArguments();
+  const SourceLocation End = Tok.getEndLoc();
   if (ExpectAndConsume(tok::r_paren)) {
     return nullptr;
   }
-  unique_ptr<CallExpr> Call =
-      Actions.CreateCallExpr(std::move(EventName), std::move(Arguments));
-  return make_unique<EmitStmt>(std::move(Call));
+  std::unique_ptr<CallExpr> Call = Actions.CreateCallExpr(
+      SourceRange(CallBegin, End), std::move(EventName), std::move(Arguments));
+  return std::make_unique<EmitStmt>(SourceRange(Begin, End), std::move(Call));
 }
 
-unique_ptr<Stmt> Parser::parseSimpleStatement() {
+std::unique_ptr<Stmt> Parser::parseSimpleStatement() {
+  const SourceLocation Begin = Tok.getLocation();
   LookAheadInfo StatementType;
   IndexAccessedPath Iap;
-  unique_ptr<Expr> Expression;
+  std::unique_ptr<Expr> Expression;
 
   bool IsParenExpr = false;
   if (isTokenParen()) {
@@ -1212,7 +1231,7 @@ unique_ptr<Stmt> Parser::parseSimpleStatement() {
     IsParenExpr = true;
   }
 
-  tie(StatementType, Iap) = tryParseIndexAccessedPath();
+  std::tie(StatementType, Iap) = tryParseIndexAccessedPath();
   switch (StatementType) {
   case LookAheadInfo::VariableDeclaration:
     return parseVariableDeclarationStatement(
@@ -1224,22 +1243,25 @@ unique_ptr<Stmt> Parser::parseSimpleStatement() {
     assert(false && "Unhandle statement.");
   }
   if (IsParenExpr) {
+    const SourceLocation End = Tok.getEndLoc();
     if (ExpectAndConsume(tok::r_paren)) {
       return nullptr;
     }
-    return parseExpression(std::make_unique<ParenExpr>(std::move(Expression)));
+    return parseExpression(std::make_unique<ParenExpr>(SourceRange(Begin, End),
+                                                       std::move(Expression)));
   }
   return Expression;
 }
 
-unique_ptr<DeclStmt>
+std::unique_ptr<DeclStmt>
 Parser::parseVariableDeclarationStatement(TypePtr &&LookAheadArrayType) {
   // This does not parse multi variable declaration statements starting directly
   // with
   // `(`, they are parsed in parseSimpleStatement, because they are hard to
   // distinguish from tuple expressions.
-  vector<unique_ptr<VarDeclBase>> Variables;
-  unique_ptr<Expr> Value;
+  const SourceLocation Begin = Tok.getLocation();
+  std::vector<std::unique_ptr<VarDeclBase>> Variables;
+  std::unique_ptr<Expr> Value;
   if (!LookAheadArrayType && Tok.is(tok::kw_var) &&
       NextToken().is(tok::l_paren)) {
     // [0.4.20] The var keyword has been deprecated for security reasons.
@@ -1253,11 +1275,14 @@ Parser::parseVariableDeclarationStatement(TypePtr &&LookAheadArrayType) {
     Variables.push_back(
         parseVariableDeclaration(Options, std::move(LookAheadArrayType)));
   }
+  SourceLocation End = Variables.back()->getLocation().getEnd();
   if (TryConsumeToken(tok::equal)) {
-    Value = parseExpression();
+    Value = Actions.CreateDummy(parseExpression());
+    End = Value->getLocation().getEnd();
   }
 
-  return std::make_unique<DeclStmt>(std::move(Variables), std::move(Value));
+  return std::make_unique<DeclStmt>(SourceRange(Begin, End),
+                                    std::move(Variables), std::move(Value));
 }
 
 bool Parser::IndexAccessedPath::empty() const {
@@ -1267,7 +1292,7 @@ bool Parser::IndexAccessedPath::empty() const {
   return Path.empty() && (ElementaryType == nullptr) && Indices.empty();
 }
 
-pair<Parser::LookAheadInfo, Parser::IndexAccessedPath>
+std::pair<Parser::LookAheadInfo, Parser::IndexAccessedPath>
 Parser::tryParseIndexAccessedPath() {
   // These two cases are very hard to distinguish:
   // x[7 * 20 + 3] a;     and     x[7 * 20 + 3] = 9;
@@ -1281,7 +1306,7 @@ Parser::tryParseIndexAccessedPath() {
   switch (StatementType) {
   case LookAheadInfo::VariableDeclaration:
   case LookAheadInfo::Expression:
-    return make_pair(StatementType, IndexAccessedPath());
+    return std::make_pair(StatementType, IndexAccessedPath());
   default:
     break;
   }
@@ -1294,9 +1319,9 @@ Parser::tryParseIndexAccessedPath() {
 
   if (Tok.isOneOf(tok::identifier, tok::kw_memory, tok::kw_storage,
                   tok::kw_calldata))
-    return make_pair(LookAheadInfo::VariableDeclaration, move(Iap));
+    return std::make_pair(LookAheadInfo::VariableDeclaration, std::move(Iap));
   else
-    return make_pair(LookAheadInfo::Expression, move(Iap));
+    return std::make_pair(LookAheadInfo::Expression, std::move(Iap));
 }
 
 Parser::LookAheadInfo Parser::peekStatementType() const {
@@ -1350,7 +1375,8 @@ Parser::IndexAccessedPath Parser::parseIndexAccessedPath() {
 
   while (Tok.is(tok::l_square)) {
     ConsumeBracket();
-    Iap.Indices.emplace_back(parseExpression());
+    auto E = parseExpression();
+    Iap.Indices.emplace_back(std::move(E), Tok.getEndLoc());
     if (ExpectAndConsume(tok::r_square)) {
       break;
     }
@@ -1374,21 +1400,25 @@ Parser::typeNameFromIndexAccessStructure(Parser::IndexAccessedPath &Iap) {
     // T = UserDefinedTypeName with Path
   }
   for (auto &Length : Iap.Indices) {
-    T = make_shared<ArrayType>(
-        std::move(T),
-        dynamic_cast<const NumberLiteral *>(Length.get())->getValue(),
-        parseDataLocation());
+    if (const auto *NL =
+            dynamic_cast<const NumberLiteral *>(Length.first.get())) {
+      T = std::make_shared<ArrayType>(std::move(T), NL->getValue(),
+                                      parseDataLocation());
+    } else {
+      Diag(diag::err_expected) << tok::numeric_constant;
+      return nullptr;
+    }
   }
   return T;
 }
 
 // TODO: IAP relative function
-unique_ptr<Expr>
+std::unique_ptr<Expr>
 Parser::expressionFromIndexAccessStructure(Parser::IndexAccessedPath &Iap) {
   if (Iap.empty()) {
     return nullptr;
   }
-  unique_ptr<Expr> Expression = Actions.CreateIdentifier(Iap.Path.front());
+  std::unique_ptr<Expr> Expression = Actions.CreateIdentifier(Iap.Path.front());
   if (!Expression) {
     return nullptr;
   }
@@ -1401,8 +1431,8 @@ Parser::expressionFromIndexAccessStructure(Parser::IndexAccessedPath &Iap) {
   }
 
   for (auto &Index : Iap.Indices) {
-    Expression =
-        Actions.CreateIndexAccess(std::move(Expression), std::move(Index));
+    Expression = Actions.CreateIndexAccess(
+        std::move(Index.second), std::move(Expression), std::move(Index.first));
     if (!Expression) {
       return nullptr;
     }
@@ -1410,25 +1440,30 @@ Parser::expressionFromIndexAccessStructure(Parser::IndexAccessedPath &Iap) {
   return Expression;
 }
 
-unique_ptr<Expr>
-Parser::parseExpression(unique_ptr<Expr> &&PartiallyParsedExpression) {
-  unique_ptr<Expr> Expression =
+std::unique_ptr<Expr>
+Parser::parseExpression(std::unique_ptr<Expr> &&PartiallyParsedExpression) {
+  const SourceLocation Begin =
+      PartiallyParsedExpression
+          ? PartiallyParsedExpression->getLocation().getBegin()
+          : Tok.getLocation();
+  std::unique_ptr<Expr> Expression =
       parseBinaryExpression(4, std::move(PartiallyParsedExpression));
 
   if (tok::equal <= Tok.getKind() && Tok.getKind() <= tok::percentequal) {
     const BinaryOperatorKind Op = token2bop(Tok);
     ConsumeToken();
-    unique_ptr<Expr> RightHandSide = parseExpression();
-    return std::move(Actions.CreateBinOp(Op, std::move(Expression),
-                                         std::move(RightHandSide)));
+    std::unique_ptr<Expr> RightHandSide = parseExpression();
+    const SourceLocation End = RightHandSide->getLocation().getEnd();
+    return Actions.CreateBinOp(SourceRange(Begin, End), Op,
+                               std::move(Expression), std::move(RightHandSide));
   }
 
   if (TryConsumeToken(tok::question)) {
-    unique_ptr<Expr> trueExpression = parseExpression();
+    std::unique_ptr<Expr> trueExpression = parseExpression();
     if (ExpectAndConsume(tok::colon)) {
       return nullptr;
     }
-    unique_ptr<Expr> falseExpression = parseExpression();
+    std::unique_ptr<Expr> falseExpression = parseExpression();
     // TODO: Create ConditionExpression
     return nullptr;
   }
@@ -1436,70 +1471,88 @@ Parser::parseExpression(unique_ptr<Expr> &&PartiallyParsedExpression) {
   return Expression;
 }
 
-unique_ptr<Expr>
-Parser::parseBinaryExpression(int MinPrecedence,
-                              unique_ptr<Expr> &&PartiallyParsedExpression) {
-  unique_ptr<Expr> Expression =
+std::unique_ptr<Expr> Parser::parseBinaryExpression(
+    int MinPrecedence, std::unique_ptr<Expr> &&PartiallyParsedExpression) {
+  const SourceLocation Begin =
+      PartiallyParsedExpression
+          ? PartiallyParsedExpression->getLocation().getBegin()
+          : Tok.getLocation();
+  std::unique_ptr<Expr> Expression =
       parseUnaryExpression(std::move(PartiallyParsedExpression));
   int Precedence = static_cast<int>(getBinOpPrecedence(Tok.getKind()));
   for (; Precedence >= MinPrecedence; --Precedence) {
     while (getBinOpPrecedence(Tok.getKind()) == Precedence) {
       const BinaryOperatorKind Op = token2bop(Tok);
       ConsumeToken(); // binary op
-      unique_ptr<Expr> RightHandSide = parseBinaryExpression(Precedence + 1);
-      Expression = std::move(Actions.CreateBinOp(Op, std::move(Expression),
-                                                 std::move(RightHandSide)));
+      std::unique_ptr<Expr> RightHandSide =
+          parseBinaryExpression(Precedence + 1);
+      const SourceLocation End = RightHandSide->getLocation().getEnd();
+      Expression =
+          Actions.CreateBinOp(SourceRange(Begin, End), Op,
+                              std::move(Expression), std::move(RightHandSide));
     }
   }
   return Expression;
 }
 
-unique_ptr<Expr>
-Parser::parseUnaryExpression(unique_ptr<Expr> &&PartiallyParsedExpression) {
+std::unique_ptr<Expr> Parser::parseUnaryExpression(
+    std::unique_ptr<Expr> &&PartiallyParsedExpression) {
+  const SourceLocation Begin =
+      PartiallyParsedExpression
+          ? PartiallyParsedExpression->getLocation().getBegin()
+          : Tok.getLocation();
   UnaryOperatorKind Op = token2uop(Tok);
 
   if (!PartiallyParsedExpression && Tok.isUnaryOp()) {
     ConsumeToken(); // pre '++' or '--'
-    unique_ptr<Expr> SubExps = parseUnaryExpression();
-    return std::make_unique<UnaryOperator>(std::move(SubExps), Op,
-                                           SubExps->getType());
+    std::unique_ptr<Expr> SubExps = parseUnaryExpression();
+    const SourceLocation End = SubExps->getLocation().getEnd();
+    return std::make_unique<UnaryOperator>(SourceRange(Begin, End),
+                                           std::move(SubExps), Op);
   } else {
     // potential postfix expression
-    unique_ptr<Expr> SubExps =
+    std::unique_ptr<Expr> SubExps =
         parseLeftHandSideExpression(std::move(PartiallyParsedExpression));
     Op = token2uop(Tok, false);
     if (!(Op == UnaryOperatorKind::UO_PostInc ||
           Op == UnaryOperatorKind::UO_PostDec))
       return SubExps;
+    const SourceLocation End = Tok.getEndLoc();
     ConsumeToken(); // post '++' or '--'
-    return std::make_unique<UnaryOperator>(std::move(SubExps), Op,
-                                           SubExps->getType());
+    return std::make_unique<UnaryOperator>(SourceRange(Begin, End),
+                                           std::move(SubExps), Op);
   }
 }
 
-unique_ptr<Expr> Parser::parseLeftHandSideExpression(
-    unique_ptr<Expr> &&PartiallyParsedExpression) {
-  unique_ptr<Expr> Expression;
-  if (PartiallyParsedExpression)
+std::unique_ptr<Expr> Parser::parseLeftHandSideExpression(
+    std::unique_ptr<Expr> &&PartiallyParsedExpression) {
+  const SourceLocation Begin =
+      PartiallyParsedExpression
+          ? PartiallyParsedExpression->getLocation().getBegin()
+          : Tok.getLocation();
+  std::unique_ptr<Expr> Expression;
+  if (PartiallyParsedExpression) {
     Expression = std::move(PartiallyParsedExpression);
-  else if (TryConsumeToken(tok::kw_new)) {
+  } else if (TryConsumeToken(tok::kw_new)) {
     TypePtr typeName = parseTypeName(false);
     // [AST] create NewExpression
-  } else
-    Expression = std::move(parsePrimaryExpression());
+  } else {
+    Expression = parsePrimaryExpression();
+  }
 
   while (true) {
     switch (Tok.getKind()) {
     case tok::l_square: {
       ConsumeBracket(); // '['
-      unique_ptr<Expr> Index;
-      if (Tok.isNot(tok::r_square))
-        Index = std::move(parseExpression());
+      std::unique_ptr<Expr> Index;
+      if (Tok.isNot(tok::r_square)) {
+        Index = parseExpression();
+      }
       if (ExpectAndConsume(tok::r_square)) {
         return nullptr;
       }
-      Expression =
-          Actions.CreateIndexAccess(std::move(Expression), std::move(Index));
+      Expression = Actions.CreateIndexAccess(
+          Tok.getEndLoc(), std::move(Expression), std::move(Index));
       break;
     }
     case tok::period: {
@@ -1516,15 +1569,16 @@ unique_ptr<Expr> Parser::parseLeftHandSideExpression(
     }
     case tok::l_paren: {
       ConsumeParen(); // '('
-      vector<unique_ptr<Expr>> Arguments;
-      vector<llvm::StringRef> Names;
-      tie(Arguments, Names) = parseFunctionCallArguments();
+      std::vector<std::unique_ptr<Expr>> Arguments;
+      std::vector<llvm::StringRef> Names;
+      std::tie(Arguments, Names) = parseFunctionCallArguments();
+      const SourceLocation End = Tok.getEndLoc();
       if (ExpectAndConsume(tok::r_paren)) {
         return nullptr;
       }
       // TODO: Fix passs arguments' name fail.
-      Expression =
-          Actions.CreateCallExpr(std::move(Expression), std::move(Arguments));
+      Expression = Actions.CreateCallExpr(
+          SourceRange(Begin, End), std::move(Expression), std::move(Arguments));
       break;
     }
     default:
@@ -1533,8 +1587,9 @@ unique_ptr<Expr> Parser::parseLeftHandSideExpression(
   }
 }
 
-unique_ptr<Expr> Parser::parsePrimaryExpression() {
-  unique_ptr<Expr> Expression;
+std::unique_ptr<Expr> Parser::parsePrimaryExpression() {
+  const SourceLocation Begin = Tok.getLocation();
+  std::unique_ptr<Expr> Expression;
 
   // Explicit Type Casting
   if (Tok.isElementaryTypeName() && NextToken().is(tok::l_paren)) {
@@ -1542,13 +1597,17 @@ unique_ptr<Expr> Parser::parsePrimaryExpression() {
     ConsumeToken(); // elementary typename
     ConsumeParen(); // '('
     if (TypeNameTok.is(tok::kw_address)) {
-      Expression = make_unique<ExplicitCastExpr>(
-          parseExpression(), CastKind::TypeCast,
-          make_shared<AddressType>(StateMutability::Payable));
+      auto E = parseExpression();
+      const SourceLocation End = E->getLocation().getEnd();
+      Expression = std::make_unique<ExplicitCastExpr>(
+          SourceRange(Begin, End), std::move(E), CastKind::TypeCast,
+          std::make_shared<AddressType>(StateMutability::Payable));
     } else {
-      Expression = make_unique<ExplicitCastExpr>(
-          parseExpression(), CastKind::IntegralCast,
-          make_shared<IntegerType>(token2inttype(TypeNameTok)));
+      auto E = parseExpression();
+      const SourceLocation End = E->getLocation().getEnd();
+      Expression = std::make_unique<ExplicitCastExpr>(
+          SourceRange(Begin, End), std::move(E), CastKind::IntegralCast,
+          std::make_shared<IntegerType>(token2inttype(TypeNameTok)));
     }
     if (ExpectAndConsume(tok::r_paren)) {
       return nullptr;
@@ -1559,12 +1618,12 @@ unique_ptr<Expr> Parser::parsePrimaryExpression() {
   const auto Kind = Tok.getKind();
   switch (Kind) {
   case tok::kw_true:
+    Expression = std::make_unique<BooleanLiteral>(Tok, true);
     ConsumeToken(); // 'true'
-    Expression = std::make_unique<BooleanLiteral>(true);
     break;
   case tok::kw_false:
+    Expression = std::make_unique<BooleanLiteral>(Tok, false);
     ConsumeToken(); // 'false'
-    Expression = std::make_unique<BooleanLiteral>(false);
     break;
   case tok::numeric_constant: {
     int NumValue;
@@ -1573,19 +1632,21 @@ unique_ptr<Expr> Parser::parsePrimaryExpression() {
       assert(false && "invalid numeric constant");
       __builtin_unreachable();
     }
-    Expression = std::make_unique<NumberLiteral>(NumValue);
+    Expression = std::make_unique<NumberLiteral>(Tok, NumValue);
     ConsumeToken(); // numeric constant
     break;
   }
   case tok::string_literal: {
     std::string StrValue(Tok.getLiteralData(), Tok.getLength());
-    Expression = make_unique<StringLiteral>(stringUnquote(std::move(StrValue)));
+    Expression = std::make_unique<StringLiteral>(
+        Tok, stringUnquote(std::move(StrValue)));
     ConsumeStringToken(); // string literal
     break;
   }
   case tok::hex_string_literal: {
     std::string StrValue(Tok.getLiteralData(), Tok.getLength());
-    Expression = make_unique<StringLiteral>(hexUnquote(std::move(StrValue)));
+    Expression =
+        std::make_unique<StringLiteral>(Tok, hexUnquote(std::move(StrValue)));
     ConsumeStringToken(); // hex string literal
     break;
   }
@@ -1606,23 +1667,28 @@ unique_ptr<Expr> Parser::parsePrimaryExpression() {
     // Special cases: ()/[] is empty tuple/array type, (x) is not a real tuple,
     // (x,) is one-dimensional tuple, elements in arrays cannot be left out,
     // only in tuples.
+    const SourceLocation Begin = Tok.getLocation();
     const tok::TokenKind OppositeKind =
         (Kind == tok::l_paren ? tok::r_paren : tok::r_square);
     ConsumeAnyToken(); // '[' or '('
-    Expression = std::make_unique<ParenExpr>(parseExpression());
+    auto E = parseExpression();
+    const SourceLocation End = Tok.getEndLoc();
     ExpectAndConsume(OppositeKind);
+    Expression =
+        std::make_unique<ParenExpr>(SourceRange(Begin, End), std::move(E));
     break;
   }
   default:
     // TODO: Type MxN case
-    assert(false && "Unknown token");
+    Diag(diag::err_unimplemented_token) << Tok.getKind();
+    ConsumeToken();
     return nullptr;
   }
   return Expression;
 }
 
-vector<unique_ptr<Expr>> Parser::parseFunctionCallListArguments() {
-  vector<unique_ptr<Expr>> Arguments;
+std::vector<std::unique_ptr<Expr>> Parser::parseFunctionCallListArguments() {
+  std::vector<std::unique_ptr<Expr>> Arguments;
   if (Tok.isNot(tok::r_paren)) {
     Arguments.push_back(parseExpression());
     while (Tok.isNot(tok::r_paren)) {
@@ -1635,9 +1701,10 @@ vector<unique_ptr<Expr>> Parser::parseFunctionCallListArguments() {
   return Arguments;
 }
 
-pair<vector<unique_ptr<Expr>>, vector<llvm::StringRef>>
+std::pair<std::vector<std::unique_ptr<Expr>>, std::vector<llvm::StringRef>>
 Parser::parseFunctionCallArguments() {
-  pair<vector<unique_ptr<Expr>>, vector<llvm::StringRef>> Ret;
+  std::pair<std::vector<std::unique_ptr<Expr>>, std::vector<llvm::StringRef>>
+      Ret;
   if (Tok.is(tok::l_brace)) {
     // TODO: Unverified function parameters case
     // call({arg1 : 1, arg2 : 2 })

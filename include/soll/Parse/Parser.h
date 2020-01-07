@@ -241,6 +241,8 @@ private:
   std::unique_ptr<Stmt> parseAsmStatement();
   std::unique_ptr<IfStmt> parseAsmIfStatement();
   std::unique_ptr<AsmSwitchStmt> parseAsmSwitchStatement();
+  std::unique_ptr<AsmCaseStmt> parseAsmCaseStatement();
+  std::unique_ptr<AsmDefaultStmt> parseAsmDefaultStatement();
   std::unique_ptr<AsmForStmt> parseAsmForStatement();
   std::unique_ptr<Expr> parseAsmExpression();
   std::unique_ptr<Expr> parseElementaryOperation();
@@ -264,7 +266,7 @@ private:
   struct IndexAccessedPath {
     TypePtr ElementaryType;
     std::vector<Token> Path;
-    std::vector<std::unique_ptr<Expr>> Indices;
+    std::vector<std::pair<std::unique_ptr<Expr>, SourceLocation>> Indices;
     bool empty() const;
   };
 
@@ -409,25 +411,6 @@ public:
   void ExitScope();
 
 private:
-  struct LateParsedDeclaration {
-    LateParsedDeclaration() = default;
-    virtual ~LateParsedDeclaration() = default;
-    virtual void ParseLexedMethodDefs() {}
-  };
-
-  struct LexedMethod : public LateParsedDeclaration {
-    Parser *Self;
-    Decl *D;
-    llvm::SmallVector<Token, 4> Toks;
-
-    explicit LexedMethod(Parser *P, Decl *MD) : Self(P), D(MD) {}
-    void ParseLexedMethodDefs() override;
-  };
-
-  llvm::SmallVector<std::unique_ptr<LateParsedDeclaration>, 2>
-      LateParsedDeclarations;
-
-  void ParseLexedMethodDef(LexedMethod &LM);
   bool ConsumeAndStoreUntil(tok::TokenKind T1,
                             llvm::SmallVector<Token, 4> &Toks) {
     return ConsumeAndStoreUntil(T1, T1, Toks);

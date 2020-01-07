@@ -4,7 +4,7 @@
 
 namespace soll {
 
-std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(llvm::StringRef Name) {
+std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok) {
   static const llvm::StringMap<AsmIdentifier::SpecialIdentifier> SpecialLookup{
       /// Mark comment below logic identifiers because
       /// currently solidity only generate them for bitwise op.
@@ -72,6 +72,7 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(llvm::StringRef Name) {
       /// misc
       {"keccak256", AsmIdentifier::SpecialIdentifier::keccak256},
   };
+  llvm::StringRef Name = Tok.getIdentifierInfo()->getName();
   if (auto Iter = SpecialLookup.find(Name); Iter != SpecialLookup.end()) {
     TypePtr Ty;
     switch (Iter->second) {
@@ -169,33 +170,32 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(llvm::StringRef Name) {
       assert(false && "unknown special identifier");
       __builtin_unreachable();
     }
-    return std::make_unique<AsmIdentifier>(Name, Iter->second, std::move(Ty));
+    return std::make_unique<AsmIdentifier>(Tok, Iter->second, std::move(Ty));
   }
   Decl *D = lookupName(Name);
-  assert(D != nullptr);
-  return std::make_unique<AsmIdentifier>(Name, D);
+  if (D == nullptr) {
+    auto Unresolved = std::make_unique<AsmIdentifier>(Tok);
+    CurrentScope()->addUnresolvedExternal(Unresolved.get());
+    return Unresolved;
+  }
+  return std::make_unique<AsmIdentifier>(Tok, D);
 }
 
-std::unique_ptr<Expr> Sema::CreateAsmCallExpr(ExprPtr &&Callee,
+std::unique_ptr<Expr> Sema::CreateAsmCallExpr(SourceRange L, ExprPtr &&Callee,
                                               std::vector<ExprPtr> &&Args) {
-  // TODO: handle invalid FunctionType.
-  FunctionType *FTy = dynamic_cast<FunctionType *>(Callee->getType().get());
-  // TODO: handle the case that number of return types != 1.
-  TypePtr ReturnTy = FTy->getReturnTypes()[0];
   for (ExprPtr &Arg : Args) {
-    Arg = DefaultLvalueConversion(std::move(Arg));
+    Arg = CreateDummy(std::move(Arg));
   }
 
   std::unique_ptr<Expr> CE = nullptr;
   if (auto I = dynamic_cast<AsmIdentifier *>(Callee.get())) {
     if (I->isSpecialIdentifier()) {
-      if (CE = Sema::CreateAsmBuiltinCallExpr(*I, std::move(Args), ReturnTy)) {
+      FunctionType *FTy = dynamic_cast<FunctionType *>(Callee->getType().get());
+      // TODO: handle the case that number of return types != 1.
+      CE = Sema::CreateAsmBuiltinCallExpr(L, *I, std::move(Args),
+                                          FTy->getReturnTypes()[0]);
+      if (CE) {
         return CE;
-      }
-    } else {
-      if (!dynamic_cast<const FunctionDecl *>(I->getCorrespondDecl())) {
-        assert(false && "callee is not FunctionDecl");
-        __builtin_unreachable();
       }
     }
   } else {
@@ -203,78 +203,80 @@ std::unique_ptr<Expr> Sema::CreateAsmCallExpr(ExprPtr &&Callee,
     __builtin_unreachable();
   }
 
-  return std::make_unique<CallExpr>(std::move(Callee), std::move(Args),
-                                    std::move(ReturnTy));
+  return std::make_unique<CallExpr>(L, std::move(Callee), std::move(Args));
 }
 
 std::unique_ptr<Expr>
-Sema::CreateAsmBuiltinCallExpr(const AsmIdentifier &Callee,
+Sema::CreateAsmBuiltinCallExpr(SourceRange L, const AsmIdentifier &Callee,
                                std::vector<ExprPtr> &&Args, TypePtr ReturnTy) {
   switch (Callee.getSpecialIdentifier()) {
   case AsmIdentifier::SpecialIdentifier::not_:
-    return std::make_unique<AsmUnaryOperator>(std::move(Args[0]), ReturnTy,
-                                              UO_LNot);
+    return std::make_unique<AsmUnaryOperator>(L, std::move(Args[0]),
+                                              std::move(ReturnTy), UO_LNot);
   case AsmIdentifier::SpecialIdentifier::and_:
-    return std::make_unique<AsmBinaryOperator>(
-        std::move(Args[0]), std::move(Args[1]), ReturnTy, BO_LAnd);
+    return std::make_unique<AsmBinaryOperator>(L, std::move(Args[0]),
+                                               std::move(Args[1]),
+                                               std::move(ReturnTy), BO_LAnd);
   case AsmIdentifier::SpecialIdentifier::or_:
     return std::make_unique<AsmBinaryOperator>(
-        std::move(Args[0]), std::move(Args[1]), ReturnTy, BO_LOr);
+        L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_LOr);
   case AsmIdentifier::SpecialIdentifier::xor_:
-    return std::make_unique<AsmBinaryOperator>(
-        std::move(Args[0]), std::move(Args[1]), ReturnTy, BO_LXor);
+    return std::make_unique<AsmBinaryOperator>(L, std::move(Args[0]),
+                                               std::move(Args[1]),
+                                               std::move(ReturnTy), BO_LXor);
   case AsmIdentifier::SpecialIdentifier::addu256:
     return std::make_unique<AsmBinaryOperator>(
-        std::move(Args[0]), std::move(Args[1]), ReturnTy, BO_Add);
+        L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_Add);
   case AsmIdentifier::SpecialIdentifier::subu256:
     return std::make_unique<AsmBinaryOperator>(
-        std::move(Args[0]), std::move(Args[1]), ReturnTy, BO_Sub);
+        L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_Sub);
   case AsmIdentifier::SpecialIdentifier::mulu256:
     return std::make_unique<AsmBinaryOperator>(
-        std::move(Args[0]), std::move(Args[1]), ReturnTy, BO_Mul);
+        L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_Mul);
   case AsmIdentifier::SpecialIdentifier::divu256:
   case AsmIdentifier::SpecialIdentifier::divs256:
     return std::make_unique<AsmBinaryOperator>(
-        std::move(Args[0]), std::move(Args[1]), ReturnTy, BO_Div);
+        L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_Div);
   case AsmIdentifier::SpecialIdentifier::modu256:
   case AsmIdentifier::SpecialIdentifier::mods256:
     return std::make_unique<AsmBinaryOperator>(
-        std::move(Args[0]), std::move(Args[1]), ReturnTy, BO_Rem);
+        L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_Rem);
   // TODO: case AsmIdentifier::SpecialIdentifier::signextendu256:
   case AsmIdentifier::SpecialIdentifier::expu256:
     return std::make_unique<AsmBinaryOperator>(
-        std::move(Args[0]), std::move(Args[1]), ReturnTy, BO_Exp);
+        L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_Exp);
   case AsmIdentifier::SpecialIdentifier::ltu256:
   case AsmIdentifier::SpecialIdentifier::lts256:
     return std::make_unique<AsmBinaryOperator>(
-        std::move(Args[0]), std::move(Args[1]), ReturnTy, BO_LT);
+        L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_LT);
   case AsmIdentifier::SpecialIdentifier::gtu256:
   case AsmIdentifier::SpecialIdentifier::gts256:
     return std::make_unique<AsmBinaryOperator>(
-        std::move(Args[0]), std::move(Args[1]), ReturnTy, BO_GT);
+        L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_GT);
   case AsmIdentifier::SpecialIdentifier::equ256:
     return std::make_unique<AsmBinaryOperator>(
-        std::move(Args[0]), std::move(Args[1]), ReturnTy, BO_EQ);
+        L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_EQ);
   case AsmIdentifier::SpecialIdentifier::iszerou256:
-    return std::make_unique<AsmIsZeroOperator>(std::move(Args[0]), ReturnTy);
+    return std::make_unique<AsmUnaryOperator>(L, std::move(Args[0]),
+                                              std::move(ReturnTy), UO_IsZero);
   case AsmIdentifier::SpecialIdentifier::notu256:
-    return std::make_unique<AsmUnaryOperator>(std::move(Args[0]), ReturnTy,
-                                              UO_Not);
+    return std::make_unique<AsmUnaryOperator>(L, std::move(Args[0]),
+                                              std::move(ReturnTy), UO_Not);
   case AsmIdentifier::SpecialIdentifier::andu256:
     return std::make_unique<AsmBinaryOperator>(
-        std::move(Args[0]), std::move(Args[1]), ReturnTy, BO_And);
+        L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_And);
   case AsmIdentifier::SpecialIdentifier::oru256:
     return std::make_unique<AsmBinaryOperator>(
-        std::move(Args[0]), std::move(Args[1]), ReturnTy, BO_Or);
+        L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_Or);
   case AsmIdentifier::SpecialIdentifier::xoru256:
     return std::make_unique<AsmBinaryOperator>(
-        std::move(Args[0]), std::move(Args[1]), ReturnTy, BO_Xor);
+        L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_Xor);
   case AsmIdentifier::SpecialIdentifier::shlu256:
     return std::make_unique<AsmBinaryOperator>(
-        std::move(Args[0]), std::move(Args[1]), ReturnTy, BO_Shl);
+        L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_Shl);
   case AsmIdentifier::SpecialIdentifier::shru256:
     return std::make_unique<AsmBinaryOperator>(
-        std::move(Args[0]), std::move(Args[1]), ReturnTy, BO_Shr);
+        L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_Shr);
   // TODO: case AsmIdentifier::SpecialIdentifier::sars256:
   default: ///< treated as normal CallExpr
     break;

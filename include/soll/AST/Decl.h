@@ -19,6 +19,7 @@ public:
   virtual ~Decl() noexcept {}
 
 private:
+  SourceRange Location;
   std::string Name;
   Visibility Vis;
 
@@ -26,13 +27,15 @@ protected:
   friend class ASTReader;
 
 protected:
-  Decl() {}
-  Decl(llvm::StringRef Name, Visibility vis = Visibility::Default)
-      : Name(Name.str()), Vis(vis) {}
+  Decl(SourceRange L,
+       llvm::StringRef Name = llvm::StringRef::withNullAsEmpty(nullptr),
+       Visibility vis = Visibility::Default)
+      : Location(L), Name(Name.str()), Vis(vis) {}
 
 public:
   virtual void accept(DeclVisitor &visitor) = 0;
   virtual void accept(ConstDeclVisitor &visitor) const = 0;
+  const SourceRange &getLocation() const { return Location; }
   llvm::StringRef getName() const { return Name; }
   Visibility getVisibility() const { return Vis; }
 };
@@ -41,7 +44,8 @@ class SourceUnit : public Decl {
   std::vector<DeclPtr> Nodes;
 
 public:
-  SourceUnit(std::vector<DeclPtr> &&Nodes) : Nodes(std::move(Nodes)) {}
+  SourceUnit(SourceRange L, std::vector<DeclPtr> &&Nodes)
+      : Decl(L), Nodes(std::move(Nodes)) {}
 
   void setNodes(std::vector<DeclPtr> &&Nodes);
 
@@ -54,6 +58,7 @@ public:
 
 class PragmaDirective : public Decl {
 public:
+  PragmaDirective(SourceRange L) : Decl(L) {}
   void accept(DeclVisitor &visitor) override;
   void accept(ConstDeclVisitor &visitor) const override;
 };
@@ -71,13 +76,13 @@ private:
 
 public:
   ContractDecl(
-      llvm::StringRef name,
+      SourceRange L, llvm::StringRef Name,
       std::vector<std::unique_ptr<InheritanceSpecifier>> &&baseContracts,
       std::vector<DeclPtr> &&subNodes,
       std::unique_ptr<FunctionDecl> &&constructor,
       std::unique_ptr<FunctionDecl> &&fallback,
       ContractKind kind = ContractKind::Contract)
-      : Decl(name), BaseContracts(std::move(baseContracts)),
+      : Decl(L, Name), BaseContracts(std::move(baseContracts)),
         SubNodes(std::move(subNodes)), Constructor(std::move(constructor)),
         Fallback(std::move(fallback)), Kind(kind) {}
 
@@ -119,12 +124,12 @@ class CallableVarDecl : public Decl {
 
 public:
   CallableVarDecl(
-      llvm::StringRef name, Visibility visibility,
-      std::unique_ptr<ParamList> &&params,
-      std::unique_ptr<ParamList> &&returnParams = std::make_unique<ParamList>(
+      SourceRange L, llvm::StringRef Name, Visibility V,
+      std::unique_ptr<ParamList> &&Params,
+      std::unique_ptr<ParamList> &&ReturnParams = std::make_unique<ParamList>(
           std::vector<std::unique_ptr<VarDeclBase>>()))
-      : Decl(name, visibility), Params(std::move(params)),
-        ReturnParams(std::move(returnParams)) {}
+      : Decl(L, Name, V), Params(std::move(Params)),
+        ReturnParams(std::move(ReturnParams)) {}
 
   ParamList *getParams() { return Params.get(); }
   const ParamList *getParams() const { return Params.get(); }
@@ -149,12 +154,12 @@ class FunctionDecl : public CallableVarDecl {
   TypePtr FuncTy;
 
 public:
-  FunctionDecl(llvm::StringRef name, Visibility visibility, StateMutability sm,
-               bool isConstructor, bool isFallback,
-               std::unique_ptr<ParamList> &&params,
-               std::vector<std::unique_ptr<ModifierInvocation>> &&modifiers,
-               std::unique_ptr<ParamList> &&returnParams,
-               std::unique_ptr<Block> &&body);
+  FunctionDecl(SourceRange L, llvm::StringRef Name, Visibility V,
+               StateMutability SM, bool IsConstructor, bool IsFallback,
+               std::unique_ptr<ParamList> &&Params,
+               std::vector<std::unique_ptr<ModifierInvocation>> &&Modifiers,
+               std::unique_ptr<ParamList> &&ReturnParams,
+               std::unique_ptr<Block> &&Body);
 
   Block *getBody() { return Body.get(); }
   const Block *getBody() const { return Body.get(); }
@@ -173,8 +178,8 @@ class EventDecl : public CallableVarDecl {
   TypePtr FuncTy;
 
 public:
-  EventDecl(llvm::StringRef name, std::unique_ptr<ParamList> &&params,
-            bool isAnonymous = false);
+  EventDecl(SourceRange L, llvm::StringRef Name,
+            std::unique_ptr<ParamList> &&Params, bool IsAnonymous = false);
 
   TypePtr getType() const { return FuncTy; }
   bool isAnonymous() const { return IsAnonymous; }
@@ -203,10 +208,9 @@ class VarDeclBase : public Decl {
   ExprPtr Value;
 
 public:
-  VarDeclBase(TypePtr &&T, llvm::StringRef name, ExprPtr &&value,
-              Visibility visibility)
-      : Decl(name, visibility), TypeName(std::move(T)),
-        Value(std::move(value)) {}
+  VarDeclBase(SourceRange L, llvm::StringRef Name, Visibility Vi, TypePtr &&T,
+              ExprPtr &&V)
+      : Decl(L, Name, Vi), TypeName(std::move(T)), Value(std::move(V)) {}
 
   TypePtr GetType() { return TypeName; }
   const TypePtr &GetType() const { return TypeName; }
@@ -225,13 +229,13 @@ private:
   Location ReferenceLocation;
 
 public:
-  VarDecl(TypePtr &&T, llvm::StringRef name, ExprPtr &&value,
-          Visibility visibility, bool isStateVar = false,
-          bool isIndexed = false, bool isConstant = false,
-          Location referenceLocation = Location::Unspecified)
-      : VarDeclBase(std::move(T), name, std::move(value), visibility),
-        IsStateVariable(isStateVar), IsIndexed(isIndexed),
-        IsConstant(isConstant), ReferenceLocation(referenceLocation) {}
+  VarDecl(SourceRange L, llvm::StringRef Name, Visibility Vi, TypePtr &&T,
+          ExprPtr &&V, bool IsStateVar = false, bool IsIndexed = false,
+          bool IsConstant = false,
+          Location ReferenceLocation = Location::Unspecified)
+      : VarDeclBase(L, Name, Vi, std::move(T), std::move(V)),
+        IsStateVariable(IsStateVar), IsIndexed(IsIndexed),
+        IsConstant(IsConstant), ReferenceLocation(ReferenceLocation) {}
 
   void accept(DeclVisitor &visitor) override;
   void accept(ConstDeclVisitor &visitor) const override;

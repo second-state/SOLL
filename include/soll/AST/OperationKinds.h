@@ -15,6 +15,7 @@ enum UnaryOperatorKind {
   UO_Minus,
   UO_Not,
   UO_LNot,
+  UO_IsZero,
   UO_Undefined,
 };
 
@@ -70,6 +71,7 @@ enum BinaryOperatorKind {
 };
 
 enum CastKind {
+  None,
   IntegralCast,
   // only for ImplicitCast
   LValueToRValue,

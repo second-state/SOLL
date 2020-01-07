@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+#include "soll/Basic/DiagnosticParse.h"
 #include "soll/Parse/Parser.h"
-
-using namespace std;
 
 namespace {
 
 template <typename TO, typename FROM>
-unique_ptr<TO> dynamic_unique_pointer_cast(unique_ptr<FROM> &&old) {
+std::unique_ptr<TO> dynamic_unique_pointer_cast(std::unique_ptr<FROM> &&old) {
   // conversion: unique_ptr<FROM>->FROM*->TO*->unique_ptr<TO>
   if (auto P = dynamic_cast<TO *>(old.get())) {
     old.release();
-    return unique_ptr<TO>{P};
+    return std::unique_ptr<TO>{P};
   }
   return nullptr;
 }
@@ -20,17 +19,21 @@ unique_ptr<TO> dynamic_unique_pointer_cast(unique_ptr<FROM> &&old) {
 namespace soll {
 
 std::unique_ptr<Block> Parser::parseAsmBlock(bool HasScope) {
+  const SourceLocation Begin = Tok.getLocation();
+  std::unique_ptr<ParseScope> BlockScope;
   if (!HasScope) {
-    ParseScope BlockScope{this, 0};
+    BlockScope = std::make_unique<ParseScope>(this, 0);
   }
 
   ExpectAndConsume(tok::l_brace);
-  vector<unique_ptr<Stmt>> Statements;
+  std::vector<std::unique_ptr<Stmt>> Statements;
   while (Tok.isNot(tok::r_brace)) {
     Statements.emplace_back(parseAsmStatement());
   }
+  const SourceLocation End = Tok.getEndLoc();
   ExpectAndConsume(tok::r_brace);
-  return std::make_unique<Block>(std::move(Statements));
+  return std::make_unique<Block>(SourceRange(Begin, End),
+                                 std::move(Statements));
 }
 
 std::unique_ptr<Stmt> Parser::parseAsmStatement() {
@@ -47,19 +50,24 @@ std::unique_ptr<Stmt> Parser::parseAsmStatement() {
     return parseAsmSwitchStatement();
   case tok::kw_for:
     return parseAsmForStatement();
-  case tok::kw_break:
+  case tok::kw_break: {
+    const SourceRange Range = Tok.getRange();
     ConsumeToken(); // 'break'
-    return std::make_unique<BreakStmt>();
-  case tok::kw_continue:
+    return std::make_unique<BreakStmt>(Range);
+  }
+  case tok::kw_continue: {
+    const SourceRange Range = Tok.getRange();
     ConsumeToken(); // 'continue'
-    return std::make_unique<ContinueStmt>();
+    return std::make_unique<ContinueStmt>(Range);
+  }
   // case tok::equalcolon:
   // stack assignment, assembly only
   default:
     break;
   }
 
-  unique_ptr<Expr> Elementary = parseElementaryOperation();
+  const SourceLocation Begin = Tok.getLocation();
+  std::unique_ptr<Expr> Elementary = parseElementaryOperation();
   switch (Tok.getKind()) {
   case tok::l_paren: {
     return parseAsmCall(std::move(Elementary));
@@ -79,9 +87,12 @@ std::unique_ptr<Stmt> Parser::parseAsmStatement() {
       }
     }
     ExpectAndConsume(tok::colonequal);
-    return make_unique<AsmAssignmentStmt>(
-        make_unique<AsmIdentifierList>(std::move(Variables)),
-        parseAsmExpression());
+    auto Value = parseAsmExpression();
+    const SourceLocation End = Value->getLocation().getEnd();
+    return std::make_unique<AsmAssignmentStmt>(
+        SourceRange(Begin, End),
+        std::make_unique<AsmIdentifierList>(std::move(Variables)),
+        std::move(Value));
   }
   default:
     break;
@@ -89,57 +100,79 @@ std::unique_ptr<Stmt> Parser::parseAsmStatement() {
   return Elementary;
 }
 
-unique_ptr<IfStmt> Parser::parseAsmIfStatement() {
+std::unique_ptr<IfStmt> Parser::parseAsmIfStatement() {
+  const SourceLocation Begin = Tok.getLocation();
   ConsumeToken(); // 'if'
-  unique_ptr<Expr> Condition = parseAsmExpression();
-  unique_ptr<Stmt> TrueBody = parseAsmBlock();
-  unique_ptr<Stmt> FalseBody;
-  return std::make_unique<IfStmt>(std::move(Condition), std::move(TrueBody),
-                                  std::move(FalseBody));
+  std::unique_ptr<Expr> Condition = parseAsmExpression();
+  std::unique_ptr<Stmt> TrueBody = parseAsmBlock();
+  std::unique_ptr<Stmt> FalseBody;
+  const SourceLocation End = TrueBody->getLocation().getEnd();
+  return std::make_unique<IfStmt>(SourceRange(Begin, End), std::move(Condition),
+                                  std::move(TrueBody), std::move(FalseBody));
 }
 
 std::unique_ptr<AsmSwitchStmt> Parser::parseAsmSwitchStatement() {
+  const SourceLocation Begin = Tok.getLocation();
   ParseScope SwitchScope{this, 0};
 
   ConsumeToken(); // 'switch'
-  unique_ptr<Expr> Condition = parseAsmExpression();
-  unique_ptr<AsmSwitchCase> FirstCase;
-  std::unique_ptr<AsmSwitchStmt> SwitchStmt =
-      make_unique<AsmSwitchStmt>(std::move(Condition), std::move(FirstCase));
-  while (TryConsumeToken(tok::kw_case)) {
-    unique_ptr<Expr> Value = parseElementaryOperation();
-    unique_ptr<Block> Body = parseAsmBlock();
-    unique_ptr<AsmSwitchCase> Case =
-        make_unique<AsmCaseStmt>(std::move(Value), std::move(Body));
-    SwitchStmt->addSwitchCase(std::move(Case));
+  std::unique_ptr<Expr> Condition = parseAsmExpression();
+  std::vector<std::unique_ptr<AsmSwitchCase>> Cases;
+  SourceLocation End = Condition->getLocation().getEnd();
+  while (Tok.is(tok::kw_case)) {
+    Cases.push_back(parseAsmCaseStatement());
   }
-  if (TryConsumeToken(tok::kw_default)) {
-    unique_ptr<Block> Body = parseAsmBlock();
-    unique_ptr<AsmDefaultStmt> Default =
-        make_unique<AsmDefaultStmt>(std::move(Body));
-    SwitchStmt->addSwitchCase(std::move(Default));
+  if (Tok.is(tok::kw_default)) {
+    Cases.push_back(parseAsmDefaultStatement());
   }
-  return SwitchStmt;
+  if (Cases.empty()) {
+    Diag(Begin, diag::err_switch_without_case);
+  } else {
+    End = Cases.back()->getLocation().getEnd();
+  }
+  return std::make_unique<AsmSwitchStmt>(SourceRange(Begin, Tok.getEndLoc()),
+                                         std::move(Condition),
+                                         std::move(Cases));
+}
+
+std::unique_ptr<AsmCaseStmt> Parser::parseAsmCaseStatement() {
+  const SourceLocation Begin = Tok.getLocation();
+  ConsumeToken(); // 'case'
+  std::unique_ptr<Expr> Value = parseElementaryOperation();
+  std::unique_ptr<Block> Body = parseAsmBlock();
+  const SourceLocation End = Body->getLocation().getEnd();
+  return std::make_unique<AsmCaseStmt>(SourceRange(Begin, End),
+                                       std::move(Value), std::move(Body));
+}
+
+std::unique_ptr<AsmDefaultStmt> Parser::parseAsmDefaultStatement() {
+  const SourceLocation Begin = Tok.getLocation();
+  ConsumeToken(); // 'default'
+  std::unique_ptr<Block> Body = parseAsmBlock();
+  return std::make_unique<AsmDefaultStmt>(SourceRange(Begin, Tok.getEndLoc()),
+                                          std::move(Body));
 }
 
 std::unique_ptr<AsmForStmt> Parser::parseAsmForStatement() {
+  const SourceLocation Begin = Tok.getLocation();
   ParseScope ForScope{this, 0};
 
   ConsumeToken(); // 'for'
-  unique_ptr<Block> Init = parseAsmBlock(true);
-  unique_ptr<Expr> Condition = parseAsmExpression();
-  unique_ptr<Block> Loop = parseAsmBlock(true);
-  unique_ptr<Block> Body;
+  std::unique_ptr<Block> Init = parseAsmBlock(true);
+  std::unique_ptr<Expr> Condition = parseAsmExpression();
+  std::unique_ptr<Block> Loop = parseAsmBlock(true);
+  std::unique_ptr<Block> Body;
   {
     ParseScope ForScope{this, Scope::BreakScope | Scope::ContinueScope};
     Body = parseAsmBlock(true);
   }
-  return std::make_unique<AsmForStmt>(std::move(Init), std::move(Condition),
+  return std::make_unique<AsmForStmt>(SourceRange(Begin, Tok.getEndLoc()),
+                                      std::move(Init), std::move(Condition),
                                       std::move(Loop), std::move(Body));
 }
 
 std::unique_ptr<Expr> Parser::parseAsmExpression() {
-  unique_ptr<Expr> Elementary = parseElementaryOperation();
+  std::unique_ptr<Expr> Elementary = parseElementaryOperation();
   if (Tok.is(tok::l_paren)) {
     return parseAsmCall(std::move(Elementary));
   }
@@ -147,31 +180,32 @@ std::unique_ptr<Expr> Parser::parseAsmExpression() {
 }
 
 std::unique_ptr<Expr> Parser::parseElementaryOperation() {
-  unique_ptr<Expr> Expression;
+  std::unique_ptr<Expr> Expression;
 
   switch (Tok.getKind()) {
   case tok::identifier: {
-    Expression =
-        Actions.CreateAsmIdentifier(Tok.getIdentifierInfo()->getName());
+    Expression = Actions.CreateAsmIdentifier(Tok);
     ConsumeToken(); // identifier
     break;
   }
   // case tok::kw_address:
   case tok::kw_return:
   case tok::kw_byte: {
-    Expression = Actions.CreateAsmIdentifier(Tok.getName());
+    Expression = Actions.CreateAsmIdentifier(Tok);
     ConsumeToken(); // SpecialIdentifier
     break;
   }
   case tok::string_literal: {
     std::string StrValue(Tok.getLiteralData(), Tok.getLength());
-    Expression = make_unique<StringLiteral>(stringUnquote(std::move(StrValue)));
+    Expression = std::make_unique<StringLiteral>(
+        Tok, stringUnquote(std::move(StrValue)));
     ConsumeStringToken(); // string literal
     break;
   }
   case tok::hex_string_literal: {
     std::string StrValue(Tok.getLiteralData(), Tok.getLength());
-    Expression = make_unique<StringLiteral>(hexUnquote(std::move(StrValue)));
+    Expression =
+        std::make_unique<StringLiteral>(Tok, hexUnquote(std::move(StrValue)));
     ConsumeStringToken(); // hex string literal
     break;
   }
@@ -182,18 +216,18 @@ std::unique_ptr<Expr> Parser::parseElementaryOperation() {
       assert(false && "invalid numeric constant");
       __builtin_unreachable();
     }
-    Expression = std::make_unique<NumberLiteral>(NumValue);
+    Expression = std::make_unique<NumberLiteral>(Tok, NumValue);
     ConsumeToken(); // numeric constant
     break;
   }
   case tok::kw_true: {
+    Expression = std::make_unique<BooleanLiteral>(Tok, true);
     ConsumeToken(); // 'true'
-    Expression = std::make_unique<BooleanLiteral>(true);
     break;
   }
   case tok::kw_false: {
+    Expression = std::make_unique<BooleanLiteral>(Tok, false);
     ConsumeToken(); // 'false'
-    Expression = std::make_unique<BooleanLiteral>(false);
     break;
   }
   default:
@@ -204,19 +238,21 @@ std::unique_ptr<Expr> Parser::parseElementaryOperation() {
 }
 
 std::unique_ptr<AsmVarDecl> Parser::parseAsmVariableDeclaration() {
-  llvm::StringRef Name;
-  Name = Tok.getIdentifierInfo()->getName();
+  const SourceLocation Begin = Tok.getLocation();
+  llvm::StringRef Name = Tok.getIdentifierInfo()->getName();
   ConsumeToken();
   TypePtr T = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-  unique_ptr<Expr> Value;
-  auto VD = std::make_unique<AsmVarDecl>(std::move(T), Name, std::move(Value));
+  std::unique_ptr<Expr> Value;
+  auto VD = std::make_unique<AsmVarDecl>(SourceRange(Begin, Tok.getEndLoc()),
+                                         Name, std::move(T), std::move(Value));
   Actions.addDecl(VD.get());
   return VD;
 }
 
-vector<unique_ptr<VarDeclBase>> Parser::parseAsmVariableDeclarationList() {
-  vector<unique_ptr<VarDeclBase>> Variables;
-  while (true) {
+std::vector<std::unique_ptr<VarDeclBase>>
+Parser::parseAsmVariableDeclarationList() {
+  std::vector<std::unique_ptr<VarDeclBase>> Variables;
+  while (Tok.isAnyIdentifier()) {
     Variables.emplace_back(parseAsmVariableDeclaration());
     if (!TryConsumeToken(tok::comma)) {
       break;
@@ -226,45 +262,58 @@ vector<unique_ptr<VarDeclBase>> Parser::parseAsmVariableDeclarationList() {
 }
 
 std::unique_ptr<DeclStmt> Parser::parseAsmVariableDeclarationStatement() {
+  const SourceLocation Begin = Tok.getLocation();
   ConsumeToken(); // let
-  vector<unique_ptr<VarDeclBase>> Variables = parseAsmVariableDeclarationList();
-  unique_ptr<Expr> Value;
+  std::vector<std::unique_ptr<VarDeclBase>> Variables =
+      parseAsmVariableDeclarationList();
+  std::unique_ptr<Expr> Value;
   if (TryConsumeToken(tok::colonequal)) {
     Value = parseAsmExpression();
   }
-  return std::make_unique<DeclStmt>(std::move(Variables), std::move(Value));
+  return std::make_unique<DeclStmt>(SourceRange(Begin, Tok.getEndLoc()),
+                                    std::move(Variables), std::move(Value));
 }
 
 std::unique_ptr<AsmFunctionDeclStmt>
 Parser::parseAsmFunctionDefinitionStatement() {
+  const SourceLocation Begin = Tok.getLocation();
+  ParseScope ArgumentScope{this, 0};
   ConsumeToken(); // function
   auto Name = Tok.getIdentifierInfo()->getName();
   ConsumeToken();
   ConsumeParen(); // (
-  vector<unique_ptr<VarDeclBase>> Parameters =
+  std::vector<std::unique_ptr<VarDeclBase>> Parameters =
       parseAsmVariableDeclarationList();
   ConsumeParen(); // )
-  vector<unique_ptr<VarDeclBase>> ReturnParams;
+  std::vector<std::unique_ptr<VarDeclBase>> ReturnParams;
   if (TryConsumeToken(tok::arrow)) {
     ReturnParams = parseAsmVariableDeclarationList();
   }
-  unique_ptr<Block> Body = parseAsmBlock();
+  std::unique_ptr<Block> Body;
+  {
+    ParseScope FunctionScope{this, Scope::FunctionScope};
+    Body = parseAsmBlock();
+  }
+  /// TODO: implement AsmFunctionDecl and call Actions.addDecl
   return std::make_unique<AsmFunctionDeclStmt>(
-      Name, make_unique<ParamList>(std::move(Parameters)),
-      make_unique<ParamList>(std::move(ReturnParams)), std::move(Body));
-  return nullptr;
+      SourceRange(Begin, Tok.getEndLoc()), Name,
+      std::make_unique<ParamList>(std::move(Parameters)),
+      std::make_unique<ParamList>(std::move(ReturnParams)), std::move(Body));
 }
 
 std::unique_ptr<Expr> Parser::parseAsmCall(std::unique_ptr<Expr> &&E) {
   ConsumeParen(); // (
   if (auto ID = dynamic_unique_pointer_cast<AsmIdentifier>(std::move(E))) {
+    const SourceLocation Begin = ID->getLocation().getBegin();
     std::vector<std::unique_ptr<Expr>> Args;
     while (!isTokenParen()) {
       Args.emplace_back(parseAsmExpression());
       TryConsumeToken(tok::comma);
     }
+    const SourceLocation End = Tok.getEndLoc();
     ConsumeParen(); // )
-    return Actions.CreateAsmCallExpr(std::move(ID), std::move(Args));
+    return Actions.CreateAsmCallExpr(SourceRange(Begin, End), std::move(ID),
+                                     std::move(Args));
   } else {
     assert(false && "Callee is not an valid Identifier");
     __builtin_unreachable();

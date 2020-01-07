@@ -16,16 +16,18 @@ static bool isData(const Token &Tok) {
 }
 
 unique_ptr<SourceUnit> Parser::parseYul() {
+  const SourceLocation Begin = Tok.getLocation();
   ParseScope SourceUnitScope{this, 0};
   vector<unique_ptr<Decl>> Nodes;
 
   if (Tok.is(tok::l_brace)) {
     auto Body = parseAsmBlock();
-    auto Code = make_unique<YulCode>(std::move(Body));
+    auto Code = make_unique<YulCode>(SourceRange(Begin, Tok.getEndLoc()),
+                                     std::move(Body));
     auto DataList = make_unique_vector<YulData>();
-    auto Obj = make_unique<YulObject>("object", std::move(Code),
-                                      make_unique_vector<YulObject>(),
-                                      std::move(DataList));
+    auto Obj = make_unique<YulObject>(
+        SourceRange(Begin, Tok.getEndLoc()), "object", std::move(Code),
+        make_unique_vector<YulObject>(), std::move(DataList));
     Nodes.push_back(std::move(Obj));
   } else if (isObject(Tok)) {
     Nodes.push_back(parseYulObject());
@@ -34,10 +36,12 @@ unique_ptr<SourceUnit> Parser::parseYul() {
     assert(false && "not support code-only form");
     __builtin_unreachable();
   }
-  return make_unique<SourceUnit>(std::move(Nodes));
+  return make_unique<SourceUnit>(SourceRange(Begin, Tok.getEndLoc()),
+                                 std::move(Nodes));
 }
 
 unique_ptr<YulObject> Parser::parseYulObject() {
+  const SourceLocation Begin = Tok.getLocation();
   ConsumeToken();
 
   auto Name = stringUnquote(std::string(Tok.getLiteralData(), Tok.getLength()));
@@ -60,26 +64,30 @@ unique_ptr<YulObject> Parser::parseYulObject() {
   }
 
   ExpectAndConsume(tok::r_brace);
-  auto Obj = make_unique<YulObject>(Name, std::move(Code),
-                                    make_unique_vector<YulObject>(),
-                                    std::move(DataList));
+  auto Obj = make_unique<YulObject>(
+      SourceRange(Begin, Tok.getEndLoc()), Name, std::move(Code),
+      make_unique_vector<YulObject>(), std::move(DataList));
   return Obj;
 }
 
 unique_ptr<YulCode> Parser::parseYulCode() {
+  const SourceLocation Begin = Tok.getLocation();
   ConsumeToken();
   auto Body = parseAsmBlock();
-  auto Code = make_unique<YulCode>(std::move(Body));
+  auto Code = make_unique<YulCode>(SourceRange(Begin, Tok.getEndLoc()),
+                                   std::move(Body));
   return Code;
 }
 
 unique_ptr<YulData> Parser::parseYulData() {
+  const SourceLocation Begin = Tok.getLocation();
   ConsumeToken();
   auto Name = stringUnquote(std::string(Tok.getLiteralData(), Tok.getLength()));
-  ConsumeStringToken();
   auto Body = make_unique<StringLiteral>(
-      stringUnquote(std::string(Tok.getLiteralData(), Tok.getLength())));
-  auto Data = make_unique<YulData>(Name, std::move(Body));
+      Tok, stringUnquote(std::string(Tok.getLiteralData(), Tok.getLength())));
+  ConsumeStringToken();
+  auto Data = make_unique<YulData>(SourceRange(Begin, Tok.getEndLoc()), Name,
+                                   std::move(Body));
   ConsumeStringToken();
   return Data;
 }

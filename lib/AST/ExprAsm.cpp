@@ -7,14 +7,27 @@ namespace soll {
 ///
 /// AsmIdentifier
 ///
-AsmIdentifier::AsmIdentifier(const std::string &Name, SpecialIdentifier D,
-                             TypePtr Ty)
-    : Expr(ValueKind::VK_LValue, std::move(Ty)), Name(Name), D(D) {}
+AsmIdentifier::AsmIdentifier(const Token &T)
+    : Expr(SourceRange(T.getLocation(), T.getEndLoc()), ValueKind::VK_LValue,
+           nullptr),
+      T(T), D() {}
 
-AsmIdentifier::AsmIdentifier(const std::string &Name, Decl *D)
-    : Expr(ValueKind::VK_LValue, nullptr), Name(Name), D(D) {
+AsmIdentifier::AsmIdentifier(const Token &T, Decl *D)
+    : Expr(SourceRange(T.getLocation(), T.getEndLoc()), ValueKind::VK_LValue,
+           nullptr),
+      T(T), D(D) {
+  updateTypeFromCurrentDecl();
+}
+
+AsmIdentifier::AsmIdentifier(const Token &T, SpecialIdentifier D, TypePtr Ty)
+    : Expr(SourceRange(T.getLocation(), T.getEndLoc()), ValueKind::VK_LValue,
+           std::move(Ty)),
+      T(T), D(D) {}
+
+void AsmIdentifier::updateTypeFromCurrentDecl() {
+  Decl *D = getCorrespondDecl();
   if (auto VD = dynamic_cast<AsmVarDecl *>(D)) {
-    Ty = VD->GetType();
+    setType(VD->GetType());
   } else {
     assert(false && "unknown decl");
     __builtin_unreachable();

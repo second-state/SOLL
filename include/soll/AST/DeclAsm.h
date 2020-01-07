@@ -8,9 +8,9 @@ namespace soll {
 class AsmVarDecl : public VarDeclBase {
 
 public:
-  AsmVarDecl(TypePtr &&T, llvm::StringRef name, ExprPtr &&value)
-      : VarDeclBase(std::move(T), name, std::move(value), Visibility::Default) {
-  }
+  AsmVarDecl(SourceRange L, llvm::StringRef name, TypePtr &&T, ExprPtr &&value)
+      : VarDeclBase(L, name, Visibility::Default, std::move(T),
+                    std::move(value)) {}
 
   void accept(DeclVisitor &visitor) override;
   void accept(ConstDeclVisitor &visitor) const override;

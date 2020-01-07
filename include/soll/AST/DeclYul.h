@@ -11,8 +11,8 @@ class YulCode : public Decl {
   std::unique_ptr<Block> Body;
 
 public:
-  YulCode(std::unique_ptr<Block> &&Body)
-      : Decl(llvm::StringRef::withNullAsEmpty(nullptr)), ///< XXX: refactor
+  YulCode(SourceRange L, std::unique_ptr<Block> &&Body)
+      : Decl(L), ///< XXX: refactor
         Body(std::move(Body)) {}
 
   Block *getBody() { return Body.get(); }
@@ -26,8 +26,9 @@ class YulData : public Decl {
   std::unique_ptr<StringLiteral> Body;
 
 public:
-  YulData(llvm::StringRef Name, std::unique_ptr<StringLiteral> &&Body)
-      : Decl(Name), Body(std::move(Body)) {}
+  YulData(SourceRange L, llvm::StringRef Name,
+          std::unique_ptr<StringLiteral> &&Body)
+      : Decl(L, Name), Body(std::move(Body)) {}
 
   StringLiteral *getBody() { return Body.get(); }
   const StringLiteral *getBody() const { return Body.get(); }
@@ -42,10 +43,11 @@ class YulObject : public Decl {
   std::vector<std::unique_ptr<YulData>> DataList;
 
 public:
-  YulObject(llvm::StringRef Name, std::unique_ptr<YulCode> &&Code,
+  YulObject(SourceRange L, llvm::StringRef Name,
+            std::unique_ptr<YulCode> &&Code,
             std::vector<std::unique_ptr<YulObject>> &&ObjectList,
             std::vector<std::unique_ptr<YulData>> &&DataList)
-      : Decl(Name), Code(std::move(Code)), ObjectList(std::move(ObjectList)),
+      : Decl(L, Name), Code(std::move(Code)), ObjectList(std::move(ObjectList)),
         DataList(std::move(DataList)) {}
 
   YulCode *getCode() { return Code.get(); }

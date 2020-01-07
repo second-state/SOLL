@@ -33,9 +33,9 @@ std::vector<const Expr *> CallExpr::getArguments() const {
   return Args;
 }
 
-BinaryOperator::BinaryOperator(ExprPtr &&lhs, ExprPtr &&rhs, Opcode opc,
-                               TypePtr Ty)
-    : Expr(ValueKind::VK_RValue, Ty), Opc(opc) {
+BinaryOperator::BinaryOperator(SourceRange L, ExprPtr &&lhs, ExprPtr &&rhs,
+                               Opcode opc)
+    : Expr(L), Opc(opc) {
   SubExprs[LHS] = std::move(lhs);
   SubExprs[RHS] = std::move(rhs);
   if (this->isAssignmentOp())
@@ -45,21 +45,35 @@ BinaryOperator::BinaryOperator(ExprPtr &&lhs, ExprPtr &&rhs, Opcode opc,
 ///
 /// Identifier
 ///
-Identifier::Identifier(const std::string &Name, Decl *D)
-    : Expr(ValueKind::VK_LValue, nullptr), Name(Name), D(D) {
+Identifier::Identifier(const Token &T)
+    : Expr(SourceRange(T.getLocation(), T.getEndLoc()), ValueKind::VK_LValue,
+           nullptr),
+      T(T), D() {}
+
+Identifier::Identifier(const Token &T, Decl *D)
+    : Expr(SourceRange(T.getLocation(), T.getEndLoc()), ValueKind::VK_LValue,
+           nullptr),
+      T(T), D(D) {
+  updateTypeFromCurrentDecl();
+}
+
+Identifier::Identifier(const Token &T, SpecialIdentifier D, TypePtr Ty)
+    : Expr(SourceRange(T.getLocation(), T.getEndLoc()), ValueKind::VK_LValue,
+           std::move(Ty)),
+      T(T), D(D) {}
+
+void Identifier::updateTypeFromCurrentDecl() {
+  Decl *D = getCorrespondDecl();
   if (auto VD = dynamic_cast<const VarDecl *>(D)) {
-    Ty = VD->GetType();
+    setType(VD->GetType());
   } else if (auto FD = dynamic_cast<const FunctionDecl *>(D)) {
-    Ty = FD->getType();
+    setType(FD->getType());
   } else if (dynamic_cast<const EventDecl *>(D)) {
-    Ty = nullptr;
+    setType(nullptr);
   } else {
     assert(false && "unknown decl");
     __builtin_unreachable();
   }
 }
-
-Identifier::Identifier(const std::string &Name, SpecialIdentifier D, TypePtr Ty)
-    : Expr(ValueKind::VK_LValue, std::move(Ty)), Name(Name), D(D) {}
 
 } // namespace soll

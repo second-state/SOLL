@@ -47,6 +47,9 @@ public:
   virtual std::string getName() const = 0;
   virtual bool isDynamic() const = 0;
   virtual unsigned getABIStaticSize() const = 0;
+  virtual bool isEqual(Type const &Ty) const {
+    return Ty.getCategory() == getCategory();
+  }
 };
 
 class AddressType : public Type {
@@ -172,9 +175,10 @@ public:
   }
   bool isDynamic() const override { return false; }
   unsigned getABIStaticSize() const override { return 32; }
-
-  static std::shared_ptr<IntegerType> common(const IntegerType &A,
-                                             const IntegerType &B);
+  bool isEqual(Type const &Ty) const override {
+    return Type::isEqual(Ty) &&
+           static_cast<IntegerType const &>(Ty).getKind() == getKind();
+  }
 
 private:
   IntKind _intKind;
@@ -230,6 +234,10 @@ public:
   }
   bool isDynamic() const override { return false; }
   unsigned getABIStaticSize() const override { return 32; }
+  bool isEqual(Type const &Ty) const override {
+    return Type::isEqual(Ty) &&
+           static_cast<FixedBytesType const &>(Ty).getKind() == getKind();
+  }
 
 private:
   ByteKind _byteKind;
@@ -332,6 +340,24 @@ public:
   std::string getName() const override { return "function"; }
   bool isDynamic() const override { return false; }
   unsigned getABIStaticSize() const override { return 32; }
+  bool isEqual(Type const &Ty) const override {
+    if (!Type::isEqual(Ty)) {
+      return false;
+    }
+    auto Compare = [](auto const &A, auto const &B) { return A->isEqual(*B); };
+    auto const &T = static_cast<FunctionType const &>(Ty);
+    if (!std::equal(getParamTypes().cbegin(), getParamTypes().cend(),
+                    T.getParamTypes().cbegin(), T.getParamTypes().cend(),
+                    Compare)) {
+      return false;
+    }
+    if (!std::equal(getReturnTypes().cbegin(), getReturnTypes().cend(),
+                    T.getReturnTypes().cbegin(), T.getReturnTypes().cend(),
+                    Compare)) {
+      return false;
+    }
+    return true;
+  }
 };
 
 class StructType : public Type {

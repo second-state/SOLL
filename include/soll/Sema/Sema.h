@@ -36,80 +36,49 @@ public:
 
   DiagnosticBuilder Diag(SourceLocation Loc, unsigned DiagID);
 
-  void SetFunRtnTys(std::vector<TypePtr> Tys) {
-    this->FunRtnTys = std::vector(Tys);
-  }
-  void EraseFunRtnTys() { this->FunRtnTys.clear(); }
-
-  // Stmt
-  StmtPtr CreateReturnStmt();
-  StmtPtr CreateReturnStmt(ExprPtr &&Vaule);
+  void SetFunRtnTys(std::vector<TypePtr> &&Tys) { FunRtnTys = std::move(Tys); }
+  void EraseFunRtnTys() { FunRtnTys.clear(); }
 
   // Decl
   std::unique_ptr<FunctionDecl> CreateFunctionDecl(
-      llvm::StringRef name, FunctionDecl::Visibility visibility,
+      SourceRange L, llvm::StringRef name, FunctionDecl::Visibility visibility,
       StateMutability sm, bool isConstructor, bool isFallback,
       std::unique_ptr<ParamList> &&params,
       std::vector<std::unique_ptr<ModifierInvocation>> &&modifiers,
       std::unique_ptr<ParamList> &&returnParams, std::unique_ptr<Block> &&body);
   std::unique_ptr<EventDecl>
-  CreateEventDecl(llvm::StringRef name, std::unique_ptr<ParamList> &&Params,
-                  bool Anonymous);
+  CreateEventDecl(SourceRange L, llvm::StringRef name,
+                  std::unique_ptr<ParamList> &&Params, bool Anonymous);
 
   // Expr
-  ExprPtr CreateBinOp(BinaryOperatorKind Opc, ExprPtr &&LHS, ExprPtr &&RHS);
-  ExprPtr CreateIndexAccess(ExprPtr &&LHS, ExprPtr &&RHS);
+  std::unique_ptr<ImplicitCastExpr> CreateDummy(std::unique_ptr<Expr> &&Base);
+  ExprPtr CreateBinOp(SourceRange L, BinaryOperatorKind Opc, ExprPtr &&LHS,
+                      ExprPtr &&RHS);
+  ExprPtr CreateIndexAccess(SourceLocation EndPos, ExprPtr &&LHS,
+                            ExprPtr &&RHS);
   std::unique_ptr<CallExpr>
-  CreateCallExpr(ExprPtr &&Callee, std::vector<std::unique_ptr<Expr>> &&Args);
-  std::unique_ptr<Identifier> CreateIdentifier(Token Tok);
+  CreateCallExpr(SourceRange L, ExprPtr &&Callee,
+                 std::vector<std::unique_ptr<Expr>> &&Args);
+  std::unique_ptr<Identifier> CreateIdentifier(const Token &Tok);
   std::unique_ptr<MemberExpr> CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr,
                                                Token Tok);
 
   /// ExprAsm
-  std::unique_ptr<AsmIdentifier> CreateAsmIdentifier(llvm::StringRef Name);
-  std::unique_ptr<Expr> CreateAsmCallExpr(ExprPtr &&Callee,
+  std::unique_ptr<AsmIdentifier> CreateAsmIdentifier(const Token &Tok);
+  std::unique_ptr<Expr> CreateAsmCallExpr(SourceRange L, ExprPtr &&Callee,
                                           std::vector<ExprPtr> &&Args);
-  std::unique_ptr<Expr> CreateAsmBuiltinCallExpr(const AsmIdentifier &Callee,
+  std::unique_ptr<Expr> CreateAsmBuiltinCallExpr(SourceRange L,
+                                                 const AsmIdentifier &Callee,
                                                  std::vector<ExprPtr> &&Args,
                                                  TypePtr ReturnTy);
-
-  /// type checking binary operators (subroutines of CreateBinOp)
-  /// this may add type casting
-
-  /// +, -
-  TypePtr CheckAdditiveOperands(ExprPtr &LHS, ExprPtr &RHS,
-                                BinaryOperatorKind Opc,
-                                TypePtr CompLHSTy = nullptr);
-  /// *, /, %
-  TypePtr CheckMultiplicativeOperands(ExprPtr &LHS, ExprPtr &RHS,
-                                      BinaryOperatorKind Opc,
-                                      TypePtr CompLHSTy = nullptr);
-  /// <<, >>, <<=, >>=
-  TypePtr CheckShiftOperands(ExprPtr &LHS, ExprPtr &RHS, BinaryOperatorKind Opc,
-                             bool IsCompAssign = false);
-  /// <, >, <=, >=, ==
-  TypePtr CheckCompareOperands(ExprPtr &LHS, ExprPtr &RHS,
-                               BinaryOperatorKind Opc);
-  // &&, ||
-  TypePtr CheckLogicalOperands(ExprPtr &LHS, ExprPtr &RHS,
-                               BinaryOperatorKind Opc);
-  // &, |
-  TypePtr CheckBitwiseOperands(ExprPtr &LHS, ExprPtr &RHS,
-                               BinaryOperatorKind Opc);
-  TypePtr CheckAssignmentOperands(ExprPtr &LHS, ExprPtr &RHS,
-                                  TypePtr CompoundType);
-
-  TypePtr UsualArithmeticConversions(ExprPtr &LHS, ExprPtr &RHS,
-                                     bool IsCompAssign);
-
-  ExprPtr UsualUnaryConversions(ExprPtr &&E);
-
-  ExprPtr DefaultLvalueConversion(ExprPtr &&E);
 
   void PushScope(unsigned Flags) {
     Scopes.push_back(std::make_unique<Scope>(CurrentScope(), Flags));
   }
-  void PopScope() { Scopes.pop_back(); }
+  void PopScope() {
+    resolveIdentifiers();
+    Scopes.pop_back();
+  }
   Scope *CurrentScope() const {
     return Scopes.empty() ? nullptr : Scopes.back().get();
   }
@@ -117,6 +86,13 @@ public:
   Decl *lookupName(llvm::StringRef Name) const {
     return CurrentScope()->lookupName(Name);
   }
+
+  void resolveType(SourceUnit &SU);
+  void resolveImplicitCast(ImplicitCastExpr &IC, TypePtr DstTy,
+                           bool PrefereLValue);
+
+private:
+  void resolveIdentifiers();
 };
 
 } // namespace soll

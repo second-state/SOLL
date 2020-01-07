@@ -6,40 +6,27 @@ namespace soll {
 ///
 /// AsmSwitchCase
 ///
-std::list<AsmSwitchCase *> AsmSwitchStmt::getSwitchCaseList() {
-  std::list<AsmSwitchCase *> Cases;
-  for (AsmSwitchCase *Case = getFirstCase(); Case; Case = Case->getNextCase()) {
-    Cases.emplace_front(Case);
-  }
+std::vector<AsmSwitchCase *> AsmSwitchStmt::getCases() {
+  std::vector<AsmSwitchCase *> Cases;
+  for (auto &C : this->Cases)
+    Cases.emplace_back(C.get());
   return Cases;
 }
 
-std::list<const AsmSwitchCase *> AsmSwitchStmt::getSwitchCaseList() const {
-  std::list<const AsmSwitchCase *> Cases;
-  for (const AsmSwitchCase *Case = getFirstCase(); Case;
-       Case = Case->getNextCase()) {
-    Cases.emplace_front(Case);
-  }
+std::vector<const AsmSwitchCase *> AsmSwitchStmt::getCases() const {
+  std::vector<const AsmSwitchCase *> Cases;
+  for (const auto &C : this->Cases)
+    Cases.emplace_back(C.get());
   return Cases;
-}
-
-void AsmSwitchStmt::addSwitchCase(std::unique_ptr<AsmSwitchCase> &&SC) {
-  assert(!SC->getNextCase() && "case/default already added to a switch");
-  if (FirstCase.get()) {
-    SC->setNextCase(std::move(FirstCase));
-    FirstCase = std::move(SC);
-  } else {
-    FirstCase = std::move(SC);
-  }
 }
 
 ///
 /// AsmFunctionDeclStmt
 ///
 AsmFunctionDeclStmt::AsmFunctionDeclStmt(
-    llvm::StringRef name, std::unique_ptr<ParamList> &&params,
+    SourceRange L, llvm::StringRef name, std::unique_ptr<ParamList> &&params,
     std::unique_ptr<ParamList> &&returnParams, std::unique_ptr<Block> &&body)
-    : Name(name), Params(std::move(params)),
+    : Stmt(L), Name(name), Params(std::move(params)),
       ReturnParams(std::move(returnParams)), Body(std::move(body)),
       Implemented(body != nullptr) {
   std::vector<TypePtr> PTys;

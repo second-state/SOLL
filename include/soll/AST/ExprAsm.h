@@ -98,17 +98,24 @@ public:
   };
 
 private:
-  std::string Name;
-  std::variant<Decl *, SpecialIdentifier> D;
+  Token T;
+  std::variant<std::monostate, Decl *, SpecialIdentifier> D;
+  void updateTypeFromCurrentDecl();
 
 public:
-  AsmIdentifier(const std::string &Name, SpecialIdentifier D, TypePtr Ty);
-  AsmIdentifier(const std::string &Name, Decl *D);
+  AsmIdentifier(const Token &T);
+  AsmIdentifier(const Token &T, Decl *D);
+  AsmIdentifier(const Token &T, SpecialIdentifier D, TypePtr Ty);
 
-  void setName(const std::string &Name) { this->Name = Name; }
-  std::string getName() const { return Name; }
+  bool isResolved() const { return !std::holds_alternative<std::monostate>(D); }
   bool isSpecialIdentifier() const {
     return std::holds_alternative<SpecialIdentifier>(D);
+  }
+  const Token &getToken() const { return T; }
+  llvm::StringRef getName() const { return T.getIdentifierInfo()->getName(); }
+  void setCorrespondDecl(Decl *D) {
+    this->D = D;
+    updateTypeFromCurrentDecl();
   }
   Decl *getCorrespondDecl() { return std::get<Decl *>(D); }
   const Decl *getCorrespondDecl() const { return std::get<Decl *>(D); }
@@ -136,26 +143,20 @@ public:
 
 class AsmUnaryOperator : public UnaryOperator {
 public:
-  AsmUnaryOperator(ExprPtr &&Arg0, TypePtr Ty, UnaryOperatorKind opc)
-      : UnaryOperator(std::move(Arg0), opc, Ty) {}
+  AsmUnaryOperator(SourceRange L, ExprPtr &&Arg0, TypePtr ReturnTy,
+                   UnaryOperatorKind opc)
+      : UnaryOperator(L, std::move(Arg0), opc) {
+    setType(std::move(ReturnTy));
+  }
 };
 
 class AsmBinaryOperator : public BinaryOperator {
 public:
-  AsmBinaryOperator(ExprPtr &&Arg0, ExprPtr &&Arg1, TypePtr Ty,
-                    BinaryOperatorKind opc)
-      : BinaryOperator(std::move(Arg0), std::move(Arg1), opc, Ty) {}
-};
-
-/// iszerou256(u256) -> u256
-///
-/// Although it's an unary operator, the implementation here inherits from
-/// binary operator and compared the argument with the number literal 0.
-class AsmIsZeroOperator : public BinaryOperator {
-public:
-  AsmIsZeroOperator(ExprPtr &&Arg, TypePtr Ty)
-      : BinaryOperator(std::move(Arg), std::make_unique<NumberLiteral>(0),
-                       BinaryOperatorKind::BO_EQ, Ty) {}
+  AsmBinaryOperator(SourceRange L, ExprPtr &&Arg0, ExprPtr &&Arg1,
+                    TypePtr ReturnTy, BinaryOperatorKind opc)
+      : BinaryOperator(L, std::move(Arg0), std::move(Arg1), opc) {
+    setType(std::move(ReturnTy));
+  }
 };
 
 } // namespace soll

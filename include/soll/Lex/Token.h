@@ -70,6 +70,10 @@ public:
     return getLocation().getLocWithOffset(getLength());
   }
 
+  SourceRange getRange() const {
+    return SourceRange(getLocation(), getEndLoc());
+  }
+
   const char *getName() const { return tok::getTokenName(Kind); }
 
   IdentifierInfo *getIdentifierInfo() const {

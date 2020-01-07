@@ -163,15 +163,14 @@ unsigned ParamList::getABIStaticSize() const {
 }
 
 FunctionDecl::FunctionDecl(
-    llvm::StringRef name, Visibility visibility, StateMutability sm,
-    bool isConstructor, bool isFallback, std::unique_ptr<ParamList> &&Params,
-    std::vector<std::unique_ptr<ModifierInvocation>> &&modifiers,
-    std::unique_ptr<ParamList> &&returnParams, std::unique_ptr<Block> &&body)
-    : CallableVarDecl(name, visibility, std::move(Params),
-                      std::move(returnParams)),
-      SM(sm), IsConstructor(isConstructor), IsFallback(isFallback),
-      FunctionModifiers(std::move(modifiers)), Body(std::move(body)),
-      Implemented(body != nullptr) {
+    SourceRange L, llvm::StringRef Name, Visibility V, StateMutability SM,
+    bool IsConstructor, bool IsFallback, std::unique_ptr<ParamList> &&Params,
+    std::vector<std::unique_ptr<ModifierInvocation>> &&Modifiers,
+    std::unique_ptr<ParamList> &&ReturnParams, std::unique_ptr<Block> &&Body)
+    : CallableVarDecl(L, Name, V, std::move(Params), std::move(ReturnParams)),
+      SM(SM), IsConstructor(IsConstructor), IsFallback(IsFallback),
+      FunctionModifiers(std::move(Modifiers)), Body(std::move(Body)),
+      Implemented(this->Body != nullptr) {
   std::vector<TypePtr> PTys;
   std::vector<TypePtr> RTys;
   for (auto VD : this->getParams()->getParams())
@@ -181,10 +180,10 @@ FunctionDecl::FunctionDecl(
   FuncTy = std::make_shared<FunctionType>(std::move(PTys), std::move(RTys));
 }
 
-EventDecl::EventDecl(llvm::StringRef name, std::unique_ptr<ParamList> &&Params,
-                     bool isAnonymous)
-    : CallableVarDecl(name, Decl::Visibility::Default, std::move(Params)),
-      IsAnonymous(isAnonymous) {
+EventDecl::EventDecl(SourceRange L, llvm::StringRef Name,
+                     std::unique_ptr<ParamList> &&Params, bool IsAnonymous)
+    : CallableVarDecl(L, Name, Decl::Visibility::Default, std::move(Params)),
+      IsAnonymous(IsAnonymous) {
   std::vector<TypePtr> PTys;
   std::vector<TypePtr> RTys;
   for (auto VD : this->getParams()->getParams())

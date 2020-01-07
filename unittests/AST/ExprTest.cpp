@@ -3,7 +3,7 @@
 #include "soll/AST/AST.h"
 
 TEST_CASE("Expr", "[ast][stmt][expr]") {
-  soll::BooleanLiteral literal(true);
+  soll::BooleanLiteral literal(soll::Token(), true);
   REQUIRE(literal.isRValue());
 
   SECTION("getValue") { CHECK(literal.getValue()); }
