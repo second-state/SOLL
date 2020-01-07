@@ -283,9 +283,8 @@ public:
         llvm::Value *Val = Builder.CreateLoad(ValPtr);
         Val = Builder.CreateOr(Val, CGM.getEndianlessValue(LengthEncode));
         Builder.CreateStore(Val, ValPtr);
-        CGM.emitStorageStore(
-            CGM.getEndianlessValue(Builder.CreateLoad(AddressPtr)),
-            CGM.getEndianlessValue(Builder.CreateLoad(ValPtr)));
+        CGM.emitStorageStore(Builder.CreateLoad(AddressPtr),
+                             Builder.CreateLoad(ValPtr));
         Builder.CreateBr(Done);
 
         // ExtendSlot case
@@ -305,9 +304,8 @@ public:
         LengthEncode = CGM.getEndianlessValue(
             Builder.CreateOr(LengthEncode, Builder.getIntN(256, 1)));
         Builder.CreateStore(LengthEncode, ValPtr);
-        CGM.emitStorageStore(
-            CGM.getEndianlessValue(Builder.CreateLoad(AddressPtr)),
-            CGM.getEndianlessValue(Builder.CreateLoad(ValPtr)));
+        CGM.emitStorageStore(Builder.CreateLoad(AddressPtr),
+                             Builder.CreateLoad(ValPtr));
         llvm::Value *Bytes = CGM.emitConcateBytes({Address});
         Address = Builder.CreateCall(Keccak256, {Bytes});
         Condition = Builder.CreateICmpSGE(Length, Builder.getIntN(256, 32));
@@ -320,9 +318,8 @@ public:
         llvm::PHINode *PHIAddressPtr = Builder.CreatePHI(CGM.Int256PtrTy, 2);
         Builder.CreateStore(CGM.getEndianlessValue(PHIAddress), PHIAddressPtr);
         CGM.emitStorageStore(
-            CGM.getEndianlessValue(Builder.CreateLoad(PHIAddressPtr)),
-            CGM.getEndianlessValue(Builder.CreateLoad(
-                Builder.CreateBitCast(PHIPtr, CGM.Int256PtrTy))));
+            Builder.CreateLoad(PHIAddressPtr),
+            Builder.CreateLoad(Builder.CreateBitCast(PHIPtr, CGM.Int256PtrTy)));
         llvm::Value *NextRemain =
             Builder.CreateSub(PHIRemain, Builder.getIntN(256, 32));
         llvm::Value *NextAddress =
@@ -362,9 +359,8 @@ public:
                            {Builder.CreateBitCast(ValPtr, CGM.Int8PtrTy),
                             Builder.CreateBitCast(PHIPtr, CGM.Int8PtrTy),
                             Builder.CreateZExtOrTrunc(PHIRemain, CGM.Int32Ty)});
-        CGM.emitStorageStore(
-            CGM.getEndianlessValue(Builder.CreateLoad(AddressPtr)),
-            CGM.getEndianlessValue(Builder.CreateLoad(ValPtr)));
+        CGM.emitStorageStore(Builder.CreateLoad(AddressPtr),
+                             Builder.CreateLoad(ValPtr));
         Builder.CreateBr(Done);
 
         Builder.SetInsertPoint(Done);
