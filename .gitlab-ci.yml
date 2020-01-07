@@ -62,8 +62,10 @@ compile:wasm:
     SOLL_PATH: "${BASE_BINDIR}/tools/soll/soll"
   script:
     - bash -c "./utils/compile sol ewasm ${TEST_ENVDIR}/test/*.sol"
+    - bash -c "./utils/compile yul ewasm test/yul/switch.yul"
   after_script:
     - cp ${TEST_ENVDIR}/test/*.wasm ${BASE_BINDIR}
+    - cp test/yul/*.wasm ${BASE_BINDIR}
   cache:
     <<: *cache_paths
     key: ubuntu-clang
@@ -79,6 +81,7 @@ test:wasm:
   script:
     - bash -c "cd ${BASE_BINDIR} && ctest"
     - bash -c "cd ${TEST_ENVDIR} && mocha"
+    - bash -c "cd ${TEST_ENVDIR} && ./index.js test/switch.wasm '' '{}'"
   cache:
     <<: *cache_paths
     key: ubuntu-clang
@@ -113,6 +116,7 @@ compile:evm:
     key: ubuntu-clang-evm
     policy: pull-push
 
+# Jobs for Coverage Report
 test:ubuntu-coverage:
   stage: test
   image: secondstate/soll:ubuntu-coverage
