@@ -8,16 +8,7 @@ object "feature" {
 
     let i := 0
     let j := 1
-    switch 3
-    case 0 {
-      break
-      sstore(i, j)
-
-    }
-    default {
-      break
-    }
-
+    sstore(i, j)
   }
   // Unreferenced data is not added to the assembled bytecode.
   data "str" "CodeGen is under implementation."
