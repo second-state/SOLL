@@ -1,5 +1,6 @@
 #!/bin/bash
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+shopt -s extglob
 
 SOURCE_TYPE=sol
 SOURCE_FILES=
@@ -51,10 +52,10 @@ function source_to_ll
     local filename=$1
     case "${SOURCE_TYPE}" in
         sol)
-            "${SOLL_PATH}" "${filename}" > "${filename%.sol}.ll"
+            "${SOLL_PATH}" "${filename}" > "${filename%%*(.sol)}.ll"
             ;;
         yul)
-            "${SOLL_PATH}" -lang=Yul "${filename}" > "${filename%.sol}.ll"
+            "${SOLL_PATH}" -lang=Yul "${filename}" > "${filename%%*(.yul)}.ll"
             ;;
     esac
 }
@@ -62,10 +63,11 @@ function source_to_ll
 function ll_to_target
 {
     local filename=$1
+    local prefix=${filename%%*(.ll|.sol|.yul)}
     case "${TARGET_TYPE}" in
         ewasm)
-            "${BINDIR}/ll2ewasm_${SOURCE_TYPE}" -v "${filename%.sol}.ll"
-            test -f "${filename%.sol}.wasm"
+            "${BINDIR}/ll2ewasm_${SOURCE_TYPE}" -v "${prefix}.ll"
+            test -f "${prefix}.wasm"
             ;;
     esac
 }
