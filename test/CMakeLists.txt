@@ -68,5 +68,9 @@ if(SOLL_COVERAGE)
     EXECUTABLE ctest -j ${PROCESSOR_COUNT}
     DEPENDENCIES soll unittests
     BASE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+    EXCLUDE
+      "${PROJECT_SOURCE_DIR}/utils/SHA-3/*"
+      "${PROJECT_SOURCE_DIR}/utils/json/*"
+      "${PROJECT_SOURCE_DIR}/utils/unittests/*"
     )
 endif()
