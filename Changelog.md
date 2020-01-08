@@ -1,5 +1,15 @@
 [//]: # (SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception)
 
+### 0.0.5 (2020-01-xx, draft)
+
+Language Features:
+
+* Support alias operators:
+    * `slt` -> `lts256`
+    * `sgt` -> `gts256`
+    * `sdiv` -> `divs256`
+
+
 ### 0.0.4 (2019-12-25)
 
 Language Features:
