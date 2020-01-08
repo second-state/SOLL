@@ -127,6 +127,8 @@ test:ubuntu-coverage:
     key: ubuntu-coverage
     paths: ["public"]
     policy: push
+  only:
+    - master
 
 pages:
   stage: coverage
