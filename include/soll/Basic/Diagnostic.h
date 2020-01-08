@@ -173,6 +173,7 @@ private:
   std::unique_ptr<DiagnosticConsumer> Owner;
   SourceManager *SourceMgr = nullptr;
 
+  bool ErrorOccurred = false;
   unsigned NumWarnings = 0;
   unsigned NumErrors = 0;
 
@@ -201,7 +202,7 @@ protected:
   bool EmitCurrentDiagnostic(bool Force = false);
 
 public:
-  bool hasErrorOccurred() const { return NumErrors > 0; }
+  bool hasErrorOccurred() const { return ErrorOccurred; }
 };
 
 class DiagnosticBuilder {

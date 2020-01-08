@@ -161,6 +161,13 @@ bool DiagnosticIDs::ProcessDiag(DiagnosticsEngine &Diag) const {
   DiagnosticIDs::Level DiagLevel =
       getDiagnosticLevel(DiagID, Info.getLocation(), Diag);
 
+  if (DiagLevel >= DiagnosticIDs::Error) {
+    Diag.ErrorOccurred = true;
+    if (Diag.Client->IncludeInDiagnosticCounts()) {
+      ++Diag.NumErrors;
+    }
+  }
+
   EmitDiag(Diag, DiagLevel);
   return true;
 }

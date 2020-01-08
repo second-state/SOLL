@@ -48,6 +48,7 @@ public:
 
   void HandleSourceUnit(ASTContext &C, SourceUnit &S) override {
     if (Diags.hasErrorOccurred()) {
+      M.reset();
       return;
     }
     for (auto &Node : S.getNodes()) {

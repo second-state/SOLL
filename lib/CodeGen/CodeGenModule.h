@@ -122,6 +122,7 @@ public:
   llvm::Module &getModule() const { return TheModule; }
   llvm::LLVMContext &getLLVMContext() const { return VMContext; }
   llvm::IRBuilder<llvm::ConstantFolder> &getBuilder() { return Builder; }
+  DiagnosticsEngine &getDiags() { return Diags; }
 
   bool isEVM() const noexcept { return TargetOpts.BackendTarget == EVM; }
   bool isEWASM() const noexcept { return TargetOpts.BackendTarget == EWASM; }

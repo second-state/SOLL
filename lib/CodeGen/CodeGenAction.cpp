@@ -59,7 +59,10 @@ public:
   void HandleSourceUnit(ASTContext &C, SourceUnit &S) override {
     Gen->HandleSourceUnit(C, S);
 
-    assert(getModule() && "module == nullptr");
+    // Silently ignore if we weren't initialized for some reason.
+    if (!getModule()) {
+      return;
+    }
 
     EmbedBitcode(getModule(), llvm::MemoryBufferRef());
     EmitBackendOutput(Diags, TargetOpts, getModule()->getDataLayout(),
