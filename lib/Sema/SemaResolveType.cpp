@@ -7,6 +7,69 @@
 namespace soll {
 namespace {
 
+bool isAllowedTypeForUnary(UnaryOperatorKind UOK, const Type::Category TyC) {
+  switch (TyC) {
+  case Type::Category::Bool:
+    return UOK == UO_LNot;
+  case Type::Category::Integer:
+    return UOK == UO_Not || UOK == UO_Plus || UOK == UO_Minus;
+  case Type::Category::FixedBytes:
+    return UOK == UO_Not;
+  default:
+    return false;
+  }
+}
+
+bool isAllowedTypeForBinary(BinaryOperatorKind BOK, const Type::Category TyC) {
+  BOK = BinaryOperator::compoundAssignmentToNormal(BOK);
+  switch (TyC) {
+  case Type::Category::Bool:
+    return BinaryOperator::isEqualityOp(BOK) || BOK == BO_LAnd ||
+           BOK == BO_LOr || BOK == BO_Assign;
+  case Type::Category::Integer:
+    return BinaryOperator::isComparisonOp(BOK) ||
+           BinaryOperator::isBitwiseOp(BOK) || BinaryOperator::isShiftOp(BOK) ||
+           BinaryOperator::isAdditiveOp(BOK) ||
+           BinaryOperator::isMultiplicativeOp(BOK) || BOK == BO_Exp ||
+           BOK == BO_Assign;
+  case Type::Category::RationalNumber:
+    return BinaryOperator::isComparisonOp(BOK) ||
+           BinaryOperator::isAdditiveOp(BOK) ||
+           BinaryOperator::isMultiplicativeOp(BOK) || BOK == BO_Assign;
+  case Type::Category::Address:
+    return BinaryOperator::isComparisonOp(BOK) || BOK == BO_Assign;
+  case Type::Category::FixedBytes:
+    return BinaryOperator::isComparisonOp(BOK) ||
+           BinaryOperator::isBitwiseOp(BOK) || BinaryOperator::isShiftOp(BOK) ||
+           BOK == BO_Assign;
+  case Type::Category::Array:
+  case Type::Category::String:
+  case Type::Category::Bytes:
+    return BOK == BO_Assign;
+  default:
+    return false;
+  }
+}
+
+void setTypeForBinary(Sema &Actions, BinaryOperator &BO, ImplicitCastExpr *LHS,
+                      ImplicitCastExpr *RHS, Type *LHSTy, Type *RHSTy,
+                      TypePtr Ty) {
+  if (!isAllowedTypeForBinary(BO.getOpcode(), Ty->getCategory())) {
+    Actions.Diag(BO.getLocation().getBegin(),
+                 diag::err_typecheck_invalid_operands)
+        << LHSTy->getName() << RHSTy->getName();
+    return;
+  }
+  if (!LHSTy->isEqual(*Ty)) {
+    LHS->setType(Ty);
+    Actions.resolveImplicitCast(*LHS, Ty, BO.isAssignmentOp());
+  } else if (!RHSTy->isEqual(*Ty)) {
+    RHS->setType(Ty);
+    Actions.resolveImplicitCast(*RHS, Ty, false);
+  }
+  BO.setType(BO.isComparisonOp() ? std::make_shared<BooleanType>() : Ty);
+}
+
 class TypeResolver : public StmtVisitor {
   TypePtr ReturnType;
   Sema &Actions;
@@ -24,7 +87,14 @@ public:
   }
   void visit(UnaryOperatorType &UO) override {
     StmtVisitor::visit(UO);
-    UO.setType(UO.getSubExpr()->getType());
+    auto Ty = UO.getSubExpr()->getType();
+    if (!isAllowedTypeForUnary(UO.getOpcode(), Ty->getCategory())) {
+      Actions.Diag(UO.getLocation().getBegin(), diag::err_typecheck_unary_expr)
+          << Ty->getName();
+      return;
+    }
+
+    UO.setType(Ty);
   }
   void visit(BinaryOperatorType &BO) override {
     StmtVisitor::visit(BO);
@@ -35,28 +105,21 @@ public:
         if (!LHSTy || !RHSTy) {
           return;
         }
-        if (LHSTy->isEqual(*RHSTy)) {
-          LHS->setType(LHSTy);
-          RHS->setType(LHSTy);
-          BO.setType(LHSTy);
-          return;
-        }
-        if (BO.isAssignmentOp() || BO.isCompoundAssignmentOp() ||
+        if (LHSTy->isEqual(*RHSTy) || BO.isAssignmentOp() ||
             RHSTy->isImplicitlyConvertibleTo(*LHSTy)) {
-          LHS->setType(LHSTy);
-          BO.setType(LHSTy);
-          Actions.resolveImplicitCast(*RHS, LHSTy, false);
+          setTypeForBinary(Actions, BO, LHS, RHS, LHSTy.get(), RHSTy.get(),
+                           LHSTy);
           return;
         }
         if (LHSTy->isImplicitlyConvertibleTo(*RHSTy)) {
-          RHS->setType(RHSTy);
-          BO.setType(RHSTy);
-          Actions.resolveImplicitCast(*LHS, RHSTy, false);
+          setTypeForBinary(Actions, BO, LHS, RHS, LHSTy.get(), RHSTy.get(),
+                           RHSTy);
           return;
         }
         Actions.Diag(BO.getLocation().getBegin(),
                      diag::err_typecheck_no_implicit_convertion)
             << LHSTy->getName() << RHSTy->getName();
+        return;
       }
     }
     assert(false);

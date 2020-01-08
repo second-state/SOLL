@@ -370,8 +370,8 @@ private:
           return ExprValue::getRValue(CE, Out);
         }
       }
-      if (auto InTy = dynamic_cast<const IntegerType *>(OrigInTy)) {
-        if (auto OutTy = dynamic_cast<const BooleanType *>(OrigOutTy)) {
+      if (dynamic_cast<const IntegerType *>(OrigInTy)) {
+        if (dynamic_cast<const BooleanType *>(OrigOutTy)) {
           llvm::Value *Out = Builder.CreateICmpNE(
               In, llvm::ConstantInt::get(In->getType(), 0));
           return ExprValue::getRValue(CE, Out);

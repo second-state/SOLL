@@ -26,6 +26,9 @@ public:
   llvm::Value *load(T &Builder, CodeGenModule &CGM,
                     llvm::StringRef Name = "") const {
     switch (Kind) {
+    case ValueKind::VK_Unknown:
+      assert(false && "Kind == Unknown");
+      __builtin_unreachable();
     case ValueKind::VK_RValue:
       return V;
     case ValueKind::VK_LValue:
@@ -197,6 +200,9 @@ public:
   template <typename T>
   void store(T &Builder, CodeGenModule &CGM, llvm::Value *Value) const {
     switch (Kind) {
+    case ValueKind::VK_Unknown:
+      assert(false && "Kind == Unknown");
+      __builtin_unreachable();
     case ValueKind::VK_RValue:
       assert(false && "store on RValue");
       __builtin_unreachable();

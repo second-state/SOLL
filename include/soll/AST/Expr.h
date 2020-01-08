@@ -143,19 +143,23 @@ public:
   const Expr *getSubExpr() const { return Val.get(); }
 
   /// isPostfix - Return true if this is a postfix operation, like x++.
-  static bool isPostfix(Opcode Op) {
+  static inline constexpr bool isPostfix(Opcode Op) {
     return Op == UO_PostInc || Op == UO_PostDec;
   }
   /// isPrefix - Return true if this is a prefix operation, like --x.
-  static bool isPrefix(Opcode Op) { return Op == UO_PreInc || Op == UO_PreDec; }
-  static bool isIncrementOp(Opcode Op) {
+  static inline constexpr bool isPrefix(Opcode Op) {
+    return Op == UO_PreInc || Op == UO_PreDec;
+  }
+  static inline constexpr bool isIncrementOp(Opcode Op) {
     return Op == UO_PreInc || Op == UO_PostInc;
   }
-  static bool isDecrementOp(Opcode Op) {
+  static inline constexpr bool isDecrementOp(Opcode Op) {
     return Op == UO_PreDec || Op == UO_PostDec;
   }
-  static bool isIncrementDecrementOp(Opcode Op) { return Op <= UO_PreDec; }
-  static bool isArithmeticOp(Opcode Op) {
+  static inline constexpr bool isIncrementDecrementOp(Opcode Op) {
+    return Op <= UO_PreDec;
+  }
+  static inline constexpr bool isArithmeticOp(Opcode Op) {
     return Op >= UO_Plus && Op <= UO_LNot;
   }
 
@@ -195,32 +199,64 @@ public:
   Expr *getRHS() { return SubExprs[RHS].get(); }
   const Expr *getRHS() const { return SubExprs[RHS].get(); }
 
-  static bool isMultiplicativeOp(Opcode Opc) {
+  static inline constexpr Opcode compoundAssignmentToNormal(Opcode Opc) {
+    switch (Opc) {
+    case BO_MulAssign:
+      return BO_Mul;
+    case BO_DivAssign:
+      return BO_Div;
+    case BO_RemAssign:
+      return BO_Rem;
+    case BO_AddAssign:
+      return BO_Add;
+    case BO_SubAssign:
+      return BO_Sub;
+    case BO_ShlAssign:
+      return BO_Shl;
+    case BO_ShrAssign:
+      return BO_Shr;
+    case BO_AndAssign:
+      return BO_And;
+    case BO_XorAssign:
+      return BO_Xor;
+    case BO_OrAssign:
+      return BO_Or;
+    default:
+      return Opc;
+    }
+  }
+  static inline constexpr bool isMultiplicativeOp(Opcode Opc) {
     return Opc >= BO_Mul && Opc <= BO_Rem;
   }
-  static bool isAdditiveOp(Opcode Opc) {
+  static inline constexpr bool isAdditiveOp(Opcode Opc) {
     return Opc == BO_Add || Opc == BO_Sub;
   }
-  static bool isShiftOp(Opcode Opc) { return Opc == BO_Shl || Opc == BO_Shr; }
-  static bool isBitwiseOp(Opcode Opc) { return Opc >= BO_And && Opc <= BO_Or; }
-  static bool isRelationalOp(Opcode Opc) {
+  static inline constexpr bool isShiftOp(Opcode Opc) {
+    return Opc == BO_Shl || Opc == BO_Shr;
+  }
+  static inline constexpr bool isBitwiseOp(Opcode Opc) {
+    return Opc >= BO_And && Opc <= BO_Or;
+  }
+  static inline constexpr bool isRelationalOp(Opcode Opc) {
     return Opc >= BO_LT && Opc <= BO_GE;
   }
-  static bool isEqualityOp(Opcode Opc) { return Opc == BO_EQ || Opc == BO_NE; }
-  static bool isComparisonOp(Opcode Opc) {
+  static inline constexpr bool isEqualityOp(Opcode Opc) {
+    return Opc == BO_EQ || Opc == BO_NE;
+  }
+  static inline constexpr bool isComparisonOp(Opcode Opc) {
     return Opc >= BO_LT && Opc <= BO_NE;
   }
-  static bool isCommaOp(Opcode Opc) { return Opc == BO_Comma; }
-  static bool isLogicalOp(Opcode Opc) {
+  static inline constexpr bool isCommaOp(Opcode Opc) { return Opc == BO_Comma; }
+  static inline constexpr bool isLogicalOp(Opcode Opc) {
     return Opc == BO_LAnd || Opc == BO_LOr;
   }
-  static bool isAssignmentOp(Opcode Opc) {
+  static inline constexpr bool isAssignmentOp(Opcode Opc) {
     return Opc >= BO_Assign && Opc <= BO_OrAssign;
   }
-  static bool isCompoundAssignmentOp(Opcode Opc) {
+  static inline constexpr bool isCompoundAssignmentOp(Opcode Opc) {
     return Opc > BO_Assign && Opc <= BO_OrAssign;
   }
-  static bool isShiftAssignOp(Opcode Opc) {
+  static inline constexpr bool isShiftAssignOp(Opcode Opc) {
     return Opc == BO_ShlAssign || Opc == BO_ShrAssign;
   }
 

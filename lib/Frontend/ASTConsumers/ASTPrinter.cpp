@@ -161,6 +161,8 @@ std::string ToString(soll::TypePtr type) {
 
 std::string ToString(soll::CastKind CK) {
   switch (CK) {
+  case soll::CastKind::None:
+    return "<None>";
   case soll::CastKind::IntegralCast:
     return "<IntegralCast>";
   case soll::CastKind::LValueToRValue:
