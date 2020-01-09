@@ -40,6 +40,15 @@ link_directories("${LLVM_LIBRARY_DIR}")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  add_compile_options(
+    -Wall
+    -Wextra
+    -Wno-unknown-warning-option
+    -Wno-init-list-lifetime
+    -Wno-unused-parameter
+    )
+endif()
 
 option(SOLL_INCLUDE_TESTS
   "Generate build targets for the Soll unit tests."
