@@ -143,7 +143,7 @@ void CodeGenFunction::emitIfStmt(const IfStmt *IS) {
 
   Builder.SetInsertPoint(ThenBlock);
   emitStmt(IS->getThen());
-  Builder.CreateBr(ElseBlock);
+  Builder.CreateBr(ContBlock);
 
   if (ElseExist) {
     Builder.SetInsertPoint(ElseBlock);

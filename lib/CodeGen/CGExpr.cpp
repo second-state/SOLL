@@ -282,8 +282,7 @@ private:
         Builder.SetInsertPoint(RHSBlock);
         llvm::Value *RHSCond = CGF.emitBoolExpr(BO->getRHS())
                                    .load(Builder, CGF.getCodeGenModule());
-        RHSBlock = Builder.GetInsertBlock();
-
+        Builder.CreateBr(ContBlock);
         Builder.SetInsertPoint(ContBlock);
         PN->addIncoming(RHSCond, RHSBlock);
 
@@ -302,8 +301,7 @@ private:
         Builder.SetInsertPoint(RHSBlock);
         llvm::Value *RHSCond = CGF.emitBoolExpr(BO->getRHS())
                                    .load(Builder, CGF.getCodeGenModule());
-        RHSBlock = Builder.GetInsertBlock();
-
+        Builder.CreateBr(ContBlock);
         Builder.SetInsertPoint(ContBlock);
         PN->addIncoming(RHSCond, RHSBlock);
 
