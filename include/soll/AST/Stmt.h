@@ -166,7 +166,7 @@ public:
 
 class BreakStmt : public Stmt {
 public:
-  BreakStmt(SourceRange L) : Stmt(L){};
+  BreakStmt(SourceRange L) : Stmt(L) {}
 
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;

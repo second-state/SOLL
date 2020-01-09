@@ -11,7 +11,7 @@ class ASTContext : public llvm::RefCountedBase<ASTContext> {
   InputKind Language;
 
 public:
-  ASTContext(InputKind Language) : Language(Language){};
+  ASTContext(InputKind Language) : Language(Language) {}
 
   const InputKind &getLang() const { return Language; }
 };
