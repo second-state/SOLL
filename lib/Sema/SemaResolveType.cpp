@@ -279,7 +279,7 @@ public:
         std::shared_ptr<Type> Ty;
         switch (Iter->second) {
         case Identifier::SpecialIdentifier::address_balance:
-          Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U128);
+          Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
           break;
         case Identifier::SpecialIdentifier::address_transfer:
           Ty = std::make_shared<FunctionType>(
