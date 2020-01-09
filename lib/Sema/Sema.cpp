@@ -291,8 +291,6 @@ Sema::CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr, Token Tok) {
             L, std::move(BaseExpr),
             std::make_unique<Identifier>(Tok, Iter->second, Ty));
       }
-      break;
-    default:;
     }
   }
   // unresolvable now
