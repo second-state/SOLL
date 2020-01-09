@@ -52,6 +52,7 @@ class CodeGenModule : public CodeGenTypeCache {
   llvm::LLVMContext &VMContext;
   llvm::IRBuilder<llvm::ConstantFolder> Builder;
   llvm::GlobalVariable *MemorySize;
+  llvm::GlobalVariable *HeapBase;
   llvm::DenseMap<const VarDecl *, llvm::GlobalVariable *> StateVarDeclMap;
   llvm::DenseMap<const YulData *, llvm::Constant *> YulDataMap;
   std::size_t StateVarAddrCursor;

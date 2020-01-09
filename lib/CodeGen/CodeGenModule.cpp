@@ -87,8 +87,13 @@ void CodeGenModule::initMemorySection() {
   MemorySize = new llvm::GlobalVariable(TheModule, Int256Ty, false,
                                         llvm::GlobalVariable::PrivateLinkage,
                                         Builder.getIntN(256, 0), "memory.size");
-  MemorySize->setUnnamedAddr(llvm::GlobalVariable::UnnamedAddr::Local);
-  MemorySize->setAlignment(8);
+  MemorySize->setUnnamedAddr(llvm::GlobalVariable::UnnamedAddr::Global);
+  MemorySize->setAlignment(256);
+
+  HeapBase = new llvm::GlobalVariable(
+      TheModule, Int8Ty, false, llvm::GlobalVariable::ExternalLinkage,
+      nullptr, "__heap_base");
+  HeapBase->setAlignment(1);
 
   Func_updateMemorySize = llvm::Function::Create(
       llvm::FunctionType::get(VoidTy, {Int256Ty, Int256Ty}, false),

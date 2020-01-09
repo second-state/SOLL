@@ -49,19 +49,6 @@ run() {
     "$@"
 }
 
-entry() {
-    {
-        echo "source_filename = \"$2\""
-        echo 'target datalayout = "e-m:e-p:32:32-i64:64-n32:64-S128"'
-        echo 'target triple = "wasm32-unknown-unknown-wasm"'
-        echo "declare void @solidity.$1()"
-        echo 'define void @main() {'
-        echo "  tail call void @solidity.$1()"
-        echo '  ret void'
-        echo '}'
-    } > "$2"
-}
-
 remove_exports() {
     local tmp
     tmp="$("$MKTEMP")"
@@ -74,8 +61,6 @@ remove_exports() {
 
 for INPUT in "$@"; do
     BASE="${INPUT%.ll}"
-    #entry main "$BASE.main.ll"
-    #run "$LLLINK" "$BASE.ll" "$BASE.main.ll" -o "$BASE.bc" || exit 1
     run "$LLLINK" "$BASE.ll" -o "$BASE.bc" || exit 1
     run "$LLOPT" -std-link-opts -Oz -polly "$BASE.bc" -o "$BASE.bc" || exit 1
     run "$LLC" -O3 -filetype=obj "$BASE.bc" || exit 1
