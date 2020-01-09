@@ -208,6 +208,7 @@ public:
   }
 
   void visit(SourceUnitType &) override;
+  void visit(PragmaDirectiveType &) override;
   void visit(ContractDeclType &) override;
   void visit(FunctionDeclType &) override;
   void visit(EventDeclType &) override;
@@ -219,6 +220,7 @@ public:
   void visit(EmitStmtType &) override;
   void visit(IfStmtType &) override;
   void visit(ForStmtType &) override;
+  void visit(WhileStmtType &) override;
   void visit(ContinueStmtType &) override;
   void visit(BreakStmtType &) override;
   void visit(ReturnStmtType &) override;
@@ -240,6 +242,7 @@ public:
   void visit(YulCodeType &) override;
   void visit(YulDataType &) override;
 
+  void visit(AsmForStmtType &) override;
   void visit(AsmCaseStmtType &) override;
   void visit(AsmDefaultStmtType &) override;
   void visit(AsmSwitchStmtType &) override;
@@ -262,6 +265,12 @@ std::unique_ptr<ASTConsumer> CreateASTPrinter(llvm::raw_ostream &Out) {
 
 void ASTPrinter::visit(SourceUnitType &decl) {
   os() << indent() << "SourceUnit\n";
+  ConstDeclVisitor::visit(decl);
+  unindent();
+}
+
+void ASTPrinter::visit(PragmaDirectiveType &decl) {
+  os() << indent() << "PragmaDirective\n";
   ConstDeclVisitor::visit(decl);
   unindent();
 }
@@ -329,6 +338,12 @@ void ASTPrinter::visit(IfStmtType &stmt) {
 
 void ASTPrinter::visit(ForStmtType &stmt) {
   os() << indent() << "ForStmt\n";
+  ConstStmtVisitor::visit(stmt);
+  unindent();
+}
+
+void ASTPrinter::visit(WhileStmtType &stmt) {
+  os() << indent() << "WhileStmt\n";
   ConstStmtVisitor::visit(stmt);
   unindent();
 }
@@ -461,6 +476,12 @@ void ASTPrinter::visit(YulDataType &YD) {
   os() << indent() << "YulData \"" << YD.getName() << "\"\n";
   ConstDeclVisitor::visit(YD);
   YD.getBody()->accept(*this);
+  unindent();
+}
+
+void ASTPrinter::visit(AsmForStmtType &stmt) {
+  os() << indent() << "AsmForStmt\n";
+  ConstStmtVisitor::visit(stmt);
   unindent();
 }
 
