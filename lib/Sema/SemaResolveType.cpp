@@ -156,6 +156,8 @@ public:
 
     static const llvm::StringMap<Identifier::SpecialIdentifier> ArrayLookup{
         {"length", Identifier::SpecialIdentifier::array_length},
+        {"push", Identifier::SpecialIdentifier::array_push},
+        {"pop", Identifier::SpecialIdentifier::array_pop},
     };
     static const llvm::StringMap<Identifier::SpecialIdentifier> AddressLookup{
         {"balance", Identifier::SpecialIdentifier::address_balance},
@@ -174,6 +176,14 @@ public:
         switch (Iter->second) {
         case Identifier::SpecialIdentifier::array_length:
           Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+          break;
+        case Identifier::SpecialIdentifier::array_push:
+          Actions.Diag(Tok.getLocation(), diag::err_unimplemented_identifier)
+              << Name;
+          break;
+        case Identifier::SpecialIdentifier::array_pop:
+          Actions.Diag(Tok.getLocation(), diag::err_unimplemented_identifier)
+              << Name;
           break;
         default:
           assert(false && "unknown member");
