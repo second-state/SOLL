@@ -20,22 +20,4 @@ std::vector<const AsmSwitchCase *> AsmSwitchStmt::getCases() const {
   return Cases;
 }
 
-///
-/// AsmFunctionDeclStmt
-///
-AsmFunctionDeclStmt::AsmFunctionDeclStmt(
-    SourceRange L, llvm::StringRef name, std::unique_ptr<ParamList> &&params,
-    std::unique_ptr<ParamList> &&returnParams, std::unique_ptr<Block> &&body)
-    : Stmt(L), Name(name), Params(std::move(params)),
-      ReturnParams(std::move(returnParams)), Body(std::move(body)),
-      Implemented(body != nullptr) {
-  std::vector<TypePtr> PTys;
-  std::vector<TypePtr> RTys;
-  for (auto VD : this->getParams()->getParams())
-    PTys.push_back(VD->GetType());
-  for (auto VD : this->getReturnParams()->getParams())
-    RTys.push_back(VD->GetType());
-  FuncTy = std::make_shared<FunctionType>(std::move(PTys), std::move(RTys));
-}
-
 } // namespace soll

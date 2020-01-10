@@ -55,6 +55,11 @@ void YulObject::accept(ConstDeclVisitor &visitor) const {
   visitor.visit(*this);
 }
 
+void AsmFunctionDecl::accept(DeclVisitor &visitor) { visitor.visit(*this); }
+void AsmFunctionDecl::accept(ConstDeclVisitor &visitor) const {
+  visitor.visit(*this);
+}
+
 void AsmVarDecl::accept(DeclVisitor &visitor) { visitor.visit(*this); }
 void AsmVarDecl::accept(ConstDeclVisitor &visitor) const {
   visitor.visit(*this);

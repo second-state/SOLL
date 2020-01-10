@@ -42,6 +42,51 @@ void CodeGenFunction::generateCode(const FunctionDecl *FD, llvm::Function *Fn) {
   }
 }
 
+void CodeGenFunction::generateYulFunction(const AsmFunctionDecl *FD,
+                                          llvm::Function *Fn) {
+  llvm::BasicBlock *EntryBB = createBasicBlock("entry", Fn);
+  ReturnBlock = createBasicBlock("return", Fn);
+  Builder.SetInsertPoint(EntryBB);
+
+  llvm::Argument *PsLLVM = Fn->arg_begin();
+  for (auto *VD : FD->getParams()->getParams()) {
+    llvm::Argument *Arg = PsLLVM++;
+    Arg->setName(VD->getName());
+    llvm::Value *ArgAddr =
+        Builder.CreateAlloca(Arg->getType(), nullptr, Arg->getName() + ".addr");
+    Builder.CreateStore(Arg, ArgAddr);
+    setAddrOfLocalVar(VD, ArgAddr);
+  }
+  if (llvm::Type *ReturnType = Fn->getReturnType(); !ReturnType->isVoidTy()) {
+    assert(FD->getReturnParams()->getParams().size() == 1 &&
+           "support one return variable only!");
+    auto *VD = FD->getReturnParams()->getParams().front();
+    ReturnValue =
+        Builder.CreateAlloca(ReturnType, nullptr, VD->getName() + ".addr");
+    setAddrOfLocalVar(VD, ReturnValue);
+  } else {
+    ReturnValue = nullptr;
+  }
+
+  emitStmt(FD->getBody());
+
+  {
+    llvm::BasicBlock *Tail = Builder.GetInsertBlock();
+    if (!Tail->getTerminator()) {
+      Builder.CreateBr(ReturnBlock);
+    }
+  }
+
+  Builder.SetInsertPoint(ReturnBlock);
+
+  if (llvm::Type *ReturnType = Fn->getReturnType(); !ReturnType->isVoidTy()) {
+    llvm::Value *RetVal = Builder.CreateLoad(ReturnType, ReturnValue);
+    Builder.CreateRet(RetVal);
+  } else {
+    Builder.CreateRetVoid();
+  }
+}
+
 void CodeGenFunction::generateYulCode(const YulCode *YC) {
   emitBlock(YC->getBody());
 }
@@ -85,6 +130,9 @@ void CodeGenFunction::emitStmt(const Stmt *S) {
   }
   if (auto AS = dynamic_cast<const AsmAssignmentStmt *>(S)) {
     return emitAsmAssignmentStmt(AS);
+  }
+  if (auto FDS = dynamic_cast<const AsmFunctionDeclStmt *>(S)) {
+    return emitAsmFunctionDeclStmt(FDS);
   }
 }
 
@@ -330,6 +378,15 @@ void CodeGenFunction::emitAsmAssignmentStmt(const AsmAssignmentStmt *AS) {
   ExprValue RHS = emitExpr(AS->getRHS());
   llvm::Value *RHSV = RHS.load(Builder, CGM);
   LHS.store(Builder, CGM, RHSV);
+}
+
+void CodeGenFunction::emitAsmFunctionDeclStmt(const AsmFunctionDeclStmt *FDS) {
+  const AsmFunctionDecl *FD = FDS->getDecl();
+  llvm::Function *Fn = CGM.createOrGetLLVMFunction(FD);
+  const auto OldBlock = Builder.GetInsertBlock();
+  const auto OldPoint = Builder.GetInsertPoint();
+  CodeGenFunction(CGM).generateYulFunction(FD, Fn);
+  Builder.SetInsertPoint(OldBlock, OldPoint);
 }
 
 ExprValue CodeGenFunction::emitBoolExpr(const Expr *E) {

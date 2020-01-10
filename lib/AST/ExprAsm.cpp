@@ -28,6 +28,8 @@ void AsmIdentifier::updateTypeFromCurrentDecl() {
   Decl *D = getCorrespondDecl();
   if (auto VD = dynamic_cast<AsmVarDecl *>(D)) {
     setType(VD->GetType());
+  } else if (auto FD = dynamic_cast<AsmFunctionDecl *>(D)) {
+    setType(FD->getType());
   } else {
     assert(false && "unknown decl");
     __builtin_unreachable();

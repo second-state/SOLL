@@ -123,11 +123,9 @@ class CallableVarDecl : public Decl {
   std::unique_ptr<ParamList> ReturnParams;
 
 public:
-  CallableVarDecl(
-      SourceRange L, llvm::StringRef Name, Visibility V,
-      std::unique_ptr<ParamList> &&Params,
-      std::unique_ptr<ParamList> &&ReturnParams = std::make_unique<ParamList>(
-          std::vector<std::unique_ptr<VarDeclBase>>()))
+  CallableVarDecl(SourceRange L, llvm::StringRef Name, Visibility V,
+                  std::unique_ptr<ParamList> &&Params,
+                  std::unique_ptr<ParamList> &&ReturnParams = nullptr)
       : Decl(L, Name, V), Params(std::move(Params)),
         ReturnParams(std::move(ReturnParams)) {}
 
@@ -140,8 +138,8 @@ public:
   std::vector<unsigned char> getSignatureHash() const;
   std::uint32_t getSignatureHashUInt32() const;
 
-  void accept(DeclVisitor &visitor) override;
-  void accept(ConstDeclVisitor &visitor) const override;
+  void accept(DeclVisitor &Visitor) override;
+  void accept(ConstDeclVisitor &Visitor) const override;
 };
 
 class FunctionDecl : public CallableVarDecl {
@@ -169,8 +167,8 @@ public:
   bool isConstructor() const { return IsConstructor; }
   bool isFallback() const { return IsFallback; }
 
-  void accept(DeclVisitor &visitor) override;
-  void accept(ConstDeclVisitor &visitor) const override;
+  void accept(DeclVisitor &Visitor) override;
+  void accept(ConstDeclVisitor &Visitor) const override;
 };
 
 class EventDecl : public CallableVarDecl {
@@ -184,8 +182,8 @@ public:
   TypePtr getType() const { return FuncTy; }
   bool isAnonymous() const { return IsAnonymous; }
 
-  void accept(DeclVisitor &visitor) override;
-  void accept(ConstDeclVisitor &visitor) const override;
+  void accept(DeclVisitor &Visitor) override;
+  void accept(ConstDeclVisitor &Visitor) const override;
 };
 
 class ParamList {
@@ -199,8 +197,8 @@ public:
   std::vector<VarDeclBase *> getParams();
   unsigned getABIStaticSize() const;
 
-  void accept(DeclVisitor &visitor);
-  void accept(ConstDeclVisitor &visitor) const;
+  void accept(DeclVisitor &Visitor);
+  void accept(ConstDeclVisitor &Visitor) const;
 };
 
 class VarDeclBase : public Decl {
@@ -237,8 +235,8 @@ public:
         IsStateVariable(IsStateVar), IsIndexed(IsIndexed),
         IsConstant(IsConstant), ReferenceLocation(ReferenceLocation) {}
 
-  void accept(DeclVisitor &visitor) override;
-  void accept(ConstDeclVisitor &visitor) const override;
+  void accept(DeclVisitor &Visitor) override;
+  void accept(ConstDeclVisitor &Visitor) const override;
 
   Location getLoc() const { return ReferenceLocation; }
   bool isIndexed() const { return IsIndexed; }
@@ -250,13 +248,13 @@ class ModifierInvocation {
   std::vector<ExprPtr> Arguments;
 
 public:
-  ModifierInvocation(llvm::StringRef name, std::vector<ExprPtr> arguments)
-      : ModifierName(name), Arguments(std::move(arguments)) {}
+  ModifierInvocation(llvm::StringRef Name, std::vector<ExprPtr> Arguments)
+      : ModifierName(Name), Arguments(std::move(Arguments)) {}
 
   const std::string &getName() const { return ModifierName; }
 
-  void accept(DeclVisitor &visitor);
-  void accept(ConstDeclVisitor &visitor) const;
+  void accept(DeclVisitor &Visitor);
+  void accept(ConstDeclVisitor &Visitor) const;
 };
 
 } // namespace soll

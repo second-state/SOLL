@@ -103,37 +103,22 @@ public:
 };
 
 class AsmFunctionDeclStmt : public Stmt {
-  std::string Name;
-  std::unique_ptr<ParamList> Params;
-  std::unique_ptr<ParamList> ReturnParams;
-  std::unique_ptr<Block> Body;
-  bool Implemented;
-  TypePtr FuncTy;
+  std::unique_ptr<AsmFunctionDecl> FuncDecl;
 
 public:
-  AsmFunctionDeclStmt(SourceRange L, llvm::StringRef name,
-                      std::unique_ptr<ParamList> &&params,
-                      std::unique_ptr<ParamList> &&returnParams,
-                      std::unique_ptr<Block> &&body);
+  AsmFunctionDeclStmt(SourceRange L, std::unique_ptr<AsmFunctionDecl> &&FD)
+      : Stmt(L), FuncDecl(std::move(FD)) {}
 
-  ParamList *getParams() { return Params.get(); }
-  const ParamList *getParams() const { return Params.get(); }
+  AsmFunctionDecl *getDecl() { return FuncDecl.get(); }
+  const AsmFunctionDecl *getDecl() const { return FuncDecl.get(); }
 
-  ParamList *getReturnParams() { return ReturnParams.get(); }
-  const ParamList *getReturnParams() const { return ReturnParams.get(); }
-
-  Block *getBody() { return Body.get(); }
-  const Block *getBody() const { return Body.get(); }
-  void setBody(std::unique_ptr<Block> &&B) { Body = std::move(B); }
-  TypePtr getType() const { return FuncTy; }
-  llvm::StringRef getName() const { return Name; }
-
-  void accept(StmtVisitor &visitor) override;
-  void accept(ConstStmtVisitor &visitor) const override;
+  void accept(StmtVisitor &) override;
+  void accept(ConstStmtVisitor &) const override;
 };
 
 } // namespace soll
 
+#include "DeclAsm.h"
 #include "ExprAsm.h"
 soll::AsmCaseStmt::AsmCaseStmt(SourceRange L, ExprPtr &&LHS, BlockPtr &&SubStmt)
     : AsmSwitchCase(L, std::move(SubStmt)), LHS(std::move(LHS)) {}

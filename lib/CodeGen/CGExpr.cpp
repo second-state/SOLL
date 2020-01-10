@@ -1001,6 +1001,12 @@ ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
     CGM.emitLog(Data[0], Builder.getInt32(32), Topics);
     return ExprValue();
   }
+  if (auto AFD = dynamic_cast<const AsmFunctionDecl *>(D)) {
+    llvm::Function *F = CGM.createOrGetLLVMFunction(AFD);
+    assert(F != nullptr && "undefined function");
+    llvm::Value *Result = Builder.CreateCall(F, Args);
+    return ExprValue::getRValue(CE, Result);
+  }
   assert(false && "Unhandle CallExprType CodeGen case.");
   __builtin_unreachable();
 }

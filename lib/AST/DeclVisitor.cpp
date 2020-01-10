@@ -76,6 +76,14 @@ template <bool Const> void DeclVisitorBase<Const>::visit(YulObjectType &O) {
     InnerD->accept(*this);
 }
 
+template <bool Const>
+void DeclVisitorBase<Const>::visit(AsmFunctionDeclType &D) {
+  if (D.getParams() != nullptr)
+    D.getParams()->accept(*this);
+  if (D.getReturnParams() != nullptr)
+    D.getReturnParams()->accept(*this);
+}
+
 template <bool Const> void DeclVisitorBase<Const>::visit(AsmVarDeclType &) {
   // leaf, do nothing
 }

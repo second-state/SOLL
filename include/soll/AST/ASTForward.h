@@ -16,6 +16,8 @@ class Block;
 class Expr;
 class Type;
 
+class AsmFunctionDecl;
+
 using DeclPtr = std::unique_ptr<Decl>;
 using VarDeclBasePtr = std::unique_ptr<VarDeclBase>;
 using StmtPtr = std::unique_ptr<Stmt>;

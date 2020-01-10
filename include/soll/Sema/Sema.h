@@ -64,7 +64,8 @@ public:
                                                Token Tok);
 
   /// ExprAsm
-  std::unique_ptr<AsmIdentifier> CreateAsmIdentifier(const Token &Tok);
+  std::unique_ptr<AsmIdentifier> CreateAsmIdentifier(const Token &Tok,
+                                                     bool IsCall);
   std::unique_ptr<Expr> CreateAsmCallExpr(SourceRange L, ExprPtr &&Callee,
                                           std::vector<ExprPtr> &&Args);
   std::unique_ptr<Expr> CreateAsmBuiltinCallExpr(SourceRange L,

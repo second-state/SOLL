@@ -57,6 +57,7 @@ public:
   CodeGenModule &getCodeGenModule() const { return CGM; }
 
   void generateCode(const FunctionDecl *FD, llvm::Function *Fn);
+  void generateYulFunction(const AsmFunctionDecl *FD, llvm::Function *Fn);
   void generateYulCode(const YulCode *YC);
 
 private:
@@ -78,7 +79,8 @@ private:
   void emitAsmCaseStmt(const AsmCaseStmt *S, llvm::SwitchInst *Switch);
   void emitAsmDefaultStmt(const AsmDefaultStmt *S, llvm::SwitchInst *Switch);
   void emitAsmSwitchStmt(const AsmSwitchStmt *S);
-  void emitAsmAssignmentStmt(const AsmAssignmentStmt *S);
+  void emitAsmAssignmentStmt(const AsmAssignmentStmt *AS);
+  void emitAsmFunctionDeclStmt(const AsmFunctionDeclStmt *FDS);
 
   void emitBranchOnBoolExpr(const Expr *E, llvm::BasicBlock *TrueBlock,
                             llvm::BasicBlock *FalseBlock);

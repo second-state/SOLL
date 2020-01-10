@@ -4,7 +4,8 @@
 
 namespace soll {
 
-std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok) {
+std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
+                                                         bool IsCall) {
   static const llvm::StringMap<AsmIdentifier::SpecialIdentifier> SpecialLookup{
       /// Mark comment below logic identifiers because
       /// currently solidity only generate them for bitwise op.
@@ -178,7 +179,11 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok) {
   Decl *D = lookupName(Name);
   if (D == nullptr) {
     auto Unresolved = std::make_unique<AsmIdentifier>(Tok);
-    CurrentScope()->addUnresolvedExternal(Unresolved.get());
+    if (IsCall) {
+      CurrentScope()->addUnresolved(Unresolved.get());
+    } else {
+      CurrentScope()->addUnresolvedExternal(Unresolved.get());
+    }
     return Unresolved;
   }
   return std::make_unique<AsmIdentifier>(Tok, D);

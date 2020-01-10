@@ -251,8 +251,10 @@ public:
   }
   void visit(AsmFunctionDeclStmtType &ADS) override {
     StmtVisitor::visit(ADS);
-    if (auto *B = ADS.getBody()) {
-      B->accept(*this);
+    if (auto *D = ADS.getDecl()) {
+      if (auto *B = D->getBody()) {
+        B->accept(*this);
+      }
     }
   }
 };
@@ -312,6 +314,9 @@ void TypeResolver::visit(CallExprType &CE) {
 
   FunctionType *FTy = nullptr;
   if (auto I = dynamic_cast<Identifier *>(E)) {
+    if (!I->isResolved()) {
+      return;
+    }
     if (I->isSpecialIdentifier()) {
       FTy = dynamic_cast<FunctionType *>(I->getType().get());
     } else {
@@ -335,6 +340,21 @@ void TypeResolver::visit(CallExprType &CE) {
         __builtin_unreachable();
       } else {
         assert(false && "callee is not FuncDecl");
+        __builtin_unreachable();
+      }
+    }
+  } else if (auto I = dynamic_cast<AsmIdentifier *>(E)) {
+    if (!I->isResolved()) {
+      return;
+    }
+    if (I->isSpecialIdentifier()) {
+      FTy = dynamic_cast<FunctionType *>(I->getType().get());
+    } else {
+      const Decl *D = I->getCorrespondDecl();
+      if (auto AFD = dynamic_cast<const AsmFunctionDecl *>(D)) {
+        FTy = dynamic_cast<FunctionType *>(AFD->getType().get());
+      } else {
+        assert(false && "callee is not AsmFunctionDecl");
         __builtin_unreachable();
       }
     }

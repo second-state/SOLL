@@ -253,6 +253,7 @@ public:
   void visit(AsmSwitchStmtType &) override;
   void visit(AsmAssignmentStmtType &) override;
   void visit(AsmFunctionDeclStmtType &) override;
+  void visit(AsmFunctionDeclType &) override;
   void visit(AsmVarDeclType &) override;
   void visit(AsmIdentifierType &) override;
   void visit(AsmIdentifierListType &) override;
@@ -515,13 +516,16 @@ void ASTPrinter::visit(AsmAssignmentStmtType &stmt) {
 }
 
 void ASTPrinter::visit(AsmFunctionDeclStmtType &stmt) {
-  os() << indent() << "AsmFunctionDeclStmt \"" << stmt.getName() << "\" "
-       << ToString(stmt.getType()) << " \n";
-  if (stmt.getParams() != nullptr)
-    stmt.getParams()->accept(*this);
-  if (stmt.getReturnParams() != nullptr)
-    stmt.getReturnParams()->accept(*this);
-  stmt.getBody()->accept(*this);
+  os() << indent() << "AsmFunctionDeclStmt\n";
+  stmt.getDecl()->accept(*this);
+  unindent();
+}
+
+void ASTPrinter::visit(AsmFunctionDeclType &D) {
+  os() << indent() << "AsmFunctionDecl \"" << D.getName() << "\" "
+       << ToString(D.getType()) << " \n";
+  ConstDeclVisitor::visit(D);
+  D.getBody()->accept(*this);
   unindent();
 }
 
