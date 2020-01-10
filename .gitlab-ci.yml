@@ -26,15 +26,15 @@ stages:
 
 .build_job_template: &build_job
   stage: build
-  image: secondstate/soll:${OS}-${COMPILER}
+  image: secondstate/soll:${KEY}
   before_script:
     - *before_build
   script:
-    - cmake .. -DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true -DLLVM_EXTERNAL_LIT=${LIT_PATH}
+    - cmake .. ${CMAKE_OPTIONS}
     - make -j2
   cache:
     <<: *cache_paths
-    key: ${OS}-${COMPILER}
+    key: ${KEY}
     policy: push
 
 # General Build Jobs
@@ -42,15 +42,15 @@ ubuntu-gcc:
   <<: *build_job
   tags: ["gcc"]
   variables:
-    OS: "ubuntu"
-    COMPILER: "gcc"
+    CMAKE_OPTIONS: "-DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true -DLLVM_EXTERNAL_LIT=${LIT_PATH}"
+    KEY: "ubuntu-gcc"
 
 ubuntu-clang:
   <<: *build_job
   tags: ["clang"]
   variables:
-    OS: "ubuntu"
-    COMPILER: "clang"
+    CMAKE_OPTIONS: "-DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true -DLLVM_EXTERNAL_LIT=${LIT_PATH}"
+    KEY: "ubuntu-clang"
 
 # Jobs for Ewasm Backend
 compile:wasm:
@@ -89,18 +89,11 @@ test:wasm:
 
 # Jobs for EVM backend
 ubuntu-clang:evm:
-  stage: build
-  image: secondstate/soll:ubuntu-evm-llvm
+  <<: *build_job
   tags: ["evm"]
-  before_script:
-    - *before_build
-  script:
-    - cmake .. -DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true -DLLVM_EXTERNAL_LIT=${EVM_LIT_PATH} -DSOLL_ENABLE_EVM=true -DLLVM_CMAKE_PATH=${EVM_BINDIR}
-    - make -j2
-  cache:
-    <<: *cache_paths
-    key: ubuntu-clang-evm
-    policy: push
+  variables:
+    CMAKE_OPTIONS: "-DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true -DLLVM_EXTERNAL_LIT=${LIT_PATH} -DSOLL_ENABLE_EVM=true -DLLVM_CMAKE_PATH=${EVM_BINDIR}"
+    KEY: "ubuntu-evm-llvm"
 
 compile:evm:
   stage: compile
@@ -113,23 +106,16 @@ compile:evm:
     - bash -c "./utils/compile sol evm ${TEST_ENVDIR}/test/*.sol"
   cache:
     <<: *cache_paths
-    key: ubuntu-clang-evm
+    key: ubuntu-evm-llvm
     policy: pull-push
 
 # Jobs for Coverage Report
 coverage:ubuntu:
-  stage: build
-  image: secondstate/soll:ubuntu-coverage
+  <<: *build_job
   tags: ["coverage"]
-  before_script:
-    - *before_build
-  script:
-    - cmake .. -DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true -DSOLL_COVERAGE=true -DLLVM_EXTERNAL_LIT=${LIT_PATH} -DSOLL_ENABLE_EVM=true -DLLVM_CMAKE_PATH=${EVM_BINDIR}
-    - make -j2
-  cache:
-    <<: *cache_paths
-    key: ubuntu-coverage
-    policy: push
+  variables:
+    CMAKE_OPTIONS: "-DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true -DSOLL_COVERAGE=true -DLLVM_EXTERNAL_LIT=${LIT_PATH} -DSOLL_ENABLE_EVM=true -DLLVM_CMAKE_PATH=${EVM_BINDIR}"
+    KEY: "ubuntu-coverage"
 
 coverage:test:
   stage: test
