@@ -350,38 +350,21 @@ private:
       return ExprValue::getRValue(CE, Out);
     }
     case CastKind::TypeCast: {
-      if (OrigInTy->getCategory() == OrigOutTy->getCategory()) {
-        return ExprValue::getRValue(CE, In);
+      if (dynamic_cast<const AddressType *>(OrigInTy) ||
+          dynamic_cast<const AddressType *>(OrigOutTy)) {
+        return ExprValue::getRValue(
+            CE, Builder.CreateZExtOrTrunc(
+                    In, Builder.getIntNTy(OrigOutTy->getBitNum())));
       }
-      // TODO : address to sign
-      if (auto InTy = dynamic_cast<const AddressType *>(OrigInTy)) {
-        if (auto OutTy = dynamic_cast<const IntegerType *>(OrigOutTy)) {
-          assert(InTy->getBitNum() <= OutTy->getBitNum() &&
-                 "Integer Type too small");
-          llvm::Value *Out = Builder.CreateZExtOrTrunc(
-              In, Builder.getIntNTy(OutTy->getBitNum()));
-          return ExprValue::getRValue(CE, Out);
-        }
+      if (dynamic_cast<const BooleanType *>(OrigInTy)) {
+        llvm::Value *Out = Builder.CreateZExt(
+            In, CGF.getCodeGenModule().getLLVMType(OrigOutTy));
+        return ExprValue::getRValue(CE, Out);
       }
-      if (auto InTy = dynamic_cast<const ContractType *>(OrigInTy)) {
-        if (auto OutTy = dynamic_cast<const AddressType *>(OrigOutTy)) {
-          return ExprValue::getRValue(CE, In);
-        }
-      }
-      if (auto InTy = dynamic_cast<const IntegerType *>(OrigInTy)) {
-        assert(!InTy->isSigned() && "Cannot cast from signed to address");
-        if (auto OutTy = dynamic_cast<const AddressType *>(OrigOutTy)) {
-          llvm::Value *Out = Builder.CreateZExtOrTrunc(
-              In, Builder.getIntNTy(OutTy->getBitNum()));
-          return ExprValue::getRValue(CE, Out);
-        }
-      }
-      if (dynamic_cast<const IntegerType *>(OrigInTy)) {
-        if (dynamic_cast<const BooleanType *>(OrigOutTy)) {
-          llvm::Value *Out = Builder.CreateICmpNE(
-              In, llvm::ConstantInt::get(In->getType(), 0));
-          return ExprValue::getRValue(CE, Out);
-        }
+      if (dynamic_cast<const BooleanType *>(OrigOutTy)) {
+        llvm::Value *Out = Builder.CreateICmpNE(
+            In, llvm::ConstantInt::getNullValue(In->getType()));
+        return ExprValue::getRValue(CE, Out);
       }
       assert(false);
       break;
@@ -431,7 +414,8 @@ private:
     llvm::BasicBlock *Continue = CGF.createBasicBlock("continue");
     llvm::BasicBlock *Revert = CGF.createBasicBlock("revert");
 
-    llvm::Value *OutOfBound = Builder.CreateICmpUGE(Index, ArrSz);
+    llvm::Value *OutOfBound = Builder.CreateICmpUGE(
+        Index, Builder.CreateZExt(ArrSz, Index->getType()));
     Builder.CreateCondBr(OutOfBound, Revert, Continue);
 
     Builder.SetInsertPoint(Revert);
@@ -473,7 +457,7 @@ private:
       llvm::Value *IndexValue = Index.load(Builder, CGF.getCodeGenModule());
       if (!IA->isStateVariable()) {
         // TODO : Assume only Integer Array
-        llvm::Value *ArraySize = Builder.getIntN(256, ArrTy->getLength());
+        llvm::Value *ArraySize = Builder.getInt(ArrTy->getLength());
         emitCheckArrayOutOfBound(ArraySize, IndexValue);
         llvm::Value *Address = Builder.CreateInBoundsGEP(
             CGF.getCodeGenModule().getLLVMType(ArrTy), Base.getValue(),
@@ -496,7 +480,7 @@ private:
         Pos = Builder.CreateCall(Keccak256, {Bytes});
       } else {
         // Fixed Size Storage Array
-        llvm::Value *ArraySize = Builder.getIntN(256, ArrTy->getLength());
+        llvm::Value *ArraySize = Builder.getInt(ArrTy->getLength());
         emitCheckArrayOutOfBound(ArraySize, IndexValue);
       }
 
@@ -628,8 +612,7 @@ private:
   }
 
   ExprValue visit(const NumberLiteral *NL) {
-    return ExprValue::getRValue(
-        NL, Builder.getIntN(NL->getType()->getBitNum(), NL->getValue()));
+    return ExprValue::getRValue(NL, Builder.getInt(NL->getValue()));
   }
 
   ExprValue visit(const AsmIdentifier *YI) {

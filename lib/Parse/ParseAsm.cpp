@@ -27,7 +27,7 @@ std::unique_ptr<Block> Parser::parseAsmBlock(bool HasScope) {
 
   ExpectAndConsume(tok::l_brace);
   std::vector<std::unique_ptr<Stmt>> Statements;
-  while (Tok.isNot(tok::r_brace)) {
+  while (Tok.isNot(tok::r_brace) && Tok.isNot(tok::eof)) {
     Statements.emplace_back(parseAsmStatement());
   }
   const SourceLocation End = Tok.getEndLoc();
@@ -103,7 +103,9 @@ std::unique_ptr<Stmt> Parser::parseAsmStatement() {
 std::unique_ptr<IfStmt> Parser::parseAsmIfStatement() {
   const SourceLocation Begin = Tok.getLocation();
   ConsumeToken(); // 'if'
-  std::unique_ptr<Expr> Condition = parseAsmExpression();
+  std::unique_ptr<Expr> Condition = std::make_unique<ImplicitCastExpr>(
+      parseAsmExpression(), CastKind::TypeCast,
+      std::make_shared<BooleanType>());
   std::unique_ptr<Stmt> TrueBody = parseAsmBlock();
   std::unique_ptr<Stmt> FalseBody;
   const SourceLocation End = TrueBody->getLocation().getEnd();
@@ -159,7 +161,9 @@ std::unique_ptr<AsmForStmt> Parser::parseAsmForStatement() {
 
   ConsumeToken(); // 'for'
   std::unique_ptr<Block> Init = parseAsmBlock(true);
-  std::unique_ptr<Expr> Condition = parseAsmExpression();
+  std::unique_ptr<Expr> Condition = std::make_unique<ImplicitCastExpr>(
+      parseAsmExpression(), CastKind::TypeCast,
+      std::make_shared<BooleanType>());
   std::unique_ptr<Block> Loop = parseAsmBlock(true);
   std::unique_ptr<Block> Body;
   {
@@ -183,9 +187,10 @@ std::unique_ptr<Expr> Parser::parseElementaryOperation() {
   std::unique_ptr<Expr> Expression;
 
   switch (Tok.getKind()) {
+  case tok::kw_address:
   case tok::identifier: {
     bool IsCall = false;
-    if (auto Next = TheLexer.LookAhead(1); Next && Next->is(tok::l_paren)) {
+    if (auto Next = TheLexer.LookAhead(0); Next && Next->is(tok::l_paren)) {
       IsCall = true;
     }
     Expression = Actions.CreateAsmIdentifier(Tok, IsCall);
@@ -200,27 +205,26 @@ std::unique_ptr<Expr> Parser::parseElementaryOperation() {
     break;
   }
   case tok::string_literal: {
-    std::string StrValue(Tok.getLiteralData(), Tok.getLength());
-    Expression = std::make_unique<StringLiteral>(
-        Tok, stringUnquote(std::move(StrValue)));
+    llvm::StringRef StrValue(Tok.getLiteralData(), Tok.getLength());
+    Expression = std::make_unique<StringLiteral>(Tok, stringUnquote(StrValue));
     ConsumeStringToken(); // string literal
     break;
   }
   case tok::hex_string_literal: {
-    std::string StrValue(Tok.getLiteralData(), Tok.getLength());
-    Expression =
-        std::make_unique<StringLiteral>(Tok, hexUnquote(std::move(StrValue)));
+    llvm::StringRef StrValue(Tok.getLiteralData(), Tok.getLength());
+    Expression = std::make_unique<StringLiteral>(Tok, hexUnquote(StrValue));
     ConsumeStringToken(); // hex string literal
     break;
   }
   case tok::numeric_constant: {
-    int NumValue;
-    if (llvm::StringRef(Tok.getLiteralData(), Tok.getLength())
-            .getAsInteger(0, NumValue)) {
-      assert(false && "invalid numeric constant");
-      __builtin_unreachable();
+    llvm::StringRef NumValue(Tok.getLiteralData(), Tok.getLength());
+    auto [Signed, Value] = numericParse(NumValue);
+    if (Signed) {
+      Value = Value.sext(256);
+    } else {
+      Value = Value.zext(256);
     }
-    Expression = std::make_unique<NumberLiteral>(Tok, NumValue);
+    Expression = std::make_unique<NumberLiteral>(Tok, Signed, Value);
     ConsumeToken(); // numeric constant
     break;
   }
@@ -235,8 +239,8 @@ std::unique_ptr<Expr> Parser::parseElementaryOperation() {
     break;
   }
   default:
-    assert(false && "Literal or identifier expected.");
-    __builtin_unreachable();
+    Diag(diag::err_unimplemented_token) << Tok.getKind();
+    ConsumeToken();
   }
   return Expression;
 }
@@ -294,6 +298,10 @@ Parser::parseAsmFunctionDefinitionStatement() {
     std::vector<std::unique_ptr<VarDeclBase>> ReturnParams;
     if (TryConsumeToken(tok::arrow)) {
       ReturnParams = parseAsmVariableDeclarationList();
+      if (ReturnParams.size() > 1) {
+        Diag(ReturnParams.front()->getLocation().getBegin(),
+             diag::err_unimplemented_tuple_return);
+      }
     }
     std::unique_ptr<Block> Body;
     {

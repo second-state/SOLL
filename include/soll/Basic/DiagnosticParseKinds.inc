@@ -4,8 +4,14 @@ __PARSESTART = DIAG_START_PARSE,
 #undef PARSESTART
 #endif
 
-DIAG(err_extraneous_token_before_semi, CLASS_ERROR, (unsigned)diag::Severity::Error, "extraneous '%0' before ';'", 0, false, 1)
+DIAG(err_extraneous_token_before_semi, CLASS_ERROR, (unsigned)diag::Severity::Error, "Extraneous '%0' before ';'.", 0, false, 1)
 DIAG(err_unimplemented_token, CLASS_ERROR, (unsigned)diag::Severity::Error, "'%0' is not yet supported.", 0, false, 1)
+DIAG(err_unimplemented_tuple_return, CLASS_ERROR, (unsigned)diag::Severity::Error, "Tuple return is not yet supported.", 0, false, 1)
+DIAG(err_hex_escape_incomplete, CLASS_ERROR, (unsigned)diag::Severity::Error, "Incomplete hex string.", 0, false, 1)
+DIAG(err_ucn_escape_incomplete, CLASS_ERROR, (unsigned)diag::Severity::Error, "Incomplete universal character name.", 0, false, 1)
+DIAG(err_unknown_escape, CLASS_ERROR, (unsigned)diag::Severity::Error, "Unknown escape sequence '\\%0'.", 0, false, 1)
+DIAG(err_invalid_numeric_literal, CLASS_ERROR, (unsigned)diag::Severity::Error, "Invalid numeric literal '%0'.", 0, false, 1)
+DIAG(err_negative_array_size, CLASS_ERROR, (unsigned)diag::Severity::Error, "Declare an array with a negative size.", 0, false, 1)
 DIAG(err_multiple_variable_location, CLASS_ERROR, (unsigned)diag::Severity::Error, "Location already specified.", 0, false, 1)
 DIAG(err_location_without_typename, CLASS_ERROR, (unsigned)diag::Severity::Error, "Location specifier needs explicit type name.", 0, false, 1)
 DIAG(err_switch_without_case, CLASS_ERROR, (unsigned)diag::Severity::Error, "Switch statement without any cases.", 0, false, 1)

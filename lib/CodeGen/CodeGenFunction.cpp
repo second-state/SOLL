@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "CodeGenFunction.h"
 #include "CodeGenModule.h"
+#include "soll/Basic/DiagnosticSema.h"
 
 namespace soll::CodeGen {
 
@@ -63,6 +64,7 @@ void CodeGenFunction::generateYulFunction(const AsmFunctionDecl *FD,
     auto *VD = FD->getReturnParams()->getParams().front();
     ReturnValue =
         Builder.CreateAlloca(ReturnType, nullptr, VD->getName() + ".addr");
+    Builder.CreateStore(llvm::ConstantInt::get(ReturnType, 0), ReturnValue);
     setAddrOfLocalVar(VD, ReturnValue);
   } else {
     ReturnValue = nullptr;
@@ -391,9 +393,6 @@ void CodeGenFunction::emitAsmFunctionDeclStmt(const AsmFunctionDeclStmt *FDS) {
 
 ExprValue CodeGenFunction::emitBoolExpr(const Expr *E) {
   llvm::Value *Condition = emitExpr(E).load(Builder, CGM);
-  if (llvm::Type *Ty = Condition->getType(); !Ty->isIntegerTy(1)) {
-    Condition = Builder.CreateICmpNE(Condition, llvm::ConstantInt::get(Ty, 0));
-  }
   return ExprValue::getRValue(E, Condition);
 }
 

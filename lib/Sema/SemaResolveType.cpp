@@ -10,11 +10,12 @@ namespace {
 bool isAllowedTypeForUnary(UnaryOperatorKind UOK, const Type::Category TyC) {
   switch (TyC) {
   case Type::Category::Bool:
-    return UOK == UO_LNot;
+    return UOK == UO_LNot || UOK == UO_IsZero;
   case Type::Category::Integer:
-    return UOK == UO_Not || UOK == UO_Plus || UOK == UO_Minus;
+    return UOK == UO_Not || UOK == UO_Plus || UOK == UO_Minus ||
+           UOK == UO_IsZero;
   case Type::Category::FixedBytes:
-    return UOK == UO_Not;
+    return UOK == UO_Not || UOK == UO_IsZero;
   default:
     return false;
   }
@@ -51,6 +52,48 @@ bool isAllowedTypeForBinary(BinaryOperatorKind BOK, const Type::Category TyC) {
   }
 }
 
+bool isAllowedForTypecast(const Type *In, const Type *Out, bool IsLiteral) {
+  const Type::Category InC = In->getCategory();
+  const Type::Category OutC = Out->getCategory();
+
+  const std::array<Type::Category, 5> NumericType({
+      Type::Category::Bool,
+      Type::Category::Integer,
+      Type::Category::RationalNumber,
+      Type::Category::FixedBytes,
+  });
+
+  const bool InIsNumeric = std::find(NumericType.begin(), NumericType.end(),
+                                     InC) != NumericType.end();
+  const bool OutIsNumeric = std::find(NumericType.begin(), NumericType.end(),
+                                      OutC) != NumericType.end();
+
+  if (InIsNumeric && OutIsNumeric) {
+    return true;
+  }
+  if (OutC == Type::Category::Address && InIsNumeric &&
+      In->getBitNum() == 160) {
+    return true;
+  }
+  if (InC == Type::Category::Address && OutIsNumeric &&
+      Out->getBitNum() == 160) {
+    return true;
+  }
+  if (InC == Type::Category::String && IsLiteral) {
+    return true;
+  }
+
+  return false;
+}
+
+bool isImplementedForTypecast(const Type *In, const Type *Out, bool IsLiteral) {
+  if (In->getCategory() == Type::Category::String) {
+    return false;
+  }
+
+  return true;
+}
+
 void setTypeForBinary(Sema &Actions, BinaryOperator &BO, ImplicitCastExpr *LHS,
                       ImplicitCastExpr *RHS, Type *LHSTy, Type *RHSTy,
                       TypePtr Ty) {
@@ -79,6 +122,43 @@ public:
   void setReturnType(TypePtr Ty) { ReturnType = std::move(Ty); }
   Sema &getSema() { return Actions; }
 
+  void visit(ImplicitCastExprType &ICE) override {
+    StmtVisitor::visit(ICE);
+    if (ICE.getCastKind() == CastKind::TypeCast) {
+      const Expr *SE = ICE.getSubExpr();
+      const auto &InType = SE->getType();
+      const auto &OutType = ICE.getType();
+
+      if (InType->isEqual(*OutType)) {
+        if (InType->getCategory() == Type::Category::Bool) {
+          ICE.setCastKind(CastKind::None);
+        } else {
+          ICE.setCastKind(CastKind::IntegralCast);
+        }
+        return;
+      }
+
+      const bool IsLiteral = dynamic_cast<const NumberLiteralType *>(SE) ||
+                             dynamic_cast<const StringLiteralType *>(SE);
+      if (!isAllowedForTypecast(InType.get(), OutType.get(), IsLiteral)) {
+        Actions.Diag(ICE.getLocation().getBegin(),
+                     diag::err_typecheck_invalid_cast)
+            << InType->getName() << OutType->getName();
+        return;
+      }
+      if (!isImplementedForTypecast(InType.get(), OutType.get(), IsLiteral)) {
+        Actions.Diag(ICE.getLocation().getBegin(),
+                     diag::err_typecheck_unimplemented_cast)
+            << InType->getName() << OutType->getName();
+        return;
+      }
+      return;
+    }
+    if (ICE.getType() || !ICE.getSubExpr()) {
+      return;
+    }
+    ICE.setType(ICE.getSubExpr()->getType());
+  }
   void visit(ReturnStmtType &IS) override {
     StmtVisitor::visit(IS);
     if (auto *IC = dynamic_cast<ImplicitCastExpr *>(IS.getRetValue())) {
@@ -94,7 +174,8 @@ public:
       return;
     }
 
-    UO.setType(Ty);
+    UO.setType(UO.getOpcode() == UO_IsZero ? std::make_shared<BooleanType>()
+                                           : Ty);
   }
   void visit(BinaryOperatorType &BO) override {
     StmtVisitor::visit(BO);
@@ -390,7 +471,13 @@ void Sema::resolveImplicitCast(ImplicitCastExpr &IC, TypePtr DstTy,
   if (IC.getCastKind() != CastKind::None) {
     return;
   }
+  if (!DstTy) {
+    return;
+  }
   const auto &SrcTy = IC.getSubExpr()->getType();
+  if (!SrcTy) {
+    return;
+  }
   if (DstTy->isEqual(*SrcTy)) {
     IC.setType(SrcTy);
     if (!PrefereLValue) {

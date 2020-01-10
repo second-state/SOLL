@@ -3,6 +3,7 @@
 
 #include "soll/AST/ASTForward.h"
 #include <cassert>
+#include <llvm/ADT/APInt.h>
 #include <memory>
 #include <optional>
 #include <sstream>
@@ -291,19 +292,19 @@ public:
 
 class ArrayType : public ReferenceType {
   TypePtr ElementType;
-  std::optional<uint32_t> Length; ///< Length of the array
+  std::optional<llvm::APInt> Length; ///< Length of the array
 public:
   // dynamic-sized array
   ArrayType(TypePtr ET, DataLocation Loc)
       : ReferenceType(Loc), ElementType(ET) {}
   // fix-sized array
-  ArrayType(TypePtr ET, uint32_t L, DataLocation Loc)
+  ArrayType(TypePtr ET, llvm::APInt L, DataLocation Loc)
       : ReferenceType(Loc), ElementType(ET), Length(L) {}
 
   TypePtr getElementType() const { return ElementType; }
 
   bool isDynamicSized() const { return !Length.has_value(); }
-  uint32_t getLength() const {
+  const llvm::APInt &getLength() const {
     assert(!isDynamicSized());
     return *Length;
   }
@@ -320,7 +321,8 @@ public:
     if (isDynamicSized()) {
       return 32;
     } else {
-      return getElementType()->getABIStaticSize() * getLength();
+      return getElementType()->getABIStaticSize() *
+             getLength().getLimitedValue();
     }
   }
 };

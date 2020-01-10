@@ -160,7 +160,7 @@ public:
     return Op <= UO_PreDec;
   }
   static inline constexpr bool isArithmeticOp(Opcode Op) {
-    return Op >= UO_Plus && Op <= UO_LNot;
+    return Op >= UO_Plus && Op <= UO_IsZero;
   }
 
   bool isPrefix() const { return isPrefix(getOpcode()); }
@@ -457,10 +457,15 @@ public:
   void accept(ConstStmtVisitor &visitor) const override;
 };
 
-// solidity NumberLiteral support 256-bit operation, should
-// use a 256-bit library.
 class NumberLiteral : public Expr {
-  int value;
+  llvm::APInt Value;
+  static TypePtr getFittingType(bool Signed, unsigned int BitWidth) {
+    if (Signed) {
+      return std::make_shared<IntegerType>(IntegerType::getIntN(BitWidth));
+    } else {
+      return std::make_shared<IntegerType>(IntegerType::getUIntN(BitWidth));
+    }
+  }
 
 public:
   // TODO: replace this, current impl. always set uint256
@@ -469,12 +474,16 @@ public:
   //   8    -> uint8
   //   7122 -> uint16
   //   -123 -> int8
-  NumberLiteral(
-      const Token &T, int val,
-      TypePtr Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256))
-      : Expr(T.getRange(), ValueKind::VK_RValue, Ty), value(val) {}
-  void setValue(int val) { value = val; }
-  int getValue() const { return value; }
+  NumberLiteral(const Token &T, bool Signed, llvm::APInt V)
+      : Expr(T.getRange(), ValueKind::VK_RValue,
+             getFittingType(Signed, V.getBitWidth())),
+        Value(V) {}
+  const llvm::APInt &getValue() const { return Value; }
+  bool IsSigned() const {
+    auto *IntTy = dynamic_cast<IntegerType *>(getType().get());
+    assert(IntTy != nullptr && "NumberLiteral with non-IntegerType");
+    return IntTy->isSigned();
+  }
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
 };

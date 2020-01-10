@@ -75,5 +75,4 @@ void Identifier::updateTypeFromCurrentDecl() {
     __builtin_unreachable();
   }
 }
-
 } // namespace soll

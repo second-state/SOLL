@@ -956,7 +956,8 @@ llvm::Value *CodeGenModule::emitABILoadParamStatic(const Type *Ty,
       const Type *ElemTy = ArrayTy->getElementType().get();
       const std::uint32_t Size = ElemTy->getABIStaticSize();
       llvm::Value *Result = llvm::UndefValue::get(getStaticLLVMType(ArrayTy));
-      for (std::uint32_t I = 0; I < ArrayTy->getLength(); ++I) {
+      const uint64_t Length = ArrayTy->getLength().getLimitedValue();
+      for (std::uint32_t I = 0; I < Length; ++I) {
         const std::string &SubName = (Name + "." + std::to_string(I)).str();
         Builder.CreateInsertValue(
             Result, emitABILoadParamStatic(ElemTy, SubName, Buffer, Offset), I);
@@ -987,7 +988,8 @@ std::pair<llvm::Value *, llvm::Value *> CodeGenModule::emitABILoadParamDynamic(
     if (!ArrayTy->isDynamicSized()) {
       const Type *ElemTy = ArrayTy->getElementType().get();
       llvm::Value *Result = llvm::UndefValue::get(getLLVMType(ArrayTy));
-      for (std::uint32_t I = 0; I < ArrayTy->getLength(); ++I) {
+      const uint64_t Length = ArrayTy->getLength().getLimitedValue();
+      for (std::uint64_t I = 0; I < Length; ++I) {
         const std::string &SubName = (Name + "." + std::to_string(I)).str();
         llvm::Value *SubSize = Builder.CreateExtractValue(Size, I);
         llvm::Value *Arg;
@@ -1264,7 +1266,7 @@ llvm::Type *CodeGenModule::getLLVMType(const Type *Ty) {
           getLLVMType(ArrayTy->getElementType().get()));
     } else {
       return llvm::ArrayType::get(getLLVMType(ArrayTy->getElementType().get()),
-                                  ArrayTy->getLength());
+                                  ArrayTy->getLength().getLimitedValue());
     }
   }
   default:
@@ -1294,7 +1296,7 @@ llvm::Type *CodeGenModule::getStaticLLVMType(const Type *Ty) {
     } else {
       return llvm::ArrayType::get(
           getStaticLLVMType(ArrayTy->getElementType().get()),
-          ArrayTy->getLength());
+          ArrayTy->getLength().getLimitedValue());
     }
   }
   default:

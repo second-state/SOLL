@@ -649,6 +649,11 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
     bool const PermitEmptyParameterList = false;
     Result.ReturnParameters =
         parseParameterList(Options, PermitEmptyParameterList);
+    if (const auto &ReturnParams = Result.ReturnParameters->getParams();
+        ReturnParams.size() > 1) {
+      Diag(ReturnParams.front()->getLocation().getBegin(),
+           diag::err_unimplemented_tuple_return);
+    }
     std::vector<TypePtr> Tys;
     for (auto &&Return : Result.ReturnParameters->getParams())
       Tys.push_back(Return->GetType());
@@ -854,18 +859,17 @@ TypePtr Parser::parseTypeNameSuffix(TypePtr T) {
   while (isTokenBracket()) {
     ConsumeBracket();
     if (Tok.is(tok::numeric_constant)) {
-      int NumValue;
-      if (llvm::StringRef(Tok.getLiteralData(), Tok.getLength())
-              .getAsInteger(0, NumValue)) {
-        assert(false && "invalid array length");
-        __builtin_unreachable();
+      llvm::StringRef NumValue(Tok.getLiteralData(), Tok.getLength());
+      const auto [Signed, Value] = numericParse(NumValue);
+      if (Signed) {
+        Diag(diag::err_negative_array_size);
+        return nullptr;
       }
-      ConsumeToken();
+      ConsumeToken(); // numeric_constant
       if (ExpectAndConsume(tok::r_square)) {
         return nullptr;
       }
-      T = std::make_shared<ArrayType>(std::move(T), NumValue,
-                                      parseDataLocation());
+      T = std::make_shared<ArrayType>(std::move(T), Value, parseDataLocation());
     } else {
       if (ExpectAndConsume(tok::r_square)) {
         return nullptr;
@@ -1078,7 +1082,8 @@ std::unique_ptr<IfStmt> Parser::parseIfStatement() {
   if (ExpectAndConsume(tok::l_paren)) {
     return nullptr;
   }
-  std::unique_ptr<Expr> Condition = parseExpression();
+  std::unique_ptr<Expr> Condition = std::make_unique<ImplicitCastExpr>(
+      parseExpression(), CastKind::TypeCast, std::make_shared<BooleanType>());
   if (ExpectAndConsume(tok::r_paren)) {
     return nullptr;
   }
@@ -1100,7 +1105,8 @@ std::unique_ptr<WhileStmt> Parser::parseWhileStatement() {
   if (ExpectAndConsume(tok::l_paren)) {
     return nullptr;
   }
-  std::unique_ptr<Expr> Condition = parseExpression();
+  std::unique_ptr<Expr> Condition = std::make_unique<ImplicitCastExpr>(
+      parseExpression(), CastKind::TypeCast, std::make_shared<BooleanType>());
   if (ExpectAndConsume(tok::r_paren)) {
     return nullptr;
   }
@@ -1128,7 +1134,8 @@ std::unique_ptr<WhileStmt> Parser::parseDoWhileStatement() {
   if (ExpectAndConsume(tok::l_brace)) {
     return nullptr;
   }
-  std::unique_ptr<Expr> Condition = parseExpression();
+  std::unique_ptr<Expr> Condition = std::make_unique<ImplicitCastExpr>(
+      parseExpression(), CastKind::TypeCast, std::make_shared<BooleanType>());
   if (ExpectAndConsume(tok::r_brace)) {
     return nullptr;
   }
@@ -1159,7 +1166,8 @@ std::unique_ptr<ForStmt> Parser::parseForStatement() {
 
   std::unique_ptr<Expr> Condition;
   if (Tok.isNot(tok::semi)) {
-    Condition = parseExpression();
+    Condition = std::make_unique<ImplicitCastExpr>(
+        parseExpression(), CastKind::TypeCast, std::make_shared<BooleanType>());
   }
   if (ExpectAndConsumeSemi()) {
     return nullptr;
@@ -1626,27 +1634,21 @@ std::unique_ptr<Expr> Parser::parsePrimaryExpression() {
     ConsumeToken(); // 'false'
     break;
   case tok::numeric_constant: {
-    int NumValue;
-    if (llvm::StringRef(Tok.getLiteralData(), Tok.getLength())
-            .getAsInteger(0, NumValue)) {
-      assert(false && "invalid numeric constant");
-      __builtin_unreachable();
-    }
-    Expression = std::make_unique<NumberLiteral>(Tok, NumValue);
+    llvm::StringRef NumValue(Tok.getLiteralData(), Tok.getLength());
+    const auto [Signed, Value] = numericParse(NumValue);
+    Expression = std::make_unique<NumberLiteral>(Tok, Signed, Value);
     ConsumeToken(); // numeric constant
     break;
   }
   case tok::string_literal: {
-    std::string StrValue(Tok.getLiteralData(), Tok.getLength());
-    Expression = std::make_unique<StringLiteral>(
-        Tok, stringUnquote(std::move(StrValue)));
+    llvm::StringRef StrValue(Tok.getLiteralData(), Tok.getLength());
+    Expression = std::make_unique<StringLiteral>(Tok, stringUnquote(StrValue));
     ConsumeStringToken(); // string literal
     break;
   }
   case tok::hex_string_literal: {
-    std::string StrValue(Tok.getLiteralData(), Tok.getLength());
-    Expression =
-        std::make_unique<StringLiteral>(Tok, hexUnquote(std::move(StrValue)));
+    llvm::StringRef StrValue(Tok.getLiteralData(), Tok.getLength());
+    Expression = std::make_unique<StringLiteral>(Tok, hexUnquote(StrValue));
     ConsumeStringToken(); // hex string literal
     break;
   }
