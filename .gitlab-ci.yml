@@ -61,8 +61,8 @@ compile:wasm:
   variables:
     SOLL_PATH: "${BASE_BINDIR}/tools/soll/soll"
   script:
-    - bash -c "./utils/compile sol ewasm ${TEST_ENVDIR}/test/*.sol"
-    - bash -c "./utils/compile yul ewasm test/yul/switch.yul"
+    - bash -c "./utils/compile -v sol ewasm ${TEST_ENVDIR}/test/*.sol"
+    - bash -c "./utils/compile -v yul ewasm test/yul/switch.yul"
   after_script:
     - cp ${TEST_ENVDIR}/test/*.wasm ${BASE_BINDIR}
     - cp test/yul/*.wasm ${BASE_BINDIR}
@@ -103,7 +103,7 @@ compile:evm:
   variables:
     SOLL_PATH: "${BASE_BINDIR}/tools/soll/soll"
   script:
-    - bash -c "./utils/compile sol evm ${TEST_ENVDIR}/test/*.sol"
+    - bash -c "./utils/compile -v sol evm ${TEST_ENVDIR}/test/*.sol"
   cache:
     <<: *cache_paths
     key: ubuntu-evm-llvm

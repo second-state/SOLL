@@ -8,6 +8,14 @@ TARGET_TYPE=ewasm
 VERBOSE=false
 BINDIR=
 
+function run
+{
+    if "$VERBOSE"; then
+        echo "RUN $@"
+    fi
+    bash -c "$@"
+}
+
 # Parse arguments
 function parse_args
 {
@@ -52,10 +60,10 @@ function source_to_ll
     local filename=$1
     case "${SOURCE_TYPE}" in
         sol)
-            "${SOLL_PATH}" "${filename}" > "${filename%%*(.sol)}.ll"
+            run "\"${SOLL_PATH}\" \"${filename}\" > \"${filename%%*(.sol)}.ll\""
             ;;
         yul)
-            "${SOLL_PATH}" -lang=Yul "${filename}" > "${filename%%*(.yul)}.ll"
+            run "\"${SOLL_PATH}\" -lang=Yul \"${filename}\" > \"${filename%%*(.yul)}.ll\""
             ;;
     esac
 }
@@ -66,8 +74,8 @@ function ll_to_target
     local prefix=${filename%%*(.ll|.sol|.yul)}
     case "${TARGET_TYPE}" in
         ewasm)
-            "${BINDIR}/ll2ewasm_${SOURCE_TYPE}" -v "${prefix}.ll"
-            test -f "${prefix}.wasm"
+            run "\"${BINDIR}/ll2ewasm_${SOURCE_TYPE}\" -v \"${prefix}.ll\""
+            run "test -f \"${prefix}.wasm\""
             ;;
     esac
 }
