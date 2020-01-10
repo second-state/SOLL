@@ -1,4 +1,5 @@
 // RUN: %soll -lang=Yul %s
+// REQUIRES: returnTuple
 {
   function f(a, b) -> c, d {
     b := add(b, a)

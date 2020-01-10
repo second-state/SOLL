@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: selfdestruct
 {
   selfdestruct(not(0))
   invalid()

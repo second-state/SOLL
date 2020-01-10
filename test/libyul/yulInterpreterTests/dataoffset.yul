@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: objectInObject
+// REQUIRES: dataoffset
 object "main"
 {
     code {

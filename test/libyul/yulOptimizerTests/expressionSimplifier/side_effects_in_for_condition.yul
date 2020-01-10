@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: create
+// REQUIRES: msize
 {
   for {} div(create(0, 1, 0), shl(msize(), 1)) {}
   {

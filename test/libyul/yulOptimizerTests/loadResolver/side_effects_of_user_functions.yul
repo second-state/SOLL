@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: mstore
+// REQUIRES: mload
 {
     function stores() { mstore(0, 1) }
     function reads() { sstore(9, mload(7)) }

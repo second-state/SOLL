@@ -1,5 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
 {
   function f() -> x { x := g() }
   function g() -> x { x := g() }

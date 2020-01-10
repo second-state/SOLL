@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: gaslimit
 {
   sstore(0, gaslimit())
 }

@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: mstore
 {
     // This does not replace b by a because there is no
     // explicit assignment, even though both hold the same value.

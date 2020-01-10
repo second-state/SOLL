@@ -1,5 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
 {
     function f(x) -> t {
         let b := 7

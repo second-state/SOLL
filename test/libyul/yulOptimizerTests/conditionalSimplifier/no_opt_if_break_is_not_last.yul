@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: mload
 {
     let x := mload(0)
     for {} 1 {} {

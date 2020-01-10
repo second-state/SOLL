@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: returnTuple
 // return variables are assumed to be zero initially.
 {
     function f() -> c, d {

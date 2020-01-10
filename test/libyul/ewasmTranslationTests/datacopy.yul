@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: mload
+// REQUIRES: objectInObject
 object "main"
 {
     code {

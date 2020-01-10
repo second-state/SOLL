@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: calldataload
+// REQUIRES: mload
 {
 	let x := calldataload(0)
 	if mul(add(x, 2), 3) {

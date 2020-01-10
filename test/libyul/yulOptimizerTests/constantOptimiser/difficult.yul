@@ -1,5 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
 {
   let x := 0xff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00
   let y := 0x1100ff00ff00ff001100ff00ff001100ff00ff001100ff00ff001100ff001100

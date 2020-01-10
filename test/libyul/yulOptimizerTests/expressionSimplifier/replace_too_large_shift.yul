@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: calldataload
 {
     let a := shl(299, calldataload(0))
     let b := shr(299, calldataload(1))

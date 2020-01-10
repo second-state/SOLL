@@ -1,5 +1,7 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: mstore
+// REQUIRES: mload
+// REQUIRES: pop
 {
     function allocate(size) -> p
     {

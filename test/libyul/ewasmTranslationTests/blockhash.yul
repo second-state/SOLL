@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: blockhash
 {
   sstore(0, blockhash(1))
 }

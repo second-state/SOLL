@@ -1,5 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
 // Even if the functions pass the equality check, they are not movable.
 {
 	function f() -> a { }

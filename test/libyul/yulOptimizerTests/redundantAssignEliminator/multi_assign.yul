@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: returnTuple
 {
     function f() -> a, b {}
     let x, y

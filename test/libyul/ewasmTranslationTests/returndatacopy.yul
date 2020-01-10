@@ -1,5 +1,7 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: returndatacopy
+// REQUIRES: returndatasize
+// REQUIRES: mload
 {
   returndatacopy(0x100, 0, returndatasize())
   sstore(0, mload(0x100))

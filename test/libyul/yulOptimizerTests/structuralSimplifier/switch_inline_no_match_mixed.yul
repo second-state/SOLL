@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: stringToInteger
 {
 	// Used to cause assert error
 	let y := 200

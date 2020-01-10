@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: mstore
+// REQUIRES: mload
 {
   let x := mload(0)
   mstore(1, mul(x, 0))

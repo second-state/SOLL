@@ -1,5 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
 {
   let random := 42
   for { let a := 1

@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: revert
+// REQUIRES: mload
 {
     let x := mload(0)
     if x { sstore(0, x) revert(0, 0) }

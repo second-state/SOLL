@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: calldataload
+// REQUIRES: mstore
 {
     let x
     // Cannot be removed, because we might run the loop only once

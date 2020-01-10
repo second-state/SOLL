@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: leave
 {
     function f() -> x { x := 7 leave }
     function g() -> x { leave x := 7 }

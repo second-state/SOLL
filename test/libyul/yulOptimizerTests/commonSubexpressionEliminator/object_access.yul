@@ -1,5 +1,7 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: mstore
+// REQUIRES: datasize
+// REQUIRES: dataoffset
 object "main" {
     code {
         // Arguments to ``datasize`` and ``dataoffset`` need to be

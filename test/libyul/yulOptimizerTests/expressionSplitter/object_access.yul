@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: mload
 object "main" {
     code {
         // We should never split arguments to ``dataoffset``

@@ -1,5 +1,7 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: calldataload
+// REQUIRES: mstore
+// REQUIRES: msize
 {
         {
             let a := foo_0(calldataload(0))

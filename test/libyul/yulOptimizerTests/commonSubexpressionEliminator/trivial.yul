@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: codesize
 {
     let a := mul(1, codesize())
     let b := mul(1, codesize())

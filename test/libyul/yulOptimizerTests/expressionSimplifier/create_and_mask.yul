@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: create
 {
     let a := and(create(0, 0, 0x20), 0xffffffffffffffffffffffffffffffffffffffff)
     let b := and(0xffffffffffffffffffffffffffffffffffffffff, create(0, 0, 0x20))

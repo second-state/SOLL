@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: pop
+// REQUIRES: address
 {
     let a := caller()
     let b := address()

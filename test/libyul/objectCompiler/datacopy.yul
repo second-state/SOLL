@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: mstore
+// REQUIRES: objectInObject
 object "a" {
   code {
     datacopy(0, dataoffset("sub"), datasize("sub"))

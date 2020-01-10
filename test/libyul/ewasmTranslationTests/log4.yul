@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: log4
 {
   log4(0x20, 0x40, 0x60, 0x80, 0xa0, 0xb0)
 }

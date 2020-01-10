@@ -1,5 +1,8 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: calldataload
+// REQUIRES: revert
+// REQUIRES: mstore
+// REQUIRES: mload
 {
      function abi_decode_t_bytes_calldata_ptr(offset_12, end_13) -> arrayPos_14, length_15
      {

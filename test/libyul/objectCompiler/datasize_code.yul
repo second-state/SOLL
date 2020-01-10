@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: objectInObject
 object "a" {
   code { sstore(0, datasize("sub")) }
   object "sub" {

@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: calldataload
+// REQUIRES: mload
 {
 	// The component will remove the empty block after
 	// it has handled the outer block.

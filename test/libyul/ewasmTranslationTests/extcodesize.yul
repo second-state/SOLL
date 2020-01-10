@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: extcodesize
+// REQUIRES: address
 {
   sstore(0, extcodesize(address()))
 }

@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: calldatasize
 {
 	function f(a, r) -> x { x := g(a, g(r, r)) }
 	function g(b, s) -> y { y := f(b, f(s, s)) }

@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: declareMulti
 // Unassigned variables are assumed to be zero.
 {
 	let c, d

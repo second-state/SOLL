@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: stringToBool
 {
   let a := 1
   for { } 42 { } { }

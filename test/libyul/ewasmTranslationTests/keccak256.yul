@@ -1,5 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
 {
   sstore(0, keccak256(0, 0))
   sstore(0, keccak256(0, 0x20))

@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: calldataload
 { let a := sub(calldataload(0), calldataload(0)) }
 // ====
 // step: expressionSimplifier

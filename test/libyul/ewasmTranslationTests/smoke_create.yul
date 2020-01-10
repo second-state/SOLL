@@ -1,5 +1,7 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: codesize
+// REQUIRES: codecopy
+// REQUIRES: create
 {
   let size := codesize()
   codecopy(0, 0, size)

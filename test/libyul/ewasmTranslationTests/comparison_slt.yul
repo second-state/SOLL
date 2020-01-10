@@ -1,5 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
 {
   sstore(0, slt(0, 1))
   sstore(1, slt(0, not(0)))

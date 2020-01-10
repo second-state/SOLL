@@ -1,5 +1,7 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: origin
+// REQUIRES: callvalue
+// REQUIRES: caller
 {
 	let a
 	let b

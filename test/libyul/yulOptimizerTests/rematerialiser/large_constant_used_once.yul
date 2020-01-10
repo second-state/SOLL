@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: mstore
 {
     // Constants cost depending on their magnitude.
     // Do not rematerialize large constants,

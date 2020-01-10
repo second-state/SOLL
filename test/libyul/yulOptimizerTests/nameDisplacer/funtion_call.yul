@@ -1,5 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
 {
     let x := illegal4(1, 2)
     function illegal4(illegal1, illegal2) -> illegal3 { illegal3 := add(illegal1, illegal2) }

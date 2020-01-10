@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: yulType
 {
     { let a:u256, b:u256, c:u256, d:u256, f:u256 }
     {

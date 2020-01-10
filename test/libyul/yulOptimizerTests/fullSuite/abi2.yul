@@ -1,5 +1,10 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: pop
+// REQUIRES: address
+// REQUIRES: calldataload
+// REQUIRES: revert
+// REQUIRES: mstore
+// REQUIRES: mload
 // We require constantinople because numbers are represented using shifts.
 {
 	// This ignores many of the encoding / decoding functions. Over time,

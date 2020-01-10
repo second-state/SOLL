@@ -1,5 +1,7 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: calldatasize
+// REQUIRES: revert
+// REQUIRES: mstore
 {
 	for {} calldatasize() { mstore(1, 2) } {
 		let x := 7

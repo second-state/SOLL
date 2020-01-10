@@ -1,5 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
 {
 	let x := f(0)
 	for {  } f(x) { x := f(x) }

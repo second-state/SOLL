@@ -1,5 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
 {
     let a := 10
     for {  } iszero(eq(a, 0)) { a := add(a, 1) } {}

@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: pop
 {
     let a := 1
     let b := keccak256(1, 1)

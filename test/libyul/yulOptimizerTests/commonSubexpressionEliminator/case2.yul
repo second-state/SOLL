@@ -1,5 +1,7 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: mstore
+// REQUIRES: mload
+// REQUIRES: pop
 {
     let _13 := 0x20
     let _14 := allocate(_13)

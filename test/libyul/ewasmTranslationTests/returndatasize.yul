@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: returndatasize
 {
   sstore(0, returndatasize())
 }

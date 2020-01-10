@@ -1,5 +1,8 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: calldataload
+// REQUIRES: revert
+// REQUIRES: mstore
+// REQUIRES: mload
 {
     // This is an abi decode function with the SSA transform applied once.
     // This test is supposed to verify that the SSA transform is correctly reversed by the full suite.

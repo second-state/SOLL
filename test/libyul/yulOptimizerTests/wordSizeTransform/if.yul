@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: calldataload
 {
     if calldataload(0) { sstore(0, 1) }
     if add(calldataload(0), calldataload(1)) { sstore(0, 2) }

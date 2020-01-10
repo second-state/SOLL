@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: pop
 {
   function f() -> x { x := g() }
   function g() -> x { for {} 1 {} {} }

@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: mload
 { let a := add(7, sub(mload(0), 7)) }
 // ====
 // step: expressionSimplifier

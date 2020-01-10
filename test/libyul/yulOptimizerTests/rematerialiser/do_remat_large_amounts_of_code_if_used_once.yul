@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: calldatasize
+// REQUIRES: calldataload
 {
 	let x := add(mul(calldataload(2), calldataload(4)), mul(2, calldatasize()))
 	let b := x

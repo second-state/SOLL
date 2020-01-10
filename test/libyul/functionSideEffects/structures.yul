@@ -1,5 +1,8 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: calldataload
+// REQUIRES: mstore
+// REQUIRES: pop
+// REQUIRES: mload
 {
     if calldataload(0)
     {

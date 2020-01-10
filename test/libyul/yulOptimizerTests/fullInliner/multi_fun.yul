@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: mload
 {
 	function f(a) -> x { x := add(a, a) }
 	function g(b, c) -> y { y := mul(mload(c), f(b)) }

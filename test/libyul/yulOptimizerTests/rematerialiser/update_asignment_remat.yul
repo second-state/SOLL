@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: extcodesize
 // We cannot substitute `a` in `let b := a`
 {
 	let a := extcodesize(0)

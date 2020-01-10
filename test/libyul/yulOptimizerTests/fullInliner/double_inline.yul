@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: calldataload
+// REQUIRES: mload
 {
 	function f(a) -> b, c { let x := mload(a) b := sload(x) c := 3 }
     let a1 := calldataload(0)

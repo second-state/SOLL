@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: yulType
 { { let aanteuhdaoneudbrgkjiuaothduiathudaoeuh:u256 } { let aanteuhdaoneudbrgkjiuaothduiathudaoeuh:u256 } }
 // ====
 // step: disambiguator

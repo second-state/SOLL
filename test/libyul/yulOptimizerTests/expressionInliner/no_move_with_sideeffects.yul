@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: mstore
+// REQUIRES: mload
 // The calls to g and h cannot be moved because g and h are not movable. Therefore, the call
 // to f is not inlined.
 {

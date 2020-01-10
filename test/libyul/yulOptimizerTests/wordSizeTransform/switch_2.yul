@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: calldataload
 {
     switch calldataload(0)
     case 0x01000000000000000000000000000000000000010 { sstore(0, 1) }

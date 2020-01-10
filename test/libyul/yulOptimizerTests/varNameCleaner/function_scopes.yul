@@ -1,5 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
 {
 	function f() { let x_1 := 0 }
 	function g() { let x_2 := 0 }

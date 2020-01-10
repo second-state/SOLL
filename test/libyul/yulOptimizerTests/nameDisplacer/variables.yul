@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: declareMulti
 { { let illegal1 := 1 } { let illegal2 := 2 let illegal3, illegal4 } }
 // ====
 // step: nameDisplacer

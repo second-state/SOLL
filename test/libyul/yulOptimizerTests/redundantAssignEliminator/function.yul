@@ -1,4 +1,5 @@
 // RUN: %soll -lang=Yul %s
+// REQUIRES: returnTuple
 {
     let r
     r := 1

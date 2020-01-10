@@ -1,5 +1,7 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: revert
+// REQUIRES: return
+// REQUIRES: pop
 {
     fun()
 

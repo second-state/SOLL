@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: datasize
 object "a" {
   code { sstore(0, datasize("data1")) }
   data "data1" "Hello, World!"

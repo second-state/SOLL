@@ -1,5 +1,7 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: calldataload
+// REQUIRES: mstore
+// REQUIRES: mload
 {
     // No mload removal because of msize
     mstore(calldataload(0), msize())

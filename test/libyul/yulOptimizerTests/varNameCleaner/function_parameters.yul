@@ -1,4 +1,5 @@
 // RUN: %soll -lang=Yul %s
+// REQUIRES: returnTuple
 {
 	let f_2
 	function f(x_12) -> x, y_14

@@ -1,5 +1,7 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: delegatecall
+// REQUIRES: gas
+// REQUIRES: address
 {
   sstore(0, delegatecall(gas(), address(), 0, 0x20, 0x20, 0x20))
 }

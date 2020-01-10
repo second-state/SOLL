@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: revert
+// REQUIRES: mload
 {
     let y := mload(0)
     switch y

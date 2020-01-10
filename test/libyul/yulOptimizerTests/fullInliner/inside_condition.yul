@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: calldatasize
+// REQUIRES: mload
 // This tests that splitting the expression inside the condition works properly.
 {
 	if gt(f(mload(1)), mload(0)) {

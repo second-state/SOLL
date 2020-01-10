@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: balance
+// REQUIRES: address
 {
   sstore(0, balance(address()))
   sstore(1, balance(0))

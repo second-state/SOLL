@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: selfbalance
 {
   sstore(0, selfbalance())
 }

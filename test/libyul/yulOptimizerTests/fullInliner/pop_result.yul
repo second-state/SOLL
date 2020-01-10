@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: pop
 // An earlier version of the inliner produced
 // pop(...) statements and explicitly removed them.
 // This used to test that they are removed.

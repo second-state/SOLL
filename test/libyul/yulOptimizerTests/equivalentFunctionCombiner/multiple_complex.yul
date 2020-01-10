@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: YulFull
+// REQUIRES: pop
 {
   pop(f(1,2,3))
   pop(g(4,5,6))
