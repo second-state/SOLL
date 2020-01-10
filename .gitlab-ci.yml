@@ -12,7 +12,7 @@ stages:
   - build
   - compile
   - test
-  - coverage
+  - deploy
 
 # Templates
 .before_build: &before_build
@@ -117,31 +117,44 @@ compile:evm:
     policy: pull-push
 
 # Jobs for Coverage Report
-test:ubuntu-coverage:
-  stage: test
+coverage:ubuntu:
+  stage: build
   image: secondstate/soll:ubuntu-coverage
+  tags: ["coverage"]
   before_script:
     - *before_build
   script:
     - cmake .. -DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true -DSOLL_COVERAGE=true -DLLVM_EXTERNAL_LIT=${LIT_PATH} -DSOLL_ENABLE_EVM=true -DLLVM_CMAKE_PATH=${EVM_BINDIR}
-    - make -j2 all coverage
-    - mv -v coverage ../public
-  tags: ["evm"]
+    - make -j2
   cache:
+    <<: *cache_paths
     key: ubuntu-coverage
-    paths: ["public"]
     policy: push
-  only:
-    - master
 
-pages:
-  stage: coverage
+coverage:test:
+  stage: test
   image: secondstate/soll:ubuntu-coverage
-  script: ["true"]
-  tags: ["evm"]
+  needs: ["coverage:ubuntu"]
+  tags: ["coverage"]
+  before_script:
+    - cd ${BASE_BINDIR}
+  script:
+    - make -j2 coverage
   cache:
+    <<: *cache_paths
     key: ubuntu-coverage
-    paths: ["coverage"]
+    policy: pull-push
+
+coverage:deploy:
+  stage: deploy
+  image: secondstate/soll:ubuntu-coverage
+  needs: ["coverage:test"]
+  tags: ["coverage"]
+  script:
+    - mv -v ${BASE_BINDIR}/coverage public
+  cache:
+    <<: *cache_paths
+    key: ubuntu-coverage
     policy: pull
   artifacts:
     paths: ["public"]
