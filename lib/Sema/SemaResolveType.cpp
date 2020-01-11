@@ -13,7 +13,8 @@ bool isAllowedTypeForUnary(UnaryOperatorKind UOK, const Type::Category TyC) {
     return UOK == UO_LNot || UOK == UO_IsZero;
   case Type::Category::Integer:
     return UOK == UO_Not || UOK == UO_Plus || UOK == UO_Minus ||
-           UOK == UO_IsZero;
+           UOK == UO_IsZero || UnaryOperator::isIncrementOp(UOK) ||
+           UnaryOperator::isDecrementOp(UOK);
   case Type::Category::FixedBytes:
     return UOK == UO_Not || UOK == UO_IsZero;
   default:
@@ -95,12 +96,29 @@ bool isImplementedForTypecast(const Type *In, const Type *Out, bool IsLiteral) {
 }
 
 void setTypeForBinary(Sema &Actions, BinaryOperator &BO, ImplicitCastExpr *LHS,
-                      ImplicitCastExpr *RHS, Type *LHSTy, Type *RHSTy,
+                      ImplicitCastExpr *RHS, TypePtr LHSTy, TypePtr RHSTy,
                       TypePtr Ty) {
   if (!isAllowedTypeForBinary(BO.getOpcode(), Ty->getCategory())) {
     Actions.Diag(BO.getLocation().getBegin(),
                  diag::err_typecheck_invalid_operands)
         << LHSTy->getName() << RHSTy->getName();
+    return;
+  }
+  if (BO.getOpcode() == BO_Exp) {
+    auto *RHSIntTy = dynamic_cast<IntegerType *>(RHSTy.get());
+    if (RHSIntTy->isSigned()) {
+      Actions.Diag(BO.getLocation().getBegin(), diag::err_typecheck_exp_signed);
+      return;
+    }
+    LHS->setType(LHSTy);
+    RHS->setType(RHSTy);
+    BO.setType(LHSTy);
+    return;
+  }
+  if (BinaryOperator::isShiftOp(BO.getOpcode())) {
+    LHS->setType(LHSTy);
+    RHS->setType(RHSTy);
+    BO.setType(LHSTy);
     return;
   }
   if (!LHSTy->isEqual(*Ty)) {
@@ -186,15 +204,14 @@ public:
         if (!LHSTy || !RHSTy) {
           return;
         }
-        if (LHSTy->isEqual(*RHSTy) || BO.isAssignmentOp() ||
+        if (LHSTy->isEqual(*RHSTy) || BO.isAssignmentOp() || BO.isShiftOp() ||
+            BO.getOpcode() == BO_Exp ||
             RHSTy->isImplicitlyConvertibleTo(*LHSTy)) {
-          setTypeForBinary(Actions, BO, LHS, RHS, LHSTy.get(), RHSTy.get(),
-                           LHSTy);
+          setTypeForBinary(Actions, BO, LHS, RHS, LHSTy, RHSTy, LHSTy);
           return;
         }
         if (LHSTy->isImplicitlyConvertibleTo(*RHSTy)) {
-          setTypeForBinary(Actions, BO, LHS, RHS, LHSTy.get(), RHSTy.get(),
-                           RHSTy);
+          setTypeForBinary(Actions, BO, LHS, RHS, LHSTy, RHSTy, RHSTy);
           return;
         }
         Actions.Diag(BO.getLocation().getBegin(),

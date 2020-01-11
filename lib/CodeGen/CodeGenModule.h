@@ -94,6 +94,7 @@ class CodeGenModule : public CodeGenTypeCache {
   llvm::Function *Func_ripemd160 = nullptr;
   llvm::Function *Func_ecrecover = nullptr;
 
+  llvm::Function *Func_exp256 = nullptr;
   llvm::Function *Func_bswap256 = nullptr;
   llvm::Function *Func_memcpy = nullptr;
 
@@ -103,6 +104,7 @@ class CodeGenModule : public CodeGenTypeCache {
   void initEEIDeclaration();
 
   void initHelperDeclaration();
+  void initExpI256();
   void initBswapI256();
   void initMemcpy();
 
@@ -130,6 +132,7 @@ public:
 
   void emitContractDecl(const ContractDecl *CD);
   void emitYulObject(const YulObject *YO);
+  llvm::Value *emitExp(llvm::Value *Base, llvm::Value *Exp, bool IsSigned);
   llvm::Value *emitEndianConvert(llvm::Value *Val);
   llvm::Value *getEndianlessValue(llvm::Value *Val);
   bool isBytesType(llvm::Type *Ty);

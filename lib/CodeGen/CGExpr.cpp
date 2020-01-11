@@ -192,7 +192,8 @@ private:
       }
       V = RHSVal;
     } else if (BO->isAdditiveOp() || BO->isMultiplicativeOp() ||
-               BO->isComparisonOp() || BO->isShiftOp() || BO->isBitwiseOp()) {
+               BO->isComparisonOp() || BO->isShiftOp() || BO->isBitwiseOp() ||
+               BO->getOpcode() == BO_Exp) {
       const bool Signed = isSigned(Ty);
 
       using Pred = llvm::CmpInst::Predicate;
@@ -265,7 +266,12 @@ private:
       case BinaryOperatorKind::BO_Or:
         V = Builder.CreateOr(LHS, RHS, "BO_Or");
         break;
-      default:;
+      case BinaryOperatorKind::BO_Exp:
+        V = CGF.getCodeGenModule().emitExp(LHS, RHS, Signed);
+        break;
+      default:
+        assert(false);
+        __builtin_unreachable();
       }
     } else if (BO->isLogicalOp()) {
       if (BO->getOpcode() == BO_LAnd) {

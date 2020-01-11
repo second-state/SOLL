@@ -498,12 +498,21 @@ void CodeGenModule::initEEIDeclaration() {
 
 void CodeGenModule::initHelperDeclaration() {
   if (isEWASM()) {
+    Func_exp256 = llvm::Function::Create(
+        llvm::FunctionType::get(Int256Ty, {Int256Ty, Int256Ty}, false),
+        llvm::Function::InternalLinkage, "solidity.expi256", TheModule);
+    Func_exp256->addFnAttr(llvm::Attribute::NoUnwind);
+    Func_exp256->addFnAttr(llvm::Attribute::ReadNone);
+    initExpI256();
+
     Func_bswap256 = llvm::Function::Create(
         llvm::FunctionType::get(Int256Ty, {Int256Ty}, false),
         llvm::Function::InternalLinkage, "solidity.bswapi256", TheModule);
     Func_bswap256->addFnAttr(llvm::Attribute::NoUnwind);
+    Func_bswap256->addFnAttr(llvm::Attribute::ReadNone);
     initBswapI256();
   } else {
+    Func_exp256 = nullptr;
     Func_bswap256 = nullptr;
   }
 
@@ -513,6 +522,61 @@ void CodeGenModule::initHelperDeclaration() {
       llvm::Function::InternalLinkage, "solidity.memcpy", TheModule);
   Func_memcpy->addFnAttr(llvm::Attribute::NoUnwind);
   initMemcpy();
+}
+
+void CodeGenModule::initExpI256() {
+  llvm::Argument *const Base = Func_exp256->arg_begin();
+  llvm::Argument *const Exp = Base + 1;
+  Base->setName("base");
+  Exp->setName("exp");
+
+  llvm::BasicBlock *Entry =
+      llvm::BasicBlock::Create(VMContext, "entry", Func_exp256);
+  llvm::BasicBlock *Loop =
+      llvm::BasicBlock::Create(VMContext, "loop", Func_exp256);
+  llvm::BasicBlock *Return =
+      llvm::BasicBlock::Create(VMContext, "return", Func_exp256);
+
+  llvm::ConstantInt *Zero = Builder.getIntN(256, 0);
+  llvm::ConstantInt *One = Builder.getIntN(256, 1);
+  {
+    Builder.SetInsertPoint(Entry);
+    llvm::Value *IsZero = Builder.CreateICmpEQ(Exp, Zero);
+    Builder.CreateCondBr(IsZero, Return, Loop);
+  }
+
+  llvm::Value *NewResult;
+  {
+    Builder.SetInsertPoint(Loop);
+    llvm::PHINode *ResultPHI = Builder.CreatePHI(Int256Ty, 2);
+    llvm::PHINode *PartPHI = Builder.CreatePHI(Int256Ty, 2);
+    llvm::PHINode *ExpPHI = Builder.CreatePHI(Int256Ty, 2);
+
+    llvm::Value *BitSet = Builder.CreateTrunc(ExpPHI, Builder.getInt1Ty());
+    llvm::Value *BIsZero = Builder.CreateICmpEQ(BitSet, Builder.getInt1(false));
+    llvm::Value *Mul = Builder.CreateSelect(BIsZero, One, PartPHI);
+    NewResult = Builder.CreateMul(ResultPHI, Mul);
+    llvm::Value *NewPart = Builder.CreateMul(PartPHI, PartPHI);
+    llvm::Value *NewExp = Builder.CreateLShr(ExpPHI, One);
+
+    ResultPHI->addIncoming(One, Entry);
+    ResultPHI->addIncoming(NewResult, Loop);
+    PartPHI->addIncoming(Base, Entry);
+    PartPHI->addIncoming(NewPart, Loop);
+    ExpPHI->addIncoming(Exp, Entry);
+    ExpPHI->addIncoming(NewExp, Loop);
+
+    llvm::Value *IsZero = Builder.CreateICmpEQ(NewExp, Zero);
+    Builder.CreateCondBr(IsZero, Return, Loop);
+  }
+
+  {
+    Builder.SetInsertPoint(Return);
+    llvm::PHINode *ResultPHI = Builder.CreatePHI(Int256Ty, 2);
+    ResultPHI->addIncoming(One, Entry);
+    ResultPHI->addIncoming(NewResult, Loop);
+    Builder.CreateRet(ResultPHI);
+  }
 }
 
 void CodeGenModule::initBswapI256() {
@@ -1359,6 +1423,19 @@ llvm::Value *CodeGenModule::emitEndianConvert(llvm::Value *Val) {
   llvm::Value *Reverse = Builder.CreateCall(
       getModule().getFunction("solidity.bswapi256"), {Ext}, "reverse");
   return Builder.CreateTrunc(Reverse, Ty, "trunc");
+}
+
+llvm::Value *CodeGenModule::emitExp(llvm::Value *Base, llvm::Value *Exp,
+                                    bool IsSigned) {
+  llvm::Value *Base256;
+  if (IsSigned) {
+    Base256 = Builder.CreateSExt(Base, Int256Ty);
+  } else {
+    Base256 = Builder.CreateZExt(Base, Int256Ty);
+  }
+  llvm::Value *Exp256 = Builder.CreateZExt(Exp, Int256Ty);
+  llvm::Value *Result256 = Builder.CreateCall(Func_exp256, {Base256, Exp256});
+  return Builder.CreateTrunc(Result256, Base->getType());
 }
 
 bool CodeGenModule::isBytesType(llvm::Type *Ty) {

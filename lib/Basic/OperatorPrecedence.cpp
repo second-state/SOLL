@@ -52,6 +52,7 @@ prec::Level getBinOpPrecedence(tok::TokenKind Kind) {
   case tok::percent:
   case tok::slash:
   case tok::star:
+  case tok::starstar:
     return prec::Multiplicative;
   // case tok::periodstar:
   // case tok::arrowstar:            return prec::PointerToMember;
