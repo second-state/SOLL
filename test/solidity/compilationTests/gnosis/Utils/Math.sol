@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// REQUIRES: implicitCast
+// REQUIRES: returnVariable
+// REQUIRES: arrayLength
 // RUN: %soll %s
 pragma solidity >=0.0;
 
