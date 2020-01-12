@@ -1,6 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: mstore
-// REQUIRES: mload
 {
     mstore(0, 7)
     sstore(0, mload(0))

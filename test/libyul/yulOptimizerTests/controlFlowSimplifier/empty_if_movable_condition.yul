@@ -1,6 +1,5 @@
 // RUN: %soll -lang=Yul %s
 // REQUIRES: pop
-// REQUIRES: mload
 { let a := mload(0) if a {} }
 // ====
 // step: controlFlowSimplifier

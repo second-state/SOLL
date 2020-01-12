@@ -1,7 +1,5 @@
 // RUN: %soll -lang=Yul %s
 // REQUIRES: pop
-// REQUIRES: mstore
-// REQUIRES: mload
 {
     let a := 0
     let b := 1

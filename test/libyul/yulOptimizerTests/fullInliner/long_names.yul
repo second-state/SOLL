@@ -1,5 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: mstore
 {
 	function verylongfunctionname(verylongvariablename) -> verylongvariablename2 {
 		verylongvariablename2 := add(verylongvariablename, verylongvariablename)

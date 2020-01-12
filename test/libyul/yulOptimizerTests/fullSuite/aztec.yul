@@ -2,8 +2,6 @@
 // REQUIRES: calldatasize
 // REQUIRES: calldataload
 // REQUIRES: revert
-// REQUIRES: mstore
-// REQUIRES: mload
 /**
  * @title Library to validate AZTEC zero-knowledge proofs
  * @author Zachary Williamson, AZTEC

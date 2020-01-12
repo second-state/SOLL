@@ -1,6 +1,5 @@
 // RUN: %soll -lang=Yul %s
 // REQUIRES: revert
-// REQUIRES: mload
 {
     let y := mload(0x20)
     for {} and(y, 8) { if y { revert(0, 0) } } {

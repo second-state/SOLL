@@ -1,5 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: mstore
 // REQUIRES: datasize
 // REQUIRES: dataoffset
 object "main" {

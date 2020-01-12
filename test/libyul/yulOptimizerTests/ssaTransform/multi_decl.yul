@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: mload
+// REQUIRES: declareMulti
+// REQUIRES: returnTuple
 {
   let x, y := f(1, 2)
   x := mload(y)

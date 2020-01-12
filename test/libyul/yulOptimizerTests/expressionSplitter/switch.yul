@@ -1,7 +1,5 @@
 // RUN: %soll -lang=Yul %s
 // REQUIRES: calldataload
-// REQUIRES: mstore
-// REQUIRES: mload
 {
     let x := 8
     switch add(2, calldataload(0))

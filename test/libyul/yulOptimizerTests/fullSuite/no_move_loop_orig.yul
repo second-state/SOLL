@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: mstore
+// REQUIRES: caller
 {
   for {} msize() {
     function foo_s_0() -> x_1 { for {} caller() {} {} }

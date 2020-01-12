@@ -1,6 +1,5 @@
 // RUN: %soll -lang=Yul %s
 // REQUIRES: calldataload
-// REQUIRES: mstore
 {
     let a := 1
     switch calldataload(0)

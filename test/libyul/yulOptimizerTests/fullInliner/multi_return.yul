@@ -1,6 +1,6 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: mstore
-// REQUIRES: mload
+// REQUIRES: declareMulti
+// REQUIRES: returnTuple
 {
 	function f(a) -> x, y {
 		x := mul(a, a)

@@ -1,6 +1,5 @@
 // RUN: %soll -lang=Yul %s
 // REQUIRES: revert
-// REQUIRES: mstore
 {
     {
       revert(0, 0)

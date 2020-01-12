@@ -1,6 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: mstore
-// REQUIRES: mload
+// REQUIRES: caller
 {
     // The caller opcode is cheap, so inline it,
     // no matter how often it is used

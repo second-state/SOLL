@@ -1,5 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: mload
 {
   if add(mload(7), sload(mload(3)))
   {

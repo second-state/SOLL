@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: mstore
+// REQUIRES: declareMulti
 {
   function f() -> x, y {
     let a, b

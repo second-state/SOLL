@@ -1,6 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: mstore
-// REQUIRES: mload
 {
     function userNot(x) -> y {
         y := iszero(x)

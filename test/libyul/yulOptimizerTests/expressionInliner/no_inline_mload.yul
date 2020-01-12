@@ -1,5 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: mload
 // Does not inline because mload could be moved out of sequence
 {
     function f(a) -> x { x := a }

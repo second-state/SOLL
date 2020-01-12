@@ -1,5 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: mload
 {
     let a := 1
     let b := mload(10)

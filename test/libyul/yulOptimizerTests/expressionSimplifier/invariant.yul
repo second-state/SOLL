@@ -1,5 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: mload
 {
     let a := mload(sub(7, 7))
     let b := sub(a, 0)

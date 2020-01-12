@@ -1,5 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: mstore
 {
     let a := add(1, mul(3, 4))
     mstore(0, a)

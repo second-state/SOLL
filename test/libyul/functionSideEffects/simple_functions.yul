@@ -1,7 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: mstore
-// REQUIRES: msize
-// REQUIRES: mload
 {
     function a() {}
     function f() { mstore(0, 1) }

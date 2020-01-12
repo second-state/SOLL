@@ -1,5 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: mstore
 // REQUIRES: invalid
 {
   sstore(0, 0x1234)

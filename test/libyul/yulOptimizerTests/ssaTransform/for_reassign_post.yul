@@ -1,6 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: mstore
-// REQUIRES: mload
 {
     let a := mload(0)
     for { mstore(0, a) } a { a := add(a, 3) }

@@ -1,5 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: mload
 {
 	function f(a, b, c) -> x {
 		x := add(a, b)

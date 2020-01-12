@@ -1,5 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: mload
 {
 	// We have an interleaved "add" here, so we cannot inline "a"
 	// (note that this component does not analyze whether

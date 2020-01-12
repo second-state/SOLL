@@ -1,5 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: mload
 // REQUIRES: objectInObject
 object "main"
 {

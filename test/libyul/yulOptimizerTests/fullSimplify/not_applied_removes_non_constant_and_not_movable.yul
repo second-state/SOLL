@@ -1,6 +1,5 @@
 // RUN: %soll -lang=Yul %s
 // REQUIRES: pop
-// REQUIRES: mstore
 // div is eliminated, but create has side-effects.
 {
 	let a := div(create(0, 0, 0), 0)

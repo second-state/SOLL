@@ -5,8 +5,6 @@
 // REQUIRES: extcodehash
 // REQUIRES: sload
 // REQUIRES: pc
-// REQUIRES: msize
-// REQUIRES: mload
 {
 	// These can be removed by the optimizer and should not
 	// appear in the trace.

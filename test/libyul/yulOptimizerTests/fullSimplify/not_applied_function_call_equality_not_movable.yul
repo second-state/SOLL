@@ -1,5 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: mstore
 // Even if the functions pass the equality check, they are not movable.
 {
 	function f() -> a { mstore(1, 2) }

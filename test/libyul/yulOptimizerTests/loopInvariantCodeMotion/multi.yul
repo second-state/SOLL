@@ -1,5 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: mstore
 {
   let b := 1
   // tests if c, d, and inv can be moved outside in single pass

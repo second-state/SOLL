@@ -1,6 +1,5 @@
 // RUN: %soll -lang=Yul %s
 // REQUIRES: pop
-// REQUIRES: mstore
 {
 	// This tests that a bug is fixed that was related to just taking
 	// values of SSA variables in account and not clearing them when

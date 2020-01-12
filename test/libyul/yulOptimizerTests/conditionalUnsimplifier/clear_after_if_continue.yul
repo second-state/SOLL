@@ -1,5 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: mload
 // REQUIRES: pop
 {
     let y := mload(0x20)

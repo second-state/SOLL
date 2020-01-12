@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: mstore
+// REQUIRES: declareMulti
 {
     let x, y
     if x { mstore(0, 0) }

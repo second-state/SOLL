@@ -1,6 +1,5 @@
 // RUN: %soll -lang=Yul %s
 // REQUIRES: pop
-// REQUIRES: mload
 {
 	let y := 200
 	switch add(y, 4)

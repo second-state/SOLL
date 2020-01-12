@@ -2,7 +2,6 @@
 // REQUIRES: objectInObject
 // REQUIRES: datacopy
 // REQUIRES: dataoffset
-// REQUIRES: mload
 object "main"
 {
     code {

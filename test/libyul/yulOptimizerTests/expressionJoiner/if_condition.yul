@@ -1,5 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: mload
 {
 	let a := mload(3)
 	let b := sload(a)

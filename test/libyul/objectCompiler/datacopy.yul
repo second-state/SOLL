@@ -1,5 +1,4 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: mstore
 // REQUIRES: objectInObject
 object "a" {
   code {

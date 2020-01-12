@@ -1,5 +1,7 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: mstore
+// REQUIRES: caller
+// REQUIRES: callvalue
+// REQUIRES: origin
 {
 	let a
 	let b

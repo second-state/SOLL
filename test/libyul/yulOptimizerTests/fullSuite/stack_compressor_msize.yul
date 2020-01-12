@@ -1,7 +1,6 @@
 // RUN: %soll -lang=Yul %s
 // REQUIRES: pop
 // REQUIRES: calldataload
-// REQUIRES: mstore
 {
 	let a
 
