@@ -937,6 +937,18 @@ llvm::Value *CodeGenFunction::emitCallAddressSend(const CallExpr *CE,
   return nullptr;
 }
 
+llvm::Value *CodeGenFunction::emitAbiEncodePacked(const CallExpr *CE) {
+  // abi_encodePacked
+  auto Arguments = CE->getArguments();
+  std::vector<llvm::Value *> Args;
+  for (const auto &arg : Arguments) {
+    Args.emplace_back(emitExpr(arg).load(Builder, CGM));
+  }
+  llvm::Value *Bytes =
+      CGM.emitConcateBytes(llvm::ArrayRef<llvm::Value *>(Args));
+  return Bytes;
+}
+
 ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
   auto Expr = CE->getCalleeExpr();
   auto ME = dynamic_cast<const MemberExpr *>(Expr);
@@ -1052,6 +1064,8 @@ ExprValue CodeGenFunction::emitSpecialCallExpr(const Identifier *SI,
     return ExprValue();
   case Identifier::SpecialIdentifier::address_send:
     return ExprValue::getRValue(CE, emitCallAddressSend(CE, ME, false));
+  case Identifier::SpecialIdentifier::abi_encodePacked:
+    return ExprValue::getRValue(CE, emitAbiEncodePacked(CE));
   default:
     assert(false && "special function not supported yet");
     __builtin_unreachable();

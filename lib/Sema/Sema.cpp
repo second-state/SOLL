@@ -225,11 +225,13 @@ Sema::CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr, Token Tok) {
         switch (I->getSpecialIdentifier()) {
         case Identifier::SpecialIdentifier::abi:
           switch (Iter->second) {
+          case Identifier::SpecialIdentifier::abi_encodePacked:
+          case Identifier::SpecialIdentifier::abi_encode:
+          case Identifier::SpecialIdentifier::abi_encodeWithSelector:
+          case Identifier::SpecialIdentifier::abi_encodeWithSignature:
+            Ty = std::make_shared<BytesType>();
+            break;
           case Identifier::SpecialIdentifier::abi_decode:
-          case Identifier::SpecialIdentifier::block_difficulty:
-          case Identifier::SpecialIdentifier::block_gaslimit:
-          case Identifier::SpecialIdentifier::block_number:
-          case Identifier::SpecialIdentifier::block_timestamp:
             Diag(Tok.getLocation(), diag::err_unimplemented_identifier)
                 << Tok.getIdentifierInfo();
             return nullptr;

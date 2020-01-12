@@ -416,7 +416,32 @@ void TypeResolver::visit(CallExprType &CE) {
       return;
     }
     if (I->isSpecialIdentifier()) {
-      FTy = dynamic_cast<FunctionType *>(I->getType().get());
+      std::vector<TypePtr> argTypes;
+      for (const auto &arg : CE.getArguments()) {
+        if (auto *IC = dynamic_cast<ImplicitCastExpr *>(arg)) {
+          argTypes.emplace_back(IC->getSubExpr()->getType());
+        }
+      }
+      switch (I->getSpecialIdentifier()) {
+      case Identifier::SpecialIdentifier::abi_encodePacked:
+      case Identifier::SpecialIdentifier::abi_encode:
+        break;
+      case Identifier::SpecialIdentifier::abi_encodeWithSelector:
+        argTypes.at(0) =
+            std::make_shared<FixedBytesType>(FixedBytesType::ByteKind::B4);
+        break;
+      case Identifier::SpecialIdentifier::abi_encodeWithSignature:
+        argTypes.at(0) = std::make_shared<StringType>();
+        break;
+      default:
+        FTy = dynamic_cast<FunctionType *>(I->getType().get());
+      }
+      if (!FTy) {
+        I->setType(std::make_shared<FunctionType>(
+            std::vector<TypePtr>(argTypes),
+            std::vector<TypePtr>{std::make_shared<BytesType>()}));
+        FTy = dynamic_cast<FunctionType *>(I->getType().get());
+      }
     } else {
       if (auto MI = dynamic_cast<Identifier *>(Base)) {
         if (MI && MI->getSpecialIdentifier() !=
