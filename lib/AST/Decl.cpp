@@ -169,8 +169,7 @@ FunctionDecl::FunctionDecl(
     std::unique_ptr<ParamList> &&ReturnParams, std::unique_ptr<Block> &&Body)
     : CallableVarDecl(L, Name, V, std::move(Params), std::move(ReturnParams)),
       SM(SM), IsConstructor(IsConstructor), IsFallback(IsFallback),
-      FunctionModifiers(std::move(Modifiers)), Body(std::move(Body)),
-      Implemented(this->Body != nullptr) {
+      FunctionModifiers(std::move(Modifiers)), Body(std::move(Body)) {
   std::vector<TypePtr> PTys;
   std::vector<TypePtr> RTys;
   for (auto VD : this->getParams()->getParams())

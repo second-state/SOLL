@@ -7,7 +7,6 @@ namespace soll {
 
 class AsmFunctionDecl : public CallableVarDecl {
   std::unique_ptr<Block> Body;
-  bool Implemented;
   TypePtr FuncTy;
 
 public:

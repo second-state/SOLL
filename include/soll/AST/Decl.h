@@ -148,7 +148,6 @@ class FunctionDecl : public CallableVarDecl {
   bool IsFallback;
   std::vector<std::unique_ptr<ModifierInvocation>> FunctionModifiers;
   std::unique_ptr<Block> Body;
-  bool Implemented;
   TypePtr FuncTy;
 
 public:
