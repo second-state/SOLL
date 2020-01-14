@@ -474,9 +474,8 @@ public:
   //   8    -> uint8
   //   7122 -> uint16
   //   -123 -> int8
-  NumberLiteral(const Token &T, bool Signed, llvm::APInt V)
-      : Expr(T.getRange(), ValueKind::VK_RValue,
-             getFittingType(Signed, V.getBitWidth())),
+  NumberLiteral(const SourceRange &L, bool Signed, llvm::APInt V)
+      : Expr(L, ValueKind::VK_RValue, getFittingType(Signed, V.getBitWidth())),
         Value(V) {}
   const llvm::APInt &getValue() const { return Value; }
   bool IsSigned() const {

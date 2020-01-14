@@ -2,7 +2,10 @@
 #include "soll/Parse/Parser.h"
 #include "soll/Basic/DiagnosticParse.h"
 #include "soll/Basic/OperatorPrecedence.h"
+#include "soll/Basic/TokenKinds.h"
 #include "soll/Lex/Lexer.h"
+#include "soll/Lex/Token.h"
+#include <llvm/Support/Compiler.h>
 
 namespace soll {
 
@@ -312,6 +315,32 @@ static FixedBytesType::ByteKind token2bytetype(const Token &Tok) {
     return FixedBytesType::ByteKind::B32;
   default:
     assert(false && "Invalid int token.");
+  }
+  LLVM_BUILTIN_UNREACHABLE;
+}
+
+uint64_t token2UnitMultiplier(const Token &Tok) {
+  switch (Tok.getKind()) {
+  case tok::kw_wei:
+    return 1;
+  case tok::kw_szabo:
+    return 1000000000000ul;
+  case tok::kw_finney:
+    return 1000000000000000ul;
+  case tok::kw_ether:
+    return 1000000000000000000ul;
+  case tok::kw_seconds:
+    return 1;
+  case tok::kw_minutes:
+    return 60;
+  case tok::kw_hours:
+    return 3600;
+  case tok::kw_days:
+    return 86400;
+  case tok::kw_weeks:
+    return 604800;
+  default:
+    assert(false && "Invalid unit token.");
   }
   LLVM_BUILTIN_UNREACHABLE;
 }
@@ -1635,9 +1664,24 @@ std::unique_ptr<Expr> Parser::parsePrimaryExpression() {
     break;
   case tok::numeric_constant: {
     llvm::StringRef NumValue(Tok.getLiteralData(), Tok.getLength());
-    const auto [Signed, Value] = numericParse(NumValue);
-    Expression = std::make_unique<NumberLiteral>(Tok, Signed, Value);
-    ConsumeToken(); // numeric constant
+    const bool HasUnit =
+        NextToken().isOneOf(tok::kw_wei, tok::kw_szabo, tok::kw_finney,
+                            tok::kw_ether, tok::kw_seconds, tok::kw_minutes,
+                            tok::kw_hours, tok::kw_days, tok::kw_weeks);
+    if (!HasUnit) {
+      const auto [Signed, Value] = numericParse(NumValue);
+      Expression =
+          std::make_unique<NumberLiteral>(Tok.getRange(), Signed, Value);
+      ConsumeToken(); // numeric constant
+    } else {
+      const auto [Signed, Value] =
+          numericParse(NumValue, token2UnitMultiplier(NextToken()));
+      Expression = std::make_unique<NumberLiteral>(
+          SourceRange(Tok.getLocation(), NextToken().getEndLoc()), Signed,
+          Value);
+      ConsumeToken(); // numeric constant
+      ConsumeToken(); // unit keyword
+    }
     break;
   }
   case tok::string_literal: {
@@ -1767,7 +1811,6 @@ bool Parser::ExpectAndConsume(tok::TokenKind ExpectedTok, unsigned DiagID,
   }
 
   // TODO: Detect common single-character typos and resume.
-
   DiagnosticBuilder DB = Diag(DiagID);
   if (DiagID == diag::err_expected)
     DB << ExpectedTok;

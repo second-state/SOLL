@@ -224,7 +224,7 @@ std::unique_ptr<Expr> Parser::parseElementaryOperation() {
     } else {
       Value = Value.zext(256);
     }
-    Expression = std::make_unique<NumberLiteral>(Tok, Signed, Value);
+    Expression = std::make_unique<NumberLiteral>(Tok.getRange(), Signed, Value);
     ConsumeToken(); // numeric constant
     break;
   }

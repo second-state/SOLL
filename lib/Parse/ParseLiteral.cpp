@@ -135,7 +135,8 @@ std::string Parser::hexUnquote(llvm::StringRef Quoted) {
   return Result;
 }
 
-std::pair<bool, llvm::APInt> Parser::numericParse(llvm::StringRef Literal) {
+std::pair<bool, llvm::APInt> Parser::numericParse(llvm::StringRef Literal,
+                                                  uint64_t Unit) {
   llvm::APInt Result = llvm::APInt::getNullValue(1);
   bool Signed = false;
   if (!Literal.empty()) {
@@ -145,6 +146,10 @@ std::pair<bool, llvm::APInt> Parser::numericParse(llvm::StringRef Literal) {
     }
     if (Literal.getAsInteger(0, Result)) {
       Diag(diag::err_invalid_numeric_literal) << Literal;
+    }
+    if (Unit != 1) {
+      Result = Result.zext(Result.getBitWidth() + 64);
+      Result *= Unit;
     }
     unsigned BitWidth = Result.getActiveBits();
     Result = Result.trunc((BitWidth + 7) & ~7);

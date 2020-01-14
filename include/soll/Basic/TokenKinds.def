@@ -139,6 +139,18 @@ KEYWORD(address                 , KEYALL)
 KEYWORD(bool                    , KEYALL)
 KEYWORD(string                  , KEYALL)
 
+// unit keywords
+// https://solidity.readthedocs.io/en/latest/units-and-global-variables.html
+KEYWORD(wei                     , KEYALL)
+KEYWORD(szabo                   , KEYALL)
+KEYWORD(finney                  , KEYALL)
+KEYWORD(ether                   , KEYALL)
+KEYWORD(seconds                 , KEYALL)
+KEYWORD(minutes                 , KEYALL)
+KEYWORD(hours                   , KEYALL)
+KEYWORD(days                    , KEYALL)
+KEYWORD(weeks                   , KEYALL)
+
 #ifndef KEYWORD_N
 #define KEYWORD_N(N,X,Y) KEYWORD(X ## N, Y)
 #endif
