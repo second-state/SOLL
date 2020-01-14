@@ -6,7 +6,7 @@
 
 namespace {
 static const constexpr enum llvm::raw_ostream::Colors noteColor =
-    llvm::raw_ostream::BLACK;
+    llvm::raw_ostream::WHITE;
 static const constexpr enum llvm::raw_ostream::Colors remarkColor =
     llvm::raw_ostream::BLUE;
 static const constexpr enum llvm::raw_ostream::Colors fixitColor =
