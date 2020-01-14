@@ -13,3 +13,4 @@ Below will describe some unimplemented language features.
 - Contract inheritance
 - Constructor with parameter
 - Return multiple value
+- Inline assembly
