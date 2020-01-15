@@ -1723,6 +1723,14 @@ llvm::Value *CodeGenModule::emitReturnDataCopyBytes(llvm::Value *dataOffset,
   return Bytes;
 }
 
+llvm::Value *CodeGenModule::emitCallDataLoad(llvm::Value *DataOffset) {
+  llvm::Value *CallDataVPtr = Builder.CreateAlloca(Int8Ty, Builder.getIntN(256, 32));
+  emitCallDataCopy(CallDataVPtr, DataOffset, Builder.getIntN(256, 32));
+  llvm::Value *CallDataPtr = Builder.CreateBitCast(CallDataVPtr, Int256PtrTy);
+  llvm::Value *CallData = Builder.CreateLoad(Int256Ty, CallDataPtr);
+  return CallData;
+}
+
 llvm::Value *CodeGenModule::emitCall(llvm::Value *Gas, llvm::Value *AddressPtr,
                                      llvm::Value *ValuePtr,
                                      llvm::Value *DataPtr,

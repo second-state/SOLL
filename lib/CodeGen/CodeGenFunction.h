@@ -110,6 +110,7 @@ private:
   llvm::Value *emitMSize(const CallExpr *CE);
   void emitSStore(const CallExpr *CE);
   llvm::Value *emitSLoad(const CallExpr *CE);
+  llvm::Value *emitCallDataLoad(const CallExpr *CE);
 
   ExprValue emitCallExpr(const CallExpr *CE);
   ExprValue emitSpecialCallExpr(const Identifier *SI, const CallExpr *CE,

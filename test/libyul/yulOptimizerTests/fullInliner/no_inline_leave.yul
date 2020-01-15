@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
 // REQUIRES: calldataload
+// REQUIRES: leave
 {
     function g() -> x { x := 8 leave }
 	function f(a) { a := g() }

@@ -1101,6 +1101,13 @@ llvm::Value *CodeGenFunction::emitSLoad(const CallExpr *CE) {
   return CGM.getEndianlessValue(Val);
 }
 
+llvm::Value *CodeGenFunction::emitCallDataLoad(const CallExpr *CE) {
+  auto Arguments = CE->getArguments();
+  return CGM.getEndianlessValue(
+      CGM.emitCallDataLoad(CGM.getEndianlessValue(Builder.CreateZExtOrTrunc(
+          emitExpr(Arguments[0]).load(Builder, CGM), CGM.Int256Ty))));
+}
+
 ExprValue CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
                                                   const CallExpr *CE) {
   switch (SI->getSpecialIdentifier()) {
@@ -1170,6 +1177,8 @@ ExprValue CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   case AsmIdentifier::SpecialIdentifier::sload:
     return ExprValue::getRValue(CE, emitSLoad(CE));
   /// state
+  case AsmIdentifier::SpecialIdentifier::calldataload:
+    return ExprValue::getRValue(CE, emitCallDataLoad(CE));
   case AsmIdentifier::SpecialIdentifier::gasleft:
     assert(CE->getArguments().empty() && "gasleft require no arguments");
     return ExprValue::getRValue(CE, CGM.emitGetGasLeft());
@@ -1202,7 +1211,6 @@ ExprValue CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   case AsmIdentifier::SpecialIdentifier::this_:
   case AsmIdentifier::SpecialIdentifier::caller:
   case AsmIdentifier::SpecialIdentifier::callvalue:
-  case AsmIdentifier::SpecialIdentifier::calldataload:
   case AsmIdentifier::SpecialIdentifier::calldatasize:
   case AsmIdentifier::SpecialIdentifier::calldatacopy:
   case AsmIdentifier::SpecialIdentifier::codesize:

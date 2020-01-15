@@ -159,6 +159,7 @@ public:
   llvm::Value *emitReturnDataSize();
   llvm::Value *emitReturnDataCopyBytes(llvm::Value *dataOffset,
                                        llvm::Value *length);
+  llvm::Value *emitCallDataLoad(llvm::Value *DataOffset);
   llvm::Value *emitCall(llvm::Value *Gas, llvm::Value *AddressPtr,
                         llvm::Value *ValuePtr, llvm::Value *DataPtr,
                         llvm::Value *DataLength,

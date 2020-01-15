@@ -73,6 +73,7 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
       /// execution control
       {"gasleft", AsmIdentifier::SpecialIdentifier::gasleft},
       /// state
+      {"calldataload", AsmIdentifier::SpecialIdentifier::calldataload},
       /// object
       /// misc
       {"keccak256", AsmIdentifier::SpecialIdentifier::keccak256},
@@ -181,6 +182,11 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
       Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
       Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty},
                                           std::vector<TypePtr>{});
+      break;
+    case AsmIdentifier::SpecialIdentifier::calldataload: ///< (u256) -> u256
+      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty},
+                                          std::vector<TypePtr>{Ty});
       break;
     case AsmIdentifier::SpecialIdentifier::gasleft: ///< () -> u256
       Ty = std::make_shared<FunctionType>(

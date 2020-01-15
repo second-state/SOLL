@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
 // REQUIRES: calldataload
+// REQUIRES: callvalue
 {
     let x
     // Cannot be removed, because we might skip the loop

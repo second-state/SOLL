@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: calldataload
+// REQUIRES: create
+// REQUIRES: byte
 {
     let a := calldataload(0)
     let b := byte(33, a)

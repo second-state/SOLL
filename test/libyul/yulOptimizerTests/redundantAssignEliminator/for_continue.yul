@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
 // REQUIRES: calldataload
+// REQUIRES: callvalue
 {
     let x
     // Can be removed, because x is reassigned after the loop

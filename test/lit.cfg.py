@@ -24,6 +24,10 @@ config.suffixes = [
     '.sol', '.yul'
 ]
 
+config.available_features = [
+    'calldataload'
+]
+
 # excludes: A list of directories to exclude from the testsuite.
 config.excludes = [
     'CMakeLists.txt'
