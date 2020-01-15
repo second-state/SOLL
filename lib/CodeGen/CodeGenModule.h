@@ -201,10 +201,10 @@ private:
   llvm::Value *emitABILoadParamStatic(const Type *Ty, llvm::StringRef Name,
                                       llvm::Value *Buffer,
                                       std::uint32_t Offset);
-  std::pair<llvm::Value *, llvm::Value *>
-  emitABILoadParamDynamic(const Type *Ty, llvm::Value *Size,
-                          llvm::StringRef Name, llvm::Value *Buffer,
-                          llvm::Value *Offset);
+  llvm::Value *emitABILoadParamDynamic(const Type *Ty, llvm::Value *Size,
+                                       llvm::StringRef Name,
+                                       llvm::Value *Buffer,
+                                       llvm::Value *Offset);
   void emitABIStore(const Type *Ty, llvm::StringRef Name, llvm::Value *Result);
 
 public:
