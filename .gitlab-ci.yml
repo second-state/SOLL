@@ -131,7 +131,7 @@ coverage:test:
     key: ubuntu-coverage
     policy: pull-push
 
-coverage:deploy:
+pages:
   stage: deploy
   image: secondstate/soll:ubuntu-coverage
   needs: ["coverage:test"]
