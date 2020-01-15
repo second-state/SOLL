@@ -1049,41 +1049,35 @@ ExprValue CodeGenFunction::emitSpecialCallExpr(const Identifier *SI,
 
 llvm::Value *CodeGenFunction::emitMLoad(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
-  auto Index = emitExpr(Arguments[0]).load(Builder, CGM);
-  auto CPtr = Builder.CreateInBoundsGEP(
-      getCodeGenModule().getModule().getNamedGlobal("__heap_base"), {Index},
-      "heap.cptr");
-  auto Ptr = Builder.CreateBitCast(CPtr, Int256PtrTy, "heap.ptr");
-  auto Value = CGM.getEndianlessValue(Builder.CreateLoad(Ptr));
-  Builder.CreateCall(CGM.getModule().getFunction("solidity.updateMemorySize"),
-                     {Index, Builder.getIntN(256, 32)});
+  llvm::Value *Pos = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *CPtr =
+      Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.cptr");
+  llvm::Value *Ptr = Builder.CreateBitCast(CPtr, Int256PtrTy, "heap.ptr");
+  llvm::Value *Value = CGM.getEndianlessValue(Builder.CreateLoad(Ptr));
+  getCodeGenModule().emitUpdateMemorySize(Pos, Builder.getIntN(256, 32));
   return Value;
 }
 
 void CodeGenFunction::emitMStore(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
-  auto Index = emitExpr(Arguments[0]).load(Builder, CGM);
-  auto CPtr = Builder.CreateInBoundsGEP(
-      getCodeGenModule().getModule().getNamedGlobal("__heap_base"), {Index},
-      "heap.cptr");
-  auto Ptr = Builder.CreateBitCast(CPtr, Int256PtrTy, "heap.ptr");
+  llvm::Value *Pos = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *CPtr =
+      Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.cptr");
+  llvm::Value *Ptr = Builder.CreateBitCast(CPtr, Int256PtrTy, "heap.ptr");
   Builder.CreateStore(
       CGM.getEndianlessValue(emitExpr(Arguments[1]).load(Builder, CGM)), Ptr);
-  Builder.CreateCall(CGM.getModule().getFunction("solidity.updateMemorySize"),
-                     {Index, Builder.getIntN(256, 32)});
+  getCodeGenModule().emitUpdateMemorySize(Pos, Builder.getIntN(256, 32));
 }
 
 void CodeGenFunction::emitMStore8(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
-  auto Index = emitExpr(Arguments[0]).load(Builder, CGM);
-  auto Ptr = Builder.CreateInBoundsGEP(
-      getCodeGenModule().getModule().getNamedGlobal("__heap_base"), {Index},
-      "heap.ptr");
-  auto Value = Builder.CreateZExtOrTrunc(
+  llvm::Value *Pos = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *Ptr =
+      Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.ptr");
+  llvm::Value *Value = Builder.CreateZExtOrTrunc(
       emitExpr(Arguments[1]).load(Builder, CGM), CGM.Int8Ty);
   Builder.CreateStore(Value, Ptr);
-  Builder.CreateCall(CGM.getModule().getFunction("solidity.updateMemorySize"),
-                     {Index, Builder.getIntN(256, 8)});
+  getCodeGenModule().emitUpdateMemorySize(Pos, Builder.getIntN(256, 1));
 }
 
 llvm::Value *CodeGenFunction::emitMSize(const CallExpr *CE) {

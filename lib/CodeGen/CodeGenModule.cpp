@@ -103,9 +103,9 @@ void CodeGenModule::initMemorySection() {
 }
 
 void CodeGenModule::initUpdateMemorySize() {
-  auto *Address = Func_updateMemorySize->arg_begin();
-  Address->setName("memory.address");
-  auto *Range = Address++;
+  llvm::Argument *Pos = Func_updateMemorySize->arg_begin();
+  Pos->setName("memory.pos");
+  llvm::Argument *Range = Pos + 1;
   Range->setName("memory.range");
   llvm::BasicBlock *Entry =
       llvm::BasicBlock::Create(VMContext, "entry", Func_updateMemorySize);
@@ -114,15 +114,15 @@ void CodeGenModule::initUpdateMemorySize() {
   llvm::BasicBlock *Done =
       llvm::BasicBlock::Create(VMContext, "done", Func_updateMemorySize);
   Builder.SetInsertPoint(Entry);
-  auto OrigSize = Builder.CreateLoad(MemorySize, "memory.size");
-  auto EndAddress = Builder.CreateAdd(Address, Range);
-  auto Condition = Builder.CreateICmpUGT(EndAddress, OrigSize);
+  llvm::Value *OrigSize = Builder.CreateLoad(MemorySize, "memory.size");
+  llvm::Value *EndPos = Builder.CreateAdd(Pos, Range);
+  llvm::Value *Condition = Builder.CreateICmpUGT(EndPos, OrigSize);
   Builder.CreateCondBr(Condition, Update, Done);
   Builder.SetInsertPoint(Update);
   llvm::ConstantInt *Mask =
       Builder.getInt(llvm::APInt::getHighBitsSet(256, 251));
-  auto Base = Builder.CreateAnd(EndAddress, Mask);
-  auto NewSize =
+  llvm::Value *Base = Builder.CreateAnd(EndPos, Mask);
+  llvm::Value *NewSize =
       Builder.CreateAdd(Base, Builder.getIntN(256, 32), "memory.new_size");
   Builder.CreateStore(NewSize, MemorySize);
   Builder.CreateBr(Done);
@@ -1532,6 +1532,10 @@ CodeGenModule::emitConcateBytes(llvm::ArrayRef<llvm::Value *> Values) {
       Bytes, Builder.CreateZExtOrTrunc(ArrayLength, Int256Ty), {0});
   Bytes = Builder.CreateInsertValue(Bytes, Array, {1});
   return Bytes;
+}
+
+void CodeGenModule::emitUpdateMemorySize(llvm::Value *Pos, llvm::Value *Range) {
+  Builder.CreateCall(Func_updateMemorySize, {Pos, Range});
 }
 
 llvm::Value *CodeGenModule::emitGetGasLeft() {

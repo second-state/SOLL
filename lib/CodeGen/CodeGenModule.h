@@ -142,6 +142,7 @@ public:
   llvm::Value *getEndianlessValue(llvm::Value *Val);
   bool isBytesType(llvm::Type *Ty);
   llvm::Value *emitConcateBytes(llvm::ArrayRef<llvm::Value *> Values);
+  void emitUpdateMemorySize(llvm::Value *Pos, llvm::Value *Range);
 
   llvm::Value *emitGetGasLeft();
   llvm::Value *emitGetCallValue();
@@ -210,6 +211,7 @@ public:
   llvm::FunctionType *getFunctionType(const CallableVarDecl *CVD);
   llvm::Function *createOrGetLLVMFunction(const CallableVarDecl *CVD);
   llvm::GlobalVariable *getMemorySize() { return MemorySize; }
+  llvm::GlobalVariable *getHeapBase() { return HeapBase; }
   llvm::GlobalVariable *getStateVarAddr(const VarDecl *VD) {
     return StateVarDeclMap.lookup(VD);
   }
