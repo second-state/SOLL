@@ -182,7 +182,7 @@ public:
         PHIPtr->addIncoming(InlinePtr, InlineSlot);
         PHIPtr->addIncoming(ExtendPtr, LoopEnd);
         PHIPtr->addIncoming(ExtendPtr, Last);
-        Bytes = llvm::ConstantAggregateZero::get(CGM.BytesTy);
+        Bytes = llvm::ConstantAggregateZero::get(CGM.getLLVMType(Ty));
         Bytes = Builder.CreateInsertValue(Bytes, PHILength, {0});
         Bytes = Builder.CreateInsertValue(Bytes, PHIPtr, {1});
 

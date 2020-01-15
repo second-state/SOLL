@@ -356,6 +356,9 @@ private:
       return ExprValue::getRValue(CE, Out);
     }
     case CastKind::TypeCast: {
+      if (OrigInTy->getCategory() == OrigOutTy->getCategory()) {
+        return ExprValue::getRValue(CE, In);
+      }
       if (dynamic_cast<const AddressType *>(OrigInTy) ||
           dynamic_cast<const AddressType *>(OrigOutTy)) {
         return ExprValue::getRValue(
@@ -370,6 +373,18 @@ private:
       if (dynamic_cast<const BooleanType *>(OrigOutTy)) {
         llvm::Value *Out = Builder.CreateICmpNE(
             In, llvm::ConstantInt::getNullValue(In->getType()));
+        return ExprValue::getRValue(CE, Out);
+      }
+      if ((dynamic_cast<const StringType *>(OrigInTy) &&
+           dynamic_cast<const BytesType *>(OrigOutTy)) ||
+          (dynamic_cast<const BytesType *>(OrigInTy) &&
+           dynamic_cast<const StringType *>(OrigOutTy))) {
+        llvm::Value *Out = llvm::ConstantAggregateZero::get(
+            CGF.getCodeGenModule().getLLVMType(OrigOutTy));
+        Out = Builder.CreateInsertValue(
+            Out, Builder.CreateExtractValue(In, {0}), {0});
+        Out = Builder.CreateInsertValue(
+            Out, Builder.CreateExtractValue(In, {1}), {1});
         return ExprValue::getRValue(CE, Out);
       }
       assert(false);

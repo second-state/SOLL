@@ -119,6 +119,9 @@ std::string ToString(soll::TypePtr type) {
   case soll::Type::Category::Bytes: {
     return "bytes";
   }
+  case soll::Type::Category::FixedBytes: {
+    return "fixed bytes";
+  }
   case soll::Type::Category::String:
     return "string";
   case soll::Type::Category::Bool:

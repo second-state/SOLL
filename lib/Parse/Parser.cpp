@@ -1639,6 +1639,18 @@ std::unique_ptr<Expr> Parser::parsePrimaryExpression() {
       Expression = std::make_unique<ExplicitCastExpr>(
           SourceRange(Begin, End), std::move(E), CastKind::TypeCast,
           std::make_shared<AddressType>(StateMutability::Payable));
+    } else if (TypeNameTok.is(tok::kw_bytes)) {
+      auto E = parseExpression();
+      const SourceLocation End = E->getLocation().getEnd();
+      Expression = std::make_unique<ExplicitCastExpr>(
+          SourceRange(Begin, End), std::move(E), CastKind::TypeCast,
+          std::make_shared<BytesType>());
+    } else if (TypeNameTok.is(tok::kw_string)) {
+      auto E = parseExpression();
+      const SourceLocation End = E->getLocation().getEnd();
+      Expression = std::make_unique<ExplicitCastExpr>(
+          SourceRange(Begin, End), std::move(E), CastKind::TypeCast,
+          std::make_shared<StringType>());
     } else {
       auto E = parseExpression();
       const SourceLocation End = E->getLocation().getEnd();
