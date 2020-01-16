@@ -45,6 +45,7 @@ DIAG(err_unable_to_rename_temp, CLASS_ERROR, (unsigned)diag::Severity::Error, "u
 DIAG(err_unknown_analyzer_checker, CLASS_ERROR, (unsigned)diag::Severity::Error, "no analyzer checkers are associated with '%0'", 0, false, 0)
 DIAG(err_unsupported_abi_for_opt, CLASS_ERROR, (unsigned)diag::Severity::Error, "'%0' can only be used with the '%1' ABI", 0, false, 0)
 DIAG(err_unsupported_bom, CLASS_ERROR, (unsigned)diag::Severity::Fatal, "%0 byte order mark detected in '%1', but encoding is not supported", 0, false, 0)
+DIAG(err_not_implemented, CLASS_ERROR, (unsigned)diag::Severity::Fatal, "'%0' is not implemented", 0, false, 0)
 DIAG(err_use_of_tag_name_without_tag, CLASS_ERROR, (unsigned)diag::Severity::Error, "must use '%1' tag to refer to type %0%select{| in this scope}2", 0, false, 0)
 DIAG(fatal_too_many_errors, CLASS_ERROR, (unsigned)diag::Severity::Fatal, "too many errors emitted, stopping now", 0, false, 0)
 DIAG(note_also_found, CLASS_NOTE, (unsigned)diag::Severity::Fatal, "also found", 0, false, 0)
