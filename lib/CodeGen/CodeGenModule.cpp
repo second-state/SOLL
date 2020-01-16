@@ -635,24 +635,24 @@ void CodeGenModule::initBswapI256() {
       llvm::BasicBlock::Create(VMContext, "entry", Func_bswap256);
   Builder.SetInsertPoint(Entry);
 
-  llvm::Value *data[32];
-  for (size_t i = 0; i < 32; ++i) {
-    if (i < 16) {
-      data[i] = Builder.CreateShl(Arg, 248 - i * 16);
+  llvm::Value *Data[32];
+  for (size_t I = 0; I < 32; ++I) {
+    if (I < 16) {
+      Data[I] = Builder.CreateShl(Arg, 248 - I * 16);
     } else {
-      data[i] = Builder.CreateLShr(Arg, i * 16 - 248);
+      Data[I] = Builder.CreateLShr(Arg, I * 16 - 248);
     }
-    if (i != 0 && i != 31) {
-      data[i] = Builder.CreateAnd(data[i], llvm::APInt(256, 0xFF, false)
-                                               << ((31 - i) * 8));
+    if (I != 0 && I != 31) {
+      Data[I] = Builder.CreateAnd(Data[I], llvm::APInt(256, 0xFF, false)
+                                               << ((31 - I) * 8));
     }
   }
-  llvm::Value *result = Builder.CreateOr(data[0], data[1]);
-  for (size_t i = 2; i < 32; ++i) {
-    result = Builder.CreateOr(result, data[i]);
+  llvm::Value *Result = Builder.CreateOr(Data[0], Data[1]);
+  for (size_t I = 2; I < 32; ++I) {
+    Result = Builder.CreateOr(Result, Data[I]);
   }
 
-  Builder.CreateRet(result);
+  Builder.CreateRet(Result);
 }
 
 void CodeGenModule::initMemcpy() {
@@ -680,8 +680,8 @@ void CodeGenModule::initMemcpy() {
   llvm::PHINode *DstPHI = Builder.CreatePHI(Int8PtrTy, 2);
   llvm::PHINode *LengthPHI = Builder.CreatePHI(Int32Ty, 2);
 
-  llvm::Value *value = Builder.CreateLoad(SrcPHI);
-  Builder.CreateStore(value, DstPHI);
+  llvm::Value *Value = Builder.CreateLoad(SrcPHI);
+  Builder.CreateStore(Value, DstPHI);
   llvm::Value *Src2 = Builder.CreateInBoundsGEP(SrcPHI, {One});
   llvm::Value *Dst2 = Builder.CreateInBoundsGEP(DstPHI, {One});
   llvm::Value *Length2 = Builder.CreateSub(LengthPHI, One);
@@ -947,17 +947,17 @@ void CodeGenModule::emitContractDecl(const ContractDecl *CD) {
 
 void CodeGenModule::emitContractConstructorDecl(const ContractDecl *CD) {
   llvm::FunctionType *FT = llvm::FunctionType::get(VoidTy, {}, false);
-  llvm::GlobalVariable *deploy_size = new llvm::GlobalVariable(
+  llvm::GlobalVariable *DeploySize = new llvm::GlobalVariable(
       TheModule, Int32Ty, true, llvm::GlobalVariable::ExternalLinkage, nullptr,
       "deploy.size");
-  deploy_size->setUnnamedAddr(llvm::GlobalVariable::UnnamedAddr::Local);
-  deploy_size->setAlignment(8);
-  deploy_size->setVisibility(llvm::GlobalValue::HiddenVisibility);
-  llvm::GlobalVariable *deploy_data = new llvm::GlobalVariable(
+  DeploySize->setUnnamedAddr(llvm::GlobalVariable::UnnamedAddr::Local);
+  DeploySize->setAlignment(8);
+  DeploySize->setVisibility(llvm::GlobalValue::HiddenVisibility);
+  llvm::GlobalVariable *DeployData = new llvm::GlobalVariable(
       TheModule, Int8Ty, true, llvm::GlobalVariable::ExternalLinkage, nullptr,
       "deploy.data");
-  deploy_data->setAlignment(1);
-  deploy_data->setVisibility(llvm::GlobalValue::HiddenVisibility);
+  DeployData->setAlignment(1);
+  DeployData->setVisibility(llvm::GlobalValue::HiddenVisibility);
 
   llvm::Function *Ctor = llvm::Function::Create(
       FT, llvm::Function::ExternalLinkage, "solidity.ctor", TheModule);
@@ -973,7 +973,7 @@ void CodeGenModule::emitContractConstructorDecl(const ContractDecl *CD) {
     Builder.CreateCall(Func, {});
   }
 
-  emitFinish(deploy_data, Builder.CreateLoad(deploy_size));
+  emitFinish(DeployData, Builder.CreateLoad(DeploySize));
   Builder.CreateRetVoid();
 }
 
@@ -1024,7 +1024,7 @@ void CodeGenModule::emitContractDispatcherDecl(const ContractDecl *CD) {
         llvm::BasicBlock::Create(VMContext, "switch", Main);
 
     Builder.SetInsertPoint(Entry);
-    llvm::Value *callDataSize =
+    llvm::Value *CallDataSize =
         Builder.CreateCall(Func_getCallDataSize, {}, "size");
     llvm::Value *CmpV = nullptr;
     if (isEVM()) {
@@ -1034,8 +1034,8 @@ void CodeGenModule::emitContractDispatcherDecl(const ContractDecl *CD) {
     } else {
       __builtin_unreachable();
     }
-    llvm::Value *cmp = Builder.CreateICmpUGE(callDataSize, CmpV, "cmp");
-    Builder.CreateCondBr(cmp, Switch, Error);
+    llvm::Value *Cmp = Builder.CreateICmpUGE(CallDataSize, CmpV, "cmp");
+    Builder.CreateCondBr(Cmp, Switch, Error);
 
     Builder.SetInsertPoint(Switch);
     llvm::Value *HashVPtr =
@@ -1051,7 +1051,7 @@ void CodeGenModule::emitContractDispatcherDecl(const ContractDecl *CD) {
       const std::string &MangledName = getMangledName(FD);
       llvm::BasicBlock *CondBB =
           llvm::BasicBlock::Create(VMContext, MangledName, Main);
-      emitABILoad(FD, CondBB, Error, callDataSize);
+      emitABILoad(FD, CondBB, Error, CallDataSize);
       SI->addCase(Builder.getInt32(FD->getSignatureHashUInt32()), CondBB);
     }
   } else {
@@ -1198,7 +1198,7 @@ void CodeGenModule::emitABIStore(const Type *Ty, llvm::StringRef Name,
 void CodeGenModule::emitABILoad(const FunctionDecl *FD,
                                 llvm::BasicBlock *Loader,
                                 llvm::BasicBlock *Error,
-                                llvm::Value *callDataSize) {
+                                llvm::Value *CallDataSize) {
   Builder.SetInsertPoint(Loader);
   const std::string &MangledName = getMangledName(FD);
 
@@ -1234,18 +1234,18 @@ void CodeGenModule::emitABILoad(const FunctionDecl *FD,
 
       llvm::Value *SizeCheck = Builder.getInt1(true);
       llvm::Value *DynamicSize = Builder.getInt32(0);
-      for (size_t i : ArgsDynamic) {
+      for (size_t I : ArgsDynamic) {
         SizeCheck = Builder.CreateAnd(
             SizeCheck, Builder.CreateICmpULE(
-                           ArgsVal[i], Builder.getIntN(256, 0xFFFFFFFFU)));
+                           ArgsVal[I], Builder.getIntN(256, 0xFFFFFFFFU)));
         DynamicSize = Builder.CreateAdd(
-            DynamicSize, Builder.CreateTrunc(ArgsVal[i], Int32Ty));
+            DynamicSize, Builder.CreateTrunc(ArgsVal[I], Int32Ty));
       }
       llvm::Value *ExceptedCallDataSize =
           Builder.CreateAdd(DynamicSize, Builder.getInt32(Offset + 4));
 
       SizeCheck = Builder.CreateAnd(
-          SizeCheck, Builder.CreateICmpEQ(ExceptedCallDataSize, callDataSize));
+          SizeCheck, Builder.CreateICmpEQ(ExceptedCallDataSize, CallDataSize));
       Builder.CreateCondBr(SizeCheck, DynamicLoader, Error);
 
       Builder.SetInsertPoint(DynamicLoader);
@@ -1254,13 +1254,13 @@ void CodeGenModule::emitABILoad(const FunctionDecl *FD,
       emitCallDataCopy(ArgDynPtr, Builder.getInt32(Offset + 4), DynamicSize);
 
       llvm::Value *Offset = Builder.getInt32(0);
-      for (size_t i : ArgsDynamic) {
-        llvm::StringRef Name = ArgsVal[i]->getName();
-        ArgsVal[i]->setName(Name + ".static");
+      for (size_t I : ArgsDynamic) {
+        llvm::StringRef Name = ArgsVal[I]->getName();
+        ArgsVal[I]->setName(Name + ".static");
         llvm::Value *Arg;
         std::tie(Arg, Offset) = emitABILoadParamDynamic(
-            Fparams[i]->GetType().get(), ArgsVal[i], Name, ArgDynPtr, Offset);
-        ArgsVal[i] = Arg;
+            Fparams[I]->GetType().get(), ArgsVal[I], Name, ArgDynPtr, Offset);
+        ArgsVal[I] = Arg;
       }
     }
   }
@@ -1705,23 +1705,24 @@ llvm::Value *CodeGenModule::emitReturnDataSize() {
   }
 }
 
-llvm::Value *CodeGenModule::emitReturnDataCopyBytes(llvm::Value *dataOffset,
-                                                    llvm::Value *length) {
-  llvm::Value *resultOffset = Builder.CreateAlloca(Int8Ty, length);
+llvm::Value *CodeGenModule::emitReturnDataCopyBytes(llvm::Value *DataOffset,
+                                                    llvm::Value *DataLength) {
+  llvm::Value *ResultOffset = Builder.CreateAlloca(Int8Ty, DataLength);
   if (isEVM()) {
-    auto DestOffset = Builder.CreatePtrToInt(resultOffset, EVMIntTy);
-    auto Offset = Builder.CreateZExtOrTrunc(dataOffset, EVMIntTy);
-    auto Length = Builder.CreateZExtOrTrunc(length, EVMIntTy);
+    auto DestOffset = Builder.CreatePtrToInt(ResultOffset, EVMIntTy);
+    auto Offset = Builder.CreateZExtOrTrunc(DataOffset, EVMIntTy);
+    auto Length = Builder.CreateZExtOrTrunc(DataLength, EVMIntTy);
     Builder.CreateCall(Func_returnDataCopy, {DestOffset, Offset, Length});
   } else if (isEWASM()) {
-    Builder.CreateCall(Func_returnDataCopy, {resultOffset, dataOffset, length});
+    Builder.CreateCall(Func_returnDataCopy,
+                       {ResultOffset, DataOffset, DataLength});
   } else {
     __builtin_unreachable();
   }
   llvm::Value *Bytes = llvm::ConstantAggregateZero::get(BytesTy);
   Bytes = Builder.CreateInsertValue(
-      Bytes, Builder.CreateZExtOrTrunc(length, Int256Ty), {0});
-  Bytes = Builder.CreateInsertValue(Bytes, resultOffset, {1});
+      Bytes, Builder.CreateZExtOrTrunc(DataLength, Int256Ty), {0});
+  Bytes = Builder.CreateInsertValue(Bytes, ResultOffset, {1});
   return Bytes;
 }
 

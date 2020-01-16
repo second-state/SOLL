@@ -157,8 +157,8 @@ public:
   void emitStorageStore(llvm::Value *Key, llvm::Value *Value);
 
   llvm::Value *emitReturnDataSize();
-  llvm::Value *emitReturnDataCopyBytes(llvm::Value *dataOffset,
-                                       llvm::Value *length);
+  llvm::Value *emitReturnDataCopyBytes(llvm::Value *DataOffset,
+                                       llvm::Value *Length);
   llvm::Value *emitCallDataLoad(llvm::Value *DataOffset);
   llvm::Value *emitCall(llvm::Value *Gas, llvm::Value *AddressPtr,
                         llvm::Value *ValuePtr, llvm::Value *DataPtr,
@@ -197,7 +197,7 @@ private:
   void emitAsmVarDecl(const AsmVarDecl *VD);
 
   void emitABILoad(const FunctionDecl *FD, llvm::BasicBlock *Loader,
-                   llvm::BasicBlock *Error, llvm::Value *callDataSize);
+                   llvm::BasicBlock *Error, llvm::Value *CallDataSize);
   llvm::Value *emitABILoadParamStatic(const Type *Ty, llvm::StringRef Name,
                                       llvm::Value *Buffer,
                                       std::uint32_t Offset);
