@@ -702,17 +702,6 @@ void CodeGenModule::initMemcpy() {
 void CodeGenModule::initPrebuiltContract() {
   llvm::FunctionType *FT = nullptr;
 
-  // keccak256
-  FT = llvm::FunctionType::get(Int256Ty, {BytesTy}, false);
-  Func_keccak256 = llvm::Function::Create(FT, llvm::Function::InternalLinkage,
-                                          "solidity.keccak256", TheModule);
-  Func_keccak256->addFnAttr(llvm::Attribute::NoUnwind);
-
-  // sha256
-  Func_sha256 = llvm::Function::Create(FT, llvm::Function::InternalLinkage,
-                                       "solidity.sha256", TheModule);
-  Func_sha256->addFnAttr(llvm::Attribute::NoUnwind);
-
   // ripemd160
   FT = llvm::FunctionType::get(Int160Ty, {BytesTy}, false);
   Func_ripemd160 = llvm::Function::Create(FT, llvm::Function::InternalLinkage,
@@ -726,8 +715,21 @@ void CodeGenModule::initPrebuiltContract() {
                                           "solidity.ecrecover", TheModule);
   Func_ecrecover->addFnAttr(llvm::Attribute::NoUnwind);
 
-  initKeccak256();
-  initSha256();
+  if (isEWASM()) {
+    // keccak256
+    FT = llvm::FunctionType::get(Int256Ty, {BytesTy}, false);
+    Func_keccak256 = llvm::Function::Create(FT, llvm::Function::InternalLinkage,
+                                            "solidity.keccak256", TheModule);
+    Func_keccak256->addFnAttr(llvm::Attribute::NoUnwind);
+
+    // sha256
+    Func_sha256 = llvm::Function::Create(FT, llvm::Function::InternalLinkage,
+                                         "solidity.sha256", TheModule);
+    Func_sha256->addFnAttr(llvm::Attribute::NoUnwind);
+
+    initKeccak256();
+    initSha256();
+  }
   initRipemd160();
   initEcrecover();
 }
@@ -1808,6 +1810,40 @@ llvm::Value *CodeGenModule::emitCallDelegate(llvm::Value *Gas,
   } else {
     __builtin_unreachable();
   }
+}
+
+llvm::Value *CodeGenModule::emitKeccak256(llvm::Value *Bytes) {
+  llvm::Value *Result = nullptr;
+  if (isEVM()) {
+    llvm::Value *Length =
+        Builder.CreateTrunc(Builder.CreateExtractValue(Bytes, {0}), Int256Ty);
+    llvm::Value *Offset = Builder.CreateExtractValue(Bytes, {1});
+    Result = Builder.CreateCall(Func_sha3,
+                                {Builder.CreatePtrToInt(Offset, EVMIntTy),
+                                 Builder.CreateZExtOrTrunc(Length, EVMIntTy)});
+  } else if (isEWASM()) {
+    Result = Builder.CreateCall(Func_keccak256, {Bytes});
+  } else {
+    __builtin_unreachable();
+  }
+  return Result;
+}
+
+llvm::Value *CodeGenModule::emitSha256(llvm::Value *Bytes) {
+  llvm::Value *Result = nullptr;
+  if (isEVM()) {
+    llvm::Value *Length =
+        Builder.CreateTrunc(Builder.CreateExtractValue(Bytes, {0}), Int256Ty);
+    llvm::Value *Offset = Builder.CreateExtractValue(Bytes, {1});
+    Result = Builder.CreateCall(Func_sha3,
+                                {Builder.CreatePtrToInt(Offset, EVMIntTy),
+                                 Builder.CreateZExtOrTrunc(Length, EVMIntTy)});
+  } else if (isEWASM()) {
+    Result = Builder.CreateCall(Func_sha256, {Bytes});
+  } else {
+    __builtin_unreachable();
+  }
+  return Result;
 }
 
 llvm::Value *CodeGenModule::emitGetCallDataSize() {

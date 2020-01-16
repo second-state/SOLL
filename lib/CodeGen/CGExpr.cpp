@@ -437,8 +437,6 @@ private:
     ExprValue Index = visit(IA->getIndex());
     const Type *Ty = IA->getType().get();
 
-    llvm::Function *Keccak256 =
-        CGF.getCodeGenModule().getModule().getFunction("solidity.keccak256");
     if (const auto *MType = dynamic_cast<const MappingType *>(Base.getType())) {
       llvm::Value *Pos = CGF.getCodeGenModule().getEndianlessValue(
           Builder.CreateLoad(Base.getValue()));
@@ -452,7 +450,7 @@ private:
       }
       llvm::Value *Bytes = CGF.getCodeGenModule().emitConcateBytes({Key, Pos});
       llvm::Value *AddressPtr = Builder.CreateAlloca(CGF.Int256Ty);
-      Builder.CreateStore(Builder.CreateCall(Keccak256, {Bytes}), AddressPtr);
+      Builder.CreateStore(CGF.CGM.emitKeccak256(Bytes), AddressPtr);
       return ExprValue(Ty, ValueKind::VK_SValue, AddressPtr);
     }
     if (const auto *ArrTy = dynamic_cast<const ArrayType *>(Base.getType())) {
@@ -483,7 +481,7 @@ private:
         // load array position
         llvm::Value *Bytes = CGF.getCodeGenModule().emitConcateBytes(
             {CGF.getCodeGenModule().getEndianlessValue(Pos)});
-        Pos = Builder.CreateCall(Keccak256, {Bytes});
+        Pos = Builder.CreateCall(CGF.CGM.emitKeccak256(Bytes));
       } else {
         // Fixed Size Storage Array
         llvm::Value *ArraySize = Builder.getInt(ArrTy->getLength());
@@ -721,16 +719,14 @@ llvm::Value *CodeGenFunction::emitCallkeccak256(const CallExpr *CE) {
   // keccak256 function
   auto Arguments = CE->getArguments();
   llvm::Value *MessageValue = emitExpr(Arguments[0]).load(Builder, CGM);
-  return Builder.CreateCall(CGM.getModule().getFunction("solidity.keccak256"),
-                            {MessageValue});
+  return CGM.emitKeccak256(MessageValue);
 }
 
 llvm::Value *CodeGenFunction::emitCallsha256(const CallExpr *CE) {
   // sha256 function
   auto Arguments = CE->getArguments();
   llvm::Value *MessageValue = emitExpr(Arguments[0]).load(Builder, CGM);
-  return Builder.CreateCall(CGM.getModule().getFunction("solidity.sha256"),
-                            {MessageValue});
+  return CGM.emitSha256(MessageValue);
 }
 
 llvm::Value *CodeGenFunction::emitCallripemd160(const CallExpr *CE) {

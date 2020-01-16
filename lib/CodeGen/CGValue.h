@@ -54,8 +54,6 @@ public:
         llvm::Function *ThisFunc = Builder.GetInsertBlock()->getParent();
         llvm::Function *StorageLoad =
             CGM.getModule().getFunction("ethereum.storageLoad");
-        llvm::Function *Keccak256 =
-            CGM.getModule().getFunction("solidity.keccak256");
         llvm::Function *Memcpy = CGM.getModule().getFunction("solidity.memcpy");
         llvm::BasicBlock *InlineSlot =
             llvm::BasicBlock::Create(CGM.getLLVMContext(), "inline", ThisFunc);
@@ -118,7 +116,7 @@ public:
         llvm::Value *ExtendLength =
             Builder.CreateLShr(CGM.getEndianlessValue(Val), 1);
         llvm::Value *Bytes = CGM.emitConcateBytes({Address});
-        llvm::Value *Address = Builder.CreateCall(Keccak256, {Bytes});
+        llvm::Value *Address = CGM.emitKeccak256(Bytes);
         llvm::Value *AddressPtr = Builder.CreateAlloca(CGM.Int256Ty, nullptr);
         llvm::Value *ExtendPtr = Builder.CreateAlloca(CGM.Int8Ty, ExtendLength);
         Condition =
@@ -238,8 +236,6 @@ public:
         llvm::Type *Array32Int8Ptr =
             llvm::PointerType::getUnqual(llvm::ArrayType::get(CGM.Int8Ty, 32));
         llvm::Function *ThisFunc = Builder.GetInsertBlock()->getParent();
-        llvm::Function *Keccak256 =
-            CGM.getModule().getFunction("solidity.keccak256");
         llvm::Function *Memcpy = CGM.getModule().getFunction("solidity.memcpy");
         llvm::BasicBlock *InlineSlot =
             llvm::BasicBlock::Create(CGM.getLLVMContext(), "inline", ThisFunc);
@@ -307,7 +303,7 @@ public:
         CGM.emitStorageStore(Builder.CreateLoad(AddressPtr),
                              Builder.CreateLoad(ValPtr));
         llvm::Value *Bytes = CGM.emitConcateBytes({Address});
-        Address = Builder.CreateCall(Keccak256, {Bytes});
+        Address = CGM.emitKeccak256(Bytes);
         Condition = Builder.CreateICmpSGE(Length, Builder.getIntN(256, 32));
         Builder.CreateCondBr(Condition, Loop, LoopEnd);
 

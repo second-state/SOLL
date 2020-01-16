@@ -171,6 +171,8 @@ public:
                               llvm::Value *RetLength = nullptr);
   llvm::Value *emitCallDelegate(llvm::Value *Gas, llvm::Value *AddressPtr,
                                 llvm::Value *DataPtr, llvm::Value *DataLength);
+  llvm::Value *emitKeccak256(llvm::Value *Bytes);
+  llvm::Value *emitSha256(llvm::Value *Bytes);
   llvm::Value *emitGetCallDataSize();
   llvm::Value *emitGetTxGasPrice();
   llvm::Value *emitGetTxOrigin();
