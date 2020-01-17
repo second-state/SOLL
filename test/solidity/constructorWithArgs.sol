@@ -7,7 +7,7 @@ pragma solidity ^0.5.0;
 contract test {
     uint256 s;
     constructor(uint256 value) public {
-// CHECK: 'parameters in constructor' is not implemented
+// CHECK: Constructor with parameter is not yet supported
         s = value;
     }
     function() public {

@@ -19,8 +19,7 @@ std::unique_ptr<FunctionDecl> Sema::CreateFunctionDecl(
     std::vector<std::unique_ptr<ModifierInvocation>> &&Modifiers,
     std::unique_ptr<ParamList> &&ReturnParams, std::unique_ptr<Block> &&Body) {
   if (IsConstructor and !Params->getParams().empty()) {
-    Diag(L.getBegin(), diag::err_not_implemented)
-        << "parameters in constructor";
+    Diag(L.getBegin(), diag::err_unimplemented_constructor_parameter);
   }
   return std::make_unique<FunctionDecl>(
       L, Name, Vis, SM, IsConstructor, IsFallback, std::move(Params),
