@@ -1,6 +1,6 @@
 [//]: # (SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception)
 
-### 0.0.5 (2020-01-xx, draft)
+### 0.0.5 (2020-01-18)
 
 Language Features:
 
@@ -60,7 +60,7 @@ Compiler Features:
 * Add command-line language options for supporting Yul input file.
     * `-lang=Sol`: Input file is written in Solidity.  (Default)
     * `-lang=Yul`: Input file is written in Yul.
-* Add testing framework for unittest and regrasion test.
+* Add testing framework for unittest and regrassion test.
 * Integrate Solidity compilation test and libyul test from ethereum/solidity.
 
 
