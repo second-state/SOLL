@@ -11,6 +11,7 @@ Our parser already covered most parts of valid [grammar](https://solidity.readth
 
 If you want to execute ewasm compiled from Yul, refer to the [DevGuide](DevGuide.md).
 
+### Supported by SOLL
 - Recognize Yul object structure.
 - Statement
     - Block
@@ -24,7 +25,9 @@ If you want to execute ewasm compiled from Yul, refer to the [DevGuide](DevGuide
     - FunctionCall
 - Basic arithmetical, compare, storage and memory access built-in functions.
 
-Below will describe some under implement language features. 
+### Future works
+
+Below will describe some under implement language features.
 
 |                                             feature                                              |                           item                           |         exmaple         |
 |--------------------------------------------------------------------------------------------------|----------------------------------------------------------|-------------------------|
@@ -45,13 +48,22 @@ Below will describe some under implement language features.
 |                                                                                                  | delegatecall                                             |                         |
 |                                                                                                  | abort                                                    |                         |
 |                                                                                                  | return                                                   |                         |
+|                                                                                                  | revert                                                   |                         |
 |                                                                                                  | selfdestruct                                             |                         |
 |                                                                                                  | log0                                                     |                         |
 |                                                                                                  | log1                                                     |                         |
 |                                                                                                  | log2                                                     |                         |
 |                                                                                                  | log3                                                     |                         |
 |                                                                                                  | log4                                                     |                         |
+|                                                                                                  | blockcoinbase                                            |                         |
+|                                                                                                  | blockdifficulty                                          |                         |
+|                                                                                                  | blockgaslimit                                            |                         |
 |                                                                                                  | blockhash                                                |                         |
+|                                                                                                  | blocknumber                                              |                         |
+|                                                                                                  | blocktimestamp                                           |                         |
+|                                                                                                  | txorigin                                                 |                         |
+|                                                                                                  | txgasprice                                               |                         |
+|                                                                                                  | gasleft                                                  |                         |
 |                                                                                                  | balance                                                  |                         |
 |                                                                                                  | this                                                     |                         |
 |                                                                                                  | caller                                                   |                         |

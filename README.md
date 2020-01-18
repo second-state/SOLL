@@ -24,18 +24,18 @@ And SOLL integrates Solidity and Yul test contracts from [ethereum/solidity](htt
 
 Here is the pass rate of both language:
 
-Solidity test suite (Total 66 tests from compilationTests):
+Solidity test suite (Total 75 tests from compilationTests):
 ```bash
-Expected Passes    : 10 # Solidity has 66 testing contract, and SOLL can pass 10.
-Unsupported Tests  : 56 # Unimplemented by SOLL
-Pass Rate: 15%
+Expected Passes    : 22 # Solidity has 75 testing contract, and SOLL can pass 22.
+Unsupported Tests  : 53 # Unimplemented by SOLL
+Pass Rate: 29%
 ```
 
 Yul test suite (Total 499 tests from libyul):
 ```bash
-Expected Passes    : 63  # libyul has 499 testing contracts, and SOLL can pass 63.
-Unsupported Tests  : 436 # Unimplemented by SOLL
-Pass Rate: 13%
+Expected Passes    : 293 # libyul has 499 testing contracts, and SOLL can pass 293.
+Unsupported Tests  : 206 # Unimplemented by SOLL
+Pass Rate: 59%
 ```
 
 # 3. Getting Started
@@ -55,11 +55,11 @@ To get started with our demonstration, you will need prepare two components at f
 > docker pull secondstate/soll
 ```
 
-- Get Source Code from Github and checkout to the latest version, 0.0.4.
+- Get Source Code from Github and checkout to the latest version, 0.0.5.
 ```bash
 > git clone --recursive https://github.com/second-state/soll.git
 > cd soll
-> git checkout 0.0.4
+> git checkout 0.0.5
 ```
 
 ## 3.2 Launch Environment

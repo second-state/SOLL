@@ -46,11 +46,11 @@ soll
 > docker pull secondstate/soll
 ```
 
-- Get Source Code from Github and checkout to the latest version, 0.0.4.
+- Get Source Code from Github and checkout to the latest version, 0.0.5.
 ```bash
 > git clone --recursive https://github.com/second-state/soll.git
 > cd soll
-> git checkout 0.0.4
+> git checkout 0.0.5
 ```
 
 ### Launch Docker Environment
@@ -296,8 +296,8 @@ test 21
 21: PASS: SOLL :: solidity/event.sol (65 of 66)
 21: PASS: SOLL :: solidity/string.sol (66 of 66)
 21: Testing Time: 0.11s
-21:   Expected Passes    : 10
-21:   Unsupported Tests  : 56
+21:   Expected Passes    : 22
+21:   Unsupported Tests  : 53
 21/23 Test #21: check-soll-solidity ..............   Passed    0.27 sec
 test 22
       Start 22: check-soll-yul
@@ -330,8 +330,8 @@ test 23
 23: PASS: SOLL :: libyul/yulOptimizerTests/varNameCleaner/reshuffling.yul (498 of 499)
 23: PASS: SOLL :: libyul/yulOptimizerTests/wordSizeTransform/or_bool_renamed.yul (499 of 499)
 23: Testing Time: 0.41s
-23:   Expected Passes    : 63
-23:   Unsupported Tests  : 436
+23:   Expected Passes    : 293
+23:   Unsupported Tests  : 206
 23/23 Test #23: check-soll-libyul ................   Passed    0.55 sec
 
 100% tests passed, 0 tests failed out of 23
@@ -345,14 +345,14 @@ You will find the test coverage like this:
 
 Solidity test suite:
 ```bash
-21:   Expected Passes    : 10 # Solidity has 66 testing contract, and SOLL can pass 10.
-21:   Unsupported Tests  : 56 # Unimplemented by SOLL
+21:   Expected Passes    : 22 # Solidity has 75 testing contract, and SOLL can pass 10.
+21:   Unsupported Tests  : 53 # Unimplemented by SOLL
 21/23 Test #21: check-soll-solidity ..............   Passed    0.27 sec
 ```
 
 Yul test suite:
 ```bash
-23:   Expected Passes    : 63 # libyul has 499 testing contracts, and SOLL can pass 63.
-23:   Unsupported Tests  : 436 # Unimplemented by SOLL
+23:   Expected Passes    : 293 # libyul has 499 testing contracts, and SOLL can pass 293.
+23:   Unsupported Tests  : 206 # Unimplemented by SOLL
 23/23 Test #23: check-soll-libyul ................   Passed    0.55 sec
 ```

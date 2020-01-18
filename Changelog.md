@@ -4,10 +4,45 @@
 
 Language Features:
 
-* Support alias operators:
-    * `slt` -> `lts256`
-    * `sgt` -> `gts256`
-    * `sdiv` -> `divs256`
+* Common:
+    * Support big number literal (`> uint64`)
+* Solidity:
+    * Support built-in units:
+        * `ether`, `finney`, `szabo`, `wei`
+        * `weeks`, `days`, `hours`, `minutes`, `seconds`
+    * Replace `keccak256` and `sha256` with `sha3` for EVM backend.
+    * Implement exponentiation operator.
+    * Support `this` to access member functions in the same contract.
+* Yul:
+    * Support `switch` statement.
+    * Support function definition.
+    * Implement scoping logic and delay identifier lookup
+    * Support alias operators:
+        * `slt` -> `lts256`
+        * `sgt` -> `gts256`
+        * `sdiv` -> `divs256`
+    * Handle memory relative mechanism:
+        * Use global variable to record memory size.
+        * Use `__heap_size` as memory offset.
+        * Add helper functions to increase memory usage.
+    * Implement built-in functions:
+        * `calldataload`
+        * `mload`, `mstore`, `mstore8`, `msize`
+        * `exp`
+* Diagnostic Tool:
+    * Throw error messages for unimplemented features:
+        * Constructor doesn’t support parameters. SOLL only accept constructor without any parameters.
+        * SOLL doesn’t support `array.push, array.pop`
+    * Terminate codegen when error occurs
+
+Bugfixes:
+
+* Hex number literal:
+    * Support hex number literal (`0x...`)
+* `<address>.balance` should return uint256 instead of uint128.
+* Reduce some useless endian transformation.
+* Fix mismatch EEI functions:
+    * `<address>.balance`, `<address>.send`, `blockhash`
 
 
 ### 0.0.4 (2019-12-25)
