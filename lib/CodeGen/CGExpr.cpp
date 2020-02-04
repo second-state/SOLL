@@ -496,7 +496,7 @@ private:
         // load array position
         llvm::Value *Bytes = CGF.getCodeGenModule().emitConcateBytes(
             {CGF.getCodeGenModule().getEndianlessValue(Pos)});
-        Pos = Builder.CreateCall(CGF.CGM.emitKeccak256(Bytes));
+        Pos = CGF.CGM.emitKeccak256(Bytes);
       } else {
         // Fixed Size Storage Array
         llvm::Value *ArraySize = Builder.getInt(ArrTy->getLength());
