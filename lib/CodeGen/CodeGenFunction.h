@@ -105,6 +105,7 @@ private:
   llvm::Value *emitCallAddressSend(const CallExpr *CE, const MemberExpr *ME,
                                    bool NeedRevert);
   llvm::Value *emitAbiEncodePacked(const CallExpr *CE);
+  llvm::Value *emitAbiEncode(const CallExpr *CE);
   llvm::Value *emitMLoad(const CallExpr *CE);
   void emitMStore(const CallExpr *CE);
   void emitMStore8(const CallExpr *CE);

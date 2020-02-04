@@ -188,6 +188,8 @@ public:
 
         return Bytes;
       }
+      case Type::Category::Array:
+        return Address; // for abi encoding array
       default:
         assert(false);
       }

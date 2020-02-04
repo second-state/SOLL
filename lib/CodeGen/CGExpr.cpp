@@ -939,6 +939,7 @@ llvm::Value *CodeGenFunction::emitCallAddressSend(const CallExpr *CE,
 
 llvm::Value *CodeGenFunction::emitAbiEncodePacked(const CallExpr *CE) {
   // abi_encodePacked
+  // TODO: we need to support array, tuple, struct
   auto Arguments = CE->getArguments();
   std::vector<llvm::Value *> Args;
   for (const auto &arg : Arguments) {
@@ -946,6 +947,54 @@ llvm::Value *CodeGenFunction::emitAbiEncodePacked(const CallExpr *CE) {
   }
   llvm::Value *Bytes =
       CGM.emitConcateBytes(llvm::ArrayRef<llvm::Value *>(Args));
+  return Bytes;
+}
+
+llvm::Value *CodeGenFunction::emitAbiEncode(const CallExpr *CE) {
+  // abi_encode
+  // TODO: we need to support array, tuple, struct
+  auto Arguments = CE->getArguments();
+  std::vector<llvm::Value *> head;
+  std::vector<std::pair<llvm::Value *, size_t>> tail;
+  unsigned pos = 0;
+  for (const auto &arg : Arguments) {
+    llvm::Value *value = emitExpr(arg).load(Builder, CGM);
+    if (arg->getType()->isDynamic()) {
+      tail.emplace_back(value, head.size());
+      head.emplace_back(nullptr);
+    } else {
+      head.emplace_back(Builder.CreateZExt(value, Int256Ty));
+    }
+    pos += arg->getType()->getABIStaticSize();
+  }
+  llvm::Value *tailPos = Builder.getIntN(256, pos);
+  for (auto arg : tail) {
+    llvm::Value *value;
+    size_t headPos;
+    std::tie(value, headPos) = arg;
+    head[headPos] = tailPos;
+    llvm::Value *Length = Builder.CreateZExtOrTrunc(
+        Builder.CreateExtractValue(value, {0}), Int256Ty);
+    llvm::Value *SrcBytes = Builder.CreateExtractValue(value, {1});
+    head.emplace_back(Length);
+    tailPos = Builder.CreateAdd(tailPos, Builder.getIntN(256, 32));
+    head.emplace_back(value);
+    llvm::Value *padRightLength =
+        Builder.CreateSub(Builder.getIntN(256, 32),
+                          Builder.CreateURem(Length, Builder.getIntN(256, 32)));
+    llvm::Value *padRightArray = Builder.CreateAlloca(Int8Ty, padRightLength);
+    llvm::Value *padRightBytes = llvm::ConstantAggregateZero::get(BytesTy);
+    padRightBytes = Builder.CreateInsertValue(
+        padRightBytes, Builder.CreateZExtOrTrunc(padRightLength, Int256Ty),
+        {0});
+    padRightBytes =
+        Builder.CreateInsertValue(padRightBytes, padRightArray, {1});
+    head.emplace_back(padRightBytes);
+    tailPos =
+        Builder.CreateAdd(tailPos, Builder.CreateAdd(Length, padRightLength));
+  }
+  llvm::Value *Bytes =
+      CGM.emitConcateBytes(llvm::ArrayRef<llvm::Value *>(head));
   return Bytes;
 }
 
@@ -1066,6 +1115,8 @@ ExprValue CodeGenFunction::emitSpecialCallExpr(const Identifier *SI,
     return ExprValue::getRValue(CE, emitCallAddressSend(CE, ME, false));
   case Identifier::SpecialIdentifier::abi_encodePacked:
     return ExprValue::getRValue(CE, emitAbiEncodePacked(CE));
+  case Identifier::SpecialIdentifier::abi_encode:
+    return ExprValue::getRValue(CE, emitAbiEncode(CE));
   default:
     assert(false && "special function not supported yet");
     __builtin_unreachable();
