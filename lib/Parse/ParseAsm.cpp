@@ -298,10 +298,6 @@ Parser::parseAsmFunctionDefinitionStatement() {
     std::vector<std::unique_ptr<VarDeclBase>> ReturnParams;
     if (TryConsumeToken(tok::arrow)) {
       ReturnParams = parseAsmVariableDeclarationList();
-      if (ReturnParams.size() > 1) {
-        Diag(ReturnParams.front()->getLocation().getBegin(),
-             diag::err_unimplemented_tuple_return);
-      }
     }
     std::unique_ptr<Block> Body;
     {

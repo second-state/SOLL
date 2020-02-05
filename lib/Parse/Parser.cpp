@@ -678,11 +678,6 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
     bool const PermitEmptyParameterList = false;
     Result.ReturnParameters =
         parseParameterList(Options, PermitEmptyParameterList);
-    if (const auto &ReturnParams = Result.ReturnParameters->getParams();
-        ReturnParams.size() > 1) {
-      Diag(ReturnParams.front()->getLocation().getBegin(),
-           diag::err_unimplemented_tuple_return);
-    }
     std::vector<TypePtr> Tys;
     for (auto &&Return : Result.ReturnParameters->getParams())
       Tys.push_back(Return->GetType());
