@@ -8,10 +8,12 @@ namespace soll::CodeGen {
 class ExprEmitter {
 public:
   CodeGenFunction &CGF;
+  CodeGenModule &CGM;
   llvm::IRBuilder<llvm::ConstantFolder> &Builder;
   llvm::LLVMContext &VMContext;
   ExprEmitter(CodeGenFunction &CGF)
-      : CGF(CGF), Builder(CGF.getBuilder()), VMContext(CGF.getLLVMContext()) {}
+      : CGF(CGF), CGM(CGF.getCodeGenModule()), Builder(CGF.getBuilder()),
+        VMContext(CGF.getLLVMContext()) {}
   ExprValue visit(const Expr *E) {
     if (auto UO = dynamic_cast<const UnaryOperator *>(E)) {
       return visit(UO);
@@ -66,7 +68,7 @@ private:
   ExprValue visit(const UnaryOperator *UO) {
     const Expr *SubExpr = UO->getSubExpr();
     ExprValue SubVal = visit(SubExpr);
-    llvm::Value *Value = SubVal.load(Builder, CGF.getCodeGenModule());
+    llvm::Value *Value = SubVal.load(Builder, CGM);
     if (UO->isArithmeticOp()) {
       switch (UO->getOpcode()) {
       case UnaryOperatorKind::UO_Plus:
@@ -91,24 +93,24 @@ private:
     } else {
       switch (UO->getOpcode()) {
       case UnaryOperatorKind::UO_PostInc:
-        SubVal.store(Builder, CGF.getCodeGenModule(),
+        SubVal.store(Builder, CGM,
                      Builder.CreateAdd(
                          Value, llvm::ConstantInt::get(Value->getType(), 1)));
         break;
       case UnaryOperatorKind::UO_PostDec:
-        SubVal.store(Builder, CGF.getCodeGenModule(),
+        SubVal.store(Builder, CGM,
                      Builder.CreateSub(
                          Value, llvm::ConstantInt::get(Value->getType(), 1)));
         break;
       case UnaryOperatorKind::UO_PreInc:
         Value = Builder.CreateAdd(Value,
                                   llvm::ConstantInt::get(Value->getType(), 1));
-        SubVal.store(Builder, CGF.getCodeGenModule(), Value);
+        SubVal.store(Builder, CGM, Value);
         break;
       case UnaryOperatorKind::UO_PreDec:
         Value = Builder.CreateSub(Value,
                                   llvm::ConstantInt::get(Value->getType(), 1));
-        SubVal.store(Builder, CGF.getCodeGenModule(), Value);
+        SubVal.store(Builder, CGM, Value);
         break;
       default:
         assert(false && "unknown op");
@@ -137,12 +139,12 @@ private:
     if (BO->isAssignmentOp()) {
       ExprValue LHSVar = visit(BO->getLHS());
       ExprValue RHSVar = visit(BO->getRHS());
-      llvm::Value *RHSVal = RHSVar.load(Builder, CGF.getCodeGenModule());
+      llvm::Value *RHSVal = RHSVar.load(Builder, CGM);
       if (BO->getOpcode() == BO_Assign) {
-        LHSVar.store(Builder, CGF.getCodeGenModule(), RHSVal);
+        LHSVar.store(Builder, CGM, RHSVal);
       } else {
         const bool Signed = isSigned(Ty);
-        llvm::Value *LHSVal = LHSVar.load(Builder, CGF.getCodeGenModule());
+        llvm::Value *LHSVal = LHSVar.load(Builder, CGM);
         switch (BO->getOpcode()) {
         case BO_MulAssign:
           LHSVal = Builder.CreateMul(LHSVal, RHSVal, "BO_MulAssign");
@@ -188,7 +190,7 @@ private:
           break;
         default:;
         }
-        LHSVar.store(Builder, CGF.getCodeGenModule(), LHSVal);
+        LHSVar.store(Builder, CGM, LHSVal);
       }
       V = RHSVal;
     } else if (BO->isAdditiveOp() || BO->isMultiplicativeOp() ||
@@ -197,10 +199,8 @@ private:
       const bool Signed = isSigned(Ty);
 
       using Pred = llvm::CmpInst::Predicate;
-      llvm::Value *LHS =
-          visit(BO->getLHS()).load(Builder, CGF.getCodeGenModule());
-      llvm::Value *RHS =
-          visit(BO->getRHS()).load(Builder, CGF.getCodeGenModule());
+      llvm::Value *LHS = visit(BO->getLHS()).load(Builder, CGM);
+      llvm::Value *RHS = visit(BO->getRHS()).load(Builder, CGM);
       switch (BO->getOpcode()) {
       case BinaryOperatorKind::BO_Add:
         V = Builder.CreateAdd(LHS, RHS, "BO_ADD");
@@ -267,7 +267,7 @@ private:
         V = Builder.CreateOr(LHS, RHS, "BO_Or");
         break;
       case BinaryOperatorKind::BO_Exp:
-        V = CGF.getCodeGenModule().emitExp(LHS, RHS, Signed);
+        V = CGM.emitExp(LHS, RHS, Signed);
         break;
       default:
         assert(false);
@@ -286,8 +286,8 @@ private:
           PN->addIncoming(Builder.getFalse(), *PI);
 
         Builder.SetInsertPoint(RHSBlock);
-        llvm::Value *RHSCond = CGF.emitBoolExpr(BO->getRHS())
-                                   .load(Builder, CGF.getCodeGenModule());
+        llvm::Value *RHSCond =
+            CGF.emitBoolExpr(BO->getRHS()).load(Builder, CGM);
         Builder.CreateBr(ContBlock);
         Builder.SetInsertPoint(ContBlock);
         PN->addIncoming(RHSCond, RHSBlock);
@@ -305,8 +305,8 @@ private:
           PN->addIncoming(Builder.getTrue(), *PI);
 
         Builder.SetInsertPoint(RHSBlock);
-        llvm::Value *RHSCond = CGF.emitBoolExpr(BO->getRHS())
-                                   .load(Builder, CGF.getCodeGenModule());
+        llvm::Value *RHSCond =
+            CGF.emitBoolExpr(BO->getRHS()).load(Builder, CGM);
         Builder.CreateBr(ContBlock);
         Builder.SetInsertPoint(ContBlock);
         PN->addIncoming(RHSCond, RHSBlock);
@@ -332,7 +332,7 @@ private:
 
     const Type *OrigInTy = CE->getSubExpr()->getType().get();
     const Type *OrigOutTy = CE->getType().get();
-    llvm::Value *In = InVal.load(Builder, CGF.getCodeGenModule());
+    llvm::Value *In = InVal.load(Builder, CGM);
 
     switch (CE->getCastKind()) {
     case CastKind::None:
@@ -346,7 +346,7 @@ private:
       auto InTy = dynamic_cast<const IntegerType *>(OrigInTy);
       assert(InTy != nullptr && OutTy != nullptr &&
              "IntegralCast should have int");
-      llvm::Type *OutLLVMTy = CGF.getCodeGenModule().getLLVMType(OutTy);
+      llvm::Type *OutLLVMTy = CGM.getLLVMType(OutTy);
       llvm::Value *Out;
       if (InTy->isSigned()) {
         Out = Builder.CreateSExtOrTrunc(In, OutLLVMTy);
@@ -366,8 +366,7 @@ private:
                     In, Builder.getIntNTy(OrigOutTy->getBitNum())));
       }
       if (dynamic_cast<const BooleanType *>(OrigInTy)) {
-        llvm::Value *Out = Builder.CreateZExt(
-            In, CGF.getCodeGenModule().getLLVMType(OrigOutTy));
+        llvm::Value *Out = Builder.CreateZExt(In, CGM.getLLVMType(OrigOutTy));
         return ExprValue::getRValue(CE, Out);
       }
       if (dynamic_cast<const BooleanType *>(OrigOutTy)) {
@@ -379,13 +378,26 @@ private:
            dynamic_cast<const BytesType *>(OrigOutTy)) ||
           (dynamic_cast<const BytesType *>(OrigInTy) &&
            dynamic_cast<const StringType *>(OrigOutTy))) {
-        llvm::Value *Out = llvm::ConstantAggregateZero::get(
-            CGF.getCodeGenModule().getLLVMType(OrigOutTy));
+        llvm::Value *Out =
+            llvm::ConstantAggregateZero::get(CGM.getLLVMType(OrigOutTy));
         Out = Builder.CreateInsertValue(
             Out, Builder.CreateExtractValue(In, {0}), {0});
         Out = Builder.CreateInsertValue(
             Out, Builder.CreateExtractValue(In, {1}), {1});
         return ExprValue::getRValue(CE, Out);
+      }
+      if (dynamic_cast<const IntegerType *>(OrigOutTy) &&
+          dynamic_cast<const StringType *>(OrigInTy)) {
+        // XXX: it's should be allowed in assembly only
+        llvm::Value *Dst =
+            Builder.CreateAlloca(CGM.Int8Ty, Builder.getInt16(32));
+        llvm::Value *Length = Builder.CreateExtractValue(In, {0});
+        llvm::Value *Src = Builder.CreateExtractValue(In, {1});
+        CGM.emitMemcpy(Dst, Src,
+                       Builder.CreateZExtOrTrunc(Length, CGM.Int32Ty));
+        llvm::Value *Ptr = Builder.CreateBitCast(Dst, CGM.Int256PtrTy);
+        return ExprValue::getRValue(
+            CE, CGM.getEndianlessValue(Builder.CreateLoad(Ptr)));
       }
       assert(false);
       break;
@@ -400,8 +412,7 @@ private:
     if (ID->isSpecialIdentifier()) {
       switch (ID->getSpecialIdentifier()) {
       case Identifier::SpecialIdentifier::this_: {
-        llvm::Value *Val = CGF.getCodeGenModule().getEndianlessValue(
-            CGF.getCodeGenModule().emitGetAddress());
+        llvm::Value *Val = CGM.getEndianlessValue(CGM.emitGetAddress());
         return ExprValue::getRValue(ID, Val);
       }
       default:
@@ -414,8 +425,7 @@ private:
     if (auto *VD = dynamic_cast<const VarDecl *>(D)) {
       const Type *Ty = VD->GetType().get();
       if (VD->isStateVariable()) {
-        return ExprValue(Ty, ValueKind::VK_SValue,
-                         CGF.getCodeGenModule().getStateVarAddr(VD));
+        return ExprValue(Ty, ValueKind::VK_SValue, CGM.getStateVarAddr(VD));
       } else {
         return ExprValue(Ty, ValueKind::VK_LValue, CGF.getAddrOfLocalVar(VD));
       }
@@ -429,8 +439,8 @@ private:
   void emitCheckArrayOutOfBound(llvm::Value *ArrSz, llvm::Value *Index) {
     using namespace std::string_literals;
     static const std::string Message = "Array out of bound"s;
-    llvm::Value *MessageValue = createGlobalStringPtr(
-        CGF.getLLVMContext(), CGF.getCodeGenModule().getModule(), Message);
+    llvm::Value *MessageValue =
+        createGlobalStringPtr(CGF.getLLVMContext(), CGM.getModule(), Message);
 
     llvm::BasicBlock *Continue = CGF.createBasicBlock("continue");
     llvm::BasicBlock *Revert = CGF.createBasicBlock("revert");
@@ -440,8 +450,7 @@ private:
     Builder.CreateCondBr(OutOfBound, Revert, Continue);
 
     Builder.SetInsertPoint(Revert);
-    CGF.getCodeGenModule().emitRevert(MessageValue,
-                                      Builder.getInt32(Message.size()));
+    CGM.emitRevert(MessageValue, Builder.getInt32(Message.size()));
     Builder.CreateUnreachable();
 
     Builder.SetInsertPoint(Continue);
@@ -453,19 +462,18 @@ private:
     const Type *Ty = IA->getType().get();
 
     if (const auto *MType = dynamic_cast<const MappingType *>(Base.getType())) {
-      llvm::Value *Pos = CGF.getCodeGenModule().getEndianlessValue(
-          Builder.CreateLoad(Base.getValue()));
+      llvm::Value *Pos =
+          CGM.getEndianlessValue(Builder.CreateLoad(Base.getValue()));
       llvm::Value *Key;
       if (MType->getKeyType()->isDynamic()) {
-        Key = Index.load(Builder, CGF.getCodeGenModule());
+        Key = Index.load(Builder, CGM);
       } else {
-        Key =
-            CGF.getCodeGenModule().getEndianlessValue(Builder.CreateZExtOrTrunc(
-                Index.load(Builder, CGF.getCodeGenModule()), CGF.Int256Ty));
+        Key = CGM.getEndianlessValue(
+            Builder.CreateZExtOrTrunc(Index.load(Builder, CGM), CGF.Int256Ty));
       }
-      llvm::Value *Bytes = CGF.getCodeGenModule().emitConcateBytes({Key, Pos});
+      llvm::Value *Bytes = CGM.emitConcateBytes({Key, Pos});
       llvm::Value *AddressPtr = Builder.CreateAlloca(CGF.Int256Ty);
-      Builder.CreateStore(CGF.CGM.emitKeccak256(Bytes), AddressPtr);
+      Builder.CreateStore(CGM.emitKeccak256(Bytes), AddressPtr);
       return ExprValue(Ty, ValueKind::VK_SValue, AddressPtr);
     }
     if (const auto *ArrTy = dynamic_cast<const ArrayType *>(Base.getType())) {
@@ -473,14 +481,14 @@ private:
       // Sized Storage Array
       // Require Index to be unsigned 256-bit Int
 
-      llvm::Value *IndexValue = Index.load(Builder, CGF.getCodeGenModule());
+      llvm::Value *IndexValue = Index.load(Builder, CGM);
       if (!IA->isStateVariable()) {
         // TODO : Assume only Integer Array
         llvm::Value *ArraySize = Builder.getInt(ArrTy->getLength());
         emitCheckArrayOutOfBound(ArraySize, IndexValue);
-        llvm::Value *Address = Builder.CreateInBoundsGEP(
-            CGF.getCodeGenModule().getLLVMType(ArrTy), Base.getValue(),
-            {Builder.getIntN(256, 0), IndexValue});
+        llvm::Value *Address =
+            Builder.CreateInBoundsGEP(CGM.getLLVMType(ArrTy), Base.getValue(),
+                                      {Builder.getIntN(256, 0), IndexValue});
         return ExprValue(Ty, ValueKind::VK_LValue, Address);
       }
 
@@ -489,14 +497,13 @@ private:
         // load array size and check
         auto LengthTy = IntegerType::getIntN(256);
         ExprValue BaseLength(&LengthTy, ValueKind::VK_SValue, Base.getValue());
-        llvm::Value *ArraySize =
-            BaseLength.load(Builder, CGF.getCodeGenModule());
+        llvm::Value *ArraySize = BaseLength.load(Builder, CGM);
         emitCheckArrayOutOfBound(ArraySize, IndexValue);
 
         // load array position
-        llvm::Value *Bytes = CGF.getCodeGenModule().emitConcateBytes(
-            {CGF.getCodeGenModule().getEndianlessValue(Pos)});
-        Pos = CGF.CGM.emitKeccak256(Bytes);
+        llvm::Value *Bytes =
+            CGM.emitConcateBytes({CGM.getEndianlessValue(Pos)});
+        Pos = CGM.emitKeccak256(Bytes);
       } else {
         // Fixed Size Storage Array
         llvm::Value *ArraySize = Builder.getInt(ArrTy->getLength());
@@ -530,23 +537,18 @@ private:
     if (ME->getName()->isSpecialIdentifier()) {
       switch (ME->getName()->getSpecialIdentifier()) {
       case Identifier::SpecialIdentifier::msg_sender: {
-        llvm::Value *Val = CGF.getCodeGenModule().getEndianlessValue(
-            CGF.getCodeGenModule().emitGetCaller());
+        llvm::Value *Val = CGM.getEndianlessValue(CGM.emitGetCaller());
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::msg_value: {
-        llvm::Value *Val =
-            Builder.CreateZExt(CGF.getCodeGenModule().getEndianlessValue(
-                                   CGF.getCodeGenModule().emitGetCallValue()),
-                               CGF.Int256Ty);
+        llvm::Value *Val = Builder.CreateZExt(
+            CGM.getEndianlessValue(CGM.emitGetCallValue()), CGF.Int256Ty);
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::msg_data: {
-        llvm::Value *CallDataSize =
-            CGF.getCodeGenModule().emitGetCallDataSize();
+        llvm::Value *CallDataSize = CGM.emitGetCallDataSize();
         llvm::Value *ValPtr = Builder.CreateAlloca(CGF.Int8Ty, CallDataSize);
-        CGF.getCodeGenModule().emitCallDataCopy(ValPtr, Builder.getInt32(0),
-                                                CallDataSize);
+        CGM.emitCallDataCopy(ValPtr, Builder.getInt32(0), CallDataSize);
 
         llvm::Value *Bytes = llvm::ConstantAggregateZero::get(CGF.BytesTy);
         Bytes = Builder.CreateInsertValue(
@@ -556,52 +558,45 @@ private:
       }
       case Identifier::SpecialIdentifier::msg_sig: {
         llvm::Value *ValPtr = Builder.CreateAlloca(Builder.getInt32Ty());
-        CGF.getCodeGenModule().emitCallDataCopy(
-            Builder.CreateBitCast(ValPtr, CGF.Int8PtrTy), Builder.getInt32(0),
-            Builder.getInt32(4));
+        CGM.emitCallDataCopy(Builder.CreateBitCast(ValPtr, CGF.Int8PtrTy),
+                             Builder.getInt32(0), Builder.getInt32(4));
         llvm::Value *Val = Builder.CreateLoad(ValPtr);
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::tx_gasprice: {
-        llvm::Value *Val =
-            Builder.CreateZExt(CGF.getCodeGenModule().getEndianlessValue(
-                                   CGF.getCodeGenModule().emitGetTxGasPrice()),
-                               CGF.Int256Ty);
+        llvm::Value *Val = Builder.CreateZExt(
+            CGM.getEndianlessValue(CGM.emitGetTxGasPrice()), CGF.Int256Ty);
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::tx_origin: {
-        llvm::Value *Val = CGF.getCodeGenModule().getEndianlessValue(
-            CGF.getCodeGenModule().emitGetTxOrigin());
+        llvm::Value *Val = CGM.getEndianlessValue(CGM.emitGetTxOrigin());
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::block_coinbase: {
-        llvm::Value *Val = CGF.getCodeGenModule().getEndianlessValue(
-            CGF.getCodeGenModule().emitGetBlockCoinbase());
+        llvm::Value *Val = CGM.getEndianlessValue(CGM.emitGetBlockCoinbase());
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::block_difficulty: {
-        llvm::Value *Val = CGF.getCodeGenModule().getEndianlessValue(
-            CGF.getCodeGenModule().emitGetBlockDifficulty());
+        llvm::Value *Val = CGM.getEndianlessValue(CGM.emitGetBlockDifficulty());
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::block_gaslimit: {
-        llvm::Value *Val = CGF.getCodeGenModule().emitGetBlockGasLimit();
+        llvm::Value *Val = CGM.emitGetBlockGasLimit();
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::block_number: {
-        llvm::Value *Val = CGF.getCodeGenModule().emitGetBlockNumber();
+        llvm::Value *Val = CGM.emitGetBlockNumber();
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::now:
       case Identifier::SpecialIdentifier::block_timestamp: {
-        llvm::Value *Val = CGF.getCodeGenModule().emitGetBlockTimestamp();
+        llvm::Value *Val = CGM.emitGetBlockTimestamp();
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::address_balance: {
-        llvm::Value *Address =
-            CGF.emitExpr(ME->getBase()).load(Builder, CGF.CGM);
-        llvm::Value *Val = CGF.getCodeGenModule().getEndianlessValue(
-            CGF.getCodeGenModule().emitGetExternalBalance(Address));
+        llvm::Value *Address = CGF.emitExpr(ME->getBase()).load(Builder, CGM);
+        llvm::Value *Val = CGM.getEndianlessValue(
+            CGM.emitGetExternalBalance(CGM.getEndianlessValue(Address)));
         return ExprValue::getRValue(ME, Builder.CreateZExt(Val, CGF.Int256Ty));
       }
       default:
@@ -621,8 +616,8 @@ private:
   ExprValue visit(const StringLiteral *SL) {
     const std::string &StringData = SL->getValue();
     llvm::Value *String = llvm::ConstantAggregateZero::get(CGF.StringTy);
-    llvm::Constant *Ptr = createGlobalStringPtr(
-        CGF.getLLVMContext(), CGF.getCodeGenModule().getModule(), StringData);
+    llvm::Constant *Ptr = createGlobalStringPtr(CGF.getLLVMContext(),
+                                                CGM.getModule(), StringData);
     String = Builder.CreateInsertValue(
         String, Builder.getIntN(256, StringData.size()), {0});
     String = Builder.CreateInsertValue(String, Ptr, {1});
@@ -708,7 +703,7 @@ void CodeGenFunction::emitCallRevert(const CallExpr *CE) {
   Builder.CreateUnreachable();
 }
 
-llvm::Value *CodeGenFunction::emitAddmod(const CallExpr *CE) {
+llvm::Value *CodeGenFunction::emitCallAddmod(const CallExpr *CE) {
   // addmod
   auto Arguments = CE->getArguments();
   llvm::Value *A = emitExpr(Arguments[0]).load(Builder, CGM);
@@ -719,7 +714,7 @@ llvm::Value *CodeGenFunction::emitAddmod(const CallExpr *CE) {
   return Res;
 }
 
-llvm::Value *CodeGenFunction::emitMulmod(const CallExpr *CE) {
+llvm::Value *CodeGenFunction::emitCallMulmod(const CallExpr *CE) {
   // mulmod
   auto Arguments = CE->getArguments();
   llvm::Value *A = emitExpr(Arguments[0]).load(Builder, CGM);
@@ -730,21 +725,21 @@ llvm::Value *CodeGenFunction::emitMulmod(const CallExpr *CE) {
   return Res;
 }
 
-llvm::Value *CodeGenFunction::emitCallkeccak256(const CallExpr *CE) {
+llvm::Value *CodeGenFunction::emitCallKeccak256(const CallExpr *CE) {
   // keccak256 function
   auto Arguments = CE->getArguments();
   llvm::Value *MessageValue = emitExpr(Arguments[0]).load(Builder, CGM);
   return CGM.emitKeccak256(MessageValue);
 }
 
-llvm::Value *CodeGenFunction::emitCallsha256(const CallExpr *CE) {
+llvm::Value *CodeGenFunction::emitCallSha256(const CallExpr *CE) {
   // sha256 function
   auto Arguments = CE->getArguments();
   llvm::Value *MessageValue = emitExpr(Arguments[0]).load(Builder, CGM);
   return CGM.emitSha256(MessageValue);
 }
 
-llvm::Value *CodeGenFunction::emitCallripemd160(const CallExpr *CE) {
+llvm::Value *CodeGenFunction::emitCallRipemd160(const CallExpr *CE) {
   // ripemd160 function
   auto Arguments = CE->getArguments();
   llvm::Value *MessageValue = emitExpr(Arguments[0]).load(Builder, CGM);
@@ -753,7 +748,7 @@ llvm::Value *CodeGenFunction::emitCallripemd160(const CallExpr *CE) {
   return Builder.CreateTrunc(Val, Int160Ty);
 }
 
-llvm::Value *CodeGenFunction::emitCallecrecover(const CallExpr *CE) {
+llvm::Value *CodeGenFunction::emitCallEcrecover(const CallExpr *CE) {
   // ecrecover function
   auto Arguments = CE->getArguments();
   llvm::Value *HashValue = emitExpr(Arguments[0]).load(Builder, CGM);
@@ -767,12 +762,11 @@ llvm::Value *CodeGenFunction::emitCallecrecover(const CallExpr *CE) {
   return Builder.CreateTrunc(Val, AddressTy);
 }
 
-llvm::Value *CodeGenFunction::emitCallblockhash(const CallExpr *CE) {
+llvm::Value *CodeGenFunction::emitCallBlockHash(const CallExpr *CE) {
   // blockhash function
   auto Arguments = CE->getArguments();
   llvm::Value *NumberValue = emitExpr(Arguments[0]).load(Builder, CGM);
-  llvm::Value *Val =
-      CGM.getEndianlessValue(getCodeGenModule().emitGetBlockHash(NumberValue));
+  llvm::Value *Val = CGM.getEndianlessValue(CGM.emitGetBlockHash(NumberValue));
   return Val;
 }
 
@@ -788,15 +782,14 @@ llvm::Value *CodeGenFunction::emitCallAddressStaticcall(const CallExpr *CE,
   llvm::Value *Length = Builder.CreateTrunc(
       Builder.CreateExtractValue(MemoryValue, {0}), Int32Ty, "length");
   llvm::Value *Ptr = Builder.CreateExtractValue(MemoryValue, {1}, "ptr");
-  llvm::Value *Gas = getCodeGenModule().emitGetGasLeft();
+  llvm::Value *Gas = CGM.emitGetGasLeft();
 
-  llvm::Value *Val =
-      getCodeGenModule().emitCallStatic(Gas, AddressPtr, Ptr, Length);
+  llvm::Value *Val = CGM.emitCallStatic(Gas, AddressPtr, Ptr, Length);
 
   using namespace std::string_literals;
   static const std::string Message = "StaticCall Fail"s;
-  llvm::Constant *MessageValue = createGlobalStringPtr(
-      getLLVMContext(), getCodeGenModule().getModule(), Message);
+  llvm::Constant *MessageValue =
+      createGlobalStringPtr(getLLVMContext(), CGM.getModule(), Message);
 
   llvm::Value *Cond = Builder.CreateICmpNE(Val, Builder.getInt32(2));
   llvm::BasicBlock *Continue = createBasicBlock("continue");
@@ -808,9 +801,9 @@ llvm::Value *CodeGenFunction::emitCallAddressStaticcall(const CallExpr *CE,
   Builder.CreateUnreachable();
 
   Builder.SetInsertPoint(Continue);
-  llvm::Value *ReturnDataSize = getCodeGenModule().emitReturnDataSize();
-  llvm::Value *ReturnData = getCodeGenModule().emitReturnDataCopyBytes(
-      Builder.getInt32(0), ReturnDataSize);
+  llvm::Value *ReturnDataSize = CGM.emitReturnDataSize();
+  llvm::Value *ReturnData =
+      CGM.emitReturnDataCopyBytes(Builder.getInt32(0), ReturnDataSize);
   // Todo:
   // return tuple (~bool(Val), ReturnData)
   return Builder.CreateNot(Builder.CreateTrunc(Val, BoolTy));
@@ -829,10 +822,9 @@ CodeGenFunction::emitCallAddressDelegatecall(const CallExpr *CE,
   llvm::Value *Length = Builder.CreateTrunc(
       Builder.CreateExtractValue(MemoryValue, {0}), Int32Ty, "length");
   llvm::Value *Ptr = Builder.CreateExtractValue(MemoryValue, {1}, "ptr");
-  llvm::Value *Gas = getCodeGenModule().emitGetGasLeft();
+  llvm::Value *Gas = CGM.emitGetGasLeft();
 
-  llvm::Value *Val =
-      getCodeGenModule().emitCallDelegate(Gas, AddressPtr, Ptr, Length);
+  llvm::Value *Val = CGM.emitCallDelegate(Gas, AddressPtr, Ptr, Length);
 
   llvm::Value *Cond;
   if (CGM.isEWASM()) {
@@ -843,9 +835,9 @@ CodeGenFunction::emitCallAddressDelegatecall(const CallExpr *CE,
     __builtin_unreachable();
   }
 
-  llvm::Value *ReturnDataSize = getCodeGenModule().emitReturnDataSize();
-  llvm::Value *ReturnData = getCodeGenModule().emitReturnDataCopyBytes(
-      Builder.getInt32(0), ReturnDataSize);
+  llvm::Value *ReturnDataSize = CGM.emitReturnDataSize();
+  llvm::Value *ReturnData =
+      CGM.emitReturnDataCopyBytes(Builder.getInt32(0), ReturnDataSize);
   // Todo:
   // return tuple (Cond, ReturnData)
   return Builder.CreateTrunc(Cond, BoolTy);
@@ -863,12 +855,11 @@ llvm::Value *CodeGenFunction::emitCallAddressCall(const CallExpr *CE,
   llvm::Value *Length = Builder.CreateTrunc(
       Builder.CreateExtractValue(MemoryValue, {0}), Int32Ty, "length");
   llvm::Value *Ptr = Builder.CreateExtractValue(MemoryValue, {1}, "ptr");
-  llvm::Value *Gas = getCodeGenModule().emitGetGasLeft();
+  llvm::Value *Gas = CGM.emitGetGasLeft();
   llvm::Value *ValuePtr = Builder.CreateAlloca(Int128Ty);
   Builder.CreateStore(Builder.getIntN(128, 0), ValuePtr);
 
-  llvm::Value *Val =
-      getCodeGenModule().emitCall(Gas, AddressPtr, ValuePtr, Ptr, Length);
+  llvm::Value *Val = CGM.emitCall(Gas, AddressPtr, ValuePtr, Ptr, Length);
 
   llvm::Value *Cond;
   if (CGM.isEWASM()) {
@@ -879,9 +870,9 @@ llvm::Value *CodeGenFunction::emitCallAddressCall(const CallExpr *CE,
     __builtin_unreachable();
   }
 
-  llvm::Value *ReturnDataSize = getCodeGenModule().emitReturnDataSize();
-  llvm::Value *ReturnData = getCodeGenModule().emitReturnDataCopyBytes(
-      Builder.getInt32(0), ReturnDataSize);
+  llvm::Value *ReturnDataSize = CGM.emitReturnDataSize();
+  llvm::Value *ReturnData =
+      CGM.emitReturnDataCopyBytes(Builder.getInt32(0), ReturnDataSize);
   // Todo:
   // return tuple (Cond, ReturnData)
   return Builder.CreateTrunc(Cond, BoolTy);
@@ -905,8 +896,7 @@ llvm::Value *CodeGenFunction::emitCallAddressSend(const CallExpr *CE,
   llvm::Value *Ptr = Builder.CreateAlloca(Int8Ty, Length);
   llvm::Value *Gas = Builder.getInt64(0);
 
-  llvm::Value *Val =
-      getCodeGenModule().emitCall(Gas, AddressPtr, AmountPtr, Ptr, Length);
+  llvm::Value *Val = CGM.emitCall(Gas, AddressPtr, AmountPtr, Ptr, Length);
 
   llvm::Value *Cond;
   if (CGM.isEWASM()) {
@@ -923,8 +913,8 @@ llvm::Value *CodeGenFunction::emitCallAddressSend(const CallExpr *CE,
 
   using namespace std::string_literals;
   static const std::string Message = "Transfer Fail"s;
-  llvm::Constant *MessageValue = createGlobalStringPtr(
-      getLLVMContext(), getCodeGenModule().getModule(), Message);
+  llvm::Constant *MessageValue =
+      createGlobalStringPtr(getLLVMContext(), CGM.getModule(), Message);
 
   llvm::BasicBlock *Continue = createBasicBlock("continue");
   llvm::BasicBlock *Revert = createBasicBlock("revert");
@@ -1036,16 +1026,14 @@ ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
     auto Arguments = CE->getArguments();
     std::vector<llvm::Value *> Data(
         1, llvm::ConstantPointerNull::get(Int256PtrTy));
-    std::vector<llvm::Value *> Topics(
-        4, llvm::ConstantPointerNull::get(Int256PtrTy));
-    uint IndexedCnt = 0;
+    std::vector<llvm::Value *> Topics;
     uint DataCnt = 0;
 
     if (ED->isAnonymous() == false) {
-      Topics[IndexedCnt++] =
+      Topics.emplace_back(
           Builder.CreateBitCast(CGM.getModule().getNamedGlobal(
                                     "solidity.event." + CGM.getMangledName(ED)),
-                                Int256PtrTy);
+                                Int256PtrTy));
     }
 
     // XXX: Multiple args and complex data type encoding not implemented yet.
@@ -1055,7 +1043,7 @@ ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
           CGM.getEndianlessValue(Builder.CreateZExtOrTrunc(Args[I], Int256Ty)),
           ValPtr);
       if (dynamic_cast<const VarDecl *>(Params[I])->isIndexed()) {
-        Topics[IndexedCnt++] = ValPtr;
+        Topics.emplace_back(ValPtr);
       } else {
         Data[DataCnt++] = ValPtr;
       }
@@ -1090,19 +1078,19 @@ ExprValue CodeGenFunction::emitSpecialCallExpr(const Identifier *SI,
     assert(CE->getArguments().empty() && "gasleft require no arguments");
     return ExprValue::getRValue(CE, CGM.emitGetGasLeft());
   case Identifier::SpecialIdentifier::addmod:
-    return ExprValue::getRValue(CE, emitAddmod(CE));
+    return ExprValue::getRValue(CE, emitCallAddmod(CE));
   case Identifier::SpecialIdentifier::mulmod:
-    return ExprValue::getRValue(CE, emitMulmod(CE));
+    return ExprValue::getRValue(CE, emitCallMulmod(CE));
   case Identifier::SpecialIdentifier::keccak256:
-    return ExprValue::getRValue(CE, emitCallkeccak256(CE));
+    return ExprValue::getRValue(CE, emitCallKeccak256(CE));
   case Identifier::SpecialIdentifier::sha256:
-    return ExprValue::getRValue(CE, emitCallsha256(CE));
+    return ExprValue::getRValue(CE, emitCallSha256(CE));
   case Identifier::SpecialIdentifier::ripemd160:
-    return ExprValue::getRValue(CE, emitCallripemd160(CE));
+    return ExprValue::getRValue(CE, emitCallRipemd160(CE));
   case Identifier::SpecialIdentifier::ecrecover:
-    return ExprValue::getRValue(CE, emitCallecrecover(CE));
+    return ExprValue::getRValue(CE, emitCallEcrecover(CE));
   case Identifier::SpecialIdentifier::blockhash:
-    return ExprValue::getRValue(CE, emitCallblockhash(CE));
+    return ExprValue::getRValue(CE, emitCallBlockHash(CE));
   case Identifier::SpecialIdentifier::address_staticcall:
     return ExprValue::getRValue(CE, emitCallAddressStaticcall(CE, ME));
   case Identifier::SpecialIdentifier::address_delegatecall:
@@ -1124,18 +1112,18 @@ ExprValue CodeGenFunction::emitSpecialCallExpr(const Identifier *SI,
   }
 }
 
-llvm::Value *CodeGenFunction::emitMLoad(const CallExpr *CE) {
+llvm::Value *CodeGenFunction::emitAsmCallMLoad(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
   llvm::Value *Pos = emitExpr(Arguments[0]).load(Builder, CGM);
   llvm::Value *CPtr =
       Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.cptr");
   llvm::Value *Ptr = Builder.CreateBitCast(CPtr, Int256PtrTy, "heap.ptr");
   llvm::Value *Value = CGM.getEndianlessValue(Builder.CreateLoad(Ptr));
-  getCodeGenModule().emitUpdateMemorySize(Pos, Builder.getIntN(256, 32));
+  CGM.emitUpdateMemorySize(Pos, Builder.getIntN(256, 32));
   return Value;
 }
 
-void CodeGenFunction::emitMStore(const CallExpr *CE) {
+void CodeGenFunction::emitAsmCallMStore(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
   llvm::Value *Pos = emitExpr(Arguments[0]).load(Builder, CGM);
   llvm::Value *CPtr =
@@ -1143,10 +1131,10 @@ void CodeGenFunction::emitMStore(const CallExpr *CE) {
   llvm::Value *Ptr = Builder.CreateBitCast(CPtr, Int256PtrTy, "heap.ptr");
   Builder.CreateStore(
       CGM.getEndianlessValue(emitExpr(Arguments[1]).load(Builder, CGM)), Ptr);
-  getCodeGenModule().emitUpdateMemorySize(Pos, Builder.getIntN(256, 32));
+  CGM.emitUpdateMemorySize(Pos, Builder.getIntN(256, 32));
 }
 
-void CodeGenFunction::emitMStore8(const CallExpr *CE) {
+void CodeGenFunction::emitAsmCallMStore8(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
   llvm::Value *Pos = emitExpr(Arguments[0]).load(Builder, CGM);
   llvm::Value *Ptr =
@@ -1154,14 +1142,22 @@ void CodeGenFunction::emitMStore8(const CallExpr *CE) {
   llvm::Value *Value = Builder.CreateZExtOrTrunc(
       emitExpr(Arguments[1]).load(Builder, CGM), CGM.Int8Ty);
   Builder.CreateStore(Value, Ptr);
-  getCodeGenModule().emitUpdateMemorySize(Pos, Builder.getIntN(256, 1));
+  CGM.emitUpdateMemorySize(Pos, Builder.getIntN(256, 1));
 }
 
-llvm::Value *CodeGenFunction::emitMSize(const CallExpr *CE) {
+llvm::Value *CodeGenFunction::emitAsmCallMSize(const CallExpr *CE) {
   return Builder.CreateLoad(CGM.getMemorySize());
 }
 
-void CodeGenFunction::emitSStore(const CallExpr *CE) {
+llvm::Value *CodeGenFunction::emitAsmCallSLoad(const CallExpr *CE) {
+  auto Arguments = CE->getArguments();
+  auto Val =
+      CGM.emitStorageLoad(CGM.getEndianlessValue(Builder.CreateZExtOrTrunc(
+          emitExpr(Arguments[0]).load(Builder, CGM), CGM.Int256Ty)));
+  return CGM.getEndianlessValue(Val);
+}
+
+void CodeGenFunction::emitAsmCallSStore(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
   CGM.emitStorageStore(
       CGM.getEndianlessValue(Builder.CreateZExtOrTrunc(
@@ -1170,19 +1166,66 @@ void CodeGenFunction::emitSStore(const CallExpr *CE) {
           emitExpr(Arguments[1]).load(Builder, CGM), CGM.Int256Ty)));
 }
 
-llvm::Value *CodeGenFunction::emitSLoad(const CallExpr *CE) {
+void CodeGenFunction::emitAsmCallReturn(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
-  auto Val =
-      CGM.emitStorageLoad(CGM.getEndianlessValue(Builder.CreateZExtOrTrunc(
-          emitExpr(Arguments[0]).load(Builder, CGM), CGM.Int256Ty)));
-  return CGM.getEndianlessValue(Val);
+  llvm::Value *Pos = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *Ptr =
+      Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.cptr");
+  CGM.emitFinish(
+      Ptr, Builder.CreateZExtOrTrunc(emitExpr(Arguments[1]).load(Builder, CGM),
+                                     CGM.Int32Ty));
 }
 
-llvm::Value *CodeGenFunction::emitCallDataLoad(const CallExpr *CE) {
+void CodeGenFunction::emitAsmCallRevert(const CallExpr *CE) {
+  auto Arguments = CE->getArguments();
+  llvm::Value *Pos = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *Ptr =
+      Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.cptr");
+  CGM.emitRevert(
+      Ptr, Builder.CreateZExtOrTrunc(emitExpr(Arguments[1]).load(Builder, CGM),
+                                     CGM.Int32Ty));
+}
+
+void CodeGenFunction::emitAsmCallLog(const CallExpr *CE) {
+  auto Arguments = CE->getArguments();
+  llvm::Value *Pos = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *Data =
+      Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.cptr");
+  llvm::Value *DataLength = Builder.CreateZExtOrTrunc(
+      emitExpr(Arguments[1]).load(Builder, CGM), CGM.Int32Ty);
+  std::vector<llvm::Value *> Topics;
+  for (size_t I = 2; I < Arguments.size(); I++) {
+    llvm::Value *ValPtr = Builder.CreateAlloca(Int256Ty, nullptr);
+    Builder.CreateStore(
+        CGM.getEndianlessValue(Builder.CreateZExtOrTrunc(
+            emitExpr(Arguments[I]).load(Builder, CGM), CGM.Int256Ty)),
+        ValPtr);
+    Topics.emplace_back(ValPtr);
+  }
+  CGM.emitLog(Data, DataLength, Topics);
+}
+
+llvm::Value *CodeGenFunction::emitAsmCallCallDataLoad(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
   return CGM.getEndianlessValue(
-      CGM.emitCallDataLoad(CGM.getEndianlessValue(Builder.CreateZExtOrTrunc(
-          emitExpr(Arguments[0]).load(Builder, CGM), CGM.Int256Ty))));
+      CGM.emitCallDataLoad(emitExpr(Arguments[0]).load(Builder, CGM)));
+}
+
+void CodeGenFunction::emitAsmCallCodeCopy(const CallExpr *CE) {
+  auto Arguments = CE->getArguments();
+  CGM.emitCodeCopy(emitExpr(Arguments[0]).load(Builder, CGM),
+                   emitExpr(Arguments[1]).load(Builder, CGM),
+                   emitExpr(Arguments[2]).load(Builder, CGM));
+}
+
+llvm::Value *CodeGenFunction::emitAsmCallkeccak256(const CallExpr *CE) {
+  // keccak256 function
+  auto Arguments = CE->getArguments();
+  llvm::Value *Pos = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *Ptr =
+      Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.cptr");
+  llvm::Value *Length = emitExpr(Arguments[1]).load(Builder, CGM);
+  return CGM.emitKeccak256(Ptr, Length);
 }
 
 ExprValue CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
@@ -1216,53 +1259,94 @@ ExprValue CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
     assert(false && "unexpected special identifiers");
     __builtin_unreachable();
   case AsmIdentifier::SpecialIdentifier::addmodu256:
-    return ExprValue::getRValue(CE, emitAddmod(CE));
+    return ExprValue::getRValue(CE, emitCallAddmod(CE));
   case AsmIdentifier::SpecialIdentifier::mulmodu256:
-    return ExprValue::getRValue(CE, emitMulmod(CE));
-  /// execution control
-  case AsmIdentifier::SpecialIdentifier::revert:
-    emitCallRevert(CE);
-    return ExprValue();
-  case AsmIdentifier::SpecialIdentifier::blockcoinbase:
-    return ExprValue::getRValue(CE, CGM.emitGetBlockCoinbase());
-  case AsmIdentifier::SpecialIdentifier::blockdifficulty:
-    return ExprValue::getRValue(CE, CGM.emitGetBlockDifficulty());
-  case AsmIdentifier::SpecialIdentifier::blockgaslimit:
-    return ExprValue::getRValue(CE, CGM.emitGetBlockGasLimit());
-  case AsmIdentifier::SpecialIdentifier::blocknumber:
-    return ExprValue::getRValue(CE, CGM.emitGetBlockNumber());
-  case AsmIdentifier::SpecialIdentifier::blocktimestamp:
-    return ExprValue::getRValue(CE, CGM.emitGetBlockTimestamp());
-  case AsmIdentifier::SpecialIdentifier::txorigin:
-    return ExprValue::getRValue(CE, CGM.emitGetTxOrigin());
-  case AsmIdentifier::SpecialIdentifier::txgasprice:
-    return ExprValue::getRValue(CE, CGM.emitGetTxGasPrice());
+    return ExprValue::getRValue(CE, emitCallMulmod(CE));
   /// memory and storage
   case AsmIdentifier::SpecialIdentifier::mload:
-    return ExprValue::getRValue(CE, emitMLoad(CE));
+    return ExprValue::getRValue(CE, emitAsmCallMLoad(CE));
   case AsmIdentifier::SpecialIdentifier::mstore:
-    emitMStore(CE);
+    emitAsmCallMStore(CE);
     return ExprValue();
   case AsmIdentifier::SpecialIdentifier::mstore8:
-    emitMStore8(CE);
+    emitAsmCallMStore8(CE);
     return ExprValue();
   case AsmIdentifier::SpecialIdentifier::msize:
-    return ExprValue::getRValue(CE, emitMSize(CE));
-  case AsmIdentifier::SpecialIdentifier::sstore:
-    emitSStore(CE);
-    return ExprValue();
+    return ExprValue::getRValue(CE, emitAsmCallMSize(CE));
   case AsmIdentifier::SpecialIdentifier::sload:
-    return ExprValue::getRValue(CE, emitSLoad(CE));
+    return ExprValue::getRValue(CE, emitAsmCallSLoad(CE));
+  case AsmIdentifier::SpecialIdentifier::sstore:
+    emitAsmCallSStore(CE);
+    return ExprValue();
+  /// execution control
+  case AsmIdentifier::SpecialIdentifier::stop:
+    CGM.emitFinish(llvm::ConstantPointerNull::get(Int8PtrTy),
+                   Builder.getInt32(0));
+    return ExprValue();
+  case AsmIdentifier::SpecialIdentifier::return_:
+    emitAsmCallReturn(CE);
+    return ExprValue();
+  case AsmIdentifier::SpecialIdentifier::revert:
+    emitAsmCallRevert(CE);
+    return ExprValue();
+  case AsmIdentifier::SpecialIdentifier::log0:
+  case AsmIdentifier::SpecialIdentifier::log1:
+  case AsmIdentifier::SpecialIdentifier::log2:
+  case AsmIdentifier::SpecialIdentifier::log3:
+  case AsmIdentifier::SpecialIdentifier::log4:
+    emitAsmCallLog(CE);
+    return ExprValue();
   /// state
-  case AsmIdentifier::SpecialIdentifier::calldataload:
-    return ExprValue::getRValue(CE, emitCallDataLoad(CE));
+  case AsmIdentifier::SpecialIdentifier::blockcoinbase:
+    return ExprValue::getRValue(
+        CE,
+        Builder.CreateZExtOrTrunc(
+            CGM.getEndianlessValue(CGM.emitGetBlockCoinbase()), CGM.Int256Ty));
+  case AsmIdentifier::SpecialIdentifier::blockdifficulty:
+    return ExprValue::getRValue(
+        CE, CGM.getEndianlessValue(CGM.emitGetBlockDifficulty()));
+  case AsmIdentifier::SpecialIdentifier::blockgaslimit:
+    return ExprValue::getRValue(
+        CE,
+        Builder.CreateZExtOrTrunc(CGM.emitGetBlockGasLimit(), CGM.Int256Ty));
+  case AsmIdentifier::SpecialIdentifier::blocknumber:
+    return ExprValue::getRValue(
+        CE, Builder.CreateZExtOrTrunc(CGM.emitGetBlockNumber(), CGM.Int256Ty));
+  case AsmIdentifier::SpecialIdentifier::blocktimestamp:
+    return ExprValue::getRValue(
+        CE,
+        Builder.CreateZExtOrTrunc(CGM.emitGetBlockTimestamp(), CGM.Int256Ty));
+  case AsmIdentifier::SpecialIdentifier::txorigin:
+    return ExprValue::getRValue(
+        CE, Builder.CreateZExtOrTrunc(
+                CGM.getEndianlessValue(CGM.emitGetTxOrigin()), CGM.Int256Ty));
+  case AsmIdentifier::SpecialIdentifier::txgasprice:
+    return ExprValue::getRValue(
+        CE, Builder.CreateZExtOrTrunc(
+                CGM.getEndianlessValue(CGM.emitGetTxGasPrice()), CGM.Int256Ty));
   case AsmIdentifier::SpecialIdentifier::gasleft:
-    assert(CE->getArguments().empty() && "gasleft require no arguments");
-    return ExprValue::getRValue(CE, CGM.emitGetGasLeft());
+    return ExprValue::getRValue(
+        CE, Builder.CreateZExtOrTrunc(CGM.emitGetGasLeft(), CGM.Int256Ty));
+  case AsmIdentifier::SpecialIdentifier::caller:
+    return ExprValue::getRValue(
+        CE, Builder.CreateZExtOrTrunc(
+                CGM.getEndianlessValue(CGM.emitGetCaller()), CGM.Int256Ty));
+  case AsmIdentifier::SpecialIdentifier::callvalue:
+    return ExprValue::getRValue(
+        CE, Builder.CreateZExtOrTrunc(
+                CGM.getEndianlessValue(CGM.emitGetCallValue()), CGM.Int256Ty));
+  case AsmIdentifier::SpecialIdentifier::calldataload:
+    return ExprValue::getRValue(CE, emitAsmCallCallDataLoad(CE));
+  case AsmIdentifier::SpecialIdentifier::calldatasize:
+    return ExprValue::getRValue(
+        CE, Builder.CreateZExtOrTrunc(CGM.emitGetCallDataSize(), CGM.Int256Ty));
+  case AsmIdentifier::SpecialIdentifier::codecopy:
+    emitAsmCallCodeCopy(CE);
+    return ExprValue();
   /// object
   /// misc
   case AsmIdentifier::SpecialIdentifier::keccak256:
-    return ExprValue::getRValue(CE, emitCallkeccak256(CE));
+    return ExprValue::getRValue(CE, emitAsmCallkeccak256(CE));
   // TODO:
   // - implement special identifiers below and
   //   move implemented ones above this TODO.
@@ -1276,22 +1360,12 @@ ExprValue CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   case AsmIdentifier::SpecialIdentifier::callcode:
   case AsmIdentifier::SpecialIdentifier::delegatecall:
   case AsmIdentifier::SpecialIdentifier::abort:
-  case AsmIdentifier::SpecialIdentifier::return_:
   case AsmIdentifier::SpecialIdentifier::selfdestruct:
-  case AsmIdentifier::SpecialIdentifier::log0:
-  case AsmIdentifier::SpecialIdentifier::log1:
-  case AsmIdentifier::SpecialIdentifier::log2:
-  case AsmIdentifier::SpecialIdentifier::log3:
-  case AsmIdentifier::SpecialIdentifier::log4:
   case AsmIdentifier::SpecialIdentifier::blockhash:
   case AsmIdentifier::SpecialIdentifier::balance:
   case AsmIdentifier::SpecialIdentifier::this_:
-  case AsmIdentifier::SpecialIdentifier::caller:
-  case AsmIdentifier::SpecialIdentifier::callvalue:
-  case AsmIdentifier::SpecialIdentifier::calldatasize:
   case AsmIdentifier::SpecialIdentifier::calldatacopy:
   case AsmIdentifier::SpecialIdentifier::codesize:
-  case AsmIdentifier::SpecialIdentifier::codecopy:
   case AsmIdentifier::SpecialIdentifier::extcodesize:
   case AsmIdentifier::SpecialIdentifier::extcodecopy:
   case AsmIdentifier::SpecialIdentifier::extcodehash:

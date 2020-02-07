@@ -65,6 +65,7 @@ class CodeGenModule : public CodeGenTypeCache {
   llvm::Function *Func_getCallDataSize = nullptr;
   llvm::Function *Func_getCallValue = nullptr;
   llvm::Function *Func_getCaller = nullptr;
+  llvm::Function *Func_codeCopy = nullptr;
   llvm::Function *Func_getGasLeft = nullptr;
   llvm::Function *Func_log = nullptr;
   llvm::Function *Func_log0 = nullptr;
@@ -147,6 +148,8 @@ public:
   llvm::Value *emitGetGasLeft();
   llvm::Value *emitGetCallValue();
   llvm::Value *emitGetCaller();
+  void emitCodeCopy(llvm::Value *MemOffset, llvm::Value *Pos,
+                    llvm::Value *Length);
   void emitFinish(llvm::Value *DataOffset, llvm::Value *Length);
   void emitLog(llvm::Value *DataOffset, llvm::Value *DataLength,
                std::vector<llvm::Value *> &Topics);
@@ -172,7 +175,9 @@ public:
   llvm::Value *emitCallDelegate(llvm::Value *Gas, llvm::Value *AddressPtr,
                                 llvm::Value *DataPtr, llvm::Value *DataLength);
   llvm::Value *emitKeccak256(llvm::Value *Bytes);
+  llvm::Value *emitKeccak256(llvm::Value *Pos, llvm::Value *Length);
   llvm::Value *emitSha256(llvm::Value *Bytes);
+  void emitMemcpy(llvm::Value *Dst, llvm::Value *Src, llvm::Value *Length);
   llvm::Value *emitGetCallDataSize();
   llvm::Value *emitGetTxGasPrice();
   llvm::Value *emitGetTxOrigin();

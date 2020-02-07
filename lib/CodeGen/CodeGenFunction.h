@@ -92,13 +92,13 @@ private:
   void emitCallAssert(const CallExpr *CE);
   void emitCallRevert(const CallExpr *CE);
   void emitCheckPayable(const FunctionDecl *FD);
-  llvm::Value *emitAddmod(const CallExpr *CE);
-  llvm::Value *emitMulmod(const CallExpr *CE);
-  llvm::Value *emitCallkeccak256(const CallExpr *CE);
-  llvm::Value *emitCallsha256(const CallExpr *CE);
-  llvm::Value *emitCallripemd160(const CallExpr *CE);
-  llvm::Value *emitCallecrecover(const CallExpr *CE);
-  llvm::Value *emitCallblockhash(const CallExpr *CE);
+  llvm::Value *emitCallAddmod(const CallExpr *CE);
+  llvm::Value *emitCallMulmod(const CallExpr *CE);
+  llvm::Value *emitCallKeccak256(const CallExpr *CE);
+  llvm::Value *emitCallSha256(const CallExpr *CE);
+  llvm::Value *emitCallRipemd160(const CallExpr *CE);
+  llvm::Value *emitCallEcrecover(const CallExpr *CE);
+  llvm::Value *emitCallBlockHash(const CallExpr *CE);
   llvm::Value *emitCallAddressCall(const CallExpr *CE, const MemberExpr *ME);
   llvm::Value *emitCallAddressStaticcall(const CallExpr *CE,
                                          const MemberExpr *ME);
@@ -108,13 +108,19 @@ private:
                                    bool NeedRevert);
   llvm::Value *emitAbiEncodePacked(const CallExpr *CE);
   llvm::Value *emitAbiEncode(const CallExpr *CE);
-  llvm::Value *emitMLoad(const CallExpr *CE);
-  void emitMStore(const CallExpr *CE);
-  void emitMStore8(const CallExpr *CE);
-  llvm::Value *emitMSize(const CallExpr *CE);
-  void emitSStore(const CallExpr *CE);
-  llvm::Value *emitSLoad(const CallExpr *CE);
-  llvm::Value *emitCallDataLoad(const CallExpr *CE);
+
+  llvm::Value *emitAsmCallMLoad(const CallExpr *CE);
+  void emitAsmCallMStore(const CallExpr *CE);
+  void emitAsmCallMStore8(const CallExpr *CE);
+  llvm::Value *emitAsmCallMSize(const CallExpr *CE);
+  llvm::Value *emitAsmCallSLoad(const CallExpr *CE);
+  void emitAsmCallSStore(const CallExpr *CE);
+  void emitAsmCallReturn(const CallExpr *CE);
+  void emitAsmCallRevert(const CallExpr *CE);
+  void emitAsmCallLog(const CallExpr *CE);
+  llvm::Value *emitAsmCallCallDataLoad(const CallExpr *CE);
+  void emitAsmCallCodeCopy(const CallExpr *CE);
+  llvm::Value *emitAsmCallkeccak256(const CallExpr *CE);
 
   ExprValue emitCallExpr(const CallExpr *CE);
   ExprValue emitSpecialCallExpr(const Identifier *SI, const CallExpr *CE,

@@ -71,9 +71,28 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
       {"sload", AsmIdentifier::SpecialIdentifier::sload},
       {"sstore", AsmIdentifier::SpecialIdentifier::sstore},
       /// execution control
-      {"gasleft", AsmIdentifier::SpecialIdentifier::gasleft},
+      {"stop", AsmIdentifier::SpecialIdentifier::stop},
+      {"return", AsmIdentifier::SpecialIdentifier::return_},
+      {"revert", AsmIdentifier::SpecialIdentifier::revert},
+      {"log0", AsmIdentifier::SpecialIdentifier::log0},
+      {"log1", AsmIdentifier::SpecialIdentifier::log1},
+      {"log2", AsmIdentifier::SpecialIdentifier::log2},
+      {"log3", AsmIdentifier::SpecialIdentifier::log3},
+      {"log4", AsmIdentifier::SpecialIdentifier::log4},
       /// state
+      {"blockcoinbase", AsmIdentifier::SpecialIdentifier::blockcoinbase},
+      {"blockdifficulty", AsmIdentifier::SpecialIdentifier::blockdifficulty},
+      {"blockgaslimit", AsmIdentifier::SpecialIdentifier::blockgaslimit},
+      {"blocknumber", AsmIdentifier::SpecialIdentifier::blocknumber},
+      {"blocktimestamp", AsmIdentifier::SpecialIdentifier::blocktimestamp},
+      {"txorigin", AsmIdentifier::SpecialIdentifier::txorigin},
+      {"txgasprice", AsmIdentifier::SpecialIdentifier::txgasprice},
+      {"gasleft", AsmIdentifier::SpecialIdentifier::gasleft},
+      {"caller", AsmIdentifier::SpecialIdentifier::caller},
+      {"callvalue", AsmIdentifier::SpecialIdentifier::callvalue},
       {"calldataload", AsmIdentifier::SpecialIdentifier::calldataload},
+      {"calldatasize", AsmIdentifier::SpecialIdentifier::calldatasize},
+      {"codecopy", AsmIdentifier::SpecialIdentifier::codecopy},
       /// object
       /// misc
       {"keccak256", AsmIdentifier::SpecialIdentifier::keccak256},
@@ -183,9 +202,81 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
       Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty},
                                           std::vector<TypePtr>{});
       break;
-    case AsmIdentifier::SpecialIdentifier::calldataload: ///< (u256) -> u256
+    case AsmIdentifier::SpecialIdentifier::stop: ///< () -> void
+      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{},
+                                          std::vector<TypePtr>{});
+      break;
+    case AsmIdentifier::SpecialIdentifier::return_: ///< (u256, u256) -> void
       Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty},
+      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty},
+                                          std::vector<TypePtr>{});
+      break;
+    case AsmIdentifier::SpecialIdentifier::revert: ///< (u256, u256) -> void
+      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty},
+                                          std::vector<TypePtr>{});
+      break;
+    case AsmIdentifier::SpecialIdentifier::log0: ///< (u256, u256) -> void
+      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty},
+                                          std::vector<TypePtr>{});
+      break;
+    case AsmIdentifier::SpecialIdentifier::log1: ///< (u256, u256, u256) -> void
+      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty, Ty},
+                                          std::vector<TypePtr>{});
+      break;
+    case AsmIdentifier::SpecialIdentifier::log2: ///< (u256, u256, u256, u256)
+                                                 ///< -> void
+      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty, Ty, Ty},
+                                          std::vector<TypePtr>{});
+      break;
+    case AsmIdentifier::SpecialIdentifier::log3: ///< (u256, u256, u256, u256,
+                                                 ///< u256) -> void
+      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+      Ty = std::make_shared<FunctionType>(
+          std::vector<TypePtr>{Ty, Ty, Ty, Ty, Ty}, std::vector<TypePtr>{});
+      break;
+    case AsmIdentifier::SpecialIdentifier::log4: ///< (u256, u256, u256, u256,
+                                                 ///< u256, u256) -> void
+      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+      Ty = std::make_shared<FunctionType>(
+          std::vector<TypePtr>{Ty, Ty, Ty, Ty, Ty, Ty}, std::vector<TypePtr>{});
+      break;
+    case AsmIdentifier::SpecialIdentifier::blockcoinbase: ///< () -> u256
+      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{},
+                                          std::vector<TypePtr>{Ty});
+      break;
+    case AsmIdentifier::SpecialIdentifier::blockdifficulty: ///< () -> u256
+      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{},
+                                          std::vector<TypePtr>{Ty});
+      break;
+    case AsmIdentifier::SpecialIdentifier::blockgaslimit: ///< () -> u256
+      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{},
+                                          std::vector<TypePtr>{Ty});
+      break;
+    case AsmIdentifier::SpecialIdentifier::blocknumber: ///< () -> u256
+      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{},
+                                          std::vector<TypePtr>{Ty});
+      break;
+    case AsmIdentifier::SpecialIdentifier::blocktimestamp: ///< () -> u256
+      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{},
+                                          std::vector<TypePtr>{Ty});
+      break;
+    case AsmIdentifier::SpecialIdentifier::txorigin: ///< () -> u256
+      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{},
+                                          std::vector<TypePtr>{Ty});
+      break;
+    case AsmIdentifier::SpecialIdentifier::txgasprice: ///< () -> u256
+      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{},
                                           std::vector<TypePtr>{Ty});
       break;
     case AsmIdentifier::SpecialIdentifier::gasleft: ///< () -> u256
@@ -193,6 +284,35 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
           std::vector<TypePtr>{},
           std::vector<TypePtr>{
               std::make_shared<IntegerType>(IntegerType::IntKind::U256)});
+      break;
+    case AsmIdentifier::SpecialIdentifier::caller: ///< () -> u256
+      Ty = std::make_shared<FunctionType>(
+          std::vector<TypePtr>{},
+          std::vector<TypePtr>{
+              std::make_shared<IntegerType>(IntegerType::IntKind::U256)});
+      break;
+    case AsmIdentifier::SpecialIdentifier::callvalue: ///< () -> u256
+      Ty = std::make_shared<FunctionType>(
+          std::vector<TypePtr>{},
+          std::vector<TypePtr>{
+              std::make_shared<IntegerType>(IntegerType::IntKind::U256)});
+      break;
+    case AsmIdentifier::SpecialIdentifier::calldataload: ///< (u256) -> u256
+      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty},
+                                          std::vector<TypePtr>{Ty});
+      break;
+    case AsmIdentifier::SpecialIdentifier::calldatasize: ///< () -> u256
+      Ty = std::make_shared<FunctionType>(
+          std::vector<TypePtr>{},
+          std::vector<TypePtr>{
+              std::make_shared<IntegerType>(IntegerType::IntKind::U256)});
+      break;
+    case AsmIdentifier::SpecialIdentifier::codecopy: ///< (u256, u256, u256) ->
+                                                     ///< void
+      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty, Ty},
+                                          std::vector<TypePtr>{});
       break;
     case AsmIdentifier::SpecialIdentifier::keccak256: ///< (u256, u256) -> u256
       Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);

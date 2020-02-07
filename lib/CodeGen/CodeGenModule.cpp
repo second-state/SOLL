@@ -190,6 +190,10 @@ void CodeGenModule::initEVMOpcodeDeclaration() {
   FT = llvm::FunctionType::get(EVMIntTy, {}, false);
   Func_getCallValue = getIntrinsic(llvm::Intrinsic::evm_callvalue, FT);
 
+  // evm_callvalue
+  FT = llvm::FunctionType::get(VoidTy, {EVMIntTy, EVMIntTy, EVMIntTy}, false);
+  Func_codeCopy = getIntrinsic(llvm::Intrinsic::evm_codecopy, FT);
+
   // evm_log0
   FT = llvm::FunctionType::get(VoidTy, {EVMIntTy, EVMIntTy}, false);
   Func_log0 = getIntrinsic(llvm::Intrinsic::evm_log0, FT);
@@ -368,6 +372,17 @@ void CodeGenModule::initEEIDeclaration() {
   Func_getCaller->addFnAttr(llvm::Attribute::ArgMemOnly);
   Func_getCaller->addFnAttr(llvm::Attribute::NoUnwind);
   Func_getCaller->addParamAttr(0, llvm::Attribute::WriteOnly);
+
+  // codeCopy
+  FT = llvm::FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty, Int32Ty}, false);
+  Func_codeCopy = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                         "ethereum.codeCopy", TheModule);
+  Func_codeCopy->addFnAttr(Ethereum);
+  Func_codeCopy->addFnAttr(
+      llvm::Attribute::get(VMContext, "wasm-import-name", "codeCopy"));
+  Func_codeCopy->addFnAttr(llvm::Attribute::ArgMemOnly);
+  Func_codeCopy->addFnAttr(llvm::Attribute::NoUnwind);
+  Func_codeCopy->addParamAttr(0, llvm::Attribute::WriteOnly);
 
   // getGasLeft
   FT = llvm::FunctionType::get(Int64Ty, {}, false);
@@ -565,8 +580,7 @@ void CodeGenModule::initHelperDeclaration() {
   }
 
   Func_memcpy = llvm::Function::Create(
-      llvm::FunctionType::get(Int8PtrTy, {Int8PtrTy, Int8PtrTy, Int32Ty},
-                              false),
+      llvm::FunctionType::get(VoidTy, {Int8PtrTy, Int8PtrTy, Int32Ty}, false),
       llvm::Function::InternalLinkage, "solidity.memcpy", TheModule);
   Func_memcpy->addFnAttr(llvm::Attribute::NoUnwind);
   initMemcpy();
@@ -689,7 +703,7 @@ void CodeGenModule::initMemcpy() {
   Builder.CreateCondBr(Cmp2, Loop, Return);
 
   Builder.SetInsertPoint(Return);
-  Builder.CreateRet(Dst);
+  Builder.CreateRetVoid();
 
   SrcPHI->addIncoming(Src, Entry);
   SrcPHI->addIncoming(Src2, Loop);
@@ -1475,8 +1489,8 @@ llvm::Value *CodeGenModule::emitEndianConvert(llvm::Value *Val) {
   if (const unsigned BitWidth = Ty->getIntegerBitWidth(); BitWidth != 256) {
     Ext = Builder.CreateShl(Ext, 256 - BitWidth, "shift_left");
   }
-  llvm::Value *Reverse = Builder.CreateCall(
-      getModule().getFunction("solidity.bswapi256"), {Ext}, Name + ".reverse");
+  llvm::Value *Reverse =
+      Builder.CreateCall(Func_bswap256, {Ext}, Name + ".reverse");
   return Builder.CreateTrunc(Reverse, Ty, Name + ".trunc");
 }
 
@@ -1573,6 +1587,28 @@ llvm::Value *CodeGenModule::emitGetCaller() {
   }
 }
 
+void CodeGenModule::emitCodeCopy(llvm::Value *MemOffset, llvm::Value *Pos,
+                                 llvm::Value *Length) {
+  if (isEVM()) {
+    Length = Builder.CreateZExtOrTrunc(Length, EVMIntTy);
+    Pos = Builder.CreateZExtOrTrunc(Length, EVMIntTy);
+    Builder.CreateCall(
+        Func_codeCopy,
+        {Builder.CreatePtrToInt(
+             Builder.CreateBitCast(MemOffset, Builder.getInt8PtrTy()),
+             EVMIntTy),
+         Pos, Length});
+  } else if (isEWASM()) {
+    Builder.CreateCall(
+        Func_codeCopy,
+        {Builder.CreateBitCast(MemOffset, Builder.getInt8PtrTy()),
+         Builder.CreateZExtOrTrunc(Pos, Int32Ty),
+         Builder.CreateZExtOrTrunc(Length, Int32Ty)});
+  } else {
+    __builtin_unreachable();
+  }
+}
+
 void CodeGenModule::emitLog(llvm::Value *DataOffset, llvm::Value *DataLength,
                             std::vector<llvm::Value *> &Topics) {
   if (isEVM()) {
@@ -1625,10 +1661,14 @@ void CodeGenModule::emitLog(llvm::Value *DataOffset, llvm::Value *DataLength,
       __builtin_unreachable();
     }
   } else if (isEWASM()) {
+    llvm::Value *NumberOfTopics = Builder.getInt32(Topics.size());
+    for (size_t I = Topics.size(); I < 4; ++I) {
+      Topics.emplace_back(llvm::ConstantPointerNull::get(Int256PtrTy));
+    }
     Builder.CreateCall(
-        Func_log, {Builder.CreateBitCast(DataOffset, Builder.getInt8PtrTy()),
-                   DataLength, Builder.getInt32(Topics.size()), Topics[0],
-                   Topics[1], Topics[2], Topics[3]});
+        Func_log,
+        {Builder.CreateBitCast(DataOffset, Builder.getInt8PtrTy()), DataLength,
+         NumberOfTopics, Topics[0], Topics[1], Topics[2], Topics[3]});
   } else {
     __builtin_unreachable();
   }
@@ -1733,7 +1773,8 @@ llvm::Value *CodeGenModule::emitReturnDataCopyBytes(llvm::Value *DataOffset,
 
 llvm::Value *CodeGenModule::emitCallDataLoad(llvm::Value *DataOffset) {
   llvm::Value *CallDataVPtr = Builder.CreateAlloca(Int8Ty, Builder.getIntN(256, 32));
-  emitCallDataCopy(CallDataVPtr, DataOffset, Builder.getIntN(256, 32));
+  emitCallDataCopy(CallDataVPtr, Builder.CreateZExtOrTrunc(DataOffset, Int32Ty),
+                   Builder.getInt32(32));
   llvm::Value *CallDataPtr = Builder.CreateBitCast(CallDataVPtr, Int256PtrTy);
   llvm::Value *CallData = Builder.CreateLoad(Int256Ty, CallDataPtr);
   return CallData;
@@ -1835,6 +1876,25 @@ llvm::Value *CodeGenModule::emitKeccak256(llvm::Value *Bytes) {
   return Result;
 }
 
+llvm::Value *CodeGenModule::emitKeccak256(llvm::Value *Offset,
+                                          llvm::Value *Length) {
+  llvm::Value *Result = nullptr;
+  if (isEVM()) {
+    Result = Builder.CreateCall(Func_sha3,
+                                {Builder.CreatePtrToInt(Offset, EVMIntTy),
+                                 Builder.CreateZExtOrTrunc(Length, EVMIntTy)});
+  } else if (isEWASM()) {
+    llvm::Value *Bytes = llvm::ConstantAggregateZero::get(BytesTy);
+    Bytes = Builder.CreateInsertValue(
+        Bytes, Builder.CreateZExtOrTrunc(Length, Int256Ty), {0});
+    Bytes = Builder.CreateInsertValue(Bytes, Offset, {1});
+    Result = Builder.CreateCall(Func_keccak256, {Bytes});
+  } else {
+    __builtin_unreachable();
+  }
+  return Result;
+}
+
 llvm::Value *CodeGenModule::emitSha256(llvm::Value *Bytes) {
   llvm::Value *Result = nullptr;
   if (isEVM()) {
@@ -1850,6 +1910,11 @@ llvm::Value *CodeGenModule::emitSha256(llvm::Value *Bytes) {
     __builtin_unreachable();
   }
   return Result;
+}
+
+void CodeGenModule::emitMemcpy(llvm::Value *Dst, llvm::Value *Src,
+                               llvm::Value *Length) {
+  Builder.CreateCall(Func_memcpy, {Dst, Src, Length});
 }
 
 llvm::Value *CodeGenModule::emitGetCallDataSize() {
@@ -1958,7 +2023,7 @@ llvm::Value *CodeGenModule::emitGetExternalBalance(llvm::Value *Address) {
   } else if (isEWASM()) {
     llvm::Value *ValPtr = Builder.CreateAlloca(Int128Ty);
     llvm::Value *AddressPtr = Builder.CreateAlloca(AddressTy);
-    Builder.CreateStore(emitEndianConvert(Address), AddressPtr);
+    Builder.CreateStore(Address, AddressPtr);
     Builder.CreateCall(Func_getExternalBalance, {AddressPtr, ValPtr});
     return Builder.CreateLoad(ValPtr);
   } else {

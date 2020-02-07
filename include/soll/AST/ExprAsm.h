@@ -55,6 +55,7 @@ public:
     callcode,
     delegatecall,
     abort,
+    stop,
     return_,
     revert,
     selfdestruct,

@@ -54,7 +54,6 @@ public:
         llvm::Function *ThisFunc = Builder.GetInsertBlock()->getParent();
         llvm::Function *StorageLoad =
             CGM.getModule().getFunction("ethereum.storageLoad");
-        llvm::Function *Memcpy = CGM.getModule().getFunction("solidity.memcpy");
         llvm::BasicBlock *InlineSlot =
             llvm::BasicBlock::Create(CGM.getLLVMContext(), "inline", ThisFunc);
         llvm::BasicBlock *ExtendSlot =
@@ -92,11 +91,10 @@ public:
                                                  Builder.getIntN(256, 0xFF)),
                                1);
         llvm::Value *InlinePtr =
-            Builder.CreateAlloca(CGM.Int8Ty, Builder.getInt16(256));
-        Builder.CreateCall(
-            Memcpy, {Builder.CreateBitCast(InlinePtr, CGM.Int8PtrTy),
-                     Builder.CreateBitCast(ValPtr, CGM.Int8PtrTy),
-                     Builder.CreateZExtOrTrunc(InlineLength, CGM.Int32Ty)});
+            Builder.CreateAlloca(CGM.Int8Ty, Builder.getInt16(32));
+        CGM.emitMemcpy(Builder.CreateBitCast(InlinePtr, CGM.Int8PtrTy),
+                       Builder.CreateBitCast(ValPtr, CGM.Int8PtrTy),
+                       Builder.CreateZExtOrTrunc(InlineLength, CGM.Int32Ty));
         Builder.CreateBr(Done);
 
         // ExtendSlot case
@@ -117,7 +115,7 @@ public:
             Builder.CreateLShr(CGM.getEndianlessValue(Val), 1);
         llvm::Value *Bytes = CGM.emitConcateBytes({Address});
         llvm::Value *Address = CGM.emitKeccak256(Bytes);
-        llvm::Value *AddressPtr = Builder.CreateAlloca(CGM.Int256Ty, nullptr);
+        llvm::Value *AddressPtr = Builder.CreateAlloca(CGM.Int256Ty);
         llvm::Value *ExtendPtr = Builder.CreateAlloca(CGM.Int8Ty, ExtendLength);
         Condition =
             Builder.CreateICmpSGE(ExtendLength, Builder.getIntN(256, 32));
@@ -163,14 +161,13 @@ public:
         Builder.CreateCondBr(Condition, Last, Done);
 
         Builder.SetInsertPoint(Last);
-        AddressPtr = Builder.CreateAlloca(CGM.Int256Ty, nullptr);
+        AddressPtr = Builder.CreateAlloca(CGM.Int256Ty);
         Builder.CreateStore(CGM.getEndianlessValue(PHIAddress), AddressPtr);
         ValPtr = Builder.CreateAlloca(CGM.Int256Ty);
         Builder.CreateCall(StorageLoad, {AddressPtr, ValPtr});
-        Builder.CreateCall(Memcpy,
-                           {Builder.CreateBitCast(PHIPtr, CGM.Int8PtrTy),
-                            Builder.CreateBitCast(ValPtr, CGM.Int8PtrTy),
-                            Builder.CreateZExtOrTrunc(PHIRemain, CGM.Int32Ty)});
+        CGM.emitMemcpy(Builder.CreateBitCast(PHIPtr, CGM.Int8PtrTy),
+                       Builder.CreateBitCast(ValPtr, CGM.Int8PtrTy),
+                       Builder.CreateZExtOrTrunc(PHIRemain, CGM.Int32Ty));
         Builder.CreateBr(Done);
 
         Builder.SetInsertPoint(Done);
@@ -238,7 +235,6 @@ public:
         llvm::Type *Array32Int8Ptr =
             llvm::PointerType::getUnqual(llvm::ArrayType::get(CGM.Int8Ty, 32));
         llvm::Function *ThisFunc = Builder.GetInsertBlock()->getParent();
-        llvm::Function *Memcpy = CGM.getModule().getFunction("solidity.memcpy");
         llvm::BasicBlock *InlineSlot =
             llvm::BasicBlock::Create(CGM.getLLVMContext(), "inline", ThisFunc);
         llvm::BasicBlock *ExtendSlot =
@@ -256,7 +252,7 @@ public:
         llvm::Value *LengthEncode = Builder.CreateShl(Length, 1);
         llvm::Value *Ptr = Builder.CreateExtractValue(Value, {1});
         Ptr = Builder.CreateBitCast(Ptr, Array32Int8Ptr);
-        llvm::Value *AddressPtr = Builder.CreateAlloca(CGM.Int256Ty, nullptr);
+        llvm::Value *AddressPtr = Builder.CreateAlloca(CGM.Int256Ty);
         Builder.CreateStore(Address, AddressPtr);
         llvm::Value *ValPtr = Builder.CreateAlloca(CGM.Int256Ty);
 
@@ -274,10 +270,9 @@ public:
         // +----------+----------+---------+-------+
 
         Builder.SetInsertPoint(InlineSlot);
-        Builder.CreateCall(Memcpy,
-                           {Builder.CreateBitCast(ValPtr, CGM.Int8PtrTy),
-                            Builder.CreateBitCast(Ptr, CGM.Int8PtrTy),
-                            Builder.CreateZExtOrTrunc(Length, CGM.Int32Ty)});
+        CGM.emitMemcpy(Builder.CreateBitCast(ValPtr, CGM.Int8PtrTy),
+                       Builder.CreateBitCast(Ptr, CGM.Int8PtrTy),
+                       Builder.CreateZExtOrTrunc(Length, CGM.Int32Ty));
         llvm::Value *Val = Builder.CreateLoad(ValPtr);
         Val = Builder.CreateOr(Val, CGM.getEndianlessValue(LengthEncode));
         Builder.CreateStore(Val, ValPtr);
@@ -350,13 +345,12 @@ public:
         Builder.CreateCondBr(Condition, Last, Done);
 
         Builder.SetInsertPoint(Last);
-        AddressPtr = Builder.CreateAlloca(CGM.Int256Ty, nullptr);
+        AddressPtr = Builder.CreateAlloca(CGM.Int256Ty);
         Builder.CreateStore(CGM.getEndianlessValue(PHIAddress), AddressPtr);
         ValPtr = Builder.CreateAlloca(CGM.Int256Ty);
-        Builder.CreateCall(Memcpy,
-                           {Builder.CreateBitCast(ValPtr, CGM.Int8PtrTy),
-                            Builder.CreateBitCast(PHIPtr, CGM.Int8PtrTy),
-                            Builder.CreateZExtOrTrunc(PHIRemain, CGM.Int32Ty)});
+        CGM.emitMemcpy(Builder.CreateBitCast(ValPtr, CGM.Int8PtrTy),
+                       Builder.CreateBitCast(PHIPtr, CGM.Int8PtrTy),
+                       Builder.CreateZExtOrTrunc(PHIRemain, CGM.Int32Ty));
         CGM.emitStorageStore(Builder.CreateLoad(AddressPtr),
                              Builder.CreateLoad(ValPtr));
         Builder.CreateBr(Done);
