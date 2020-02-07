@@ -162,8 +162,30 @@ void CodeGenFunction::emitStmt(const Stmt *S) {
 }
 
 void CodeGenFunction::emitDeclStmt(const DeclStmt *DS) {
-  assert(DS->getVarDecls().size() == 1 && "unsupported tuple decoupling!");
-  auto *VD = DS->getVarDecls().front();
+  llvm::SmallVector<llvm::Value *, 8> Addrs;
+  for (const auto *VD : DS->getVarDecls()) {
+    Addrs.push_back(emitVarDecl(VD));
+  }
+  if (DS->getValue()) {
+    llvm::Value *Val = emitExpr(DS->getValue()).load(Builder, CGM);
+    if (Addrs.size() == 1) {
+      Builder.CreateStore(Val, Addrs.front());
+    } else {
+      auto Ty = Val->getType();
+      assert(Ty->isStructTy() && "expect multiple values on RHS");
+      assert(static_cast<llvm::StructType *>(Ty)->getNumElements() ==
+                 Addrs.size() &&
+             "the number of values does not match the number of declarations");
+
+      unsigned int Idx = 0;
+      for (auto *Addr : Addrs) {
+        Builder.CreateStore(Builder.CreateExtractValue(Val, Idx++), Addr);
+      }
+    }
+  }
+}
+
+llvm::Value *CodeGenFunction::emitVarDecl(const Decl *VD) {
   TypePtr Ty;
   if (auto D = dynamic_cast<const VarDecl *>(VD))
     Ty = D->GetType();
@@ -174,25 +196,22 @@ void CodeGenFunction::emitDeclStmt(const DeclStmt *DS) {
   llvm::Value *Addr =
       Builder.CreateAlloca(LLVMTy, nullptr, VD->getName() + ".addr");
   setAddrOfLocalVar(VD, Addr);
-  if (DS->getValue()) {
-    Builder.CreateStore(emitExpr(DS->getValue()).load(Builder, CGM), Addr);
-  } else {
-    switch (Ty->getCategory()) {
-    case Type::Category::Bool:
-    case Type::Category::Integer:
-    case Type::Category::Address:
-      Builder.CreateStore(llvm::ConstantInt::get(LLVMTy, 0), Addr);
-      break;
-    case Type::Category::String:
-    case Type::Category::Bytes:
-    case Type::Category::Array:
-      Builder.CreateStore(llvm::ConstantAggregateZero::get(LLVMTy), Addr);
-      break;
-    default:
-      assert(false && "unknown type");
-      __builtin_unreachable();
-    }
+  switch (Ty->getCategory()) {
+  case Type::Category::Bool:
+  case Type::Category::Integer:
+  case Type::Category::Address:
+    Builder.CreateStore(llvm::ConstantInt::get(LLVMTy, 0), Addr);
+    break;
+  case Type::Category::String:
+  case Type::Category::Bytes:
+  case Type::Category::Array:
+    Builder.CreateStore(llvm::ConstantAggregateZero::get(LLVMTy), Addr);
+    break;
+  default:
+    assert(false && "unknown type");
+    __builtin_unreachable();
   }
+  return Addr;
 }
 
 void CodeGenFunction::emitExprStmt(const ExprStmt *ES) {

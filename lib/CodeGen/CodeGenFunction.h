@@ -82,6 +82,8 @@ private:
   void emitAsmAssignmentStmt(const AsmAssignmentStmt *AS);
   void emitAsmFunctionDeclStmt(const AsmFunctionDeclStmt *FDS);
 
+  llvm::Value *emitVarDecl(const Decl *VD);
+
   void emitBranchOnBoolExpr(const Expr *E, llvm::BasicBlock *TrueBlock,
                             llvm::BasicBlock *FalseBlock);
   ExprValue emitExpr(const Expr *E);
