@@ -50,7 +50,7 @@ void CodeGenFunction::generateYulFunction(const AsmFunctionDecl *FD,
   Builder.SetInsertPoint(EntryBB);
 
   llvm::Argument *PsLLVM = Fn->arg_begin();
-  for (auto *VD : FD->getParams()->getParams()) {
+  for (const auto *VD : FD->getParams()->getParams()) {
     llvm::Argument *Arg = PsLLVM++;
     Arg->setName(VD->getName());
     llvm::Value *ArgAddr =
@@ -58,14 +58,26 @@ void CodeGenFunction::generateYulFunction(const AsmFunctionDecl *FD,
     Builder.CreateStore(Arg, ArgAddr);
     setAddrOfLocalVar(VD, ArgAddr);
   }
+  llvm::SmallVector<llvm::Value *, 8> ReturnValues;
   if (llvm::Type *ReturnType = Fn->getReturnType(); !ReturnType->isVoidTy()) {
-    assert(FD->getReturnParams()->getParams().size() == 1 &&
-           "support one return variable only!");
-    auto *VD = FD->getReturnParams()->getParams().front();
-    ReturnValue =
-        Builder.CreateAlloca(ReturnType, nullptr, VD->getName() + ".addr");
-    Builder.CreateStore(llvm::ConstantInt::get(ReturnType, 0), ReturnValue);
-    setAddrOfLocalVar(VD, ReturnValue);
+    const auto ReturnParams = FD->getReturnParams()->getParams();
+    if (!ReturnType->isStructTy()) {
+      const auto *VD = ReturnParams.front();
+      ReturnValue =
+          Builder.CreateAlloca(ReturnType, nullptr, VD->getName() + ".addr");
+      Builder.CreateStore(llvm::ConstantInt::get(ReturnType, 0), ReturnValue);
+      setAddrOfLocalVar(VD, ReturnValue);
+    } else {
+      unsigned int Idx = 0;
+      for (const auto *VD : ReturnParams) {
+        auto *Ty = ReturnType->getStructElementType(Idx++);
+        ReturnValue =
+            Builder.CreateAlloca(Ty, nullptr, VD->getName() + ".addr");
+        Builder.CreateStore(llvm::ConstantInt::get(Ty, 0), ReturnValue);
+        setAddrOfLocalVar(VD, ReturnValue);
+        ReturnValues.push_back(ReturnValue);
+      }
+    }
   } else {
     ReturnValue = nullptr;
   }
@@ -82,7 +94,18 @@ void CodeGenFunction::generateYulFunction(const AsmFunctionDecl *FD,
   Builder.SetInsertPoint(ReturnBlock);
 
   if (llvm::Type *ReturnType = Fn->getReturnType(); !ReturnType->isVoidTy()) {
-    llvm::Value *RetVal = Builder.CreateLoad(ReturnType, ReturnValue);
+    llvm::Value *RetVal;
+    if (!ReturnType->isStructTy()) {
+      RetVal = Builder.CreateLoad(ReturnType, ReturnValue);
+    } else {
+      RetVal = llvm::ConstantAggregateZero::get(ReturnType);
+      unsigned int Idx = 0;
+      for (auto *V : ReturnValues) {
+        auto *Ty = ReturnType->getStructElementType(Idx);
+        RetVal = Builder.CreateInsertValue(RetVal, Builder.CreateLoad(Ty, V),
+                                           {Idx++});
+      }
+    }
     Builder.CreateRet(RetVal);
   } else {
     Builder.CreateRetVoid();

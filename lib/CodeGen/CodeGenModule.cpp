@@ -1426,18 +1426,23 @@ llvm::FunctionType *CodeGenModule::getFunctionType(const CallableVarDecl *CVD) {
     ArgTypes.push_back(getLLVMType(Ty));
   }
 
-  llvm::Type *RetTypes;
-  const auto &RetList = CVD->getReturnParams()->getParams();
-  if (RetList.empty()) {
-    RetTypes = VoidTy;
-  } else if (RetList.size() == 1) {
-    RetTypes = getLLVMType(RetList.front()->GetType().get());
-  } else {
-    assert(false && "unsupported tuple return!");
-    __builtin_unreachable();
+  llvm::SmallVector<llvm::Type *, 8> RetTypes;
+  for (const auto *Param : CVD->getReturnParams()->getParams()) {
+    const Type *Ty = Param->GetType().get();
+    RetTypes.push_back(getLLVMType(Ty));
   }
 
-  return llvm::FunctionType::get(RetTypes, ArgTypes, false);
+  llvm::Type *RetType;
+  if (RetTypes.empty()) {
+    RetType = VoidTy;
+  } else if (RetTypes.size() == 1) {
+    RetType = RetTypes.front();
+  } else {
+    RetType = llvm::StructType::create(llvm::ArrayRef<llvm::Type *>(RetTypes));
+  }
+
+  assert(llvm::FunctionType::isValidReturnType(RetType));
+  return llvm::FunctionType::get(RetType, ArgTypes, false);
 }
 
 llvm::Function *
