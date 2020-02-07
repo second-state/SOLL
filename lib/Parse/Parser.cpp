@@ -1078,7 +1078,7 @@ std::unique_ptr<Stmt> Parser::parseStatement() {
     ConsumeToken(); // 'return'
     std::unique_ptr<Expr> E;
     if (Tok.isNot(tok::semi)) {
-      E = parseExpression();
+      E = Actions.CreateDummy(parseExpression());
     }
     const SourceLocation End = Tok.getEndLoc();
     if (ExpectAndConsumeSemi()) {
