@@ -11,7 +11,7 @@ contract StateVariables {
     uint bkGasLimit;
     uint bkBlockNumber;
     uint bkBlockTimestamp;
-    uint bkHash;
+    bytes32 bkHash;
     uint gasLeft;
     uint txGasPrice;
     address txOrigin;

@@ -103,10 +103,9 @@ std::unique_ptr<Identifier> Sema::CreateIdentifier(const Token &Tok) {
     case Identifier::SpecialIdentifier::blockhash:
       Ty = std::make_shared<FunctionType>(
           std::vector<TypePtr>{
-              std::make_shared<IntegerType>(IntegerType::IntKind::U256),
-              std::make_shared<FixedBytesType>(FixedBytesType::ByteKind::B32)},
+              std::make_shared<IntegerType>(IntegerType::IntKind::U256)},
           std::vector<TypePtr>{
-              std::make_shared<IntegerType>(IntegerType::IntKind::U32)});
+              std::make_shared<FixedBytesType>(FixedBytesType::ByteKind::B32)});
       break;
     case Identifier::SpecialIdentifier::gasleft:
       Ty = std::make_shared<FunctionType>(
