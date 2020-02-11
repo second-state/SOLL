@@ -1296,11 +1296,14 @@ void CodeGenModule::emitABILoad(const FunctionDecl *FD,
 }
 
 void CodeGenModule::emitEventDecl(const EventDecl *ED) {
-  auto Signature = ED->getSignatureHashUInt32();
-
+  std::vector<llvm::Constant *> Signature;
+  for (auto s : ED->getSignatureHash())
+    Signature.push_back(Builder.getInt8(s));
+  llvm::ArrayType *ATy = llvm::ArrayType::get(Int8Ty, 32);
+  llvm::Constant *Init = llvm::ConstantArray::get(ATy, Signature);
   llvm::GlobalVariable *EventSignature = new llvm::GlobalVariable(
-      TheModule, Int32Ty, true, llvm::GlobalVariable::InternalLinkage,
-      Builder.getInt32(Signature), "solidity.event." + getMangledName(ED));
+      TheModule, ATy, true, llvm::GlobalVariable::InternalLinkage, Init,
+      "solidity.event." + getMangledName(ED));
   EventSignature->setUnnamedAddr(llvm::GlobalVariable::UnnamedAddr::Local);
   EventSignature->setAlignment(1);
 }
