@@ -40,6 +40,10 @@ public:
     shlu256,
     shru256,
     sars256,
+    /// inline assembly
+    shl,
+    shr,
+    sar,
     byte,
     /// memory and storage
     mload,

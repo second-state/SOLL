@@ -83,7 +83,7 @@ private:
         Value = Builder.CreateICmpEQ(Value, Builder.getInt1(false));
         break;
       case UnaryOperatorKind::UO_IsZero:
-        Value = Builder.CreateICmpNE(
+        Value = Builder.CreateICmpEQ(
             Value, llvm::ConstantInt::get(Value->getType(), 0));
         break;
       default:

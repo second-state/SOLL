@@ -58,10 +58,11 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
       {"xoru256", AsmIdentifier::SpecialIdentifier::xoru256},
       {"xor", AsmIdentifier::SpecialIdentifier::xoru256},
       {"shlu256", AsmIdentifier::SpecialIdentifier::shlu256},
-      {"shl", AsmIdentifier::SpecialIdentifier::shlu256},
+      {"shl", AsmIdentifier::SpecialIdentifier::shl},
       {"shru256", AsmIdentifier::SpecialIdentifier::shru256},
-      {"shr", AsmIdentifier::SpecialIdentifier::shru256},
+      {"shr", AsmIdentifier::SpecialIdentifier::shr},
       {"sars256", AsmIdentifier::SpecialIdentifier::sars256},
+      {"sar", AsmIdentifier::SpecialIdentifier::sar},
       // TODO: implement the rest identifiers
       /// memory and storage
       {"mload", AsmIdentifier::SpecialIdentifier::mload},
@@ -166,8 +167,11 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
     case AsmIdentifier::SpecialIdentifier::oru256:
     case AsmIdentifier::SpecialIdentifier::xoru256:
     case AsmIdentifier::SpecialIdentifier::shlu256:
+    case AsmIdentifier::SpecialIdentifier::shl:
     case AsmIdentifier::SpecialIdentifier::shru256:
+    case AsmIdentifier::SpecialIdentifier::shr:
     case AsmIdentifier::SpecialIdentifier::sars256:
+    case AsmIdentifier::SpecialIdentifier::sar:
       Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
       Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty},
                                           std::vector<TypePtr>{Ty});
@@ -436,10 +440,17 @@ Sema::CreateAsmBuiltinCallExpr(SourceRange L, const AsmIdentifier &Callee,
   case AsmIdentifier::SpecialIdentifier::shlu256:
     return std::make_unique<AsmBinaryOperator>(
         L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_Shl);
+  case AsmIdentifier::SpecialIdentifier::shl:
+    return std::make_unique<AsmBinaryOperator>(
+        L, std::move(Args[1]), std::move(Args[0]), std::move(ReturnTy), BO_Shl);
   case AsmIdentifier::SpecialIdentifier::shru256:
     return std::make_unique<AsmBinaryOperator>(
         L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_Shr);
+  case AsmIdentifier::SpecialIdentifier::shr:
+    return std::make_unique<AsmBinaryOperator>(
+        L, std::move(Args[1]), std::move(Args[0]), std::move(ReturnTy), BO_Shr);
   // TODO: case AsmIdentifier::SpecialIdentifier::sars256:
+  // TODO: case AsmIdentifier::SpecialIdentifier::sar:
   default: ///< treated as normal CallExpr
     break;
   }
