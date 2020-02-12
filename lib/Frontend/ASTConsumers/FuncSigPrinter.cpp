@@ -33,6 +33,7 @@ public:
     S.accept(*this);
   }
 
+  void visit(ContractDeclType &) override;
   void visit(FunctionDeclType &) override;
   void visit(ParamListType &) override;
 
@@ -41,6 +42,20 @@ public:
 
 std::unique_ptr<ASTConsumer> CreateFuncSigPrinter(llvm::raw_ostream &Out) {
   return std::make_unique<FuncSigPrinter>(Out);
+}
+
+void FuncSigPrinter::visit(ContractDeclType &C) {
+  if (C.getConstructor() != nullptr) {
+    C.getConstructor()->accept(*this);
+  }
+  if (C.getFallback() != nullptr) {
+    C.getFallback()->accept(*this);
+  }
+  for (auto SN : C.getSubNodes()) {
+    if (auto F = dynamic_cast<const FunctionDecl *>(SN)) {
+      F->accept(*this);
+    }
+  }
 }
 
 void FuncSigPrinter::visit(FunctionDeclType &F) {
