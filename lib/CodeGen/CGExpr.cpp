@@ -982,6 +982,7 @@ llvm::Value *CodeGenFunction::emitAbiEncode(const CallExpr *CE) {
     llvm::Value *padRightLength =
         Builder.CreateSub(Builder.getIntN(256, 32),
                           Builder.CreateURem(Length, Builder.getIntN(256, 32)));
+    // TODO: use memory allocate
     llvm::Value *padRightArray = Builder.CreateAlloca(Int8Ty, padRightLength);
     llvm::Value *padRightBytes = llvm::ConstantAggregateZero::get(BytesTy);
     padRightBytes = Builder.CreateInsertValue(
