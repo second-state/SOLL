@@ -62,7 +62,7 @@ remove_exports() {
 for INPUT in "$@"; do
     BASE="${INPUT%.ll}"
     run "$LLLINK" "$BASE.ll" -o "$BASE.bc" || exit 1
-    run "$LLOPT" -std-link-opts -Oz -polly "$BASE.bc" -o "$BASE.bc" || exit 1
+    run "$LLOPT" -std-link-opts -Oz "$BASE.bc" -o "$BASE.bc" || exit 1
     run "$LLC" -O3 -filetype=obj "$BASE.bc" || exit 1
     run "$WASM_LD" --entry main --gc-sections --allow-undefined "$BASE.o" -o "$BASE.wasm" || exit 1
     remove_exports "$BASE.wasm" || exit 1

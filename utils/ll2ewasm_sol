@@ -92,7 +92,7 @@ for INPUT in "$@"; do
     BASE="${INPUT%.ll}"
     entry main "$BASE.main.ll"
     run "$LLLINK" "$BASE.ll" "$BASE.main.ll" -o "$BASE.bc" || exit 1
-    run "$LLOPT" -std-link-opts -Oz -polly "$BASE.bc" -o "$BASE.bc" || exit 1
+    run "$LLOPT" -std-link-opts -Oz "$BASE.bc" -o "$BASE.bc" || exit 1
     run "$LLC" -O3 -filetype=obj "$BASE.bc" || exit 1
     run "$WASM_LD" --entry main --gc-sections --allow-undefined "$BASE.o" -o "$BASE.wasm" || exit 1
     remove_exports "$BASE.wasm" || exit 1
@@ -104,7 +104,7 @@ for INPUT in "$@"; do
     fi
     entry ctor "$BASE.ctor.ll"
     run "$LLLINK" "$BASE.ll" "$BASE.deploy.ll" "$BASE.ctor.ll" -o "$BASE.deploy.bc" || exit 1
-    run "$LLOPT" -std-link-opts -Oz -polly "$BASE.deploy.bc" -o "$BASE.deploy.bc" || exit 1
+    run "$LLOPT" -std-link-opts -Oz "$BASE.deploy.bc" -o "$BASE.deploy.bc" || exit 1
     run "$LLC" -O3 -filetype=obj "$BASE.deploy.bc" || exit 1
     run "$WASM_LD" --entry main --gc-sections --allow-undefined "$BASE.deploy.o" -o "$BASE.deploy.wasm" || exit 1
     remove_exports "$BASE.deploy.wasm" || exit 1
