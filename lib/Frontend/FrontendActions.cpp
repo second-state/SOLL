@@ -6,6 +6,14 @@
 namespace soll {
 
 std::unique_ptr<ASTConsumer>
+InitOnlyAction::CreateASTConsumer(CompilerInstance &CI,
+                                  llvm::StringRef InFile) {
+  return std::make_unique<ASTConsumer>();
+}
+
+void InitOnlyAction::ExecuteAction() {}
+
+std::unique_ptr<ASTConsumer>
 ASTPrintAction::CreateASTConsumer(CompilerInstance &CI,
                                   llvm::StringRef InFile) {
   return CreateASTPrinter();
@@ -20,6 +28,14 @@ EmitFuncSigAction::CreateASTConsumer(CompilerInstance &CI,
 std::unique_ptr<ASTConsumer>
 EmitABIAction::CreateASTConsumer(CompilerInstance &CI, llvm::StringRef InFile) {
   return CreateABIPrinter();
+}
+
+SyntaxOnlyAction::~SyntaxOnlyAction() {}
+
+std::unique_ptr<ASTConsumer>
+SyntaxOnlyAction::CreateASTConsumer(CompilerInstance &CI,
+                                    llvm::StringRef InFile) {
+  return llvm::make_unique<ASTConsumer>();
 }
 
 } // namespace soll

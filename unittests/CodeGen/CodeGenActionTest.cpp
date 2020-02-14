@@ -10,7 +10,8 @@ namespace {
 
 class NullCodeGenAction : public CodeGenAction {
 public:
-  NullCodeGenAction() : CodeGenAction() {}
+  NullCodeGenAction(llvm::LLVMContext *_VMContext = nullptr)
+      : CodeGenAction(BackendAction::EmitMCNull, _VMContext) {}
 
   void ExecuteAction() override {
     CompilerInstance &CI = getCompilerInstance();

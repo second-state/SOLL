@@ -2,7 +2,6 @@
 #include "soll/CodeGen/CodeGenAction.h"
 #include "soll/Basic/SourceManager.h"
 #include "soll/Basic/TargetOptions.h"
-#include "soll/CodeGen/BackendUtil.h"
 #include "soll/CodeGen/ModuleBuilder.h"
 #include "soll/Frontend/CompilerInstance.h"
 #include <llvm/IR/DiagnosticInfo.h>
@@ -30,6 +29,7 @@ public:
 };
 
 class BackendConsumer : public ASTConsumer {
+  BackendAction Action;
   DiagnosticsEngine &Diags;
   const TargetOptions &TargetOpts;
   std::unique_ptr<llvm::raw_pwrite_stream> AsmOutStream;
@@ -38,13 +38,13 @@ class BackendConsumer : public ASTConsumer {
   std::unique_ptr<CodeGenerator> Gen;
 
 public:
-  BackendConsumer(DiagnosticsEngine &Diags, TargetOptions &TargetOpts,
-                  const std::string &InFile,
+  BackendConsumer(BackendAction Action, DiagnosticsEngine &Diags,
+                  TargetOptions &TargetOpts, const std::string &InFile,
                   std::unique_ptr<llvm::raw_pwrite_stream> OS,
                   llvm::LLVMContext &C)
-      : Diags(Diags), TargetOpts(TargetOpts), AsmOutStream(std::move(OS)),
-        Context(nullptr), Gen(CreateLLVMCodeGen(Diags, InFile, C, TargetOpts)) {
-  }
+      : Action(Action), Diags(Diags), TargetOpts(TargetOpts),
+        AsmOutStream(std::move(OS)), Context(nullptr),
+        Gen(CreateLLVMCodeGen(Diags, InFile, C, TargetOpts)) {}
   llvm::Module *getModule() const { return Gen->getModule(); }
 
   CodeGenerator *getCodeGenerator() { return Gen.get(); }
@@ -64,9 +64,8 @@ public:
       return;
     }
 
-    EmbedBitcode(getModule(), llvm::MemoryBufferRef());
     EmitBackendOutput(Diags, TargetOpts, getModule()->getDataLayout(),
-                      getModule(), std::move(AsmOutStream));
+                      getModule(), Action, std::move(AsmOutStream));
   }
 };
 
@@ -75,26 +74,63 @@ bool SollDiagnosticHandler::handleDiagnostics(const llvm::DiagnosticInfo &DI) {
   return true;
 }
 
-CodeGenAction::CodeGenAction()
-    : OwnedVMContext(std::make_unique<llvm::LLVMContext>()),
-      VMContext(OwnedVMContext.get()) {}
+CodeGenAction::CodeGenAction(BackendAction Action, llvm::LLVMContext *VMContext)
+    : Action(Action),
+      OwnedVMContext(VMContext ? nullptr
+                               : std::make_unique<llvm::LLVMContext>()),
+      VMContext(VMContext ? VMContext : OwnedVMContext.get()) {}
 
-CodeGenAction::CodeGenAction(llvm::LLVMContext *VMContext)
-    : OwnedVMContext(), VMContext(VMContext) {}
+static std::unique_ptr<llvm::raw_pwrite_stream>
+GetOutputStream(CompilerInstance &CI, llvm::StringRef InFile,
+                BackendAction Action) {
+  switch (Action) {
+  case BackendAction::EmitAssembly:
+    return CI.createDefaultOutputFile(false, InFile, "s");
+  case BackendAction::EmitLL:
+    return CI.createDefaultOutputFile(false, InFile, "ll");
+  case BackendAction::EmitBC:
+    return CI.createDefaultOutputFile(true, InFile, "bc");
+  case BackendAction::EmitNothing:
+    return nullptr;
+  case BackendAction::EmitMCNull:
+    return CI.createNullOutputFile();
+  case BackendAction::EmitObj:
+    return CI.createDefaultOutputFile(true, InFile, "o");
+  }
+
+  llvm_unreachable("Invalid action!");
+}
 
 std::unique_ptr<ASTConsumer>
 CodeGenAction::CreateASTConsumer(CompilerInstance &CI, llvm::StringRef InFile) {
   std::unique_ptr<llvm::raw_pwrite_stream> OS =
-      CI.createDefaultOutputFile(false, InFile, "ll");
+      GetOutputStream(CI, InFile, Action);
 
-  return std::make_unique<BackendConsumer>(CI.getDiagnostics(),
+  if (Action != BackendAction::EmitNothing && !OS) {
+    return nullptr;
+  }
+
+  return std::make_unique<BackendConsumer>(Action, CI.getDiagnostics(),
                                            CI.getTargetOpts(), InFile,
                                            std::move(OS), *VMContext);
 }
 
-EmitLLVMAction::EmitLLVMAction() : CodeGenAction() {}
+EmitAssemblyAction::EmitAssemblyAction(llvm::LLVMContext *VMContext)
+    : CodeGenAction(BackendAction::EmitAssembly, VMContext) {}
+
+EmitBCAction::EmitBCAction(llvm::LLVMContext *VMContext)
+    : CodeGenAction(BackendAction::EmitBC, VMContext) {}
 
 EmitLLVMAction::EmitLLVMAction(llvm::LLVMContext *VMContext)
-    : CodeGenAction(VMContext) {}
+    : CodeGenAction(BackendAction::EmitLL, VMContext) {}
+
+EmitLLVMOnlyAction::EmitLLVMOnlyAction(llvm::LLVMContext *VMContext)
+    : CodeGenAction(BackendAction::EmitNothing, VMContext) {}
+
+EmitCodeGenOnlyAction::EmitCodeGenOnlyAction(llvm::LLVMContext *_VMContext)
+    : CodeGenAction(BackendAction::EmitMCNull, _VMContext) {}
+
+EmitObjAction::EmitObjAction(llvm::LLVMContext *_VMContext)
+    : CodeGenAction(BackendAction::EmitObj, _VMContext) {}
 
 } // namespace soll

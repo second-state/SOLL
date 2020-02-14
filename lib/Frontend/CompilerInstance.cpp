@@ -137,9 +137,14 @@ void CompilerInstance::createSema() {
 std::unique_ptr<llvm::raw_pwrite_stream>
 CompilerInstance::createDefaultOutputFile(bool Binary, llvm::StringRef InFile,
                                           llvm::StringRef Extension) {
-  return createOutputFile("-", Binary,
+  return createOutputFile(getFrontendOpts().OutputFile, Binary,
                           /*RemoveFileOnSignal=*/true, InFile, Extension,
-                          /*UseTemporary=*/true);
+                          /*UseTemporary=*/false);
+}
+
+std::unique_ptr<llvm::raw_pwrite_stream>
+CompilerInstance::createNullOutputFile() {
+  return std::make_unique<llvm::raw_null_ostream>();
 }
 
 std::unique_ptr<llvm::raw_pwrite_stream> CompilerInstance::createOutputFile(

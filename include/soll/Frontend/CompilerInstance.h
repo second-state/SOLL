@@ -165,6 +165,8 @@ public:
                    bool CreateMissingDirectories, std::string *ResultPathName,
                    std::string *TempPathName);
 
+  std::unique_ptr<llvm::raw_pwrite_stream> createNullOutputFile();
+
   bool InitializeSourceManager(const FrontendInputFile &Input);
 
   bool ExecuteAction(FrontendAction &action);

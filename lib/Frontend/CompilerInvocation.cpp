@@ -37,11 +37,18 @@ static cl::opt<DeployPlatformKind> DeployPlatform(
     cl::cat(SollCategory));
 
 static cl::opt<ActionKind> Action("action", cl::Optional, cl::ValueRequired,
-                                  cl::init(EmitLLVM),
+                                  cl::init(EmitObj),
                                   cl::values(clEnumVal(ASTDump, "")),
+                                  cl::values(clEnumVal(EmitAssembly, "")),
+                                  cl::values(clEnumVal(EmitBC, "")),
                                   cl::values(clEnumVal(EmitLLVM, "")),
+                                  cl::values(clEnumVal(EmitLLVMOnly, "")),
+                                  cl::values(clEnumVal(EmitCodeGenOnly, "")),
+                                  cl::values(clEnumVal(EmitObj, "")),
                                   cl::values(clEnumVal(EmitFuncSig, "")),
                                   cl::values(clEnumVal(EmitABI, "")),
+                                  cl::values(clEnumVal(InitOnly, "")),
+                                  cl::values(clEnumVal(ParseSyntaxOnly, "")),
                                   cl::cat(SollCategory));
 
 static cl::opt<TargetKind>

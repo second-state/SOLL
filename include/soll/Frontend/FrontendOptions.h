@@ -7,7 +7,40 @@
 namespace soll {
 
 enum InputKind { Sol, Yul };
-enum ActionKind { ASTDump, EmitLLVM, EmitFuncSig, EmitABI };
+enum ActionKind {
+  /// Parse ASTs and print them.
+  ASTDump,
+
+  /// Emit a .s file.
+  EmitAssembly,
+
+  /// Emit a .bc file.
+  EmitBC,
+
+  /// Emit a .ll file.
+  EmitLLVM,
+
+  /// Generate LLVM IR, but do not emit anything.
+  EmitLLVMOnly,
+
+  /// Generate machine code, but don't emit anything.
+  EmitCodeGenOnly,
+
+  /// Emit a .o file.
+  EmitObj,
+
+  /// Emit function signatures.
+  EmitFuncSig,
+
+  /// Emit ABI json.
+  EmitABI,
+
+  /// Only execute frontend initialization.
+  InitOnly,
+
+  /// Parse and perform semantic analysis.
+  ParseSyntaxOnly,
+};
 
 class FrontendInputFile {
   /// The file name, or "-" to read from standard input.
@@ -40,6 +73,11 @@ public:
   bool ShowVersion;
   std::vector<FrontendInputFile> Inputs;
   InputKind Language = Sol;
+
+  /// The output file, if any.
+  std::string OutputFile;
+
+  /// The frontend action to perform.
   ActionKind ProgramAction = EmitLLVM;
 };
 
