@@ -13,6 +13,8 @@ object "tuple" {
     }
 
     let a, b := swap(2, 1)
+    sstore(0x0a, a)
+    sstore(0x0b, b)
   }
   // Unreferenced data is not added to the assembled bytecode.
   data "str" "Tuple is identifier list in Yul."

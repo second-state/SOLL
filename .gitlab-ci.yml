@@ -63,6 +63,7 @@ compile:wasm:
   script:
     - bash -c "./utils/compile -v sol ewasm ${TEST_ENVDIR}/test/*.sol"
     - bash -c "./utils/compile -v yul ewasm test/yul/switch.yul"
+    - bash -c "./utils/compile -v yul ewasm test/yul/tuple.yul"
   after_script:
     - cp ${TEST_ENVDIR}/test/*.wasm ${BASE_BINDIR}
     - cp test/yul/*.wasm ${BASE_BINDIR}
@@ -82,6 +83,7 @@ test:wasm:
     - bash -c "cd ${BASE_BINDIR} && ctest"
     - bash -c "cd ${TEST_ENVDIR} && mocha"
     - bash -c "cd ${TEST_ENVDIR} && ./index.js test/switch.wasm '' '{}'"
+    - bash -c "cd ${TEST_ENVDIR} && ./index.js test/tuple.wasm '' '{}'"
   cache:
     <<: *cache_paths
     key: ubuntu-clang
