@@ -157,7 +157,7 @@ public:
         PHIPtr->addIncoming(NextendPtr, Loop);
         PHIAddress->addIncoming(Address, ExtendSlot);
         PHIAddress->addIncoming(NextAddress, Loop);
-        Condition = Builder.CreateICmpSGE(PHIRemain, Builder.getIntN(256, 0));
+        Condition = Builder.CreateICmpSGT(PHIRemain, Builder.getIntN(256, 0));
         Builder.CreateCondBr(Condition, Last, Done);
 
         Builder.SetInsertPoint(Last);
@@ -341,7 +341,7 @@ public:
         PHIPtr->addIncoming(NextendPtr, Loop);
         PHIAddress->addIncoming(Address, ExtendSlot);
         PHIAddress->addIncoming(NextAddress, Loop);
-        Condition = Builder.CreateICmpSGE(PHIRemain, Builder.getIntN(256, 0));
+        Condition = Builder.CreateICmpSGT(PHIRemain, Builder.getIntN(256, 0));
         Builder.CreateCondBr(Condition, Last, Done);
 
         Builder.SetInsertPoint(Last);
