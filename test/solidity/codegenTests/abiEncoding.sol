@@ -16,11 +16,11 @@ contract ABI_encoding {
         return 12341234;
     }
 
-    function encode() public payable returns(bytes){
+    function encode() public payable returns(bytes memory){
         return abi.encode(a,s1,b,abi.encode(a,b,c,d,e),Jinkela(),b1,d,s2,e);
     }
 
-    function encodePacked() public payable returns(bytes){
+    function encodePacked() public payable returns(bytes memory){
         return abi.encodePacked(a,s1,b,abi.encodePacked(a,b,c,d,e),Jinkela(),b1,d,s2,e);
     }
 }

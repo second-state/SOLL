@@ -47,6 +47,7 @@ public:
   virtual Category getCategory() const = 0;
   virtual std::string getName() const = 0;
   virtual bool isDynamic() const = 0;
+  virtual bool shouldEndianLess() const = 0;
   virtual unsigned getABIStaticSize() const = 0;
   virtual bool isEqual(Type const &Ty) const {
     return Ty.getCategory() == getCategory();
@@ -63,6 +64,7 @@ public:
   unsigned int getBitNum() const override { return 160; }
   std::string getName() const override { return "address"; }
   bool isDynamic() const override { return false; }
+  bool shouldEndianLess() const override { return true; }
   unsigned getABIStaticSize() const override { return 32; }
 };
 
@@ -71,6 +73,7 @@ public:
   Category getCategory() const override { return Category::Bool; }
   std::string getName() const override { return "bool"; }
   bool isDynamic() const override { return false; }
+  bool shouldEndianLess() const override { return true; }
   unsigned getABIStaticSize() const override { return 32; }
   unsigned int getBitNum() const override { return 1; }
 };
@@ -175,6 +178,7 @@ public:
     return oss.str();
   }
   bool isDynamic() const override { return false; }
+  bool shouldEndianLess() const override { return true; }
   unsigned getABIStaticSize() const override { return 32; }
   bool isEqual(Type const &Ty) const override {
     return Type::isEqual(Ty) &&
@@ -234,6 +238,7 @@ public:
     return oss.str();
   }
   bool isDynamic() const override { return false; }
+  bool shouldEndianLess() const override { return false; }
   unsigned getABIStaticSize() const override { return 32; }
   bool isEqual(Type const &Ty) const override {
     return Type::isEqual(Ty) &&
@@ -248,6 +253,7 @@ class StringType : public Type {
   Category getCategory() const override { return Category::String; }
   std::string getName() const override { return "string"; }
   bool isDynamic() const override { return true; }
+  bool shouldEndianLess() const override { return false; }
   unsigned getABIStaticSize() const override { return 32; }
 };
 
@@ -255,6 +261,7 @@ class BytesType : public Type {
   Category getCategory() const override { return Category::Bytes; }
   std::string getName() const override { return "bytes"; }
   bool isDynamic() const override { return true; }
+  bool shouldEndianLess() const override { return false; }
   unsigned getABIStaticSize() const override { return 32; }
 };
 
@@ -284,6 +291,7 @@ public:
   Category getCategory() const override { return Category::Mapping; }
   std::string getName() const override { return "mapping"; }
   bool isDynamic() const override { return false; }
+  bool shouldEndianLess() const override { return false; }
   unsigned getABIStaticSize() const override {
     assert(false && "mapping is not allowed here");
     __builtin_unreachable();
@@ -317,6 +325,7 @@ public:
       return getElementType()->isDynamic();
     }
   }
+  bool shouldEndianLess() const override { return false; }
   unsigned getABIStaticSize() const override {
     if (isDynamicSized()) {
       return 32;
@@ -341,6 +350,7 @@ public:
   Category getCategory() const override { return Category::Function; }
   std::string getName() const override { return "function"; }
   bool isDynamic() const override { return false; }
+  bool shouldEndianLess() const override { return false; }
   unsigned getABIStaticSize() const override { return 32; }
   bool isEqual(Type const &Ty) const override {
     if (!Type::isEqual(Ty)) {
@@ -374,6 +384,7 @@ class ContractType : public Type {
     assert(false && "contract is not allowed here");
     __builtin_unreachable();
   }
+  bool shouldEndianLess() const override { return false; }
   unsigned getABIStaticSize() const override {
     assert(false && "contract is not allowed here");
     __builtin_unreachable();

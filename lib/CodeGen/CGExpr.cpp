@@ -932,8 +932,15 @@ llvm::Value *CodeGenFunction::emitAbiEncodePacked(const CallExpr *CE) {
   // TODO: we need to support array, tuple, struct
   auto Arguments = CE->getArguments();
   std::vector<llvm::Value *> Args;
-  for (const auto &arg : Arguments) {
-    Args.emplace_back(emitExpr(arg).load(Builder, CGM));
+  for (const auto &Arg : Arguments) {
+    llvm::Value *Value = emitExpr(Arg).load(Builder, CGM);
+    if (Arg->getType()->getCategory() == Type::Category::Bool) {
+      Value = Builder.CreateZExt(Value, Int8Ty);
+    }
+    if (Arg->getType()->shouldEndianLess()) {
+      Value = CGM.getEndianlessValue(Value);
+    }
+    Args.emplace_back(Value);
   }
   llvm::Value *Bytes =
       CGM.emitConcateBytes(llvm::ArrayRef<llvm::Value *>(Args));
@@ -944,48 +951,54 @@ llvm::Value *CodeGenFunction::emitAbiEncode(const CallExpr *CE) {
   // abi_encode
   // TODO: we need to support array, tuple, struct
   auto Arguments = CE->getArguments();
-  std::vector<llvm::Value *> head;
-  std::vector<std::pair<llvm::Value *, size_t>> tail;
-  unsigned pos = 0;
-  for (const auto &arg : Arguments) {
-    llvm::Value *value = emitExpr(arg).load(Builder, CGM);
-    if (arg->getType()->isDynamic()) {
-      tail.emplace_back(value, head.size());
-      head.emplace_back(nullptr);
+  std::vector<llvm::Value *> Head;
+  std::vector<std::pair<llvm::Value *, size_t>> Tail;
+  unsigned Pos = 0;
+  for (const auto &Arg : Arguments) {
+    llvm::Value *Value = emitExpr(Arg).load(Builder, CGM);
+    if (Arg->getType()->isDynamic()) {
+      Tail.emplace_back(Value, Head.size());
+      Head.emplace_back(nullptr);
     } else {
-      head.emplace_back(Builder.CreateZExt(value, Int256Ty));
+      if (Arg->getType()->shouldEndianLess()) {
+        Head.emplace_back(
+            CGM.getEndianlessValue(Builder.CreateZExt(Value, Int256Ty)));
+      } else {
+        Head.emplace_back(Builder.CreateZExt(Value, Int256Ty));
+      }
     }
-    pos += arg->getType()->getABIStaticSize();
+    Pos += Arg->getType()->getABIStaticSize();
   }
-  llvm::Value *tailPos = Builder.getIntN(256, pos);
-  for (auto arg : tail) {
-    llvm::Value *value;
-    size_t headPos;
-    std::tie(value, headPos) = arg;
-    head[headPos] = tailPos;
+  llvm::Value *TailPos = Builder.getIntN(256, Pos);
+  for (auto Arg : Tail) {
+    llvm::Value *Value;
+    size_t HeadPos;
+    std::tie(Value, HeadPos) = Arg;
+    Head[HeadPos] = CGM.getEndianlessValue(TailPos);
     llvm::Value *Length = Builder.CreateZExtOrTrunc(
-        Builder.CreateExtractValue(value, {0}), Int256Ty);
-    llvm::Value *SrcBytes = Builder.CreateExtractValue(value, {1});
-    head.emplace_back(Length);
-    tailPos = Builder.CreateAdd(tailPos, Builder.getIntN(256, 32));
-    head.emplace_back(value);
-    llvm::Value *padRightLength =
-        Builder.CreateSub(Builder.getIntN(256, 32),
-                          Builder.CreateURem(Length, Builder.getIntN(256, 32)));
+        Builder.CreateExtractValue(Value, {0}), Int256Ty);
+    Head.emplace_back(CGM.getEndianlessValue(Length));
+    TailPos = Builder.CreateAdd(TailPos, Builder.getIntN(256, 32));
+    Head.emplace_back(Value);
+    llvm::Value *LowBits = Builder.getInt(llvm::APInt::getLowBitsSet(256, 5));
+    llvm::Value *PadRightLength =
+        Builder.CreateAnd(Builder.CreateSub(Builder.getIntN(256, 32),
+                                            Builder.CreateAnd(Length, LowBits)),
+                          LowBits);
     // TODO: use memory allocate
-    llvm::Value *padRightArray = Builder.CreateAlloca(Int8Ty, padRightLength);
-    llvm::Value *padRightBytes = llvm::ConstantAggregateZero::get(BytesTy);
-    padRightBytes = Builder.CreateInsertValue(
-        padRightBytes, Builder.CreateZExtOrTrunc(padRightLength, Int256Ty),
+    llvm::Value *PadRightArray = Builder.CreateAlloca(Int8Ty, PadRightLength);
+    llvm::Value *PadRightBytes = llvm::ConstantAggregateZero::get(BytesTy);
+    PadRightBytes = Builder.CreateInsertValue(
+        PadRightBytes, Builder.CreateZExtOrTrunc(PadRightLength, Int256Ty),
         {0});
-    padRightBytes =
-        Builder.CreateInsertValue(padRightBytes, padRightArray, {1});
-    head.emplace_back(padRightBytes);
-    tailPos =
-        Builder.CreateAdd(tailPos, Builder.CreateAdd(Length, padRightLength));
+    PadRightBytes =
+        Builder.CreateInsertValue(PadRightBytes, PadRightArray, {1});
+    Head.emplace_back(PadRightBytes);
+    TailPos =
+        Builder.CreateAdd(TailPos, Builder.CreateAdd(Length, PadRightLength));
   }
   llvm::Value *Bytes =
-      CGM.emitConcateBytes(llvm::ArrayRef<llvm::Value *>(head));
+      CGM.emitConcateBytes(llvm::ArrayRef<llvm::Value *>(Head));
   return Bytes;
 }
 

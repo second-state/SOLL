@@ -1510,7 +1510,7 @@ llvm::Value *CodeGenModule::emitExp(llvm::Value *Base, llvm::Value *Exp,
   return Builder.CreateTrunc(Result256, Base->getType());
 }
 
-bool CodeGenModule::isBytesType(llvm::Type *Ty) {
+bool CodeGenModule::isDynamicType(llvm::Type *Ty) {
   return Ty->getTypeID() == BytesTy->getTypeID() ||
          Ty->getTypeID() == StringTy->getTypeID();
 }
@@ -1520,7 +1520,7 @@ CodeGenModule::emitConcateBytes(llvm::ArrayRef<llvm::Value *> Values) {
   llvm::Value *ArrayLength = Builder.getInt32(0);
   for (llvm::Value *Value : Values) {
     llvm::Type *Ty = Value->getType();
-    if (isBytesType(Ty)) {
+    if (isDynamicType(Ty)) {
       llvm::Value *Length = Builder.CreateZExtOrTrunc(
           Builder.CreateExtractValue(Value, {0}), Int32Ty);
       ArrayLength = Builder.CreateAdd(ArrayLength, Length);
@@ -1535,7 +1535,7 @@ CodeGenModule::emitConcateBytes(llvm::ArrayRef<llvm::Value *> Values) {
   for (llvm::Value *Value : Values) {
     llvm::Value *Ptr = Builder.CreateInBoundsGEP(Array, {Index});
     llvm::Type *Ty = Value->getType();
-    if (isBytesType(Ty)) {
+    if (isDynamicType(Ty)) {
       llvm::Value *Length = Builder.CreateZExtOrTrunc(
           Builder.CreateExtractValue(Value, {0}), Int32Ty);
       llvm::Value *SrcBytes = Builder.CreateExtractValue(Value, {1});

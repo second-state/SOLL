@@ -141,7 +141,7 @@ public:
   llvm::Value *emitExp(llvm::Value *Base, llvm::Value *Exp, bool IsSigned);
   llvm::Value *emitEndianConvert(llvm::Value *Val);
   llvm::Value *getEndianlessValue(llvm::Value *Val);
-  bool isBytesType(llvm::Type *Ty);
+  bool isDynamicType(llvm::Type *Ty);
   llvm::Value *emitConcateBytes(llvm::ArrayRef<llvm::Value *> Values);
   void emitUpdateMemorySize(llvm::Value *Pos, llvm::Value *Range);
 
