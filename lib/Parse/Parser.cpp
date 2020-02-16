@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "soll/Parse/Parser.h"
+#include "soll/Basic/DiagnosticIDs.h"
 #include "soll/Basic/DiagnosticParse.h"
 #include "soll/Basic/OperatorPrecedence.h"
 #include "soll/Basic/TokenKinds.h"
@@ -565,10 +566,18 @@ std::unique_ptr<ContractDecl> Parser::parseContractDefinition() {
       if (FD) {
         Actions.addDecl(FD.get());
         if (FD->isConstructor()) {
-          assert(!Constructor && "multiple constructor defined!");
+          if (Constructor) {
+            Diag(FD->getLocation().getBegin(), diag::err_multiple_constuctors);
+            Diag(Constructor->getLocation().getBegin(), diag::note_previous_definition);
+            assert(false && "multiple constructor defined!");
+          }
           Constructor = std::move(FD);
         } else if (FD->isFallback()) {
-          assert(!Fallback && "multiple fallback defined!");
+          if (Fallback) {
+            Diag(FD->getLocation().getBegin(), diag::err_multiple_fallbacks);
+            Diag(Fallback->getLocation().getBegin(), diag::note_previous_definition);
+            assert(false && "multiple fallback defined!");
+          }
           Fallback = std::move(FD);
         } else {
           SubNodes.push_back(std::move(FD));
@@ -638,6 +647,7 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
     Result.Name = Tok.getIdentifierInfo()->getName();
     ConsumeToken(); // identifier
   } else {
+    Diag(diag::err_expected_after) << "'function'" << "identifier";
     assert(false);
   }
 

@@ -24,3 +24,5 @@ DIAG(err_expected_visibility, CLASS_ERROR, (unsigned)diag::Severity::Error, "Exc
 DIAG(err_expected_state_mutability, CLASS_ERROR, (unsigned)diag::Severity::Error, "Except 'payable', 'view', or 'pure'.", 0, false, 1)
 DIAG(err_trailing_comma, CLASS_ERROR, (unsigned)diag::Severity::Error, "Unexpected trailing comma.", 0, false, 1)
 DIAG(warn_constant_removed, CLASS_WARNING, (unsigned)diag::Severity::Warning, "The state mutability modifier 'constant' was removed in version 0.5.0. Use 'view' or 'pure' instead.", 0, false, 1)
+DIAG(err_multiple_constuctors, CLASS_ERROR, (unsigned)diag::Severity::Error, "multiple constructor defined", 0, false, 1)
+DIAG(err_multiple_fallbacks, CLASS_ERROR, (unsigned)diag::Severity::Error, "multiple fallback defined", 0, false, 1)
