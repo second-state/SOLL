@@ -64,6 +64,65 @@ public:
     __builtin_unreachable();
   }
 
+  ExprValue arrayIndexAccess(llvm::Value *BaseValue, llvm::Value *IndexValue,
+                             const Type *Ty, const ArrayType *ArrTy,
+                             bool isStateVariable) {
+    // Array Type : Fixed Size Mem Array, Fixed Sized Storage Array, Dynamic
+    // Sized Storage Array
+    // Require Index to be unsigned 256-bit Int
+
+    if (!isStateVariable) {
+      // TODO : Assume only fixSized Integer Array
+      llvm::Value *ArraySize = Builder.getInt(ArrTy->getLength());
+      emitCheckArrayOutOfBound(ArraySize, IndexValue);
+      llvm::Value *Address = Builder.CreateInBoundsGEP(
+          CGF.getCodeGenModule().getLLVMType(ArrTy), BaseValue,
+          {Builder.getIntN(256, 0), IndexValue});
+      return ExprValue(Ty, ValueKind::VK_LValue, Address);
+    }
+
+    llvm::Value *Pos = Builder.CreateLoad(BaseValue);
+    if (ArrTy->isDynamicSized()) {
+      // load array size and check
+      auto LengthTy = IntegerType::getIntN(256);
+      ExprValue BaseLength(&LengthTy, ValueKind::VK_SValue, BaseValue);
+      llvm::Value *ArraySize = BaseLength.load(Builder, CGF.getCodeGenModule());
+      emitCheckArrayOutOfBound(ArraySize, IndexValue);
+
+      // load array position
+      llvm::Value *Bytes = CGF.getCodeGenModule().emitConcateBytes(
+          {CGF.getCodeGenModule().getEndianlessValue(Pos)});
+      Pos = CGF.CGM.emitKeccak256(Bytes);
+    } else {
+      // Fixed Size Storage Array
+      llvm::Value *ArraySize = Builder.getInt(ArrTy->getLength());
+      emitCheckArrayOutOfBound(ArraySize, IndexValue);
+    }
+
+    unsigned BitPerElement = ArrTy->getElementType()->getBitNum();
+    unsigned ElementPerSlot = 256 / BitPerElement;
+
+    if (ElementPerSlot != 1) {
+      llvm::Value *StorageIndex = Builder.CreateUDiv(
+          Builder.CreateZExtOrTrunc(IndexValue, CGF.Int256Ty),
+          Builder.getIntN(256, ElementPerSlot));
+      llvm::Value *Shift = Builder.CreateURem(
+          Builder.CreateZExtOrTrunc(IndexValue, CGF.Int256Ty),
+          Builder.getIntN(256, ElementPerSlot));
+      llvm::Value *ElemAddress = Builder.CreateAdd(
+          Pos, Builder.CreateZExtOrTrunc(StorageIndex, Pos->getType()));
+      llvm::Value *Address = Builder.CreateAlloca(CGF.Int256Ty);
+      Builder.CreateStore(ElemAddress, Address);
+      return ExprValue(Ty, ValueKind::VK_SValue, Address, Shift);
+    } else {
+      llvm::Value *ElemAddress = Builder.CreateAdd(
+          Pos, Builder.CreateZExtOrTrunc(IndexValue, Pos->getType()));
+      llvm::Value *Address = Builder.CreateAlloca(CGF.Int256Ty);
+      Builder.CreateStore(ElemAddress, Address);
+      return ExprValue(Ty, ValueKind::VK_SValue, Address);
+    }
+  }
+
 private:
   ExprValue visit(const UnaryOperator *UO) {
     const Expr *SubExpr = UO->getSubExpr();
@@ -481,60 +540,9 @@ private:
       return ExprValue(Ty, ValueKind::VK_SValue, AddressPtr);
     }
     if (const auto *ArrTy = dynamic_cast<const ArrayType *>(Base.getType())) {
-      // Array Type : Fixed Size Mem Array, Fixed Sized Storage Array, Dynamic
-      // Sized Storage Array
-      // Require Index to be unsigned 256-bit Int
-
-      llvm::Value *IndexValue = Index.load(Builder, CGM);
-      if (!IA->isStateVariable()) {
-        // TODO : Assume only Integer Array
-        llvm::Value *ArraySize = Builder.getInt(ArrTy->getLength());
-        emitCheckArrayOutOfBound(ArraySize, IndexValue);
-        llvm::Value *Address =
-            Builder.CreateInBoundsGEP(CGM.getLLVMType(ArrTy), Base.getValue(),
-                                      {Builder.getIntN(256, 0), IndexValue});
-        return ExprValue(Ty, ValueKind::VK_LValue, Address);
-      }
-
-      llvm::Value *Pos = Builder.CreateLoad(Base.getValue());
-      if (ArrTy->isDynamicSized()) {
-        // load array size and check
-        auto LengthTy = IntegerType::getIntN(256);
-        ExprValue BaseLength(&LengthTy, ValueKind::VK_SValue, Base.getValue());
-        llvm::Value *ArraySize = BaseLength.load(Builder, CGM);
-        emitCheckArrayOutOfBound(ArraySize, IndexValue);
-
-        // load array position
-        llvm::Value *Bytes =
-            CGM.emitConcateBytes({CGM.getEndianlessValue(Pos)});
-        Pos = CGM.emitKeccak256(Bytes);
-      } else {
-        // Fixed Size Storage Array
-        llvm::Value *ArraySize = Builder.getInt(ArrTy->getLength());
-        emitCheckArrayOutOfBound(ArraySize, IndexValue);
-      }
-
-      unsigned BitPerElement = ArrTy->getElementType()->getBitNum();
-      unsigned ElementPerSlot = 256 / BitPerElement;
-
-      if (ElementPerSlot != 1) {
-        llvm::Value *StorageIndex = Builder.CreateUDiv(
-            Builder.CreateZExtOrTrunc(IndexValue, CGF.Int256Ty),
-            Builder.getIntN(256, ElementPerSlot));
-        llvm::Value *Shift = Builder.CreateURem(
-            Builder.CreateZExtOrTrunc(IndexValue, CGF.Int256Ty),
-            Builder.getIntN(256, ElementPerSlot));
-        llvm::Value *ElemAddress = Builder.CreateAdd(Pos, StorageIndex);
-        llvm::Value *Address = Builder.CreateAlloca(CGF.Int256Ty);
-        Builder.CreateStore(ElemAddress, Address);
-        return ExprValue(Ty, ValueKind::VK_SValue, Address, Shift);
-      } else {
-        llvm::Value *ElemAddress = Builder.CreateAdd(
-            Pos, Builder.CreateZExtOrTrunc(IndexValue, Pos->getType()));
-        llvm::Value *Address = Builder.CreateAlloca(CGF.Int256Ty);
-        Builder.CreateStore(ElemAddress, Address);
-        return ExprValue(Ty, ValueKind::VK_SValue, Address);
-      }
+      llvm::Value *IndexValue = Index.load(Builder, CGF.getCodeGenModule());
+      return arrayIndexAccess(Base.getValue(), IndexValue, Ty, ArrTy,
+                              IA->isStateVariable());
     }
     assert(false && "unknown IndexAccess type");
     __builtin_unreachable();
@@ -673,6 +681,78 @@ private:
       return Id;
     }
     return nullptr;
+  }
+};
+
+class AbiEmitter {
+public:
+  CodeGenFunction &CGF;
+  CodeGenModule &CGM;
+  llvm::IRBuilder<llvm::ConstantFolder> &Builder;
+  llvm::LLVMContext &VMContext;
+  AbiEmitter(CodeGenFunction &CGF)
+      : CGF(CGF), CGM(CGF.getCodeGenModule()), Builder(CGF.getBuilder()),
+        VMContext(CGF.getLLVMContext()) {}
+  llvm::Value *emitEncodePacked(const ExprValue &exprValue,
+                                bool isStateVariable) {
+    const Type *Ty = exprValue.getType();
+    switch (Ty->getCategory()) {
+    case Type::Category::Array:
+    case Type::Category::Struct:
+    case Type::Category::Tuple:
+      assert(false &&
+             "This type is not supported currently for abi.encodePacked");
+      __builtin_unreachable();
+    case Type::Category::Contract:
+    case Type::Category::Function:
+    case Type::Category::Mapping:
+      assert(false &&
+             "This type is not available currently for abi.encodePacked");
+      __builtin_unreachable();
+    default:
+      return exprValue.load(Builder, CGM);
+    }
+  }
+  llvm::Value *emitEncode(const ExprValue &exprValue, bool isStateVariable) {
+    const Type *Ty = exprValue.getType();
+    llvm::Value *value = exprValue.load(Builder, CGM);
+    switch (Ty->getCategory()) {
+    case Type::Category::String:
+    case Type::Category::Bytes: {
+      std::vector<llvm::Value *> concateBytes;
+      llvm::Value *Length = Builder.CreateZExtOrTrunc(
+          Builder.CreateExtractValue(value, {0}), CGF.Int256Ty);
+      concateBytes.emplace_back(Length);
+      concateBytes.emplace_back(value);
+      llvm::Value *padRightLength = Builder.CreateSub(
+          Builder.getIntN(256, 32),
+          Builder.CreateURem(Length, Builder.getIntN(256, 32)));
+      // TODO: use memory allocate
+      llvm::Value *padRightArray =
+          Builder.CreateAlloca(CGF.Int8Ty, padRightLength);
+      llvm::Value *padRightBytes =
+          llvm::ConstantAggregateZero::get(CGF.BytesTy);
+      padRightBytes = Builder.CreateInsertValue(
+          padRightBytes,
+          Builder.CreateZExtOrTrunc(padRightLength, CGF.Int256Ty), {0});
+      padRightBytes =
+          Builder.CreateInsertValue(padRightBytes, padRightArray, {1});
+      concateBytes.emplace_back(padRightBytes);
+      return CGM.emitConcateBytes(llvm::ArrayRef<llvm::Value *>(concateBytes));
+    }
+    case Type::Category::Array:
+    case Type::Category::Struct:
+    case Type::Category::Tuple:
+      assert(false && "This type is not supported currently for abi.encode");
+      __builtin_unreachable();
+    case Type::Category::Contract:
+    case Type::Category::Function:
+    case Type::Category::Mapping:
+      assert(false && "This type is not available currently for abi.encode");
+      __builtin_unreachable();
+    default:
+      return Builder.CreateZExt(value, CGF.Int256Ty);
+    }
   }
 };
 
@@ -963,17 +1043,20 @@ llvm::Value *CodeGenFunction::emitCallAddressSend(const CallExpr *CE,
 llvm::Value *CodeGenFunction::emitAbiEncodePacked(const CallExpr *CE) {
   // abi_encodePacked
   // TODO: we need to support array, tuple, struct
+  AbiEmitter abiEmitter(*this);
   auto Arguments = CE->getArguments();
   std::vector<llvm::Value *> Args;
-  for (const auto &Arg : Arguments) {
-    llvm::Value *Value = emitExpr(Arg).load(Builder, CGM);
-    if (Arg->getType()->getCategory() == Type::Category::Bool) {
-      Value = Builder.CreateZExt(Value, Int8Ty);
+  for (const auto &arg : Arguments) {
+    bool isStateVariable = false; // for array index access
+    if (auto IA = dynamic_cast<const IndexAccess *>(arg)) {
+      isStateVariable = IA->isStateVariable();
+    } else if (auto ID = dynamic_cast<const Identifier *>(arg)) {
+      if (auto *D = dynamic_cast<const VarDecl *>(ID->getCorrespondDecl())) {
+        isStateVariable = D->isStateVariable();
+      }
     }
-    if (Arg->getType()->shouldEndianLess()) {
-      Value = CGM.getEndianlessValue(Value);
-    }
-    Args.emplace_back(Value);
+    Args.emplace_back(
+        abiEmitter.emitEncodePacked(emitExpr(arg), isStateVariable));
   }
   llvm::Value *Bytes =
       CGM.emitConcateBytes(llvm::ArrayRef<llvm::Value *>(Args));
@@ -983,55 +1066,42 @@ llvm::Value *CodeGenFunction::emitAbiEncodePacked(const CallExpr *CE) {
 llvm::Value *CodeGenFunction::emitAbiEncode(const CallExpr *CE) {
   // abi_encode
   // TODO: we need to support array, tuple, struct
+  AbiEmitter abiEmitter(*this);
   auto Arguments = CE->getArguments();
-  std::vector<llvm::Value *> Head;
-  std::vector<std::pair<llvm::Value *, size_t>> Tail;
-  unsigned Pos = 0;
-  for (const auto &Arg : Arguments) {
-    llvm::Value *Value = emitExpr(Arg).load(Builder, CGM);
-    if (Arg->getType()->isDynamic()) {
-      Tail.emplace_back(Value, Head.size());
-      Head.emplace_back(nullptr);
-    } else {
-      if (Arg->getType()->shouldEndianLess()) {
-        Head.emplace_back(
-            CGM.getEndianlessValue(Builder.CreateZExt(Value, Int256Ty)));
-      } else {
-        Head.emplace_back(Builder.CreateZExt(Value, Int256Ty));
+  std::vector<llvm::Value *> head;
+  std::vector<std::pair<llvm::Value *, size_t>> tail;
+  unsigned pos = 0;
+  for (const auto &arg : Arguments) {
+    bool isStateVariable = false; // for array index access
+    if (auto IA = dynamic_cast<const IndexAccess *>(arg)) {
+      isStateVariable = IA->isStateVariable();
+    } else if (auto ID = dynamic_cast<const Identifier *>(arg)) {
+      if (auto *D = dynamic_cast<const VarDecl *>(ID->getCorrespondDecl())) {
+        isStateVariable = D->isStateVariable();
       }
     }
-    Pos += Arg->getType()->getABIStaticSize();
+    llvm::Value *value = abiEmitter.emitEncode(emitExpr(arg), isStateVariable);
+    if (arg->getType()->isDynamic()) {
+      tail.emplace_back(value, head.size());
+      head.emplace_back(nullptr);
+    } else {
+      head.emplace_back(value);
+    }
+    pos += arg->getType()->getABIStaticSize();
   }
-  llvm::Value *TailPos = Builder.getIntN(256, Pos);
-  for (auto Arg : Tail) {
-    llvm::Value *Value;
-    size_t HeadPos;
-    std::tie(Value, HeadPos) = Arg;
-    Head[HeadPos] = CGM.getEndianlessValue(TailPos);
+  llvm::Value *tailPos = Builder.getIntN(256, pos);
+  for (auto arg : tail) {
+    llvm::Value *value;
+    size_t headPos;
+    std::tie(value, headPos) = arg;
+    head[headPos] = tailPos;
+    head.emplace_back(value);
     llvm::Value *Length = Builder.CreateZExtOrTrunc(
-        Builder.CreateExtractValue(Value, {0}), Int256Ty);
-    Head.emplace_back(CGM.getEndianlessValue(Length));
-    TailPos = Builder.CreateAdd(TailPos, Builder.getIntN(256, 32));
-    Head.emplace_back(Value);
-    llvm::Value *LowBits = Builder.getInt(llvm::APInt::getLowBitsSet(256, 5));
-    llvm::Value *PadRightLength =
-        Builder.CreateAnd(Builder.CreateSub(Builder.getIntN(256, 32),
-                                            Builder.CreateAnd(Length, LowBits)),
-                          LowBits);
-    // TODO: use memory allocate
-    llvm::Value *PadRightArray = Builder.CreateAlloca(Int8Ty, PadRightLength);
-    llvm::Value *PadRightBytes = llvm::ConstantAggregateZero::get(BytesTy);
-    PadRightBytes = Builder.CreateInsertValue(
-        PadRightBytes, Builder.CreateZExtOrTrunc(PadRightLength, Int256Ty),
-        {0});
-    PadRightBytes =
-        Builder.CreateInsertValue(PadRightBytes, PadRightArray, {1});
-    Head.emplace_back(PadRightBytes);
-    TailPos =
-        Builder.CreateAdd(TailPos, Builder.CreateAdd(Length, PadRightLength));
+        Builder.CreateExtractValue(value, {0}), Int256Ty);
+    tailPos = Builder.CreateAdd(tailPos, Length);
   }
   llvm::Value *Bytes =
-      CGM.emitConcateBytes(llvm::ArrayRef<llvm::Value *>(Head));
+      CGM.emitConcateBytes(llvm::ArrayRef<llvm::Value *>(head));
   return Bytes;
 }
 
