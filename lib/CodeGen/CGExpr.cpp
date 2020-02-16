@@ -1128,7 +1128,7 @@ ExprValue CodeGenFunction::emitSpecialCallExpr(const Identifier *SI,
   }
 }
 
-llvm::Value *CodeGenFunction::emitGetDataSize(const CallExpr *CE) {
+llvm::Value *CodeGenFunction::emitAsmCallDataSize(const CallExpr *CE) {
   if (auto *ICE =
           dynamic_cast<const ImplicitCastExpr *>(CE->getArguments()[0])) {
     if (auto *SL = dynamic_cast<const StringLiteral *>(ICE->getSubExpr())) {
@@ -1160,7 +1160,7 @@ llvm::Value *CodeGenFunction::emitGetDataSize(const CallExpr *CE) {
   __builtin_unreachable();
 }
 
-llvm::Value *CodeGenFunction::emitGetDataOffset(const CallExpr *CE) {
+llvm::Value *CodeGenFunction::emitAsmCallDataOffset(const CallExpr *CE) {
   if (auto *ICE =
           dynamic_cast<const ImplicitCastExpr *>(CE->getArguments()[0])) {
     if (auto *SL = dynamic_cast<const StringLiteral *>(ICE->getSubExpr())) {
@@ -1291,9 +1291,14 @@ llvm::Value *CodeGenFunction::emitAsmCallCallDataLoad(const CallExpr *CE) {
 
 void CodeGenFunction::emitAsmCallCodeCopy(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
-  CGM.emitCodeCopy(emitExpr(Arguments[0]).load(Builder, CGM),
-                   emitExpr(Arguments[1]).load(Builder, CGM),
-                   emitExpr(Arguments[2]).load(Builder, CGM));
+  llvm::Value *Pos = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *Ptr =
+      Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.ptr");
+  llvm::Value *Code = Builder.CreateIntToPtr(
+      emitExpr(Arguments[1]).load(Builder, CGM), Int8PtrTy);
+  llvm::Value *Length = emitExpr(Arguments[2]).load(Builder, CGM);
+  CGM.emitUpdateMemorySize(Pos, Length);
+  CGM.emitMemcpy(Ptr, Code, Builder.CreateZExtOrTrunc(Length, CGM.Int32Ty));
 }
 
 llvm::Value *CodeGenFunction::emitAsmCallkeccak256(const CallExpr *CE) {
@@ -1419,15 +1424,15 @@ ExprValue CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   case AsmIdentifier::SpecialIdentifier::calldatasize:
     return ExprValue::getRValue(
         CE, Builder.CreateZExtOrTrunc(CGM.emitGetCallDataSize(), CGM.Int256Ty));
+  /// object
   case AsmIdentifier::SpecialIdentifier::dataoffset:
-    return ExprValue::getRValue(CE, emitGetDataOffset(CE));
+    return ExprValue::getRValue(CE, emitAsmCallDataOffset(CE));
   case AsmIdentifier::SpecialIdentifier::datasize:
-    return ExprValue::getRValue(CE, emitGetDataSize(CE));
+    return ExprValue::getRValue(CE, emitAsmCallDataSize(CE));
   case AsmIdentifier::SpecialIdentifier::datacopy:
   case AsmIdentifier::SpecialIdentifier::codecopy:
     emitAsmCallCodeCopy(CE);
     return ExprValue();
-  /// object
   /// misc
   case AsmIdentifier::SpecialIdentifier::keccak256:
     return ExprValue::getRValue(CE, emitAsmCallkeccak256(CE));
