@@ -34,10 +34,10 @@ void TextDiagnosticPrinter::HandleDiagnostic(DiagnosticsEngine::Level Level,
   uint64_t StartOfLocationInfo = OS.tell();
 
   if (!Info.getLocation().isValid()) {
-    TextDiagnostic::printDiagnosticLevel(OS, Level, true);
+    TextDiagnostic::printDiagnosticLevel(OS, Level, DiagOpts->ShowColors);
     TextDiagnostic::printDiagnosticMessage(
         OS, Level != DiagnosticsEngine::Level::Ignored, DiagMessageStream.str(),
-        OS.tell() - StartOfLocationInfo, true);
+        OS.tell() - StartOfLocationInfo, DiagOpts->ShowColors);
     OS.flush();
     return;
   }

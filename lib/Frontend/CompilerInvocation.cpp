@@ -8,6 +8,7 @@
 #include "soll/Frontend/TextDiagnostic.h"
 #include "soll/Frontend/TextDiagnosticPrinter.h"
 #include <llvm/Support/CommandLine.h>
+#include <llvm/Support/Process.h>
 #include <llvm/Support/raw_ostream.h>
 
 namespace cl = llvm::cl;
@@ -52,6 +53,7 @@ bool CompilerInvocation::ParseCommandLineOptions(
   llvm::cl::ParseCommandLineOptions(Arg.size(), Arg.data());
 
   DiagnosticOpts = new DiagnosticOptions();
+  DiagnosticOpts->ShowColors = llvm::sys::Process::StandardErrHasColors();
   DiagRenderer =
       std::make_unique<TextDiagnostic>(llvm::errs(), *DiagnosticOpts);
 

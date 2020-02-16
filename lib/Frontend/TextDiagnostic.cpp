@@ -128,14 +128,15 @@ void TextDiagnostic::emitDiagnosticMessage(
   if (Loc.isValid())
     emitDiagnosticLoc(Loc, PLoc, Level, Ranges);
 
-  OS.resetColor();
+  if (DiagOpts.ShowColors)
+    OS.resetColor();
 
-  printDiagnosticLevel(OS, Level, true);
+  printDiagnosticLevel(OS, Level, DiagOpts.ShowColors);
 
-  printDiagnosticMessage(OS,
-                         /*IsSupplemental*/ Level ==
-                             DiagnosticsEngine::Level::Note,
-                         Message, OS.tell() - StartOfLocationInfo, true);
+  printDiagnosticMessage(
+      OS,
+      /*IsSupplemental*/ Level == DiagnosticsEngine::Level::Note, Message,
+      OS.tell() - StartOfLocationInfo, DiagOpts.ShowColors);
 }
 
 void TextDiagnostic::emitDiagnosticLoc(FullSourceLoc Loc, PresumedLoc PLoc,
@@ -155,7 +156,8 @@ void TextDiagnostic::emitDiagnosticLoc(FullSourceLoc Loc, PresumedLoc PLoc,
   }
   unsigned LineNo = PLoc.getLine();
 
-  OS.changeColor(savedColor, true);
+  if (DiagOpts.ShowColors)
+    OS.changeColor(savedColor, true);
 
   emitFilename(PLoc.getFilename(), Loc.getManager());
 

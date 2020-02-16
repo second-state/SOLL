@@ -7,11 +7,14 @@ namespace soll {
 class DiagnosticOptions : public llvm::RefCountedBase<DiagnosticOptions> {
 public:
   enum class Format : bool { Soll, Vi };
-  DiagnosticOptions() {}
+  DiagnosticOptions() : ShowColors(true) {}
 
 private:
   Format m_Format : 1;
   bool m_WError : 1;
+
+public:
+  bool ShowColors : 1;
 };
 
 } // namespace soll
