@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "CodeGenFunction.h"
 #include "CodeGenModule.h"
+#include <cstdio>
 #include <llvm/IR/CFG.h>
 
 namespace soll::CodeGen {
@@ -697,7 +698,66 @@ public:
                                 bool isStateVariable) {
     const Type *Ty = exprValue.getType();
     switch (Ty->getCategory()) {
-    case Type::Category::Array:
+    case Type::Category::Array: {
+      ExprEmitter exprEmitter(CGF);
+      llvm::Value *value = exprValue.getValue();
+      llvm::Function *ThisFunc = Builder.GetInsertBlock()->getParent();
+      llvm::BasicBlock *Start = Builder.GetInsertBlock();
+      llvm::BasicBlock *Loop =
+          llvm::BasicBlock::Create(CGM.getLLVMContext(), "loop", ThisFunc);
+      llvm::BasicBlock *LoopEnd =
+          llvm::BasicBlock::Create(CGM.getLLVMContext(), "loop_end", ThisFunc);
+
+      const auto *ArrTy = dynamic_cast<const ArrayType *>(Ty);
+      llvm::Value *ArrayLength =
+          Builder.CreateZExtOrTrunc(getArrayLength(value, ArrTy), CGM.Int32Ty);
+      llvm::Value *Int8PtrArray =
+          Builder.CreateAlloca(CGF.Int8PtrTy, ArrayLength);
+      llvm::Value *Int32Array = Builder.CreateAlloca(CGF.Int32Ty, ArrayLength);
+      llvm::Value *Index = Builder.getIntN(32, 0);
+      llvm::Value *LengthSum = Builder.getIntN(32, 0);
+
+      llvm::Value *Condition = Builder.CreateICmpULT(Index, ArrayLength);
+      Builder.CreateCondBr(Condition, Loop, LoopEnd);
+
+      Builder.SetInsertPoint(Loop);
+      llvm::PHINode *PHIIndex = Builder.CreatePHI(CGM.Int32Ty, 2);
+      llvm::PHINode *PHILengthSum = Builder.CreatePHI(CGM.Int32Ty, 2);
+      auto resultValue = exprEmitter.arrayIndexAccess(
+          value, PHIIndex, ArrTy->getElementType().get(), ArrTy,
+          isStateVariable);
+      llvm::Value *resBytes =
+          CGM.emitConcateBytes(llvm::ArrayRef<llvm::Value *>(
+              {emitEncodePacked(resultValue, isStateVariable)}));
+      llvm::Value *resBytesLength = Builder.CreateZExtOrTrunc(
+          Builder.CreateExtractValue(resBytes, {0}), CGM.Int32Ty);
+      llvm::Value *resSrcBytes = Builder.CreateExtractValue(resBytes, {1});
+      llvm::Value *Int8PtrArrayPtr =
+          Builder.CreateInBoundsGEP(Int8PtrArray, {PHIIndex});
+      llvm::Value *Int32ArrayPtr =
+          Builder.CreateInBoundsGEP(Int32Array, {PHIIndex});
+      Builder.CreateStore(resSrcBytes, Int8PtrArrayPtr);
+      Builder.CreateStore(resBytesLength, Int32ArrayPtr);
+      llvm::Value *NextIndex =
+          Builder.CreateAdd(PHIIndex, Builder.getIntN(32, 1));
+      llvm::Value *NextLengthSum =
+          Builder.CreateAdd(PHILengthSum, resBytesLength);
+
+      Condition = Builder.CreateICmpULT(NextIndex, ArrayLength);
+      Builder.CreateCondBr(Condition, Loop, LoopEnd);
+
+      PHIIndex->addIncoming(Index, Start);
+      PHIIndex->addIncoming(NextIndex, Loop);
+      PHILengthSum->addIncoming(LengthSum, Start);
+      PHILengthSum->addIncoming(NextLengthSum, Loop);
+
+      Builder.SetInsertPoint(LoopEnd);
+      PHILengthSum = Builder.CreatePHI(CGM.Int32Ty, 2);
+      PHILengthSum->addIncoming(LengthSum, Start);
+      PHILengthSum->addIncoming(NextLengthSum, Loop);
+      return emitConcateBytesDynamic(ArrayLength, Int8PtrArray, Int32Array,
+                                     PHILengthSum);
+    }
     case Type::Category::Struct:
     case Type::Category::Tuple:
       assert(false &&
@@ -715,15 +775,12 @@ public:
   }
   llvm::Value *emitEncode(const ExprValue &exprValue, bool isStateVariable) {
     const Type *Ty = exprValue.getType();
-    llvm::Value *value = exprValue.load(Builder, CGM);
     switch (Ty->getCategory()) {
     case Type::Category::String:
     case Type::Category::Bytes: {
-      std::vector<llvm::Value *> concateBytes;
+      llvm::Value *value = exprValue.load(Builder, CGM);
       llvm::Value *Length = Builder.CreateZExtOrTrunc(
           Builder.CreateExtractValue(value, {0}), CGF.Int256Ty);
-      concateBytes.emplace_back(Length);
-      concateBytes.emplace_back(value);
       llvm::Value *padRightLength = Builder.CreateSub(
           Builder.getIntN(256, 32),
           Builder.CreateURem(Length, Builder.getIntN(256, 32)));
@@ -737,8 +794,8 @@ public:
           Builder.CreateZExtOrTrunc(padRightLength, CGF.Int256Ty), {0});
       padRightBytes =
           Builder.CreateInsertValue(padRightBytes, padRightArray, {1});
-      concateBytes.emplace_back(padRightBytes);
-      return CGM.emitConcateBytes(llvm::ArrayRef<llvm::Value *>(concateBytes));
+      return CGM.emitConcateBytes(
+          llvm::ArrayRef<llvm::Value *>({Length, value, padRightBytes}));
     }
     case Type::Category::Array:
     case Type::Category::Struct:
@@ -751,8 +808,69 @@ public:
       assert(false && "This type is not available currently for abi.encode");
       __builtin_unreachable();
     default:
-      return Builder.CreateZExt(value, CGF.Int256Ty);
+      return Builder.CreateZExt(exprValue.load(Builder, CGM), CGF.Int256Ty);
     }
+  }
+
+private:
+  llvm::Value *getArrayLength(llvm::Value *BaseValue, const ArrayType *ArrTy) {
+    if (ArrTy->isDynamicSized()) {
+      auto LengthTy = IntegerType::getIntN(256);
+      ExprValue BaseLength(&LengthTy, ValueKind::VK_SValue, BaseValue);
+      return BaseLength.load(Builder, CGM);
+    } else {
+      return Builder.getInt(ArrTy->getLength());
+    }
+  }
+  llvm::Value *emitConcateBytesDynamic(llvm::Value *ArrayLength,
+                                       llvm::Value *Int8PtrArray,
+                                       llvm::Value *Int32Array,
+                                       llvm::Value *ConcateBytesLength) {
+    llvm::Function *Memcpy = CGM.getModule().getFunction("solidity.memcpy");
+    llvm::Function *ThisFunc = Builder.GetInsertBlock()->getParent();
+    llvm::BasicBlock *Start = Builder.GetInsertBlock();
+    llvm::BasicBlock *Loop = llvm::BasicBlock::Create(
+        CGM.getLLVMContext(), "concateBytes_loop", ThisFunc);
+    llvm::BasicBlock *LoopEnd = llvm::BasicBlock::Create(
+        CGM.getLLVMContext(), "concateBytes_loop_end", ThisFunc);
+
+    llvm::Value *Array =
+        Builder.CreateAlloca(CGM.Int8Ty, ConcateBytesLength, "concat");
+    llvm::Value *Index = Builder.getIntN(32, 0);
+    llvm::Value *BytesIndex = Builder.getIntN(32, 0);
+    llvm::Value *Condition = Builder.CreateICmpULT(Index, ArrayLength);
+    Builder.CreateCondBr(Condition, Loop, LoopEnd);
+
+    Builder.SetInsertPoint(Loop);
+    llvm::PHINode *PHIIndex = Builder.CreatePHI(CGM.Int32Ty, 2);
+    llvm::PHINode *PHIBytesIndex = Builder.CreatePHI(CGM.Int32Ty, 2);
+    llvm::Value *Ptr = Builder.CreateInBoundsGEP(Array, {PHIBytesIndex});
+    llvm::Value *Int8PtrArrayPtr =
+        Builder.CreateInBoundsGEP(Int8PtrArray, {PHIIndex});
+    llvm::Value *Int32ArrayPtr =
+        Builder.CreateInBoundsGEP(Int32Array, {PHIIndex});
+    llvm::Value *Length = Builder.CreateLoad(Int32ArrayPtr);
+    llvm::Value *SrcBytes = Builder.CreateLoad(Int8PtrArrayPtr);
+    Builder.CreateCall(
+        Memcpy, {Builder.CreateBitCast(Ptr, CGM.Int8PtrTy), SrcBytes, Length});
+    llvm::Value *NextIndex =
+        Builder.CreateAdd(PHIIndex, Builder.getIntN(32, 1));
+    llvm::Value *NextBytesIndex = Builder.CreateAdd(PHIBytesIndex, Length);
+
+    Condition = Builder.CreateICmpULT(PHIIndex, ArrayLength);
+    Builder.CreateCondBr(Condition, Loop, LoopEnd);
+
+    PHIIndex->addIncoming(Index, Start);
+    PHIIndex->addIncoming(NextIndex, Loop);
+    PHIBytesIndex->addIncoming(BytesIndex, Start);
+    PHIBytesIndex->addIncoming(NextBytesIndex, Loop);
+
+    Builder.SetInsertPoint(LoopEnd);
+    llvm::Value *Bytes = llvm::ConstantAggregateZero::get(CGM.BytesTy);
+    Bytes = Builder.CreateInsertValue(
+        Bytes, Builder.CreateZExtOrTrunc(ArrayLength, CGM.Int256Ty), {0});
+    Bytes = Builder.CreateInsertValue(Bytes, Array, {1});
+    return Bytes;
   }
 };
 
@@ -1046,7 +1164,10 @@ llvm::Value *CodeGenFunction::emitAbiEncodePacked(const CallExpr *CE) {
   AbiEmitter abiEmitter(*this);
   auto Arguments = CE->getArguments();
   std::vector<llvm::Value *> Args;
-  for (const auto &arg : Arguments) {
+  for (auto arg : Arguments) {
+    if (auto CE = dynamic_cast<const CastExpr *>(arg)) {
+      arg = CE->getSubExpr();
+    }
     bool isStateVariable = false; // for array index access
     if (auto IA = dynamic_cast<const IndexAccess *>(arg)) {
       isStateVariable = IA->isStateVariable();
@@ -1071,7 +1192,10 @@ llvm::Value *CodeGenFunction::emitAbiEncode(const CallExpr *CE) {
   std::vector<llvm::Value *> head;
   std::vector<std::pair<llvm::Value *, size_t>> tail;
   unsigned pos = 0;
-  for (const auto &arg : Arguments) {
+  for (auto arg : Arguments) {
+    if (auto CE = dynamic_cast<const CastExpr *>(arg)) {
+      arg = CE->getSubExpr();
+    }
     bool isStateVariable = false; // for array index access
     if (auto IA = dynamic_cast<const IndexAccess *>(arg)) {
       isStateVariable = IA->isStateVariable();
