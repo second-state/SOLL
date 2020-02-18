@@ -415,13 +415,25 @@ void CodeGenFunction::emitAsmSwitchStmt(const AsmSwitchStmt *SS) {
 }
 
 void CodeGenFunction::emitAsmAssignmentStmt(const AsmAssignmentStmt *AS) {
-  // TODO:
-  // - handle multiple assignment (only the first pair is handled here).
-  const AsmIdentifier *AI = AS->getLHS()->getIdentifiers().front();
-  ExprValue LHS = emitExpr(AI);
-  ExprValue RHS = emitExpr(AS->getRHS());
-  llvm::Value *RHSV = RHS.load(Builder, CGM);
-  LHS.store(Builder, CGM, RHSV);
+  llvm::SmallVector<ExprValue, 8> LHSs;
+  for (const auto *AI : AS->getLHS()->getIdentifiers()) {
+    LHSs.push_back(emitExpr(AI));
+  }
+  llvm::Value *RHSV = emitExpr(AS->getRHS()).load(Builder, CGM);
+  if (LHSs.size() == 1) {
+    LHSs.front().store(Builder, CGM, RHSV);
+  } else {
+    const auto RTy = RHSV->getType();
+    assert(RTy->isStructTy() && "expect mutiple values on RHS");
+    assert(static_cast<llvm::StructType *>(RTy)->getNumElements() ==
+               LHSs.size() &&
+           "the number of values does not match the number of identifiers");
+
+    unsigned int Idx = 0;
+    for (auto &LHS : LHSs) {
+      LHS.store(Builder, CGM, Builder.CreateExtractValue(RHSV, Idx++));
+    }
+  }
 }
 
 void CodeGenFunction::emitAsmFunctionDeclStmt(const AsmFunctionDeclStmt *FDS) {
