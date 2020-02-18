@@ -1184,9 +1184,9 @@ void CodeGenFunction::emitAsmCallReturn(const CallExpr *CE) {
   llvm::Value *Pos = emitExpr(Arguments[0]).load(Builder, CGM);
   llvm::Value *Ptr =
       Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.cptr");
-  CGM.emitFinish(
-      Ptr, Builder.CreateZExtOrTrunc(emitExpr(Arguments[1]).load(Builder, CGM),
-                                     CGM.Int32Ty));
+  llvm::Value *Length = emitExpr(Arguments[1]).load(Builder, CGM);
+  CGM.emitUpdateMemorySize(Pos, Length);
+  CGM.emitFinish(Ptr, Builder.CreateZExtOrTrunc(Length, CGM.Int32Ty));
 }
 
 void CodeGenFunction::emitAsmCallRevert(const CallExpr *CE) {
@@ -1194,9 +1194,9 @@ void CodeGenFunction::emitAsmCallRevert(const CallExpr *CE) {
   llvm::Value *Pos = emitExpr(Arguments[0]).load(Builder, CGM);
   llvm::Value *Ptr =
       Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.cptr");
-  CGM.emitRevert(
-      Ptr, Builder.CreateZExtOrTrunc(emitExpr(Arguments[1]).load(Builder, CGM),
-                                     CGM.Int32Ty));
+  llvm::Value *Length = emitExpr(Arguments[1]).load(Builder, CGM);
+  CGM.emitUpdateMemorySize(Pos, Length);
+  CGM.emitRevert(Ptr, Builder.CreateZExtOrTrunc(Length, CGM.Int32Ty));
 }
 
 void CodeGenFunction::emitAsmCallLog(const CallExpr *CE) {
@@ -1204,8 +1204,7 @@ void CodeGenFunction::emitAsmCallLog(const CallExpr *CE) {
   llvm::Value *Pos = emitExpr(Arguments[0]).load(Builder, CGM);
   llvm::Value *Data =
       Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.cptr");
-  llvm::Value *DataLength = Builder.CreateZExtOrTrunc(
-      emitExpr(Arguments[1]).load(Builder, CGM), CGM.Int32Ty);
+  llvm::Value *DataLength = emitExpr(Arguments[1]).load(Builder, CGM);
   std::vector<llvm::Value *> Topics;
   for (size_t I = 2; I < Arguments.size(); I++) {
     llvm::Value *ValPtr = Builder.CreateAlloca(Int256Ty, nullptr);
@@ -1215,7 +1214,8 @@ void CodeGenFunction::emitAsmCallLog(const CallExpr *CE) {
         ValPtr);
     Topics.emplace_back(ValPtr);
   }
-  CGM.emitLog(Data, DataLength, Topics);
+  CGM.emitUpdateMemorySize(Pos, DataLength);
+  CGM.emitLog(Data, Builder.CreateZExtOrTrunc(DataLength, CGM.Int32Ty), Topics);
 }
 
 llvm::Value *CodeGenFunction::emitAsmCallCallDataLoad(const CallExpr *CE) {
@@ -1238,6 +1238,7 @@ llvm::Value *CodeGenFunction::emitAsmCallkeccak256(const CallExpr *CE) {
   llvm::Value *Ptr =
       Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.cptr");
   llvm::Value *Length = emitExpr(Arguments[1]).load(Builder, CGM);
+  CGM.emitUpdateMemorySize(Pos, Length);
   return CGM.emitKeccak256(Ptr, Length);
 }
 
