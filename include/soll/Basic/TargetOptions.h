@@ -4,10 +4,12 @@
 namespace soll {
 
 enum TargetKind { EWASM, EVM };
+enum DeployPlatformKind { Normal, Chain };
 
 class TargetOptions {
 public:
   TargetKind BackendTarget = EWASM;
+  DeployPlatformKind DeployPlatform = Normal;
 };
 
 } // namespace soll

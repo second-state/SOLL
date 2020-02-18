@@ -29,6 +29,13 @@ static cl::opt<InputKind> Language("lang", cl::Optional, cl::ValueRequired,
                                    cl::values(clEnumVal(Yul, "")),
                                    cl::cat(SollCategory));
 
+static cl::opt<DeployPlatformKind> DeployPlatform(
+    "deploy", cl::Optional, cl::ValueRequired, cl::init(Chain),
+    cl::values(clEnumVal(Normal, "Normal case")),
+    cl::values(clEnumVal(Chain, "EWASM vm not support keccak256 yet, so for "
+                                "workaround use sha256 instead")),
+    cl::cat(SollCategory));
+
 static cl::opt<ActionKind> Action("action", cl::Optional, cl::ValueRequired,
                                   cl::init(EmitLLVM),
                                   cl::values(clEnumVal(ASTDump, "")),
@@ -62,7 +69,9 @@ bool CompilerInvocation::ParseCommandLineOptions(
   }
   FrontendOpts.ProgramAction = Action;
   FrontendOpts.Language = Language;
-
+  if (Target == EWASM) {
+    TargetOpts.DeployPlatform = DeployPlatform;
+  }
   TargetOpts.BackendTarget = Target;
   return true;
 }

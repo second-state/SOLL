@@ -1872,7 +1872,11 @@ llvm::Value *CodeGenModule::emitKeccak256(llvm::Value *Bytes) {
                                 {Builder.CreatePtrToInt(Offset, EVMIntTy),
                                  Builder.CreateZExtOrTrunc(Length, EVMIntTy)});
   } else if (isEWASM()) {
-    Result = Builder.CreateCall(Func_keccak256, {Bytes});
+    if (TargetOpts.DeployPlatform == Chain) {
+      Result = Builder.CreateCall(Func_sha256, {Bytes});
+    } else {
+      Result = Builder.CreateCall(Func_keccak256, {Bytes});
+    }
   } else {
     __builtin_unreachable();
   }
@@ -1891,7 +1895,11 @@ llvm::Value *CodeGenModule::emitKeccak256(llvm::Value *Offset,
     Bytes = Builder.CreateInsertValue(
         Bytes, Builder.CreateZExtOrTrunc(Length, Int256Ty), {0});
     Bytes = Builder.CreateInsertValue(Bytes, Offset, {1});
-    Result = Builder.CreateCall(Func_keccak256, {Bytes});
+    if (TargetOpts.DeployPlatform == Chain) {
+      Result = Builder.CreateCall(Func_sha256, {Bytes});
+    } else {
+      Result = Builder.CreateCall(Func_keccak256, {Bytes});
+    }
   } else {
     __builtin_unreachable();
   }
