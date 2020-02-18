@@ -33,6 +33,7 @@ class AsmDefaultStmt;
 class AsmSwitchStmt;
 class AsmAssignmentStmt;
 class AsmFunctionDeclStmt;
+class AsmLeaveStmt;
 class AsmIdentifier;
 class AsmIdentifierList;
 
@@ -70,6 +71,7 @@ protected:
       typename cond_const<Const, AsmAssignmentStmt>::type;
   using AsmFunctionDeclStmtType =
       typename cond_const<Const, AsmFunctionDeclStmt>::type;
+  using AsmLeaveStmtType = typename cond_const<Const, AsmLeaveStmt>::type;
   using AsmIdentifierType = typename cond_const<Const, AsmIdentifier>::type;
   using AsmIdentifierListType =
       typename cond_const<Const, AsmIdentifierList>::type;
@@ -104,6 +106,7 @@ public:
   virtual void visit(AsmSwitchStmtType &);
   virtual void visit(AsmAssignmentStmtType &);
   virtual void visit(AsmFunctionDeclStmtType &);
+  virtual void visit(AsmLeaveStmtType &);
   virtual void visit(AsmIdentifierType &);
   virtual void visit(AsmIdentifierListType &);
 };

@@ -81,6 +81,7 @@ private:
   void emitAsmSwitchStmt(const AsmSwitchStmt *S);
   void emitAsmAssignmentStmt(const AsmAssignmentStmt *AS);
   void emitAsmFunctionDeclStmt(const AsmFunctionDeclStmt *FDS);
+  void emitAsmLeaveStmt(const AsmLeaveStmt *LS);
 
   llvm::Value *emitVarDecl(const Decl *VD);
 

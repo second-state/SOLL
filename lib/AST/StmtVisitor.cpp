@@ -147,6 +147,10 @@ void StmtVisitorBase<Const>::visit(AsmFunctionDeclStmtType &D) {
   // leaf, do nothing
 }
 
+template <bool Const> void StmtVisitorBase<Const>::visit(AsmLeaveStmtType &D) {
+  // leaf, do nothing
+}
+
 template <bool Const> void StmtVisitorBase<Const>::visit(AsmIdentifierType &) {
   // leaf, do nothing
 }

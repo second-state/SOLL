@@ -60,6 +60,14 @@ std::unique_ptr<Stmt> Parser::parseAsmStatement() {
     ConsumeToken(); // 'continue'
     return std::make_unique<ContinueStmt>(Range);
   }
+  case tok::identifier: {
+    if (Tok.getIdentifierInfo()->getName() == "leave") {
+      const SourceRange Range = Tok.getRange();
+      ConsumeToken(); // 'leave'
+      return std::make_unique<AsmLeaveStmt>(Range);
+    }
+    break;
+  }
   // case tok::equalcolon:
   // stack assignment, assembly only
   default:

@@ -159,6 +159,9 @@ void CodeGenFunction::emitStmt(const Stmt *S) {
   if (auto FDS = dynamic_cast<const AsmFunctionDeclStmt *>(S)) {
     return emitAsmFunctionDeclStmt(FDS);
   }
+  if (auto LS = dynamic_cast<const AsmLeaveStmt *>(S)) {
+    return emitAsmLeaveStmt(LS);
+  }
 }
 
 void CodeGenFunction::emitDeclStmt(const DeclStmt *DS) {
@@ -443,6 +446,12 @@ void CodeGenFunction::emitAsmFunctionDeclStmt(const AsmFunctionDeclStmt *FDS) {
   const auto OldPoint = Builder.GetInsertPoint();
   CodeGenFunction(CGM).generateYulFunction(FD, Fn);
   Builder.SetInsertPoint(OldBlock, OldPoint);
+}
+
+void CodeGenFunction::emitAsmLeaveStmt(const AsmLeaveStmt *LS) {
+  llvm::BasicBlock *LeaveReturn = createBasicBlock("leave.after");
+  Builder.CreateBr(ReturnBlock);
+  Builder.SetInsertPoint(LeaveReturn);
 }
 
 ExprValue CodeGenFunction::emitBoolExpr(const Expr *E) {

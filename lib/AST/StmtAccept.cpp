@@ -136,6 +136,11 @@ void AsmFunctionDeclStmt::accept(soll::ConstStmtVisitor &visitor) const {
   visitor.visit(*this);
 }
 
+void AsmLeaveStmt::accept(soll::StmtVisitor &visitor) { visitor.visit(*this); }
+void AsmLeaveStmt::accept(soll::ConstStmtVisitor &visitor) const {
+  visitor.visit(*this);
+}
+
 void AsmIdentifierList::accept(soll::StmtVisitor &visitor) {
   visitor.visit(*this);
 }

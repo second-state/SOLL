@@ -258,6 +258,7 @@ public:
   void visit(AsmSwitchStmtType &) override;
   void visit(AsmAssignmentStmtType &) override;
   void visit(AsmFunctionDeclStmtType &) override;
+  void visit(AsmLeaveStmtType &) override;
   void visit(AsmFunctionDeclType &) override;
   void visit(AsmVarDeclType &) override;
   void visit(AsmIdentifierType &) override;
@@ -526,6 +527,11 @@ void ASTPrinter::visit(AsmAssignmentStmtType &stmt) {
 void ASTPrinter::visit(AsmFunctionDeclStmtType &stmt) {
   os() << indent() << "AsmFunctionDeclStmt\n";
   stmt.getDecl()->accept(*this);
+  unindent();
+}
+
+void ASTPrinter::visit(AsmLeaveStmtType &stmt) {
+  os() << indent() << "AsmLeaveStmt\n";
   unindent();
 }
 

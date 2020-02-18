@@ -116,6 +116,15 @@ public:
   void accept(ConstStmtVisitor &) const override;
 };
 
+class AsmLeaveStmt : public Stmt {
+
+public:
+  AsmLeaveStmt(SourceRange L) : Stmt(L) {}
+
+  void accept(StmtVisitor &visitor) override;
+  void accept(ConstStmtVisitor &visitor) const override;
+};
+
 } // namespace soll
 
 #include "DeclAsm.h"
