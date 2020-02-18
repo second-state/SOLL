@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "CodeGenFunction.h"
 #include "CodeGenModule.h"
-#include <cstdio>
 #include <llvm/IR/CFG.h>
 
 namespace soll::CodeGen {
@@ -797,7 +796,124 @@ public:
       return CGM.emitConcateBytes(
           llvm::ArrayRef<llvm::Value *>({Length, value, padRightBytes}));
     }
-    case Type::Category::Array:
+    case Type::Category::Array: {
+      ExprEmitter exprEmitter(CGF);
+      llvm::Value *value = exprValue.getValue();
+      llvm::Function *ThisFunc = Builder.GetInsertBlock()->getParent();
+      llvm::BasicBlock *Start = Builder.GetInsertBlock();
+      llvm::BasicBlock *Loop =
+          llvm::BasicBlock::Create(CGM.getLLVMContext(), "loop", ThisFunc);
+      llvm::BasicBlock *LoopEnd =
+          llvm::BasicBlock::Create(CGM.getLLVMContext(), "loop_end", ThisFunc);
+
+      const auto *ArrTy = dynamic_cast<const ArrayType *>(Ty);
+      llvm::Value *ArrayLengthInt256 =
+          Builder.CreateZExtOrTrunc(getArrayLength(value, ArrTy), CGM.Int256Ty);
+      llvm::Value *ArrayLength =
+          Builder.CreateZExtOrTrunc(ArrayLengthInt256, CGM.Int32Ty);
+      llvm::Value *BytesNum = ArrayLength;
+      if (ArrTy->isDynamicSized()) {
+        BytesNum = Builder.CreateAdd(BytesNum, Builder.getIntN(32, 1));
+      }
+      if (ArrTy->getElementType()->isDynamic()) {
+        BytesNum = Builder.CreateAdd(BytesNum, ArrayLength);
+      }
+      llvm::Value *Int8PtrArray = Builder.CreateAlloca(CGF.Int8PtrTy, BytesNum);
+      llvm::Value *Int32Array = Builder.CreateAlloca(CGF.Int32Ty, BytesNum);
+      llvm::Value *Index = Builder.getIntN(32, 0);
+
+      unsigned ABIStaticSize = ArrTy->getABIStaticSize();
+      llvm::Value *ABIStaticSizeValue = Builder.getIntN(32, ABIStaticSize);
+      llvm::Value *LengthSum = nullptr;
+      llvm::Value *HeadPos = nullptr;
+      if (ArrTy->isDynamicSized()) {
+        HeadPos = Builder.getIntN(32, 1);
+        LengthSum = Builder.getIntN(32, ABIStaticSize);
+        llvm::Value *Int8PtrArrayPtr =
+            Builder.CreateInBoundsGEP(Int8PtrArray, {Builder.getIntN(32, 0)});
+        llvm::Value *Int32ArrayPtr =
+            Builder.CreateInBoundsGEP(Int32Array, {Builder.getIntN(32, 0)});
+        llvm::Value *Int8TyArray =
+            Builder.CreateAlloca(CGM.Int8Ty, ABIStaticSizeValue);
+        llvm::Value *Ptr =
+            Builder.CreateInBoundsGEP(Int8TyArray, {Builder.getIntN(32, 0)});
+        llvm::Value *CPtr = Builder.CreatePointerCast(
+            Ptr, llvm::PointerType::getUnqual(CGM.Int256Ty));
+        Builder.CreateStore(ArrayLengthInt256, CPtr);
+        Builder.CreateStore(Int8TyArray, Int8PtrArrayPtr);
+        Builder.CreateStore(ABIStaticSizeValue, Int32ArrayPtr);
+      } else {
+        HeadPos = Builder.getIntN(32, 0);
+        LengthSum = Builder.getIntN(32, 0);
+      }
+      llvm::Value *TailPos = nullptr;
+      if (ArrTy->getElementType()->isDynamic()) {
+        TailPos = Builder.CreateAdd(HeadPos, ArrayLength);
+        LengthSum = Builder.CreateAdd(
+            LengthSum, Builder.CreateMul(ABIStaticSizeValue, ArrayLength));
+      } else {
+        TailPos = HeadPos;
+      }
+
+      llvm::Value *Condition = Builder.CreateICmpULT(Index, ArrayLength);
+      Builder.CreateCondBr(Condition, Loop, LoopEnd);
+
+      Builder.SetInsertPoint(Loop);
+      llvm::PHINode *PHIIndex = Builder.CreatePHI(CGM.Int32Ty, 2);
+      llvm::PHINode *PHILengthSum = Builder.CreatePHI(CGM.Int32Ty, 2);
+      auto resultValue = exprEmitter.arrayIndexAccess(
+          value, PHIIndex, ArrTy->getElementType().get(), ArrTy,
+          isStateVariable);
+      llvm::Value *resBytes =
+          CGM.emitConcateBytes(llvm::ArrayRef<llvm::Value *>(
+              {emitEncode(resultValue, isStateVariable)}));
+      if (ArrTy->getElementType()->isDynamic()) {
+        llvm::Value *HeadIndex = Builder.CreateAdd(HeadPos, PHIIndex);
+        llvm::Value *Int8PtrArrayPtr =
+            Builder.CreateInBoundsGEP(Int8PtrArray, {HeadIndex});
+        llvm::Value *Int32ArrayPtr =
+            Builder.CreateInBoundsGEP(Int32Array, {HeadIndex});
+        llvm::Value *Int8TyArray =
+            Builder.CreateAlloca(CGM.Int8Ty, ABIStaticSizeValue);
+        llvm::Value *Ptr =
+            Builder.CreateInBoundsGEP(Int8TyArray, {Builder.getIntN(32, 0)});
+        llvm::Value *CPtr = Builder.CreatePointerCast(
+            Ptr, llvm::PointerType::getUnqual(CGM.Int256Ty));
+        Builder.CreateStore(
+            Builder.CreateZExtOrTrunc(PHILengthSum, CGM.Int256Ty), CPtr);
+        Builder.CreateStore(Int8TyArray, Int8PtrArrayPtr);
+        Builder.CreateStore(ABIStaticSizeValue, Int32ArrayPtr);
+      }
+      llvm::Value *resBytesLength = Builder.CreateZExtOrTrunc(
+          Builder.CreateExtractValue(resBytes, {0}), CGM.Int32Ty);
+      llvm::Value *resSrcBytes = Builder.CreateExtractValue(resBytes, {1});
+      llvm::Value *TailIndex = Builder.CreateAdd(TailPos, PHIIndex);
+      llvm::Value *Int8PtrArrayPtr =
+          Builder.CreateInBoundsGEP(Int8PtrArray, {TailIndex});
+      llvm::Value *Int32ArrayPtr =
+          Builder.CreateInBoundsGEP(Int32Array, {TailIndex});
+      Builder.CreateStore(resSrcBytes, Int8PtrArrayPtr);
+      Builder.CreateStore(resBytesLength, Int32ArrayPtr);
+      llvm::Value *NextIndex =
+          Builder.CreateAdd(PHIIndex, Builder.getIntN(32, 1));
+      llvm::Value *NextLengthSum =
+          Builder.CreateAdd(PHILengthSum, resBytesLength);
+
+      Condition = Builder.CreateICmpULT(NextIndex, ArrayLength);
+      Builder.CreateCondBr(Condition, Loop, LoopEnd);
+
+      PHIIndex->addIncoming(Index, Start);
+      PHIIndex->addIncoming(NextIndex, Loop);
+      PHILengthSum->addIncoming(LengthSum, Start);
+      PHILengthSum->addIncoming(NextLengthSum, Loop);
+
+      Builder.SetInsertPoint(LoopEnd);
+      PHILengthSum = Builder.CreatePHI(CGM.Int32Ty, 2);
+      PHILengthSum->addIncoming(LengthSum, Start);
+      PHILengthSum->addIncoming(NextLengthSum, Loop);
+      return emitConcateBytesDynamic(BytesNum, Int8PtrArray, Int32Array,
+                                     PHILengthSum);
+    }
     case Type::Category::Struct:
     case Type::Category::Tuple:
       assert(false && "This type is not supported currently for abi.encode");
