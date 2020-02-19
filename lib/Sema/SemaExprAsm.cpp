@@ -429,14 +429,17 @@ Sema::CreateAsmBuiltinCallExpr(SourceRange L, const AsmIdentifier &Callee,
     return std::make_unique<AsmUnaryOperator>(L, std::move(Args[0]),
                                               std::move(ReturnTy), UO_Not);
   case AsmIdentifier::SpecialIdentifier::andu256:
-    return std::make_unique<AsmBinaryOperator>(
-        L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_And);
+    return std::make_unique<AsmBinaryOperator>(L, std::move(Args[0]),
+                                               std::move(Args[1]),
+                                               std::move(ReturnTy), BO_AsmAnd);
   case AsmIdentifier::SpecialIdentifier::oru256:
-    return std::make_unique<AsmBinaryOperator>(
-        L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_Or);
+    return std::make_unique<AsmBinaryOperator>(L, std::move(Args[0]),
+                                               std::move(Args[1]),
+                                               std::move(ReturnTy), BO_AsmOr);
   case AsmIdentifier::SpecialIdentifier::xoru256:
-    return std::make_unique<AsmBinaryOperator>(
-        L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_Xor);
+    return std::make_unique<AsmBinaryOperator>(L, std::move(Args[0]),
+                                               std::move(Args[1]),
+                                               std::move(ReturnTy), BO_AsmXor);
   case AsmIdentifier::SpecialIdentifier::shlu256:
     return std::make_unique<AsmBinaryOperator>(
         L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_Shl);

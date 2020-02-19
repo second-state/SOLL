@@ -40,6 +40,12 @@ enum BinaryOperatorKind {
   BO_Xor,
   // Bitwise OR operator.
   BO_Or,
+  // Asm Bitwise AND operator.
+  BO_AsmAnd,
+  // Asm  Bitwise XOR operator.
+  BO_AsmXor,
+  // Asm Bitwise OR operator.
+  BO_AsmOr,
   // Relational operators.
   BO_LT,
   BO_GT,

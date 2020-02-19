@@ -25,6 +25,8 @@ std::string ToString(soll::UnaryOperatorKind op) {
     return "(prefix) --";
   case soll::UO_PostDec:
     return "(postfix) --";
+  case soll::UO_IsZero:
+    return "iszero";
   default:
     return "(unknown unary op)";
   }
@@ -49,10 +51,13 @@ std::string ToString(soll::BinaryOperatorKind op) {
   case soll::BO_Shr:
     return ">>";
   case soll::BO_And:
+  case soll::BO_AsmAnd:
     return "&";
   case soll::BO_Xor:
+  case soll::BO_AsmXor:
     return "^";
   case soll::BO_Or:
+  case soll::BO_AsmOr:
     return "|";
   case soll::BO_LT:
     return "<";

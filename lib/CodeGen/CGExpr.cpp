@@ -195,7 +195,7 @@ private:
       V = RHSVal;
     } else if (BO->isAdditiveOp() || BO->isMultiplicativeOp() ||
                BO->isComparisonOp() || BO->isShiftOp() || BO->isBitwiseOp() ||
-               BO->getOpcode() == BO_Exp) {
+               BO->isAsmBitwiseOp() || BO->getOpcode() == BO_Exp) {
       const bool Signed = isSigned(Ty);
 
       using Pred = llvm::CmpInst::Predicate;
@@ -258,12 +258,15 @@ private:
         }
         break;
       case BinaryOperatorKind::BO_And:
+      case BinaryOperatorKind::BO_AsmAnd:
         V = Builder.CreateAnd(LHS, RHS, "BO_And");
         break;
       case BinaryOperatorKind::BO_Xor:
+      case BinaryOperatorKind::BO_AsmXor:
         V = Builder.CreateXor(LHS, RHS, "BO_Xor");
         break;
       case BinaryOperatorKind::BO_Or:
+      case BinaryOperatorKind::BO_AsmOr:
         V = Builder.CreateOr(LHS, RHS, "BO_Or");
         break;
       case BinaryOperatorKind::BO_Exp:

@@ -95,7 +95,7 @@ std::unique_ptr<Stmt> Parser::parseAsmStatement() {
       }
     }
     ExpectAndConsume(tok::colonequal);
-    auto Value = parseAsmExpression();
+    auto Value = Actions.CreateDummy(parseAsmExpression());
     const SourceLocation End = Value->getLocation().getEnd();
     return std::make_unique<AsmAssignmentStmt>(
         SourceRange(Begin, End),
@@ -284,7 +284,7 @@ std::unique_ptr<DeclStmt> Parser::parseAsmVariableDeclarationStatement() {
       parseAsmVariableDeclarationList();
   std::unique_ptr<Expr> Value;
   if (TryConsumeToken(tok::colonequal)) {
-    Value = parseAsmExpression();
+    Value = Actions.CreateDummy(parseAsmExpression());
   }
   return std::make_unique<DeclStmt>(SourceRange(Begin, Tok.getEndLoc()),
                                     std::move(Variables), std::move(Value));

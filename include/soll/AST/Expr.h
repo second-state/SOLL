@@ -237,6 +237,9 @@ public:
   static inline constexpr bool isBitwiseOp(Opcode Opc) {
     return Opc >= BO_And && Opc <= BO_Or;
   }
+  static inline constexpr bool isAsmBitwiseOp(Opcode Opc) {
+    return Opc >= BO_AsmAnd && Opc <= BO_AsmOr;
+  }
   static inline constexpr bool isRelationalOp(Opcode Opc) {
     return Opc >= BO_LT && Opc <= BO_GE;
   }
@@ -264,6 +267,7 @@ public:
   bool isAdditiveOp() const { return isAdditiveOp(getOpcode()); }
   bool isShiftOp() const { return isShiftOp(getOpcode()); }
   bool isBitwiseOp() const { return isBitwiseOp(getOpcode()); }
+  bool isAsmBitwiseOp() const { return isAsmBitwiseOp(getOpcode()); }
   bool isRelationalOp() const { return isRelationalOp(getOpcode()); }
   bool isEqualityOp() const { return isEqualityOp(getOpcode()); }
   bool isComparisonOp() const { return isComparisonOp(getOpcode()); }

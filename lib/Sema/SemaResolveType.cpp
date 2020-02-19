@@ -27,10 +27,13 @@ bool isAllowedTypeForBinary(BinaryOperatorKind BOK, const Type::Category TyC) {
   switch (TyC) {
   case Type::Category::Bool:
     return BinaryOperator::isEqualityOp(BOK) || BOK == BO_LAnd ||
-           BOK == BO_LOr || BOK == BO_Assign;
+           BOK == BO_LOr || BOK == BO_Assign ||
+           BinaryOperator::isAsmBitwiseOp(BOK);
   case Type::Category::Integer:
     return BinaryOperator::isComparisonOp(BOK) ||
-           BinaryOperator::isBitwiseOp(BOK) || BinaryOperator::isShiftOp(BOK) ||
+           BinaryOperator::isBitwiseOp(BOK) ||
+           BinaryOperator::isAsmBitwiseOp(BOK) ||
+           BinaryOperator::isShiftOp(BOK) ||
            BinaryOperator::isAdditiveOp(BOK) ||
            BinaryOperator::isMultiplicativeOp(BOK) || BOK == BO_Exp ||
            BOK == BO_Assign;
@@ -42,8 +45,9 @@ bool isAllowedTypeForBinary(BinaryOperatorKind BOK, const Type::Category TyC) {
     return BinaryOperator::isComparisonOp(BOK) || BOK == BO_Assign;
   case Type::Category::FixedBytes:
     return BinaryOperator::isComparisonOp(BOK) ||
-           BinaryOperator::isBitwiseOp(BOK) || BinaryOperator::isShiftOp(BOK) ||
-           BOK == BO_Assign;
+           BinaryOperator::isBitwiseOp(BOK) ||
+           BinaryOperator::isAsmBitwiseOp(BOK) ||
+           BinaryOperator::isShiftOp(BOK) || BOK == BO_Assign;
   case Type::Category::Array:
   case Type::Category::String:
   case Type::Category::Bytes:
@@ -347,12 +351,21 @@ public:
       }
     }
   }
-  void visit(AsmFunctionDeclStmtType &ADS) override {
-    StmtVisitor::visit(ADS);
-    if (auto *D = ADS.getDecl()) {
+  void visit(AsmFunctionDeclStmtType &FDS) override {
+    StmtVisitor::visit(FDS);
+    if (auto *D = FDS.getDecl()) {
       if (auto *B = D->getBody()) {
         B->accept(*this);
       }
+    }
+  }
+  void visit(AsmAssignmentStmt &AS) override {
+    StmtVisitor::visit(AS);
+    AS.getRHS()->accept(*this);
+    if (auto *IC = dynamic_cast<ImplicitCastExpr *>(AS.getRHS())) {
+      IC->accept(*this);
+      Actions.resolveImplicitCast(
+          *IC, AS.getLHS()->getIdentifiers().front()->getType(), false);
     }
   }
 };
