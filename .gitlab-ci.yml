@@ -62,6 +62,7 @@ compile:wasm:
     SOLL_PATH: "${BASE_BINDIR}/tools/soll/soll"
   script:
     - bash -c "./utils/compile -v sol ewasm ${TEST_ENVDIR}/test/*.sol"
+    - bash -c "./utils/compile -v yul ewasm ${TEST_ENVDIR}/test/*.yul"
     - bash -c "./utils/compile -v yul ewasm test/yul/switch.yul"
     - bash -c "./utils/compile -v yul ewasm test/yul/tuple.yul"
   after_script:
