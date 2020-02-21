@@ -561,7 +561,7 @@ std::unique_ptr<ContractDecl> Parser::parseContractDefinition() {
     }
 
     // TODO: < Parse all Types in contract's context >
-    if (Tok.isOneOf(tok::kw_function, tok::kw_constructor)) {
+    if (Tok.isOneOf(tok::kw_function, tok::kw_constructor, tok::kw_fallback)) {
       auto FD = parseFunctionDefinitionOrFunctionTypeStateVariable();
       if (FD) {
         Actions.addDecl(FD.get());
@@ -633,6 +633,8 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
 
   if (Tok.is(tok::kw_constructor)) {
     Result.IsConstructor = true;
+  } else if (ForceEmptyName || Tok.is(tok::kw_fallback)) {
+    Result.IsFallback = true;
   } else {
     assert(Tok.is(tok::kw_function));
   }
@@ -640,7 +642,7 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
 
   if (Result.IsConstructor) {
     Result.Name = llvm::StringRef("solidity.constructor");
-  } else if (ForceEmptyName || Tok.is(tok::l_paren)) {
+  } else if (Tok.is(tok::l_paren) || Result.IsFallback) {
     Result.Name = llvm::StringRef("solidity.fallback");
     Result.IsFallback = true;
   } else if (Tok.isAnyIdentifier()) {
