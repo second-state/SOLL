@@ -118,7 +118,7 @@ public:
         Builder.SetInsertPoint(ExtendSlot);
         llvm::Value *ExtendLength =
             Builder.CreateLShr(CGM.getEndianlessValue(Val), 1);
-        llvm::Value *Bytes = CGM.emitConcateBytes({Address});
+        llvm::Value *Bytes = CGM.emitConcatBytes({Address});
         llvm::Value *Address = CGM.emitKeccak256(Bytes);
         llvm::Value *AddressPtr = Builder.CreateAlloca(CGM.Int256Ty);
         llvm::Value *ExtendPtr = Builder.CreateAlloca(CGM.Int8Ty, ExtendLength);
@@ -206,7 +206,7 @@ public:
         return Bytes;
       }
       case Type::Category::Array:
-        return Address; // for abi encoding array
+        return V; // for abi encoding array
       default:
         assert(false);
       }
@@ -319,7 +319,7 @@ public:
         Builder.CreateStore(LengthEncode, ValPtr);
         CGM.emitStorageStore(Builder.CreateLoad(AddressPtr),
                              Builder.CreateLoad(ValPtr));
-        llvm::Value *Bytes = CGM.emitConcateBytes({Address});
+        llvm::Value *Bytes = CGM.emitConcatBytes({Address});
         Address = CGM.emitKeccak256(Bytes);
         Condition = Builder.CreateICmpSGE(Length, Builder.getIntN(256, 32));
         Builder.CreateCondBr(Condition, Loop, LoopEnd);

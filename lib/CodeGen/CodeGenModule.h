@@ -154,7 +154,7 @@ public:
   llvm::Value *emitEndianConvert(llvm::Value *Val);
   llvm::Value *getEndianlessValue(llvm::Value *Val);
   bool isDynamicType(llvm::Type *Ty);
-  llvm::Value *emitConcateBytes(llvm::ArrayRef<llvm::Value *> Values);
+  llvm::Value *emitConcatBytes(llvm::ArrayRef<llvm::Value *> Values);
   void emitUpdateMemorySize(llvm::Value *Pos, llvm::Value *Range);
 
   llvm::Value *emitGetGasLeft();

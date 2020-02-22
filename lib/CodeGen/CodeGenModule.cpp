@@ -1045,7 +1045,7 @@ void CodeGenModule::initEcrecover() {
       llvm::BasicBlock::Create(VMContext, "entry", Func_ecrecover);
   Builder.SetInsertPoint(Entry);
 
-  llvm::Value *Bytes = emitConcateBytes(llvm::ArrayRef<llvm::Value *>(Args));
+  llvm::Value *Bytes = emitConcatBytes(llvm::ArrayRef<llvm::Value *>(Args));
 
   llvm::Value *Length = Builder.CreateTrunc(
       Builder.CreateExtractValue(Bytes, {0}), Int32Ty, "length");
@@ -1721,7 +1721,7 @@ bool CodeGenModule::isDynamicType(llvm::Type *Ty) {
 }
 
 llvm::Value *
-CodeGenModule::emitConcateBytes(llvm::ArrayRef<llvm::Value *> Values) {
+CodeGenModule::emitConcatBytes(llvm::ArrayRef<llvm::Value *> Values) {
   unsigned BitWidth = 8;
   if (isEVM()) {
     BitWidth = 256;
