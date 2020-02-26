@@ -70,7 +70,7 @@ public:
     // Array Type : Fixed Size Mem Array, Fixed Sized Storage Array, Dynamic
     // Sized Storage Array
     // Require Index to be unsigned 256-bit Int
-    llvm::Value *Value = Base.load(Builder, CGF.getCodeGenModule());
+    llvm::Value *Value = Base.getValue();
     if (!isStateVariable) {
       // TODO : Assume only fixSized Integer Array
       llvm::Value *ArraySize = Builder.getInt(ArrTy->getLength());
@@ -713,15 +713,47 @@ public:
       llvm::Value *Index = Builder.getIntN(32, 0);
       llvm::Value *LengthSum = Builder.getIntN(32, 0);
 
+      llvm::BasicBlock *GetIndexAccess = nullptr;
+      llvm::BasicBlock *GetIndexAccessEnd = nullptr;
+      llvm::Value *Shift = nullptr;
+      llvm::PHINode *PHIAddress = nullptr;
+      unsigned ElementPerSlot = getElementPerSlot(IsStateVariable, ArrTy);
+      if (ElementPerSlot > 1) {
+        GetIndexAccess =
+            llvm::BasicBlock::Create(VMContext, "IndexAccess", ThisFunc);
+        GetIndexAccessEnd =
+            llvm::BasicBlock::Create(VMContext, "IndexAccess_end", ThisFunc);
+      }
+
       llvm::Value *Condition = Builder.CreateICmpULT(Index, ArrayLength);
       Builder.CreateCondBr(Condition, Loop, LoopEnd);
 
       Builder.SetInsertPoint(Loop);
       llvm::PHINode *PHIIndex = Builder.CreatePHI(CGM.Int32Ty, 2);
       llvm::PHINode *PHILengthSum = Builder.CreatePHI(CGM.Int32Ty, 2);
-      auto IndexAccessValue = ExprEmitter(CGF).arrayIndexAccess(
+      if (ElementPerSlot > 1) {
+        Shift =
+            Builder.CreateURem(PHIIndex, Builder.getIntN(32, ElementPerSlot));
+        Condition = Builder.CreateICmpEQ(Shift, Builder.getIntN(32, 0));
+        Builder.CreateCondBr(Condition, GetIndexAccess, GetIndexAccessEnd);
+
+        Builder.SetInsertPoint(GetIndexAccess);
+        PHIAddress = Builder.CreatePHI(CGM.Int256PtrTy, 2);
+      }
+      ExprValue IndexAccessValue = ExprEmitter(CGF).arrayIndexAccess(
           Value, PHIIndex, ArrTy->getElementType().get(), ArrTy,
           IsStateVariable);
+      if (ElementPerSlot > 1) {
+        Builder.CreateBr(GetIndexAccessEnd);
+
+        PHIAddress->addIncoming(IndexAccessValue.getValue(), GetIndexAccess);
+        PHIAddress->addIncoming(PHIAddress, Loop);
+
+        Builder.SetInsertPoint(GetIndexAccessEnd);
+        IndexAccessValue.setValue(PHIAddress);
+        IndexAccessValue.setShift(
+            Builder.CreateZExtOrTrunc(Shift, CGM.Int256Ty));
+      }
       llvm::Value *ResBytes =
           emitEncodePacked(IndexAccessValue, IsStateVariable);
       if (CGM.isDynamicType(ResBytes->getType())) {
@@ -850,15 +882,47 @@ public:
         TailPos = HeadPos;
       }
 
+      llvm::BasicBlock *GetIndexAccess = nullptr;
+      llvm::BasicBlock *GetIndexAccessEnd = nullptr;
+      llvm::Value *Shift = nullptr;
+      llvm::PHINode *PHIAddress = nullptr;
+      unsigned ElementPerSlot = getElementPerSlot(IsStateVariable, ArrTy);
+      if (ElementPerSlot > 1) {
+        GetIndexAccess =
+            llvm::BasicBlock::Create(VMContext, "IndexAccess", ThisFunc);
+        GetIndexAccessEnd =
+            llvm::BasicBlock::Create(VMContext, "IndexAccess_end", ThisFunc);
+      }
+
       llvm::Value *Condition = Builder.CreateICmpULT(Index, ArrayLength);
       Builder.CreateCondBr(Condition, Loop, LoopEnd);
 
       Builder.SetInsertPoint(Loop);
       llvm::PHINode *PHIIndex = Builder.CreatePHI(CGM.Int32Ty, 2);
       llvm::PHINode *PHILengthSum = Builder.CreatePHI(CGM.Int32Ty, 2);
-      auto IndexAccessValue = ExprEmitter(CGF).arrayIndexAccess(
+      if (ElementPerSlot > 1) {
+        Shift =
+            Builder.CreateURem(PHIIndex, Builder.getIntN(32, ElementPerSlot));
+        Condition = Builder.CreateICmpEQ(Shift, Builder.getIntN(32, 0));
+        Builder.CreateCondBr(Condition, GetIndexAccess, GetIndexAccessEnd);
+
+        Builder.SetInsertPoint(GetIndexAccess);
+        PHIAddress = Builder.CreatePHI(CGM.Int256PtrTy, 2);
+      }
+      ExprValue IndexAccessValue = ExprEmitter(CGF).arrayIndexAccess(
           Value, PHIIndex, ArrTy->getElementType().get(), ArrTy,
           IsStateVariable);
+      if (ElementPerSlot > 1) {
+        Builder.CreateBr(GetIndexAccessEnd);
+
+        PHIAddress->addIncoming(IndexAccessValue.getValue(), GetIndexAccess);
+        PHIAddress->addIncoming(PHIAddress, Loop);
+
+        Builder.SetInsertPoint(GetIndexAccessEnd);
+        IndexAccessValue.setValue(PHIAddress);
+        IndexAccessValue.setShift(
+            Builder.CreateZExtOrTrunc(Shift, CGM.Int256Ty));
+      }
       llvm::Value *ResBytes = emitEncode(IndexAccessValue, IsStateVariable);
       if (!CGM.isDynamicType(ResBytes->getType())) {
         ResBytes =
@@ -935,6 +999,13 @@ private:
     } else {
       return Builder.getInt(ArrTy->getLength());
     }
+  }
+  unsigned getElementPerSlot(bool isStateVariable, const ArrayType *ArrTy) {
+    if (!isStateVariable)
+      return 1;
+    unsigned BitPerElement = ArrTy->getElementType()->getBitNum();
+    unsigned ElementPerSlot = 256 / BitPerElement;
+    return ElementPerSlot;
   }
   llvm::Value *emitConcateBytesDynamic(llvm::Value *ArrayLength,
                                        llvm::Value *Int8PtrArray,

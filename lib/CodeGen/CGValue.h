@@ -23,6 +23,8 @@ public:
   const Type *getType() const { return Ty; }
   llvm::Value *getValue() const { return V; }
   ValueKind getValueKind() const { return Kind; }
+  void setValue(llvm::Value *Value) { this->V = Value; }
+  void setShift(llvm::Value *Shift) { this->Shift = Shift; }
   template <typename T>
   llvm::Value *load(T &Builder, CodeGenModule &CGM,
                     llvm::StringRef Name = "") const {
