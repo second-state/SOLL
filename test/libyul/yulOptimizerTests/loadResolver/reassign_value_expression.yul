@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
 // REQUIRES: calldataload
+// REQUIRES: mstore
 {
     let x := calldataload(1)
     let a := add(x, 10)

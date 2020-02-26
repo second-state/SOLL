@@ -1,4 +1,6 @@
 // RUN: %soll -lang=Yul %s
+// REQUIRES: mload
+// REQUIRES: mstore
 {
 	function f(a) -> b {
         let x := mload(a)

@@ -2,6 +2,7 @@
 // REQUIRES: extcodecopy
 // REQUIRES: address
 // REQUIRES: extcodesize
+// REQUIRES: mload
 {
   extcodecopy(address(), 0x100, 0, extcodesize(address()))
   sstore(0, mload(0x100))

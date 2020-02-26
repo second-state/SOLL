@@ -25,7 +25,41 @@ config.suffixes = [
 ]
 
 config.available_features = [
-    'calldataload'
+    'mload',
+    'mstore',
+    'mstore8',
+    'msize',
+    'sload',
+    'sstore',
+    'stop',
+    'return',
+    'revert',
+    'log0',
+    'log1',
+    'log2',
+    'log3',
+    'log4',
+    'coinbase',
+    'difficulty',
+    'gaslimit',
+    'number',
+    'timestamp',
+    'origin',
+    'gasprice',
+    'gas',
+    'caller',
+    'callvalue',
+    'calldataload',
+    'calldatasize',
+    'codecopy',
+    'datasize',
+    'dataoffset',
+    'datacopy',
+    'leave',
+    'declareMulti',
+    'returnTuple',
+    'objectInObject',
+    'implicitCast'
 ]
 
 # excludes: A list of directories to exclude from the testsuite.

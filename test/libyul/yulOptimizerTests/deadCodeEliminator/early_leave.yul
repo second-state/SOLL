@@ -1,4 +1,5 @@
 // RUN: %soll -lang=Yul %s
+// REQUIRES: mstore
 // REQUIRES: pop
 {
     function f() -> x {

@@ -1,10 +1,11 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: pop
-// REQUIRES: gas
 // REQUIRES: extcodesize
 // REQUIRES: extcodehash
-// REQUIRES: sload
+// REQUIRES: gas
+// REQUIRES: mload
+// REQUIRES: msize
 // REQUIRES: pc
+// REQUIRES: pop
 {
 	// These can be removed by the optimizer and should not
 	// appear in the trace.

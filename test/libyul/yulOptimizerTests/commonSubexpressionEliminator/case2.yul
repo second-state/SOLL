@@ -1,4 +1,6 @@
 // RUN: %soll -lang=Yul %s
+// REQUIRES: mload
+// REQUIRES: mstore
 // REQUIRES: pop
 {
     let _13 := 0x20

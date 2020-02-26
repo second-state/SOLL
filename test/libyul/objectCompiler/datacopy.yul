@@ -1,5 +1,9 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: datasizeSelf
+// REQUIRES: dataoffset
+// REQUIRES: dataoffsetSelf
+// REQUIRES: datasize
+// REQUIRES: mstore
+// REQUIRES: objectInObject
 object "a" {
   code {
     datacopy(0, dataoffset("sub"), datasize("sub"))

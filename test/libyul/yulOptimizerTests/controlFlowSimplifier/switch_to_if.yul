@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
 // REQUIRES: calldataload
+// REQUIRES: mstore
 {
 	switch calldataload(0) case 2 { mstore(0, 0) }
 }

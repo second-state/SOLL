@@ -1,7 +1,9 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: pop
 // REQUIRES: address
 // REQUIRES: calldataload
+// REQUIRES: mload
+// REQUIRES: mstore
+// REQUIRES: pop
 // REQUIRES: revert
 // We require constantinople because numbers are represented using shifts.
 {

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 // RUN: %soll --lang=Yul %s
-// REQUIRES: tuple
+// REQUIRES: declareMulti
+// REQUIRES: returnTuple
 object "tuple" {
   code {
     function tuple(x, y) -> rx, ry {

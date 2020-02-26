@@ -1,4 +1,6 @@
 // RUN: %soll -lang=Yul %s
+// REQUIRES: mload
+// REQUIRES: mstore
 // REQUIRES: pop
 {
 	switch mload(0) default { mstore(1, 2) }

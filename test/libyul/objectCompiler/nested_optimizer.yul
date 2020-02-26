@@ -1,4 +1,6 @@
 // RUN: %soll -lang=Yul %s
+// REQUIRES: calldataload
+// REQUIRES: objectInObject
 object "a" {
   code {
     let x := calldataload(0)

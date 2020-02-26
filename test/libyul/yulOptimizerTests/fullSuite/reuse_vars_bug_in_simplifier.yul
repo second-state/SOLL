@@ -1,4 +1,5 @@
 // RUN: %soll -lang=Yul %s
+// REQUIRES: mstore
 // REQUIRES: pop
 {
 	// This tests that a bug is fixed that was related to just taking

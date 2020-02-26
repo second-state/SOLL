@@ -1,6 +1,11 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: calldatasize
+// REQUIRES: call
+// REQUIRES: calldatacopy
 // REQUIRES: calldataload
+// REQUIRES: calldatasize
+// REQUIRES: gas
+// REQUIRES: mload
+// REQUIRES: mstore
 // REQUIRES: revert
 /**
  * @title Library to validate AZTEC zero-knowledge proofs

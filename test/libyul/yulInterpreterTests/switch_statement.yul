@@ -1,4 +1,5 @@
 // RUN: %soll -lang=Yul %s
+// REQUIRES: mstore
 {
     switch 7
         case 7 { mstore(1, 2) }

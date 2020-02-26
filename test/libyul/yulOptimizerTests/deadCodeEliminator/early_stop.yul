@@ -1,4 +1,5 @@
 // RUN: %soll -lang=Yul %s
+// REQUIRES: mstore
 // REQUIRES: stop
 {
     let b := 20

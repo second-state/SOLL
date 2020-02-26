@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // REQUIRES: import
+// REQUIRES: implicitCast
 // RUN: %soll %s
 pragma solidity >=0.0;
 import "../Events/Event.sol";

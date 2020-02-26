@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // REQUIRES: struct
+// REQUIRES: implicitCast
 // RUN: %soll %s
 pragma solidity >=0.0;
 

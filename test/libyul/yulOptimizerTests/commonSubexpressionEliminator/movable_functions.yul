@@ -1,4 +1,6 @@
 // RUN: %soll -lang=Yul %s
+// REQUIRES: mload
+// REQUIRES: mstore
 {
     function double(x) -> y { y := add(x, x) }
     function double_with_se(x) -> y { y := add(x, x) mstore(40, 4) }

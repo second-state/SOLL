@@ -1,4 +1,5 @@
 // RUN: %soll -lang=Yul %s
+// REQUIRES: mstore
 {
     let a := 0
     let b := 1

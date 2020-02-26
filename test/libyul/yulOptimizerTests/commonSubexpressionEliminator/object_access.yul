@@ -1,6 +1,8 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: datasize
+// REQUIRES: datacopy
 // REQUIRES: dataoffset
+// REQUIRES: datasize
+// REQUIRES: mstore
 object "main" {
     code {
         // Arguments to ``datasize`` and ``dataoffset`` need to be

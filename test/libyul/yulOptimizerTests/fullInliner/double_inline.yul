@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
 // REQUIRES: calldataload
+// REQUIRES: mload
 // REQUIRES: returnTuple
 {
 	function f(a) -> b, c { let x := mload(a) b := sload(x) c := 3 }

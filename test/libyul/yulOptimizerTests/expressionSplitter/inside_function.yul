@@ -1,4 +1,5 @@
 // RUN: %soll -lang=Yul %s
+// REQUIRES: mload
 {
 	let x := mul(f(0, mload(7)), 3)
 	function f(a, b) -> c {

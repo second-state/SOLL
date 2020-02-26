@@ -1,4 +1,5 @@
 // RUN: %soll -lang=Yul %s
+// REQUIRES: mload
 {
     let x := f(0)
     function f(y) -> r {

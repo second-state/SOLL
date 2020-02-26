@@ -1,5 +1,7 @@
 // RUN: %soll -lang=Yul %s
 // REQUIRES: invalid
+// REQUIRES: mload
+// REQUIRES: mstore
 {
     let x := 0
     switch mload(x)

@@ -1,5 +1,7 @@
 // RUN: %soll -lang=Yul %s
 // REQUIRES: calldataload
+// REQUIRES: mload
+// REQUIRES: mstore
 {
     mstore(2, 3)
     if calldataload(1) {

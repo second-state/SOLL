@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
 // REQUIRES: calldataload
+// REQUIRES: mstore
 {
     let a := calldataload(sub(7, 7))
     let b := sub(a, 0)

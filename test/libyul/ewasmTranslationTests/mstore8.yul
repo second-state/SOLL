@@ -1,4 +1,7 @@
 // RUN: %soll -lang=Yul %s
+// REQUIRES: mload
+// REQUIRES: mstore
+// REQUIRES: mstore8
 {
   mstore(0x30, not(0))
   mstore8(0x20, 0xaa)

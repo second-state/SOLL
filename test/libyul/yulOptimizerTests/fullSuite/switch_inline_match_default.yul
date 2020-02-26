@@ -1,4 +1,5 @@
 // RUN: %soll -lang=Yul %s
+// REQUIRES: mstore
 {
 	mstore(f(3), 0)
 	function f(x) -> y {

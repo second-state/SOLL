@@ -1,4 +1,5 @@
 // RUN: %soll -lang=Yul %s
+// REQUIRES: mload
 // REQUIRES: pop
 { let a := mload(0) if a {} }
 // ====

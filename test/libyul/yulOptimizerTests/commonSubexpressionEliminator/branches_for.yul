@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
 // REQUIRES: codesize
+// REQUIRES: mstore
 {
 	let a := 1
 	let b := codesize()

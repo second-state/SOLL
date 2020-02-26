@@ -1,5 +1,7 @@
 // RUN: %soll -lang=Yul %s
 // REQUIRES: declareMulti
+// REQUIRES: mload
+// REQUIRES: mstore
 // REQUIRES: returnTuple
 {
 	function f(a) -> x, y {

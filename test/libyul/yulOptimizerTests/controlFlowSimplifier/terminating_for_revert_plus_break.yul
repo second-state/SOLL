@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
 // REQUIRES: calldatasize
+// REQUIRES: mstore
 // REQUIRES: revert
 {
 	for {} calldatasize() { mstore(1, 2) } {

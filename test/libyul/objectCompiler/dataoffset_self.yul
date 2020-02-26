@@ -1,5 +1,5 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: dataoffset
+// REQUIRES: dataoffsetSelf
 object "a" {
   code { sstore(0, dataoffset("a")) }
   data "data1" "Hello, World!"

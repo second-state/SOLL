@@ -1,4 +1,5 @@
 // RUN: %soll -lang=Yul %s
+// REQUIRES: mload
 // REQUIRES: returnTuple
 {
   let a := mload(0)

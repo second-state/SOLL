@@ -1,5 +1,7 @@
 // RUN: %soll -lang=Yul %s
 // REQUIRES: calldataload
+// REQUIRES: mload
+// REQUIRES: mstore
 // REQUIRES: revert
 {
     // This is an abi decode function with the SSA transform applied once.

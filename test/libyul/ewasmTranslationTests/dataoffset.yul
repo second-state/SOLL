@@ -1,5 +1,7 @@
 // RUN: %soll -lang=Yul %s
-// REQUIRES: datasizeSelf
+// REQUIRES: dataoffset
+// REQUIRES: dataoffsetSelf
+// REQUIRES: objectInObject
 object "main"
 {
     code {

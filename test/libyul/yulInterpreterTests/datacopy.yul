@@ -1,5 +1,11 @@
 // RUN: %soll -lang=Yul %s
+// REQUIRES: datacopy
+// REQUIRES: dataoffset
+// REQUIRES: dataoffsetSelf
+// REQUIRES: datasize
 // REQUIRES: datasizeSelf
+// REQUIRES: mload
+// REQUIRES: objectInObject
 object "main"
 {
     code {

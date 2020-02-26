@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
 // REQUIRES: calldataload
+// REQUIRES: mload
 {
 	let a := mload(2)
 	let x := calldataload(a)

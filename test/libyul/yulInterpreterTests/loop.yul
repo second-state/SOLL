@@ -1,4 +1,5 @@
 // RUN: %soll -lang=Yul %s
+// REQUIRES: mstore
 {
     for { let x := 2 } lt(x, 10) { x := add(x, 1) } {
         mstore(mul(x, 5), mul(x, 0x1000))

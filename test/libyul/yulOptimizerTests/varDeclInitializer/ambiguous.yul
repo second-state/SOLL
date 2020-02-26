@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
 // REQUIRES: declareMulti
+// REQUIRES: mstore
 // REQUIRES: returnTuple
 {
   // This component does not need the disambiguator

@@ -1,5 +1,7 @@
 // RUN: %soll -lang=Yul %s
 // REQUIRES: calldataload
+// REQUIRES: msize
+// REQUIRES: mstore8
 {
         {
             let a := foo_0(calldataload(0))

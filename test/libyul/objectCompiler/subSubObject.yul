@@ -1,4 +1,5 @@
 // RUN: %soll -lang=Yul %s
+// REQUIRES: objectInObject
 object "a" {
   code {}
   // Unreferenced data is not added to the assembled bytecode.

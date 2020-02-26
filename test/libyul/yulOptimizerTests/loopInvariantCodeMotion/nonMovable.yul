@@ -1,4 +1,6 @@
 // RUN: %soll -lang=Yul %s
+// REQUIRES: mload
+// REQUIRES: mstore
 {
   let b := 0
   for { let a := 1 } iszero(eq(a, 10)) { a := add(a, 1) } {

@@ -1,5 +1,6 @@
 // RUN: %soll -lang=Yul %s
 // REQUIRES: calldatasize
+// REQUIRES: mload
 {
     // references parameter 1 times in function body
     function ref1(a) -> x { x := add(a, 1) }

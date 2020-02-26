@@ -1,4 +1,5 @@
 // RUN: %soll -lang=Yul %s
+// REQUIRES: mstore
 {
 	function f1() -> a { }
 	function f2() -> b { }

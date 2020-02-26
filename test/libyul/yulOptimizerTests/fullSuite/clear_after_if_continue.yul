@@ -1,4 +1,5 @@
 // RUN: %soll -lang=Yul %s
+// REQUIRES: mload
 // REQUIRES: revert
 {
     let y := mload(0x20)

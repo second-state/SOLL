@@ -1,6 +1,7 @@
 // RUN: %soll -lang=Yul %s
 // REQUIRES: codecopy
 // REQUIRES: codesize
+// REQUIRES: mload
 {
   codecopy(0x100, 0, codesize())
   sstore(0, mload(0x100))

@@ -1,7 +1,7 @@
 // RUN: %soll -lang=Yul %s
+// REQUIRES: address
 // REQUIRES: call
 // REQUIRES: gas
-// REQUIRES: address
 {
   sstore(0, call(gas(), address(), 42, 0, 0x20, 0x20, 0x20))
 }
