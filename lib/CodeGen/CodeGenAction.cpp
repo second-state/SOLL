@@ -4,8 +4,12 @@
 #include "soll/Basic/TargetOptions.h"
 #include "soll/CodeGen/ModuleBuilder.h"
 #include "soll/Frontend/CompilerInstance.h"
+#include <lld/Common/Driver.h>
+#include <llvm/IR/ConstantFolder.h>
 #include <llvm/IR/DiagnosticInfo.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/Support/ToolOutputFile.h>
+#include <llvm/Transforms/Utils/Cloning.h>
 
 namespace soll {
 
@@ -32,17 +36,98 @@ class BackendConsumer : public ASTConsumer {
   BackendAction Action;
   DiagnosticsEngine &Diags;
   const TargetOptions &TargetOpts;
+  std::string InFile;
   std::unique_ptr<llvm::raw_pwrite_stream> AsmOutStream;
   ASTContext *Context;
 
   std::unique_ptr<CodeGenerator> Gen;
+
+private:
+  static void emitEntry(llvm::Module &Module, const std::string &EntryName) {
+    llvm::LLVMContext &VMContext = Module.getContext();
+    llvm::IRBuilder<llvm::ConstantFolder> Builder(VMContext);
+    auto *FuncTy = llvm::FunctionType::get(Builder.getVoidTy(), false);
+    auto *MainFunc = llvm::Function::Create(
+        FuncTy, llvm::Function::ExternalLinkage, "main", Module);
+    llvm::BasicBlock *Entry =
+        llvm::BasicBlock::Create(VMContext, "entry", MainFunc);
+    Builder.SetInsertPoint(Entry);
+    Builder.CreateCall(Module.getFunction(EntryName));
+    Builder.CreateRetVoid();
+  }
+
+  static void emitNestedBytecodeFunction(llvm::Module &Module,
+                                         const std::string &FuncName,
+                                         llvm::StringRef Bytecodes) {
+    llvm::LLVMContext &VMContext = Module.getContext();
+    llvm::IRBuilder<llvm::ConstantFolder> Builder(VMContext);
+
+    llvm::Constant *StrConstant =
+        llvm::ConstantDataArray::getString(VMContext, Bytecodes, false);
+    const uint64_t Length = StrConstant->getType()->getArrayNumElements();
+    auto *GV = new llvm::GlobalVariable(Module, StrConstant->getType(), true,
+                                        llvm::GlobalValue::PrivateLinkage,
+                                        StrConstant, FuncName + ".data");
+    GV->setUnnamedAddr(llvm::GlobalValue::UnnamedAddr::Global);
+    GV->setAlignment(1);
+
+    auto *Func = Module.getFunction(FuncName);
+    llvm::BasicBlock *Entry =
+        llvm::BasicBlock::Create(VMContext, "entry", Func);
+    Builder.SetInsertPoint(Entry);
+    llvm::Value *Result = llvm::UndefValue::get(Module.getTypeByName("bytes"));
+    Result = Builder.CreateInsertValue(Result, Builder.getIntN(256, Length), 0);
+    Result = Builder.CreateInsertValue(
+        Result, Builder.CreateBitCast(GV, Builder.getInt8PtrTy()), 1);
+    Builder.CreateRet(Result);
+  }
+
+  llvm::Expected<std::unique_ptr<llvm::MemoryBuffer>>
+  compileAndLink(llvm::Module &Module) {
+    auto Object = llvm::sys::fs::TempFile::create(InFile + "-%%%%%%%%%%.o");
+    if (!Object) {
+      return Object.takeError();
+    }
+
+    auto Wasm = llvm::sys::fs::TempFile::create(InFile + "-%%%%%%%%%%.wasm");
+    if (!Wasm) {
+      llvm::consumeError(Object->discard());
+      return Wasm.takeError();
+    }
+
+    std::error_code EC;
+    auto OutStream =
+        std::make_unique<llvm::raw_fd_ostream>(Object->TmpName, EC);
+    if (EC) {
+      llvm::consumeError(Wasm->discard());
+      llvm::consumeError(Object->discard());
+      return llvm::errorCodeToError(EC);
+    }
+    EmitBackendOutput(Diags, TargetOpts, Module.getDataLayout(), &Module,
+                      BackendAction::EmitObj, std::move(OutStream));
+    lld::wasm::link({"wasm-ld", "--entry", "main", "--gc-sections",
+                     "--allow-undefined", Object->TmpName.c_str(), "-o",
+                     Wasm->TmpName.c_str()},
+                    false, llvm::errs());
+
+    auto Binary = llvm::MemoryBuffer::getFile(Wasm->TmpName);
+    if (!Binary) {
+      llvm::consumeError(Wasm->discard());
+      llvm::consumeError(Object->discard());
+      return llvm::errorCodeToError(Binary.getError());
+    }
+
+    llvm::consumeError(Wasm->discard());
+    llvm::consumeError(Object->discard());
+    return std::move(*Binary);
+  }
 
 public:
   BackendConsumer(BackendAction Action, DiagnosticsEngine &Diags,
                   TargetOptions &TargetOpts, const std::string &InFile,
                   std::unique_ptr<llvm::raw_pwrite_stream> OS,
                   llvm::LLVMContext &C)
-      : Action(Action), Diags(Diags), TargetOpts(TargetOpts),
+      : Action(Action), Diags(Diags), TargetOpts(TargetOpts), InFile(InFile),
         AsmOutStream(std::move(OS)), Context(nullptr),
         Gen(CreateLLVMCodeGen(Diags, InFile, C, TargetOpts)) {}
   llvm::Module *getModule() const { return Gen->getModule(); }
@@ -64,8 +149,34 @@ public:
       return;
     }
 
-    EmitBackendOutput(Diags, TargetOpts, getModule()->getDataLayout(),
-                      getModule(), Action, std::move(AsmOutStream));
+    for (const auto &[EntryName, FuncName] : Gen->getNestedEntries()) {
+      auto ClonedModule = llvm::CloneModule(*getModule());
+      emitEntry(*ClonedModule, EntryName);
+
+      auto Binary = compileAndLink(*ClonedModule);
+      if (!Binary) {
+        llvm::errs() << Binary.takeError() << '\n';
+        return;
+      }
+
+      emitNestedBytecodeFunction(*getModule(), FuncName,
+                                 (*Binary)->getBuffer());
+    }
+
+    emitEntry(*getModule(), Gen->getEntry());
+    if (Action == BackendAction::EmitWasm) {
+      auto Binary = compileAndLink(*getModule());
+      if (!Binary) {
+        llvm::errs() << Binary.takeError() << '\n';
+        return;
+      }
+      (*AsmOutStream) << (*Binary)->getBuffer();
+      AsmOutStream.reset();
+
+    } else {
+      EmitBackendOutput(Diags, TargetOpts, getModule()->getDataLayout(),
+                        getModule(), Action, std::move(AsmOutStream));
+    }
   }
 };
 
@@ -96,6 +207,8 @@ GetOutputStream(CompilerInstance &CI, llvm::StringRef InFile,
     return CI.createNullOutputFile();
   case BackendAction::EmitObj:
     return CI.createDefaultOutputFile(true, InFile, "o");
+  case BackendAction::EmitWasm:
+    return CI.createDefaultOutputFile(true, InFile, "wasm");
   }
 
   llvm_unreachable("Invalid action!");
@@ -132,5 +245,8 @@ EmitCodeGenOnlyAction::EmitCodeGenOnlyAction(llvm::LLVMContext *_VMContext)
 
 EmitObjAction::EmitObjAction(llvm::LLVMContext *_VMContext)
     : CodeGenAction(BackendAction::EmitObj, _VMContext) {}
+
+EmitWasmAction::EmitWasmAction(llvm::LLVMContext *_VMContext)
+    : CodeGenAction(BackendAction::EmitWasm, _VMContext) {}
 
 } // namespace soll

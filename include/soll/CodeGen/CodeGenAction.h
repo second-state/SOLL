@@ -51,4 +51,9 @@ public:
   EmitObjAction(llvm::LLVMContext *_VMContext = nullptr);
 };
 
+class EmitWasmAction : public CodeGenAction {
+public:
+  EmitWasmAction(llvm::LLVMContext *_VMContext = nullptr);
+};
+
 } // namespace soll

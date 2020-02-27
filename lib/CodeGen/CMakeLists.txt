@@ -10,6 +10,8 @@ add_llvm_library(sollCodeGen
   LINK_LIBS
   sollAST
   sollFrontend
+  lldWasm
+  lldCommon
   LINK_COMPONENTS
   codegen
   passes

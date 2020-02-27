@@ -47,6 +47,8 @@ namespace CodeGen {
 class CodeGenModule : public CodeGenTypeCache {
   ASTContext &Context;
   llvm::Module &TheModule;
+  std::string &Entry;
+  std::vector<std::pair<std::string, std::string>> &NestedEntries;
   DiagnosticsEngine &Diags;
   const TargetOptions &TargetOpts;
   llvm::LLVMContext &VMContext;
@@ -124,11 +126,16 @@ public:
   CodeGenModule(const CodeGenModule &) = delete;
   void operator=(const CodeGenModule &) = delete;
 
-  CodeGenModule(ASTContext &C, llvm::Module &module, DiagnosticsEngine &Diags,
-                const TargetOptions &TargetOpts);
+  CodeGenModule(ASTContext &C, llvm::Module &Module, std::string &Entry,
+                std::vector<std::pair<std::string, std::string>> &NestedEntries,
+                DiagnosticsEngine &Diags, const TargetOptions &TargetOpts);
   llvm::Function *getIntrinsic(unsigned IID,
                                llvm::ArrayRef<llvm::Type *> Typs = llvm::None);
   llvm::Module &getModule() const { return TheModule; }
+  std::string &getEntry() const { return Entry; }
+  std::vector<std::pair<std::string, std::string>> &getNestedEntries() const {
+    return NestedEntries;
+  }
   llvm::LLVMContext &getLLVMContext() const { return VMContext; }
   llvm::IRBuilder<llvm::ConstantFolder> &getBuilder() { return Builder; }
   DiagnosticsEngine &getDiags() { return Diags; }

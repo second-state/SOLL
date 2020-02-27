@@ -29,6 +29,9 @@ enum ActionKind {
   /// Emit a .o file.
   EmitObj,
 
+  /// Emit a .wasm file.
+  EmitWasm,
+
   /// Emit function signatures.
   EmitFuncSig,
 

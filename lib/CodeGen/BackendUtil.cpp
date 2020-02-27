@@ -185,6 +185,7 @@ void EmitAssemblyHelper::EmitAssembly(
   case BackendAction::EmitAssembly:
   case BackendAction::EmitMCNull:
   case BackendAction::EmitObj:
+  case BackendAction::EmitWasm:
     NeedCodeGen = true;
     CodeGenPasses.add(
         llvm::createTargetTransformInfoWrapperPass(getTargetIRAnalysis()));

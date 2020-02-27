@@ -42,8 +42,8 @@ public:
       M->setTargetTriple("wasm32-unknown-unknown-wasm");
       M->setDataLayout(llvm::DataLayout("e-m:e-p:32:32-i64:64-n32:64-S128"));
     }
-    Builder = std::make_unique<CodeGen::CodeGenModule>(Context, *M, Diags,
-                                                       TargetOpts);
+    Builder = std::make_unique<CodeGen::CodeGenModule>(
+        Context, *M, Entry, NestedEntries, Diags, TargetOpts);
   }
 
   void HandleSourceUnit(ASTContext &C, SourceUnit &S) override {

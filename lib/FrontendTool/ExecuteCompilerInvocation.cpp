@@ -25,6 +25,8 @@ std::unique_ptr<FrontendAction> CreateFrontendAction(CompilerInstance &CI) {
     return std::make_unique<EmitCodeGenOnlyAction>();
   case EmitObj:
     return std::make_unique<EmitObjAction>();
+  case EmitWasm:
+    return std::make_unique<EmitWasmAction>();
   case EmitFuncSig:
     return std::make_unique<EmitFuncSigAction>();
   case EmitABI:

@@ -39,11 +39,12 @@ enum {
 
 namespace soll::CodeGen {
 
-CodeGenModule::CodeGenModule(ASTContext &C, llvm::Module &M,
-                             DiagnosticsEngine &Diags,
-                             const TargetOptions &TargetOpts)
-    : Context(C), TheModule(M), Diags(Diags), TargetOpts(TargetOpts),
-      VMContext(M.getContext()), Builder(VMContext) {
+CodeGenModule::CodeGenModule(
+    ASTContext &C, llvm::Module &M, std::string &E,
+    std::vector<std::pair<std::string, std::string>> &NE,
+    DiagnosticsEngine &Diags, const TargetOptions &TargetOpts)
+    : Context(C), TheModule(M), Entry(E), NestedEntries(NE), Diags(Diags),
+      TargetOpts(TargetOpts), VMContext(M.getContext()), Builder(VMContext) {
   initTypes();
   if (isEVM()) {
     initEVMOpcodeDeclaration();
@@ -960,22 +961,22 @@ void CodeGenModule::emitContractDecl(const ContractDecl *CD) {
 }
 
 void CodeGenModule::emitContractConstructorDecl(const ContractDecl *CD) {
-  llvm::FunctionType *FT = llvm::FunctionType::get(VoidTy, {}, false);
-  llvm::GlobalVariable *DeploySize = new llvm::GlobalVariable(
-      TheModule, Int32Ty, true, llvm::GlobalVariable::ExternalLinkage, nullptr,
-      "deploy.size");
-  DeploySize->setUnnamedAddr(llvm::GlobalVariable::UnnamedAddr::Local);
-  DeploySize->setAlignment(8);
-  DeploySize->setVisibility(llvm::GlobalValue::HiddenVisibility);
-  llvm::GlobalVariable *DeployData = new llvm::GlobalVariable(
-      TheModule, Int8Ty, true, llvm::GlobalVariable::ExternalLinkage, nullptr,
-      "deploy.data");
-  DeployData->setAlignment(1);
-  DeployData->setVisibility(llvm::GlobalValue::HiddenVisibility);
+  llvm::Function *Contract;
+  {
+    llvm::FunctionType *FT = llvm::FunctionType::get(BytesTy, false);
+    Contract = llvm::Function::Create(FT, llvm::Function::InternalLinkage,
+                                      "solidity.contract", TheModule);
+    NestedEntries.emplace_back("solidity.main", "solidity.contract");
+  }
 
-  llvm::Function *Ctor = llvm::Function::Create(
-      FT, llvm::Function::ExternalLinkage, "solidity.ctor", TheModule);
-  Ctor->setVisibility(llvm::Function::VisibilityTypes::HiddenVisibility);
+  llvm::Function *Ctor;
+  {
+    llvm::FunctionType *FT = llvm::FunctionType::get(VoidTy, {}, false);
+
+    Ctor = llvm::Function::Create(FT, llvm::Function::InternalLinkage,
+                                  "solidity.ctor", TheModule);
+    getEntry() = "solidity.ctor";
+  }
   Ctor->addFnAttr(
       llvm::Attribute::get(VMContext, llvm::Attribute::AlwaysInline));
 
@@ -986,16 +987,18 @@ void CodeGenModule::emitContractConstructorDecl(const ContractDecl *CD) {
     llvm::Function *Func = TheModule.getFunction(getMangledName(Constructor));
     Builder.CreateCall(Func, {});
   }
-
-  emitFinish(DeployData, Builder.CreateLoad(DeploySize));
+  auto *ContractBytes = Builder.CreateCall(Contract);
+  auto *DeploySize = Builder.CreateTrunc(
+      Builder.CreateExtractValue(ContractBytes, {0}), Int32Ty);
+  auto *DeployData = Builder.CreateExtractValue(ContractBytes, {1});
+  emitFinish(DeployData, DeploySize);
   Builder.CreateRetVoid();
 }
 
 void CodeGenModule::emitContractDispatcherDecl(const ContractDecl *CD) {
   llvm::FunctionType *FT = llvm::FunctionType::get(VoidTy, {}, false);
   llvm::Function *Main = llvm::Function::Create(
-      FT, llvm::Function::ExternalLinkage, "solidity.main", TheModule);
-  Main->setVisibility(llvm::Function::VisibilityTypes::HiddenVisibility);
+      FT, llvm::Function::InternalLinkage, "solidity.main", TheModule);
   Main->addFnAttr(
       llvm::Attribute::get(VMContext, llvm::Attribute::AlwaysInline));
 

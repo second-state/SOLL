@@ -14,7 +14,8 @@ enum class BackendAction {
   EmitLL,       ///< Emit human-readable LLVM assembly
   EmitNothing,  ///< Don't emit anything (benchmarking mode)
   EmitMCNull,   ///< Run CodeGen, but don't emit anything
-  EmitObj       ///< Emit native object files
+  EmitObj,      ///< Emit native object files
+  EmitWasm      ///< Emit wasm linked files
 };
 
 void EmitBackendOutput(DiagnosticsEngine &Diags,
