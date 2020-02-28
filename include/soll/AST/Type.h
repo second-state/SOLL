@@ -77,7 +77,7 @@ public:
   bool isDynamic() const override { return false; }
   bool shouldEndianLess() const override { return true; }
   unsigned getABIStaticSize() const override { return 32; }
-  unsigned int getBitNum() const override { return 1; }
+  unsigned int getBitNum() const override { return 8; }
 };
 
 class IntegerType : public Type {

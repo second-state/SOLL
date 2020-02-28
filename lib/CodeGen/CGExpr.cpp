@@ -693,6 +693,71 @@ public:
   AbiEmitter(CodeGenFunction &CGF)
       : CGF(CGF), CGM(CGF.getCodeGenModule()), Builder(CGF.getBuilder()),
         VMContext(CGF.getLLVMContext()) {}
+  llvm::Value *
+  emitEncodePackedTuple(const std::vector<std::pair<ExprValue, bool>> &Values) {
+    std::vector<llvm::Value *> ValueArray;
+    for (const auto &V : Values) {
+      ExprValue Value;
+      bool IsStateVariable;
+      std::tie(Value, IsStateVariable) = V;
+      ValueArray.emplace_back(emitEncodePacked(Value, IsStateVariable));
+    }
+    llvm::Value *Bytes =
+        CGM.emitConcatBytes(llvm::ArrayRef<llvm::Value *>(ValueArray));
+    return Bytes;
+  }
+  llvm::Value *
+  emitEncodeTuple(const std::vector<std::pair<ExprValue, bool>> &Values) {
+    std::vector<llvm::Value *> Head;
+    std::vector<std::pair<llvm::Value *, size_t>> Tail;
+    unsigned Pos = 0;
+    for (const auto &V : Values) {
+      ExprValue Value;
+      bool IsStateVariable;
+      std::tie(Value, IsStateVariable) = V;
+      llvm::Value *ResValue = emitEncode(Value, IsStateVariable);
+      if (Value.getType()->isDynamic()) {
+        Tail.emplace_back(ResValue, Head.size());
+        Head.emplace_back(nullptr);
+      } else {
+        Head.emplace_back(ResValue);
+      }
+      Pos += Value.getType()->getABIStaticSize();
+    }
+    llvm::Value *TailPos = Builder.getIntN(256, Pos);
+    for (auto Arg : Tail) {
+      llvm::Value *Value;
+      size_t HeadPos;
+      std::tie(Value, HeadPos) = Arg;
+      Head[HeadPos] = TailPos;
+      Head.emplace_back(Value);
+      llvm::Value *Length = Builder.CreateZExtOrTrunc(
+          Builder.CreateExtractValue(Value, {0}), CGM.Int256Ty);
+      TailPos = Builder.CreateAdd(TailPos, Length);
+    }
+    llvm::Value *Bytes =
+        CGM.emitConcatBytes(llvm::ArrayRef<llvm::Value *>(Head));
+    return Bytes;
+  }
+
+private:
+  llvm::Value *getArrayLength(const ExprValue &Base, const ArrayType *ArrTy) {
+    if (ArrTy->isDynamicSized()) {
+      auto LengthTy = IntegerType::getIntN(256);
+      llvm::Value *Value = Base.load(Builder, CGM);
+      ExprValue BaseLength(&LengthTy, ValueKind::VK_SValue, Value);
+      return BaseLength.load(Builder, CGM);
+    } else {
+      return Builder.getInt(ArrTy->getLength());
+    }
+  }
+  unsigned getElementPerSlot(bool isStateVariable, const ArrayType *ArrTy) {
+    if (!isStateVariable)
+      return 1;
+    unsigned BitPerElement = ArrTy->getElementType()->getBitNum();
+    unsigned ElementPerSlot = 256 / BitPerElement;
+    return ElementPerSlot;
+  }
   llvm::Value *emitEncodePacked(const ExprValue &Value, bool IsStateVariable) {
     const Type *Ty = Value.getType();
     switch (Ty->getCategory()) {
@@ -987,25 +1052,6 @@ public:
     default:
       return Builder.CreateZExt(Value.load(Builder, CGM), CGF.Int256Ty);
     }
-  }
-
-private:
-  llvm::Value *getArrayLength(const ExprValue &Base, const ArrayType *ArrTy) {
-    if (ArrTy->isDynamicSized()) {
-      auto LengthTy = IntegerType::getIntN(256);
-      llvm::Value *Value = Base.load(Builder, CGM);
-      ExprValue BaseLength(&LengthTy, ValueKind::VK_SValue, Value);
-      return BaseLength.load(Builder, CGM);
-    } else {
-      return Builder.getInt(ArrTy->getLength());
-    }
-  }
-  unsigned getElementPerSlot(bool isStateVariable, const ArrayType *ArrTy) {
-    if (!isStateVariable)
-      return 1;
-    unsigned BitPerElement = ArrTy->getElementType()->getBitNum();
-    unsigned ElementPerSlot = 256 / BitPerElement;
-    return ElementPerSlot;
   }
   llvm::Value *emitConcateBytesDynamic(llvm::Value *ArrayLength,
                                        llvm::Value *Int8PtrArray,
@@ -1345,10 +1391,8 @@ llvm::Value *CodeGenFunction::emitCallAddressSend(const CallExpr *CE,
 
 llvm::Value *CodeGenFunction::emitAbiEncodePacked(const CallExpr *CE) {
   // abi_encodePacked
-  // TODO: we need to support array, tuple, struct
-  AbiEmitter abiEmitter(*this);
   auto Arguments = CE->getArguments();
-  std::vector<llvm::Value *> Args;
+  std::vector<std::pair<ExprValue, bool>> Args;
   for (auto Arg : Arguments) {
     if (auto CE = dynamic_cast<const CastExpr *>(Arg)) {
       Arg = CE->getSubExpr();
@@ -1361,21 +1405,15 @@ llvm::Value *CodeGenFunction::emitAbiEncodePacked(const CallExpr *CE) {
         IsStateVariable = D->isStateVariable();
       }
     }
-    Args.emplace_back(
-        abiEmitter.emitEncodePacked(emitExpr(Arg), IsStateVariable));
+    Args.emplace_back(emitExpr(Arg), IsStateVariable);
   }
-  llvm::Value *Bytes = CGM.emitConcatBytes(llvm::ArrayRef<llvm::Value *>(Args));
-  return Bytes;
+  return AbiEmitter(*this).emitEncodePackedTuple(Args);
 }
 
 llvm::Value *CodeGenFunction::emitAbiEncode(const CallExpr *CE) {
   // abi_encode
-  // TODO: we need to support array, tuple, struct
-  AbiEmitter abiEmitter(*this);
   auto Arguments = CE->getArguments();
-  std::vector<llvm::Value *> Head;
-  std::vector<std::pair<llvm::Value *, size_t>> Tail;
-  unsigned Pos = 0;
+  std::vector<std::pair<ExprValue, bool>> Args;
   for (auto Arg : Arguments) {
     if (auto CE = dynamic_cast<const CastExpr *>(Arg)) {
       Arg = CE->getSubExpr();
@@ -1388,28 +1426,9 @@ llvm::Value *CodeGenFunction::emitAbiEncode(const CallExpr *CE) {
         IsStateVariable = D->isStateVariable();
       }
     }
-    llvm::Value *Value = abiEmitter.emitEncode(emitExpr(Arg), IsStateVariable);
-    if (Arg->getType()->isDynamic()) {
-      Tail.emplace_back(Value, Head.size());
-      Head.emplace_back(nullptr);
-    } else {
-      Head.emplace_back(Value);
-    }
-    Pos += Arg->getType()->getABIStaticSize();
+    Args.emplace_back(emitExpr(Arg), IsStateVariable);
   }
-  llvm::Value *TailPos = Builder.getIntN(256, Pos);
-  for (auto Arg : Tail) {
-    llvm::Value *Value;
-    size_t HeadPos;
-    std::tie(Value, HeadPos) = Arg;
-    Head[HeadPos] = TailPos;
-    Head.emplace_back(Value);
-    llvm::Value *Length = Builder.CreateZExtOrTrunc(
-        Builder.CreateExtractValue(Value, {0}), Int256Ty);
-    TailPos = Builder.CreateAdd(TailPos, Length);
-  }
-  llvm::Value *Bytes = CGM.emitConcatBytes(llvm::ArrayRef<llvm::Value *>(Head));
-  return Bytes;
+  return AbiEmitter(*this).emitEncodeTuple(Args);
 }
 
 ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
