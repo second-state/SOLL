@@ -693,6 +693,33 @@ public:
   AbiEmitter(CodeGenFunction &CGF)
       : CGF(CGF), CGM(CGF.getCodeGenModule()), Builder(CGF.getBuilder()),
         VMContext(CGF.getLLVMContext()) {}
+  llvm::Value *getEncodePackedTupleSize(
+      const std::vector<std::pair<ExprValue, bool>> &Values) {
+    llvm::Value *Size = Builder.getIntN(32, 0);
+    for (const auto &V : Values) {
+      ExprValue Value;
+      bool IsStateVariable;
+      std::tie(Value, IsStateVariable) = V;
+      Size =
+          Builder.CreateAdd(Size, getEncodePackedSize(Value, IsStateVariable));
+    }
+    return Size;
+  }
+  llvm::Value *
+  getEncodeTupleSize(const std::vector<std::pair<ExprValue, bool>> &Values) {
+    llvm::Value *Size = Builder.getIntN(32, 0);
+    for (const auto &V : Values) {
+      ExprValue Value;
+      bool IsStateVariable;
+      std::tie(Value, IsStateVariable) = V;
+      if (Value.getType()->isDynamic()) {
+        Size = Builder.CreateAdd(Size,
+                                 getEncodeSize(Value, Builder.getIntN(32, 32)));
+      }
+      Size = Builder.CreateAdd(Size, getEncodeSize(Value, IsStateVariable));
+    }
+    return Size;
+  }
   llvm::Value *
   emitEncodePackedTuple(const std::vector<std::pair<ExprValue, bool>> &Values) {
     std::vector<llvm::Value *> ValueArray;
@@ -758,7 +785,173 @@ private:
     unsigned ElementPerSlot = 256 / BitPerElement;
     return ElementPerSlot;
   }
-  llvm::Value *emitEncodePacked(const ExprValue &Value, bool IsStateVariable) {
+  llvm::Value *getEncodePackedSize(const ExprValue &Value,
+                                   bool IsStateVariable) {
+    const Type *Ty = Value.getType();
+    switch (Ty->getCategory()) {
+    case Type::Category::String:
+    case Type::Category::Bytes: {
+      llvm::Value *Bytes = Value.load(Builder, CGM);
+      llvm::Value *Length = Builder.CreateZExtOrTrunc(
+          Builder.CreateExtractValue(Bytes, {0}), CGF.Int32Ty);
+      return Length;
+    }
+    case Type::Category::Array: {
+      const auto *ArrTy = dynamic_cast<const ArrayType *>(Ty);
+      const auto ArrElementTy = ArrTy->getElementType();
+      llvm::Value *Size = Builder.getIntN(32, 0);
+      llvm::Value *ArrayLength =
+          Builder.CreateZExtOrTrunc(getArrayLength(Value, ArrTy), CGM.Int32Ty);
+      if (!ArrElementTy->isDynamic()) {
+        llvm::Value *ArraySize = nullptr;
+        if (ArrTy->isDynamicSized()) {
+          ArraySize = Builder.CreateMul(
+              ArrayLength,
+              Builder.getIntN(32, ArrElementTy->getABIStaticSize()));
+        } else {
+          ArraySize = Builder.getIntN(32, ArrTy->getABIStaticSize());
+        }
+        return ArraySize;
+      }
+
+      llvm::Function *ThisFunc = Builder.GetInsertBlock()->getParent();
+      llvm::BasicBlock *Start = Builder.GetInsertBlock();
+      llvm::BasicBlock *Loop =
+          llvm::BasicBlock::Create(VMContext, "loop", ThisFunc);
+      llvm::BasicBlock *LoopEnd =
+          llvm::BasicBlock::Create(VMContext, "loop_end", ThisFunc);
+
+      llvm::Value *Index = Builder.getIntN(32, 0);
+
+      llvm::Value *Condition = Builder.CreateICmpULT(Index, ArrayLength);
+      Builder.CreateCondBr(Condition, Loop, LoopEnd);
+
+      Builder.SetInsertPoint(Loop);
+      llvm::PHINode *PHIIndex = Builder.CreatePHI(CGM.Int32Ty, 2);
+      llvm::PHINode *PHISize = Builder.CreatePHI(CGM.Int32Ty, 2);
+
+      ExprValue IndexAccessValue = ExprEmitter(CGF).arrayIndexAccess(
+          Value, PHIIndex, ArrTy->getElementType().get(), ArrTy,
+          IsStateVariable);
+
+      llvm::Value *ResSize =
+          getEncodePackedSize(IndexAccessValue, IsStateVariable);
+      llvm::Value *NextIndex =
+          Builder.CreateAdd(PHIIndex, Builder.getIntN(32, 1));
+      llvm::Value *NextSize = Builder.CreateAdd(PHISize, ResSize);
+
+      Condition = Builder.CreateICmpULT(NextIndex, ArrayLength);
+      Builder.CreateCondBr(Condition, Loop, LoopEnd);
+
+      PHIIndex->addIncoming(Index, Start);
+      PHIIndex->addIncoming(NextIndex, Loop);
+      PHISize->addIncoming(Size, Start);
+      PHISize->addIncoming(NextSize, Loop);
+
+      Builder.SetInsertPoint(LoopEnd);
+      PHISize = Builder.CreatePHI(CGM.Int32Ty, 2);
+      PHISize->addIncoming(Size, Start);
+      PHISize->addIncoming(NextSize, Loop);
+      return PHISize;
+    }
+    case Type::Category::Struct:
+    case Type::Category::Tuple:
+    case Type::Category::Contract:
+    case Type::Category::Function:
+    case Type::Category::Mapping:
+      assert(false &&
+             "This type is not available currently for abi.encodePacked");
+      __builtin_unreachable();
+    default:
+      return Builder.getIntN(32, Ty->getBitNum() / 8);
+    }
+  }
+  llvm::Value *getEncodeSize(const ExprValue &Value, bool IsStateVariable) {
+    const Type *Ty = Value.getType();
+    switch (Ty->getCategory()) {
+    case Type::Category::String:
+    case Type::Category::Bytes: {
+      llvm::Value *Bytes = Value.load(Builder, CGM);
+      llvm::Value *Length = Builder.CreateZExtOrTrunc(
+          Builder.CreateExtractValue(Bytes, {0}), CGF.Int32Ty);
+      return Builder.CreateMul(
+          Builder.CreateUDiv(Builder.CreateAdd(Length, Builder.getIntN(32, 63)),
+                             Builder.getIntN(32, 32)),
+          Builder.getIntN(32, 32));
+    }
+    case Type::Category::Array: {
+      const auto *ArrTy = dynamic_cast<const ArrayType *>(Ty);
+      const auto ArrElementTy = ArrTy->getElementType();
+      llvm::Value *Size = Builder.getIntN(32, ArrTy->isDynamicSized() ? 32 : 0);
+      llvm::Value *ArrayLength =
+          Builder.CreateZExtOrTrunc(getArrayLength(Value, ArrTy), CGM.Int32Ty);
+      if (!ArrElementTy->isDynamic()) {
+        llvm::Value *ArraySize = nullptr;
+        if (ArrTy->isDynamicSized()) {
+          ArraySize = Builder.CreateMul(
+              ArrayLength,
+              Builder.getIntN(32, ArrElementTy->getABIStaticSize()));
+        } else {
+          ArraySize = Builder.getIntN(32, ArrTy->getABIStaticSize());
+        }
+        return Builder.CreateAdd(Size, ArraySize);
+      }
+      Size = Builder.CreateAdd(
+          Size, Builder.CreateMul(ArrayLength, Builder.getIntN(32, 32)));
+
+      llvm::Function *ThisFunc = Builder.GetInsertBlock()->getParent();
+      llvm::BasicBlock *Start = Builder.GetInsertBlock();
+      llvm::BasicBlock *Loop =
+          llvm::BasicBlock::Create(VMContext, "loop", ThisFunc);
+      llvm::BasicBlock *LoopEnd =
+          llvm::BasicBlock::Create(VMContext, "loop_end", ThisFunc);
+
+      llvm::Value *Index = Builder.getIntN(32, 0);
+
+      llvm::Value *Condition = Builder.CreateICmpULT(Index, ArrayLength);
+      Builder.CreateCondBr(Condition, Loop, LoopEnd);
+
+      Builder.SetInsertPoint(Loop);
+      llvm::PHINode *PHIIndex = Builder.CreatePHI(CGM.Int32Ty, 2);
+      llvm::PHINode *PHISize = Builder.CreatePHI(CGM.Int32Ty, 2);
+
+      ExprValue IndexAccessValue = ExprEmitter(CGF).arrayIndexAccess(
+          Value, PHIIndex, ArrTy->getElementType().get(), ArrTy,
+          IsStateVariable);
+
+      llvm::Value *ResSize = getEncodeSize(IndexAccessValue, IsStateVariable);
+      llvm::Value *NextIndex =
+          Builder.CreateAdd(PHIIndex, Builder.getIntN(32, 1));
+      llvm::Value *NextSize = Builder.CreateAdd(PHISize, ResSize);
+
+      Condition = Builder.CreateICmpULT(NextIndex, ArrayLength);
+      Builder.CreateCondBr(Condition, Loop, LoopEnd);
+
+      PHIIndex->addIncoming(Index, Start);
+      PHIIndex->addIncoming(NextIndex, Loop);
+      PHISize->addIncoming(Size, Start);
+      PHISize->addIncoming(NextSize, Loop);
+
+      Builder.SetInsertPoint(LoopEnd);
+      PHISize = Builder.CreatePHI(CGM.Int32Ty, 2);
+      PHISize->addIncoming(Size, Start);
+      PHISize->addIncoming(NextSize, Loop);
+      return PHISize;
+    }
+    case Type::Category::Struct:
+    case Type::Category::Tuple:
+    case Type::Category::Contract:
+    case Type::Category::Function:
+    case Type::Category::Mapping:
+      assert(false &&
+             "This type is not available currently for abi.encodePacked");
+      __builtin_unreachable();
+    default:
+      return Builder.getIntN(32, Ty->getABIStaticSize());
+    }
+  }
+  llvm::Value *emitEncodePacked(const ExprValue &Value, bool IsStateVariable,
+                                bool IsArrayElement = false) {
     const Type *Ty = Value.getType();
     switch (Ty->getCategory()) {
     case Type::Category::Array: {
@@ -820,10 +1013,10 @@ private:
             Builder.CreateZExtOrTrunc(Shift, CGM.Int256Ty));
       }
       llvm::Value *ResBytes =
-          emitEncodePacked(IndexAccessValue, IsStateVariable);
-      if (CGM.isDynamicType(ResBytes->getType())) {
-        ResBytes = CGM.emitConcatBytes(llvm::ArrayRef<llvm::Value *>(
-            {Builder.CreateZExt(ResBytes, CGF.Int256Ty)}));
+          emitEncodePacked(IndexAccessValue, IsStateVariable, true);
+      if (!CGM.isDynamicType(ResBytes->getType())) {
+        ResBytes =
+            CGM.emitConcatBytes(llvm::ArrayRef<llvm::Value *>({ResBytes}));
       }
       llvm::Value *ResBytesLength = Builder.CreateZExtOrTrunc(
           Builder.CreateExtractValue(ResBytes, {0}), CGM.Int32Ty);
@@ -863,7 +1056,11 @@ private:
              "This type is not available currently for abi.encodePacked");
       __builtin_unreachable();
     default:
-      return Value.load(Builder, CGM);
+      llvm::Value *Result = Value.load(Builder, CGM);
+      if (IsArrayElement) {
+        return Builder.CreateZExt(Result, CGF.Int256Ty);
+      }
+      return Result;
     }
   }
   llvm::Value *emitEncode(const ExprValue &Value, bool IsStateVariable) {
@@ -1102,6 +1299,24 @@ private:
         Bytes, Builder.CreateZExtOrTrunc(ArrayLength, CGM.Int256Ty), {0});
     Bytes = Builder.CreateInsertValue(Bytes, Array, {1});
     return Bytes;
+  }
+  llvm::Value *copyToInt8Ptr(llvm::Value *Int8Ptr, llvm::Value *Value) {
+    llvm::Function *Memcpy = CGM.getModule().getFunction("solidity.memcpy");
+    llvm::Type *Ty = Value->getType();
+    if (CGM.isDynamicType(Ty)) {
+      llvm::Value *Length = Builder.CreateZExtOrTrunc(
+          Builder.CreateExtractValue(Value, {0}), CGM.Int32Ty);
+      llvm::Value *SrcBytes = Builder.CreateExtractValue(Value, {1});
+      Builder.CreateCall(Memcpy, {Builder.CreateBitCast(Int8Ptr, CGM.Int8PtrTy),
+                                  SrcBytes, Length});
+      return Builder.CreateInBoundsGEP(Int8Ptr, {Length});
+    } else {
+      llvm::Value *CPtr =
+          Builder.CreatePointerCast(Int8Ptr, llvm::PointerType::getUnqual(Ty));
+      Builder.CreateStore(Value, CPtr);
+      return Builder.CreateInBoundsGEP(
+          Int8Ptr, {Builder.getInt32(Ty->getIntegerBitWidth() / 8)});
+    }
   }
 };
 
@@ -1407,7 +1622,12 @@ llvm::Value *CodeGenFunction::emitAbiEncodePacked(const CallExpr *CE) {
     }
     Args.emplace_back(emitExpr(Arg), IsStateVariable);
   }
-  return AbiEmitter(*this).emitEncodePackedTuple(Args);
+  AbiEmitter Emitter(*this);
+  // TODO: use Alloca only onec
+  // llvm::Value *ArrayLength = Emitter.getEncodePackedTupleSize(Args);
+  // llvm::Value *Array =
+  //      Builder.CreateAlloca(Int8Ty, ArrayLength, "encodePacked");
+  return Emitter.emitEncodePackedTuple(Args);
 }
 
 llvm::Value *CodeGenFunction::emitAbiEncode(const CallExpr *CE) {
@@ -1428,7 +1648,12 @@ llvm::Value *CodeGenFunction::emitAbiEncode(const CallExpr *CE) {
     }
     Args.emplace_back(emitExpr(Arg), IsStateVariable);
   }
-  return AbiEmitter(*this).emitEncodeTuple(Args);
+  AbiEmitter Emitter(*this);
+  // TODO: use Alloca only onec
+  // llvm::Value *ArrayLength = Emitter.getEncodeTupleSize(Args);
+  // llvm::Value *Array =
+  //      Builder.CreateAlloca(Int8Ty, ArrayLength, "encode");
+  return Emitter.emitEncodeTuple(Args);
 }
 
 ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
