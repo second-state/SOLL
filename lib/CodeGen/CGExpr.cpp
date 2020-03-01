@@ -721,50 +721,45 @@ public:
     return Size;
   }
   llvm::Value *
-  emitEncodePackedTuple(const std::vector<std::pair<ExprValue, bool>> &Values) {
-    std::vector<llvm::Value *> ValueArray;
+  emitEncodePackedTuple(llvm::Value *Int8Ptr,
+                        const std::vector<std::pair<ExprValue, bool>> &Values) {
     for (const auto &V : Values) {
       ExprValue Value;
       bool IsStateVariable;
       std::tie(Value, IsStateVariable) = V;
-      ValueArray.emplace_back(emitEncodePacked(Value, IsStateVariable));
+      Int8Ptr = emitEncodePacked(Int8Ptr, Value, IsStateVariable);
     }
-    llvm::Value *Bytes =
-        CGM.emitConcatBytes(llvm::ArrayRef<llvm::Value *>(ValueArray));
-    return Bytes;
+    return Int8Ptr;
   }
   llvm::Value *
-  emitEncodeTuple(const std::vector<std::pair<ExprValue, bool>> &Values) {
-    std::vector<llvm::Value *> Head;
-    std::vector<std::pair<llvm::Value *, size_t>> Tail;
-    unsigned Pos = 0;
-    for (const auto &V : Values) {
+  emitEncodeTuple(llvm::Value *Int8Ptr,
+                  const std::vector<std::pair<ExprValue, bool>> &Values) {
+    llvm::Value *Int8PtrBegin = Int8Ptr;
+    std::vector<std::pair<llvm::Value *, size_t>> DynamicPos;
+    for (size_t i = 0; i < Values.size(); ++i) {
       ExprValue Value;
       bool IsStateVariable;
-      std::tie(Value, IsStateVariable) = V;
-      llvm::Value *ResValue = emitEncode(Value, IsStateVariable);
+      std::tie(Value, IsStateVariable) = Values[i];
       if (Value.getType()->isDynamic()) {
-        Tail.emplace_back(ResValue, Head.size());
-        Head.emplace_back(nullptr);
+        DynamicPos.emplace_back(Int8Ptr, i);
+        Int8Ptr = Builder.CreateInBoundsGEP(Int8Ptr, {Builder.getIntN(32, 32)});
       } else {
-        Head.emplace_back(ResValue);
+        Int8Ptr = emitEncode(Int8Ptr, Value, IsStateVariable);
       }
-      Pos += Value.getType()->getABIStaticSize();
     }
-    llvm::Value *TailPos = Builder.getIntN(256, Pos);
-    for (auto Arg : Tail) {
-      llvm::Value *Value;
-      size_t HeadPos;
-      std::tie(Value, HeadPos) = Arg;
-      Head[HeadPos] = TailPos;
-      Head.emplace_back(Value);
-      llvm::Value *Length = Builder.CreateZExtOrTrunc(
-          Builder.CreateExtractValue(Value, {0}), CGM.Int256Ty);
-      TailPos = Builder.CreateAdd(TailPos, Length);
+    for (auto &DP : DynamicPos) {
+      llvm::Value *Head;
+      size_t i;
+      std::tie(Head, i) = DP;
+      ExprValue Value;
+      bool IsStateVariable;
+      std::tie(Value, IsStateVariable) = Values[i];
+      llvm::Value *TailPos = Builder.CreateZExt(
+          Builder.CreatePtrDiff(Int8Ptr, Int8PtrBegin), CGM.Int256Ty);
+      copyToInt8Ptr(Head, TailPos, false);
+      Int8Ptr = emitEncode(Int8Ptr, Value, IsStateVariable);
     }
-    llvm::Value *Bytes =
-        CGM.emitConcatBytes(llvm::ArrayRef<llvm::Value *>(Head));
-    return Bytes;
+    return Int8Ptr;
   }
 
 private:
@@ -950,10 +945,21 @@ private:
       return Builder.getIntN(32, Ty->getABIStaticSize());
     }
   }
-  llvm::Value *emitEncodePacked(const ExprValue &Value, bool IsStateVariable,
+  llvm::Value *emitEncodePacked(llvm::Value *Int8Ptr, const ExprValue &Value,
+                                bool IsStateVariable,
                                 bool IsArrayElement = false) {
     const Type *Ty = Value.getType();
     switch (Ty->getCategory()) {
+    case Type::Category::String:
+    case Type::Category::Bytes: {
+      if (IsArrayElement) {
+        assert(false &&
+               "This type is not available currently for abi.encodePacked");
+        __builtin_unreachable();
+      }
+      llvm::Value *Bytes = Value.load(Builder, CGM);
+      return copyToInt8Ptr(Int8Ptr, Bytes, true);
+    }
     case Type::Category::Array: {
       llvm::Function *ThisFunc = Builder.GetInsertBlock()->getParent();
       llvm::BasicBlock *Start = Builder.GetInsertBlock();
@@ -963,13 +969,14 @@ private:
           llvm::BasicBlock::Create(VMContext, "loop_end", ThisFunc);
 
       const auto *ArrTy = dynamic_cast<const ArrayType *>(Ty);
+      if (IsArrayElement && ArrTy->isDynamicSized()) {
+        assert(false &&
+               "This type is not available currently for abi.encodePacked");
+        __builtin_unreachable();
+      }
       llvm::Value *ArrayLength =
           Builder.CreateZExtOrTrunc(getArrayLength(Value, ArrTy), CGM.Int32Ty);
-      llvm::Value *Int8PtrArray =
-          Builder.CreateAlloca(CGF.Int8PtrTy, ArrayLength);
-      llvm::Value *Int32Array = Builder.CreateAlloca(CGF.Int32Ty, ArrayLength);
       llvm::Value *Index = Builder.getIntN(32, 0);
-      llvm::Value *LengthSum = Builder.getIntN(32, 0);
 
       llvm::BasicBlock *GetIndexAccess = nullptr;
       llvm::BasicBlock *GetIndexAccessEnd = nullptr;
@@ -988,7 +995,7 @@ private:
 
       Builder.SetInsertPoint(Loop);
       llvm::PHINode *PHIIndex = Builder.CreatePHI(CGM.Int32Ty, 2);
-      llvm::PHINode *PHILengthSum = Builder.CreatePHI(CGM.Int32Ty, 2);
+      llvm::PHINode *PHIInt8Ptr = Builder.CreatePHI(CGM.Int8PtrTy, 2);
       if (ElementPerSlot > 1) {
         Shift =
             Builder.CreateURem(PHIIndex, Builder.getIntN(32, ElementPerSlot));
@@ -1012,40 +1019,21 @@ private:
         IndexAccessValue.setShift(
             Builder.CreateZExtOrTrunc(Shift, CGM.Int256Ty));
       }
-      llvm::Value *ResBytes =
-          emitEncodePacked(IndexAccessValue, IsStateVariable, true);
-      if (!CGM.isDynamicType(ResBytes->getType())) {
-        ResBytes =
-            CGM.emitConcatBytes(llvm::ArrayRef<llvm::Value *>({ResBytes}));
-      }
-      llvm::Value *ResBytesLength = Builder.CreateZExtOrTrunc(
-          Builder.CreateExtractValue(ResBytes, {0}), CGM.Int32Ty);
-      llvm::Value *ResSrcBytes = Builder.CreateExtractValue(ResBytes, {1});
-      llvm::Value *Int8PtrArrayPtr =
-          Builder.CreateInBoundsGEP(Int8PtrArray, {PHIIndex});
-      llvm::Value *Int32ArrayPtr =
-          Builder.CreateInBoundsGEP(Int32Array, {PHIIndex});
-      Builder.CreateStore(ResSrcBytes, Int8PtrArrayPtr);
-      Builder.CreateStore(ResBytesLength, Int32ArrayPtr);
+      llvm::Value *NextInt8Ptr =
+          emitEncodePacked(PHIInt8Ptr, IndexAccessValue, IsStateVariable, true);
       llvm::Value *NextIndex =
           Builder.CreateAdd(PHIIndex, Builder.getIntN(32, 1));
-      llvm::Value *NextLengthSum =
-          Builder.CreateAdd(PHILengthSum, ResBytesLength);
 
       Condition = Builder.CreateICmpULT(NextIndex, ArrayLength);
       Builder.CreateCondBr(Condition, Loop, LoopEnd);
 
       PHIIndex->addIncoming(Index, Start);
       PHIIndex->addIncoming(NextIndex, Loop);
-      PHILengthSum->addIncoming(LengthSum, Start);
-      PHILengthSum->addIncoming(NextLengthSum, Loop);
+      PHIInt8Ptr->addIncoming(Int8Ptr, Start);
+      PHIInt8Ptr->addIncoming(NextInt8Ptr, Loop);
 
       Builder.SetInsertPoint(LoopEnd);
-      PHILengthSum = Builder.CreatePHI(CGM.Int32Ty, 2);
-      PHILengthSum->addIncoming(LengthSum, Start);
-      PHILengthSum->addIncoming(NextLengthSum, Loop);
-      return emitConcateBytesDynamic(ArrayLength, Int8PtrArray, Int32Array,
-                                     PHILengthSum);
+      return PHIInt8Ptr;
     }
     case Type::Category::Struct:
     case Type::Category::Tuple:
@@ -1055,37 +1043,45 @@ private:
       assert(false &&
              "This type is not available currently for abi.encodePacked");
       __builtin_unreachable();
-    default:
+    case Type::Category::FixedBytes: {
+      llvm::Value *Result = Value.load(Builder, CGM);
+      Int8Ptr = copyToInt8Ptr(Int8Ptr, Result, true);
+      if (IsArrayElement) {
+        const auto *FixedBytesTy = dynamic_cast<const FixedBytesType *>(Ty);
+        unsigned PadRightLength = 32 - FixedBytesTy->getBitNum() / 8;
+        if (PadRightLength % 32)
+          Int8Ptr = Builder.CreateInBoundsGEP(
+              Int8Ptr, {Builder.getIntN(32, PadRightLength)});
+      }
+      return Int8Ptr;
+    }
+    default: {
       llvm::Value *Result = Value.load(Builder, CGM);
       if (IsArrayElement) {
-        return Builder.CreateZExt(Result, CGF.Int256Ty);
+        Result = Builder.CreateZExt(Result, CGF.Int256Ty);
       }
-      return Result;
+      return copyToInt8Ptr(Int8Ptr, Result, true);
+    }
     }
   }
-  llvm::Value *emitEncode(const ExprValue &Value, bool IsStateVariable) {
+  llvm::Value *emitEncode(llvm::Value *Int8Ptr, const ExprValue &Value,
+                          bool IsStateVariable) {
     const Type *Ty = Value.getType();
     switch (Ty->getCategory()) {
     case Type::Category::String:
     case Type::Category::Bytes: {
       llvm::Value *Bytes = Value.load(Builder, CGM);
       llvm::Value *Length = Builder.CreateZExtOrTrunc(
-          Builder.CreateExtractValue(Bytes, {0}), CGF.Int256Ty);
-      llvm::Value *PadRightLength = Builder.CreateSub(
-          Builder.getIntN(256, 32),
-          Builder.CreateURem(Length, Builder.getIntN(256, 32)));
-      // TODO: use memory allocate
-      llvm::Value *PadRightArray =
-          Builder.CreateAlloca(CGF.Int8Ty, PadRightLength);
-      llvm::Value *PadRightBytes =
-          llvm::ConstantAggregateZero::get(CGF.BytesTy);
-      PadRightBytes = Builder.CreateInsertValue(
-          PadRightBytes,
-          Builder.CreateZExtOrTrunc(PadRightLength, CGF.Int256Ty), {0});
-      PadRightBytes =
-          Builder.CreateInsertValue(PadRightBytes, PadRightArray, {1});
-      return CGM.emitConcatBytes(
-          llvm::ArrayRef<llvm::Value *>({Length, Bytes, PadRightBytes}));
+          Builder.CreateExtractValue(Bytes, {0}), CGF.Int32Ty);
+      llvm::Value *PadRightLength = Builder.CreateURem(
+          Builder.CreateSub(
+              Builder.getIntN(32, 32),
+              Builder.CreateURem(Length, Builder.getIntN(32, 32))),
+          Builder.getIntN(32, 32));
+      Int8Ptr = copyToInt8Ptr(
+          Int8Ptr, Builder.CreateZExtOrTrunc(Length, CGF.Int256Ty), true);
+      Int8Ptr = copyToInt8Ptr(Int8Ptr, Bytes, true);
+      return Builder.CreateInBoundsGEP(Int8Ptr, {PadRightLength});
     }
     case Type::Category::Array: {
       llvm::Function *ThisFunc = Builder.GetInsertBlock()->getParent();
@@ -1100,49 +1096,22 @@ private:
           Builder.CreateZExtOrTrunc(getArrayLength(Value, ArrTy), CGM.Int256Ty);
       llvm::Value *ArrayLength =
           Builder.CreateZExtOrTrunc(ArrayLengthInt256, CGM.Int32Ty);
-      llvm::Value *BytesNum = ArrayLength;
       if (ArrTy->isDynamicSized()) {
-        BytesNum = Builder.CreateAdd(BytesNum, Builder.getIntN(32, 1));
+        Int8Ptr = copyToInt8Ptr(Int8Ptr, ArrayLengthInt256, true);
       }
-      if (ArrTy->getElementType()->isDynamic()) {
-        BytesNum = Builder.CreateAdd(BytesNum, ArrayLength);
-      }
-      llvm::Value *Int8PtrArray = Builder.CreateAlloca(CGF.Int8PtrTy, BytesNum);
-      llvm::Value *Int32Array = Builder.CreateAlloca(CGF.Int32Ty, BytesNum);
-      llvm::Value *Index = Builder.getIntN(32, 0);
-
+      llvm::Value *Int8PtrBegin = Int8Ptr;
+      llvm::Value *Head = nullptr;
+      llvm::Value *Tail = nullptr;
       unsigned ABIStaticSize = ArrTy->getABIStaticSize();
       llvm::Value *ABIStaticSizeValue = Builder.getIntN(32, ABIStaticSize);
-      llvm::Value *LengthSum = nullptr;
-      llvm::Value *HeadPos = nullptr;
-      if (ArrTy->isDynamicSized()) {
-        HeadPos = Builder.getIntN(32, 1);
-        LengthSum = Builder.getIntN(32, ABIStaticSize);
-        llvm::Value *Int8PtrArrayPtr =
-            Builder.CreateInBoundsGEP(Int8PtrArray, {Builder.getIntN(32, 0)});
-        llvm::Value *Int32ArrayPtr =
-            Builder.CreateInBoundsGEP(Int32Array, {Builder.getIntN(32, 0)});
-        llvm::Value *Int8TyArray =
-            Builder.CreateAlloca(CGM.Int8Ty, ABIStaticSizeValue);
-        llvm::Value *Ptr =
-            Builder.CreateInBoundsGEP(Int8TyArray, {Builder.getIntN(32, 0)});
-        llvm::Value *CPtr = Builder.CreatePointerCast(
-            Ptr, llvm::PointerType::getUnqual(CGM.Int256Ty));
-        Builder.CreateStore(ArrayLengthInt256, CPtr);
-        Builder.CreateStore(Int8TyArray, Int8PtrArrayPtr);
-        Builder.CreateStore(ABIStaticSizeValue, Int32ArrayPtr);
-      } else {
-        HeadPos = Builder.getIntN(32, 0);
-        LengthSum = Builder.getIntN(32, 0);
-      }
-      llvm::Value *TailPos = nullptr;
       if (ArrTy->getElementType()->isDynamic()) {
-        TailPos = Builder.CreateAdd(HeadPos, ArrayLength);
-        LengthSum = Builder.CreateAdd(
-            LengthSum, Builder.CreateMul(ABIStaticSizeValue, ArrayLength));
+        Head = Int8Ptr;
+        Tail = Builder.CreateInBoundsGEP(
+            Head, {Builder.CreateMul(ArrayLength, ABIStaticSizeValue)});
       } else {
-        TailPos = HeadPos;
+        Tail = Int8Ptr;
       }
+      llvm::Value *Index = Builder.getIntN(32, 0);
 
       llvm::BasicBlock *GetIndexAccess = nullptr;
       llvm::BasicBlock *GetIndexAccessEnd = nullptr;
@@ -1161,7 +1130,10 @@ private:
 
       Builder.SetInsertPoint(Loop);
       llvm::PHINode *PHIIndex = Builder.CreatePHI(CGM.Int32Ty, 2);
-      llvm::PHINode *PHILengthSum = Builder.CreatePHI(CGM.Int32Ty, 2);
+      llvm::PHINode *PHIHead = nullptr;
+      if (ArrTy->getElementType()->isDynamic())
+        PHIHead = Builder.CreatePHI(CGM.Int8PtrTy, 2);
+      llvm::PHINode *PHITail = Builder.CreatePHI(CGM.Int8PtrTy, 2);
       if (ElementPerSlot > 1) {
         Shift =
             Builder.CreateURem(PHIIndex, Builder.getIntN(32, ElementPerSlot));
@@ -1185,57 +1157,31 @@ private:
         IndexAccessValue.setShift(
             Builder.CreateZExtOrTrunc(Shift, CGM.Int256Ty));
       }
-      llvm::Value *ResBytes = emitEncode(IndexAccessValue, IsStateVariable);
-      if (!CGM.isDynamicType(ResBytes->getType())) {
-        ResBytes =
-            CGM.emitConcatBytes(llvm::ArrayRef<llvm::Value *>({ResBytes}));
-      }
+      llvm::Value *NextHead = nullptr;
       if (ArrTy->getElementType()->isDynamic()) {
-        llvm::Value *HeadIndex = Builder.CreateAdd(HeadPos, PHIIndex);
-        llvm::Value *Int8PtrArrayPtr =
-            Builder.CreateInBoundsGEP(Int8PtrArray, {HeadIndex});
-        llvm::Value *Int32ArrayPtr =
-            Builder.CreateInBoundsGEP(Int32Array, {HeadIndex});
-        llvm::Value *Int8TyArray =
-            Builder.CreateAlloca(CGM.Int8Ty, ABIStaticSizeValue);
-        llvm::Value *Ptr =
-            Builder.CreateInBoundsGEP(Int8TyArray, {Builder.getIntN(32, 0)});
-        llvm::Value *CPtr = Builder.CreatePointerCast(
-            Ptr, llvm::PointerType::getUnqual(CGM.Int256Ty));
-        Builder.CreateStore(
-            Builder.CreateZExtOrTrunc(PHILengthSum, CGM.Int256Ty), CPtr);
-        Builder.CreateStore(Int8TyArray, Int8PtrArrayPtr);
-        Builder.CreateStore(ABIStaticSizeValue, Int32ArrayPtr);
+        llvm::Value *TailPos = Builder.CreateZExt(
+            Builder.CreatePtrDiff(PHITail, Int8PtrBegin), CGM.Int256Ty);
+        NextHead = copyToInt8Ptr(PHIHead, TailPos, true);
       }
-      llvm::Value *ResBytesLength = Builder.CreateZExtOrTrunc(
-          Builder.CreateExtractValue(ResBytes, {0}), CGM.Int32Ty);
-      llvm::Value *ResSrcBytes = Builder.CreateExtractValue(ResBytes, {1});
-      llvm::Value *TailIndex = Builder.CreateAdd(TailPos, PHIIndex);
-      llvm::Value *Int8PtrArrayPtr =
-          Builder.CreateInBoundsGEP(Int8PtrArray, {TailIndex});
-      llvm::Value *Int32ArrayPtr =
-          Builder.CreateInBoundsGEP(Int32Array, {TailIndex});
-      Builder.CreateStore(ResSrcBytes, Int8PtrArrayPtr);
-      Builder.CreateStore(ResBytesLength, Int32ArrayPtr);
+      llvm::Value *NextTail =
+          emitEncode(PHITail, IndexAccessValue, IsStateVariable);
       llvm::Value *NextIndex =
           Builder.CreateAdd(PHIIndex, Builder.getIntN(32, 1));
-      llvm::Value *NextLengthSum =
-          Builder.CreateAdd(PHILengthSum, ResBytesLength);
 
       Condition = Builder.CreateICmpULT(NextIndex, ArrayLength);
       Builder.CreateCondBr(Condition, Loop, LoopEnd);
 
       PHIIndex->addIncoming(Index, Start);
       PHIIndex->addIncoming(NextIndex, Loop);
-      PHILengthSum->addIncoming(LengthSum, Start);
-      PHILengthSum->addIncoming(NextLengthSum, Loop);
+      if (ArrTy->getElementType()->isDynamic()) {
+        PHIHead->addIncoming(Head, Start);
+        PHIHead->addIncoming(NextHead, Loop);
+      }
+      PHITail->addIncoming(Tail, Start);
+      PHITail->addIncoming(NextTail, Loop);
 
       Builder.SetInsertPoint(LoopEnd);
-      PHILengthSum = Builder.CreatePHI(CGM.Int32Ty, 2);
-      PHILengthSum->addIncoming(LengthSum, Start);
-      PHILengthSum->addIncoming(NextLengthSum, Loop);
-      return emitConcateBytesDynamic(BytesNum, Int8PtrArray, Int32Array,
-                                     PHILengthSum);
+      return Tail;
     }
     case Type::Category::Struct:
     case Type::Category::Tuple:
@@ -1246,61 +1192,25 @@ private:
     case Type::Category::Mapping:
       assert(false && "This type is not available currently for abi.encode");
       __builtin_unreachable();
-    default:
-      return Builder.CreateZExt(Value.load(Builder, CGM), CGF.Int256Ty);
+    case Type::Category::FixedBytes: {
+      llvm::Value *Result = Value.load(Builder, CGM);
+      Int8Ptr = copyToInt8Ptr(Int8Ptr, Result, true);
+      const auto *FixedBytesTy = dynamic_cast<const FixedBytesType *>(Ty);
+      unsigned PadRightLength = 32 - FixedBytesTy->getBitNum() / 8;
+      if (PadRightLength % 32)
+        Int8Ptr = Builder.CreateInBoundsGEP(
+            Int8Ptr, {Builder.getIntN(32, PadRightLength)});
+      return Int8Ptr;
+    }
+    default: {
+      llvm::Value *Result = Value.load(Builder, CGM);
+      Result = Builder.CreateZExt(Result, CGF.Int256Ty);
+      return copyToInt8Ptr(Int8Ptr, Result, true);
+    }
     }
   }
-  llvm::Value *emitConcateBytesDynamic(llvm::Value *ArrayLength,
-                                       llvm::Value *Int8PtrArray,
-                                       llvm::Value *Int32Array,
-                                       llvm::Value *ConcateBytesLength) {
-    llvm::Function *Memcpy = CGM.getModule().getFunction("solidity.memcpy");
-    llvm::Function *ThisFunc = Builder.GetInsertBlock()->getParent();
-    llvm::BasicBlock *Start = Builder.GetInsertBlock();
-    llvm::BasicBlock *Loop =
-        llvm::BasicBlock::Create(VMContext, "concateBytes_loop", ThisFunc);
-    llvm::BasicBlock *LoopEnd =
-        llvm::BasicBlock::Create(VMContext, "concateBytes_loop_end", ThisFunc);
-
-    llvm::Value *Array =
-        Builder.CreateAlloca(CGM.Int8Ty, ConcateBytesLength, "concat");
-    llvm::Value *Index = Builder.getIntN(32, 0);
-    llvm::Value *BytesIndex = Builder.getIntN(32, 0);
-    llvm::Value *Condition = Builder.CreateICmpULT(Index, ArrayLength);
-    Builder.CreateCondBr(Condition, Loop, LoopEnd);
-
-    Builder.SetInsertPoint(Loop);
-    llvm::PHINode *PHIIndex = Builder.CreatePHI(CGM.Int32Ty, 2);
-    llvm::PHINode *PHIBytesIndex = Builder.CreatePHI(CGM.Int32Ty, 2);
-    llvm::Value *Ptr = Builder.CreateInBoundsGEP(Array, {PHIBytesIndex});
-    llvm::Value *Int8PtrArrayPtr =
-        Builder.CreateInBoundsGEP(Int8PtrArray, {PHIIndex});
-    llvm::Value *Int32ArrayPtr =
-        Builder.CreateInBoundsGEP(Int32Array, {PHIIndex});
-    llvm::Value *Length = Builder.CreateLoad(Int32ArrayPtr);
-    llvm::Value *SrcBytes = Builder.CreateLoad(Int8PtrArrayPtr);
-    Builder.CreateCall(
-        Memcpy, {Builder.CreateBitCast(Ptr, CGM.Int8PtrTy), SrcBytes, Length});
-    llvm::Value *NextIndex =
-        Builder.CreateAdd(PHIIndex, Builder.getIntN(32, 1));
-    llvm::Value *NextBytesIndex = Builder.CreateAdd(PHIBytesIndex, Length);
-
-    Condition = Builder.CreateICmpULT(PHIIndex, ArrayLength);
-    Builder.CreateCondBr(Condition, Loop, LoopEnd);
-
-    PHIIndex->addIncoming(Index, Start);
-    PHIIndex->addIncoming(NextIndex, Loop);
-    PHIBytesIndex->addIncoming(BytesIndex, Start);
-    PHIBytesIndex->addIncoming(NextBytesIndex, Loop);
-
-    Builder.SetInsertPoint(LoopEnd);
-    llvm::Value *Bytes = llvm::ConstantAggregateZero::get(CGM.BytesTy);
-    Bytes = Builder.CreateInsertValue(
-        Bytes, Builder.CreateZExtOrTrunc(ArrayLength, CGM.Int256Ty), {0});
-    Bytes = Builder.CreateInsertValue(Bytes, Array, {1});
-    return Bytes;
-  }
-  llvm::Value *copyToInt8Ptr(llvm::Value *Int8Ptr, llvm::Value *Value) {
+  llvm::Value *copyToInt8Ptr(llvm::Value *Int8Ptr, llvm::Value *Value,
+                             bool IncreasePtr) {
     llvm::Function *Memcpy = CGM.getModule().getFunction("solidity.memcpy");
     llvm::Type *Ty = Value->getType();
     if (CGM.isDynamicType(Ty)) {
@@ -1309,14 +1219,17 @@ private:
       llvm::Value *SrcBytes = Builder.CreateExtractValue(Value, {1});
       Builder.CreateCall(Memcpy, {Builder.CreateBitCast(Int8Ptr, CGM.Int8PtrTy),
                                   SrcBytes, Length});
-      return Builder.CreateInBoundsGEP(Int8Ptr, {Length});
+      if (IncreasePtr)
+        return Builder.CreateInBoundsGEP(Int8Ptr, {Length});
     } else {
       llvm::Value *CPtr =
           Builder.CreatePointerCast(Int8Ptr, llvm::PointerType::getUnqual(Ty));
       Builder.CreateStore(Value, CPtr);
-      return Builder.CreateInBoundsGEP(
-          Int8Ptr, {Builder.getInt32(Ty->getIntegerBitWidth() / 8)});
+      if (IncreasePtr)
+        return Builder.CreateInBoundsGEP(
+            Int8Ptr, {Builder.getInt32(Ty->getIntegerBitWidth() / 8)});
     }
+    return nullptr;
   }
 };
 
@@ -1623,11 +1536,16 @@ llvm::Value *CodeGenFunction::emitAbiEncodePacked(const CallExpr *CE) {
     Args.emplace_back(emitExpr(Arg), IsStateVariable);
   }
   AbiEmitter Emitter(*this);
-  // TODO: use Alloca only onec
-  // llvm::Value *ArrayLength = Emitter.getEncodePackedTupleSize(Args);
-  // llvm::Value *Array =
-  //      Builder.CreateAlloca(Int8Ty, ArrayLength, "encodePacked");
-  return Emitter.emitEncodePackedTuple(Args);
+  llvm::Value *ArrayLength = Emitter.getEncodePackedTupleSize(Args);
+  // TODO: use memory allocate and memset
+  llvm::Value *Array =
+      Builder.CreateAlloca(Int8Ty, ArrayLength, "encodePacked");
+  Emitter.emitEncodePackedTuple(Array, Args);
+  llvm::Value *Bytes = llvm::ConstantAggregateZero::get(BytesTy);
+  Bytes = Builder.CreateInsertValue(
+      Bytes, Builder.CreateZExtOrTrunc(ArrayLength, Int256Ty), {0});
+  Bytes = Builder.CreateInsertValue(Bytes, Array, {1});
+  return Bytes;
 }
 
 llvm::Value *CodeGenFunction::emitAbiEncode(const CallExpr *CE) {
@@ -1649,11 +1567,15 @@ llvm::Value *CodeGenFunction::emitAbiEncode(const CallExpr *CE) {
     Args.emplace_back(emitExpr(Arg), IsStateVariable);
   }
   AbiEmitter Emitter(*this);
-  // TODO: use Alloca only onec
-  // llvm::Value *ArrayLength = Emitter.getEncodeTupleSize(Args);
-  // llvm::Value *Array =
-  //      Builder.CreateAlloca(Int8Ty, ArrayLength, "encode");
-  return Emitter.emitEncodeTuple(Args);
+  llvm::Value *ArrayLength = Emitter.getEncodeTupleSize(Args);
+  // TODO: use memory allocate and memset
+  llvm::Value *Array = Builder.CreateAlloca(Int8Ty, ArrayLength, "encode");
+  Emitter.emitEncodeTuple(Array, Args);
+  llvm::Value *Bytes = llvm::ConstantAggregateZero::get(BytesTy);
+  Bytes = Builder.CreateInsertValue(
+      Bytes, Builder.CreateZExtOrTrunc(ArrayLength, Int256Ty), {0});
+  Bytes = Builder.CreateInsertValue(Bytes, Array, {1});
+  return Bytes;
 }
 
 ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {

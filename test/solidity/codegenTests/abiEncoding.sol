@@ -12,9 +12,10 @@ contract ABI_encoding {
     bytes b1;
     bytes b2;
     bytes8 e;
-    int16[][2] Arr1;
+    int16[7][] Arr1;
     int32[][2] Arr2;
     int[][2][] Arr3;
+    int[3][2][] Arr4;
     function Jinkela() public payable returns(uint){
         return 12341234;
     }
@@ -32,6 +33,6 @@ contract ABI_encoding {
     }
 
     function encodePackedArray() public payable returns(bytes){
-        return abi.encodePacked(Arr1, Arr2, Arr3);
+        return abi.encodePacked(Arr1, Arr4);
     }
 }
