@@ -12,6 +12,7 @@ Our parser already covered most parts of valid [grammar](https://solidity.readth
 If you want to execute ewasm compiled from Yul, refer to the [DevGuide](DevGuide.md).
 
 ### Supported by SOLL
+
 - Recognize Yul object structure.
 - Statement
     - Block
@@ -23,7 +24,9 @@ If you want to execute ewasm compiled from Yul, refer to the [DevGuide](DevGuide
     - ForLoop
     - BreakContinue
     - FunctionCall
-- Basic arithmetical, compare, storage and memory access built-in functions.
+    - Leave
+- Basic arithmetical, compare and storage/memory access built-in functions.
+- Partial state, object and misc built-in functions.
 
 ### Future works
 
@@ -31,12 +34,7 @@ Below will describe some under implement language features.
 
 |                                             feature                                              |                           item                           |         exmaple         |
 |--------------------------------------------------------------------------------------------------|----------------------------------------------------------|-------------------------|
-| statement                                                                                        | Nested object                                            |                         |
-|                                                                                                  | Function return multiple value                           | function f() -> x, y {} |
-|                                                                                                  | Declare multiple variables in single statement           | let a, b                |
-|                                                                                                  | Assign with multiple value in single statement           | a, b = func()           |
-|                                                                                                  | Switch with string literal                               | case ""                 |
-|                                                                                                  | Leave statement **0.6.0 feature**                        |                         |
+| statement                                                                                        | Switch with string literal                               | case ""                 |
 | [Yul built-in function](https://solidity.readthedocs.io/en/v0.5.12/yul.html#low-level-functions) | logic not/and/or/xor <br>(conflict with inline assembly) |                         |
 |                                                                                                  | signextendu256                                           |                         |
 |                                                                                                  | sars256                                                  |                         |
@@ -47,38 +45,21 @@ Below will describe some under implement language features.
 |                                                                                                  | callcode                                                 |                         |
 |                                                                                                  | delegatecall                                             |                         |
 |                                                                                                  | abort                                                    |                         |
-|                                                                                                  | return                                                   |                         |
-|                                                                                                  | revert                                                   |                         |
 |                                                                                                  | selfdestruct                                             |                         |
-|                                                                                                  | log0                                                     |                         |
-|                                                                                                  | log1                                                     |                         |
-|                                                                                                  | log2                                                     |                         |
-|                                                                                                  | log3                                                     |                         |
-|                                                                                                  | log4                                                     |                         |
-|                                                                                                  | blockcoinbase                                            |                         |
-|                                                                                                  | blockdifficulty                                          |                         |
-|                                                                                                  | blockgaslimit                                            |                         |
 |                                                                                                  | blockhash                                                |                         |
-|                                                                                                  | blocknumber                                              |                         |
-|                                                                                                  | blocktimestamp                                           |                         |
-|                                                                                                  | txorigin                                                 |                         |
-|                                                                                                  | txgasprice                                               |                         |
-|                                                                                                  | gasleft                                                  |                         |
 |                                                                                                  | balance                                                  |                         |
 |                                                                                                  | this                                                     |                         |
-|                                                                                                  | caller                                                   |                         |
-|                                                                                                  | callvalue                                                |                         |
-|                                                                                                  | calldatasize                                             |                         |
 |                                                                                                  | calldatacopy                                             |                         |
 |                                                                                                  | codesize                                                 |                         |
-|                                                                                                  | codecopy                                                 |                         |
 |                                                                                                  | extcodesize                                              |                         |
 |                                                                                                  | extcodecopy                                              |                         |
 |                                                                                                  | extcodehash                                              |                         |
-|                                                                                                  | datasize                                                 |                         |
-|                                                                                                  | dataoffset                                               |                         |
-|                                                                                                  | datacopy                                                 |                         |
+|                                                                                                  | *datasize (see below)                                    |                         |
+|                                                                                                  | *dataoffset (see below)                                  |                         |
 |                                                                                                  | discard                                                  |                         |
 |                                                                                                  | discardu256                                              |                         |
 |                                                                                                  | splitu256tou64                                           |                         |
 |                                                                                                  | combineu64tou256                                         |                         |
+
+> `datasize` and `dataoffset` in our implementation have a constraint.  
+> They both couldn't be used apply on object itself.

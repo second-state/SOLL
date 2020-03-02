@@ -1,5 +1,56 @@
 [//]: # (SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception)
 
+### 0.0.6 (2020-03-xx)
+
+Language Features:
+
+* Solidity:
+    * Support abi.encode and abi.encodePacked. (excluding array type)
+    * Support fallback keyword. (solidity spec >= 0.6.0)
+* Yul:
+    * Support tuple usage.
+        * return, declaration, assignment
+    * Support built-in functions.
+        * `return`, `revert`
+        * `log0`, `log1`, `log2`, `log3`, `log4`
+        * `blockcoinbase`, `blockdifficulty`, `blockgaslimit`
+        * `blocknumber`, `blocktimestamp`, `txorigin`, `txgasprice`, `gasleft`
+        * `caller`, `callvalue`, `calldatasize`
+        * `codecopy`, `datacopy`
+        * `datasize`, `dataoffset` (limitation: couldn't be used apply on object itself)
+    * Support leave statement. (Yul spec >= 0.6.0)
+    * Support generate and deploy ewasm from Yul file. (Yul file was compiled from solc)
+
+Compiler Features:
+
+* Diagnostic Tool:
+    * Throw error messages for unimplemented features:
+        * Redefine constructor or fallback function.
+    * Add color on/off option.
+* Add command-line action options for distinguish generate ewasm could be deployed on chain or normal case.
+    * `-deploy=Chain`: Ewasm vm (Hera) not support keccak256 yet, so for workaround use sha256 instead. (Default)
+    * `-deploy=Normal`: Normal behavior.
+* Add command-line action options for generating object files.
+    * `-action=EmitAssembly`: Emit a .s file.
+    * `-action=EmitBC`: Emit a .bc file.
+    * `-action=EmitLLVM`: Emit a .bc file.
+    * `-action=EmitLLVMOnly`: Generate LLVM IR, but do not emit anything.
+    * `-action=EmitCodeGenOnly`: Generate machine code, but don't emit anything.
+    * `-action=EmitObj`: Emit a .o file.
+    * `-action=EmitWasm`: Emit a .wasm file.
+* Add command-line action options for misc.
+    * `-action=ParseSyntaxOnly`: Parse and perform semantic analysis.
+
+Bugfixes:
+
+* Add ImplicitCastExpr on return statement.
+* Fix mismatch EEI functions `blockhash`.
+* Keep full event signature as topic 0 field when emit event.
+* Fix built-in function minor issues:
+    * `iszero`, `shl`, `shr`, `sar`
+* Remove unexpected message when `soll -action=EmitFuncSig`.
+* Remove redundant slot access when load/store storage with bytes and string.
+
 ### 0.0.5 (2020-01-18)
 
 Language Features:
@@ -58,7 +109,7 @@ Compiler Features:
 * Add command-line version option for checking current SOLL version.
     * `-version`
 * Add command-line language options for supporting Yul input file.
-    * `-lang=Sol`: Input file is written in Solidity.  (Default)
+    * `-lang=Sol`: Input file is written in Solidity. (Default)
     * `-lang=Yul`: Input file is written in Yul.
 * Add testing framework for unittest and regrassion test.
 * Integrate Solidity compilation test and libyul test from ethereum/solidity.

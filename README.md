@@ -5,12 +5,9 @@
 
 To support developers as many as possible, we design projects to not only support more smart contract programming languages, such as Rust and C++, but also support various VMs, such as Ewasm VM and evm. To achieve this goal, in the very first step, we develop SOLL, a compiler for Solidity-based smart contract running on Ewasm VM.
 
-SOLL has two phases in the code generation flow. Generate LLVM IR files first, then leverage LLVM framework to generate Ewasm bytecode.
-
 For application users, please refer to this document. You will know how to use SOLL to generate Ewasm bytecode from your Solidity smart contract or Yul language, and then deploy the Ewasm bytecode to Ethereum Ewasm TestNet.
 
 For developers, we provide another document for explaining the design of SOLL and how to develop and test the functionality of SOLL, please refer to the [Developer Guide](doc/guides/DevGuide.md) for more details.
-
 
 # 2. Current Status and Limitations
 
@@ -24,18 +21,18 @@ And SOLL integrates Solidity and Yul test contracts from [ethereum/solidity](htt
 
 Here is the pass rate of both language:
 
-Solidity test suite (Total 75 tests from compilationTests):
+Solidity test suite (Total 80 tests from compilationTests):
 ```bash
-Expected Passes    : 22 # Solidity has 75 testing contract, and SOLL can pass 22.
+Expected Passes    : 27 # Solidity has 80 testing contract, and SOLL can pass 27.
 Unsupported Tests  : 53 # Unimplemented by SOLL
-Pass Rate: 29%
+Pass Rate: 34%
 ```
 
 Yul test suite (Total 499 tests from libyul):
 ```bash
-Expected Passes    : 293 # libyul has 499 testing contracts, and SOLL can pass 293.
-Unsupported Tests  : 206 # Unimplemented by SOLL
-Pass Rate: 59%
+Expected Passes    : 393 # libyul has 499 testing contracts, and SOLL can pass 393.
+Unsupported Tests  : 106 # Unimplemented by SOLL
+Pass Rate: 79%
 ```
 
 # 3. Getting Started
@@ -55,11 +52,11 @@ To get started with our demonstration, you will need prepare two components at f
 > docker pull secondstate/soll
 ```
 
-- Get Source Code from Github and checkout to the latest version, 0.0.5.
+- Get Source Code from Github and checkout to the latest version, 0.0.6.
 ```bash
 > git clone --recursive https://github.com/second-state/soll.git
 > cd soll
-> git checkout 0.0.5
+> git checkout 0.0.6
 ```
 
 ## 3.2 Launch Environment
@@ -81,42 +78,29 @@ Build SOLL(we use cmake with llvm library)
 
 ## 3.4 Compile an ERC20 smart contract
 
-As above-mentioned, to compile Solidity Smart Contract code, SOLL will generate LLVM IR files(.ll), and then generate Ewasm bytecode(.wasm).
-
-### **Phase 1. Use SOLL generate LLVM IR files(.ll) from the ERC20 contract**
-
 Create your smart contract files by copying from our demonstration contract "0-0-3.sol".
 ```bash
 (docker) $ cd ~
 (docker) $ cp ~/soll/doc/examples/0-0-3.sol ~/contract.sol
 ```
 
-Execute SOLL to generate a LLVM IR file(.ll) for the next step.
+Execute SOLL to generate Ewasm bytecode(.wasm).
 ```bash
-(docker) $ ~/soll/build/tools/soll/soll contract.sol > contract.ll
+(docker) $ ~/soll/build/tools/soll/soll contract.sol
 ```
 
-### **Phase 2. Generate Ewasm bytecode(.wasm) from a LLVM IR file**
-
-```bash
-(docker) $ ~/soll/utils/compile -v contract.ll
-```
-
-After compiling "contract.ll", SOLL compiler will generate two files:
-
-1. "contract.deploy.wasm": Contract bytecode with deployer. Use this for the deployment.
-2. "contract.wasm": Contract runtime bytecode only. You can execute it with Ewasm runtime directly.
-
-We will use "contract.deploy.wasm" in the next section to deploy it to Ewasm TestNet.
+We will use "contract.wasm" in the next section to deploy it to Ewasm TestNet.
 
 ## 3.5 Deploy an ERC20 smart contract to Ewasm TestNet
+> **Ewasm TestNet is unavailable now**.  
+> So we provid other workaround test demonstration in [Developer Guide](doc/guides/DevGuide.md#deploy-and-execute-ewasm-on-devchain).
 
 ### **Step 1: Convert Wasm files to Hex Code files.**
 
 To deploy our smart contract to TestNet, we need to convert the WASM files to Hex Code files.
 
 ```bash
-(docker) $ xxd -p contract.deploy.wasm | tr -d $'\n'
+(docker) $ xxd -p contract.wasm | tr -d $'\n'
 ```
 
 ### **Step 2: Submit the Hex Code files to Ewasm TestNet.**
