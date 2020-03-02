@@ -857,6 +857,8 @@ private:
       assert(false &&
              "This type is not available currently for abi.encodePacked");
       __builtin_unreachable();
+    case Type::Category::Bool:
+      return Builder.getIntN(32, 1);
     default:
       return Builder.getIntN(32, Ty->getBitNum() / 8);
     }
@@ -1054,6 +1056,14 @@ private:
               Int8Ptr, {Builder.getIntN(32, PadRightLength)});
       }
       return Int8Ptr;
+    }
+    case Type::Category::Bool: {
+      llvm::Value *Result = Value.load(Builder, CGM);
+      if (IsArrayElement) {
+        Result = Builder.CreateZExt(Result, CGF.Int256Ty);
+      }
+      return copyToInt8Ptr(Int8Ptr, Builder.CreateZExt(Result, CGF.Int8Ty),
+                           true);
     }
     default: {
       llvm::Value *Result = Value.load(Builder, CGM);
