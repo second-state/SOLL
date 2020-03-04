@@ -385,6 +385,52 @@ public:
   }
 };
 
+class TupleType : public Type {
+  std::vector<TypePtr> ElementTypes;
+
+public:
+  TupleType(std::vector<TypePtr> &&ETys)
+      : ElementTypes(std::move(ETys)) {}
+
+  const std::vector<TypePtr> &getElementTypes() const { return ElementTypes; }
+
+  Category getCategory() const override { return Category::Tuple; }
+  std::string getName() const override { return "tuple"; }
+  bool isDynamic() const override { 
+    for (const auto &ETys:ElementTypes) {
+      if (ETys->isDynamic()) {
+        return true;
+      }
+    }
+    return false; 
+  }
+  unsigned getABIStaticSize() const override {
+    unsigned Size = 0;
+    for (const auto &ETys:ElementTypes) {
+      if (ETys->isDynamic()) {
+        // head(x) = enc( uint256(...) )
+        Size += 32;
+        // tail(x) = enc(x)
+        Size += ETys->getABIStaticSize();
+      } else {
+        // head(x) = enc(x)
+        Size += ETys->getABIStaticSize();
+        // tail(x) = enc("") #empty string
+        Size += 32;
+      }
+    }
+    return Size;
+  }
+  bool isEqual(Type const &Ty) const override {
+    if (!Type::isEqual(Ty)) {
+      return false;
+    }
+    auto const &T = static_cast<TupleType const &>(Ty);
+    return std::equal(getElementTypes().cbegin(), getElementTypes().cend(),
+                      T.getElementTypes().cbegin(), T.getElementTypes().cend());
+  }
+};
+
 class StructType : public Type {
   std::vector<TypePtr> ElementTypes;
   std::vector<std::string> ElementNames;

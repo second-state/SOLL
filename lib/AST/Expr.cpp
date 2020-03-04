@@ -28,6 +28,23 @@ bool ParenExpr::isStateVariable() const {
 }
 
 ///
+/// TupleExpr
+///
+std::vector<Expr *> TupleExpr::getComponents() {
+  std::vector<Expr *> Comps;
+  for (auto &Ele : Components)
+    Comps.emplace_back(Ele.get());
+  return Comps;
+}
+
+std::vector<const Expr *> TupleExpr::getComponents() const {
+  std::vector<const Expr *> Comps;
+  for (auto &Ele : Components)
+    Comps.emplace_back(Ele.get());
+  return Comps;
+}
+
+///
 /// CallExpr
 ///
 std::vector<Expr *> CallExpr::getArguments() {

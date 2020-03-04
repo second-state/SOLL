@@ -57,6 +57,12 @@ template <bool Const> void StmtVisitorBase<Const>::visit(ReturnStmtType &stmt) {
 }
 
 template <bool Const>
+void StmtVisitorBase<Const>::visit(TupleExprType &op) {
+  for (auto comps : op.getComponents())
+    comps->accept(*this);
+}
+
+template <bool Const>
 void StmtVisitorBase<Const>::visit(UnaryOperatorType &op) {
   op.getSubExpr()->accept(*this);
 }

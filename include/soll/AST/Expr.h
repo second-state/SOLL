@@ -122,8 +122,25 @@ public:
 /// TupleExpr: A type expression such as "(a, b)" or
 /// Note that "(a)" is not a TupleExpr, but a ParenExpr.
 /// (Solc see them both as TupleExpr, which is terrible.)
-class TupleExpr {
-  // TODO
+/**
+ * Tuple, parenthesized expression, or bracketed expression.
+ * Examples: (1, 2), (x,), (x), (), [1, 2],
+ * Individual components might be empty shared pointers (as in the second example).
+ * The respective types in lvalue context are: 2-tuple, 2-tuple (with wildcard), type of x, 0-tuple
+ * Not in lvalue context: 2-tuple, _1_-tuple, type of x, 0-tuple.
+ */
+class TupleExpr : public Expr {
+  std::vector<ExprPtr> Components;
+  bool IsArray;
+public:
+  TupleExpr(SourceRange L, std::vector<ExprPtr> &&comps, bool IsArr)
+      : Expr(L), Components(std::move(comps)), IsArray(IsArr) {}
+
+  std::vector<Expr *> getComponents();
+  std::vector<const Expr *> getComponents() const;
+  
+  void accept(StmtVisitor &visitor) override;
+  void accept(ConstStmtVisitor &visitor) const override;
 };
 
 /// UnaryOperator: A unary operation such as "++a" or "!a",

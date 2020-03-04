@@ -42,6 +42,11 @@ void ReturnStmt::accept(ConstStmtVisitor &visitor) const {
 void DeclStmt::accept(StmtVisitor &visitor) { visitor.visit(*this); }
 void DeclStmt::accept(ConstStmtVisitor &visitor) const { visitor.visit(*this); }
 
+void TupleExpr::accept(StmtVisitor &visitor) { visitor.visit(*this); }
+void TupleExpr::accept(ConstStmtVisitor &visitor) const {
+  visitor.visit(*this);
+}
+
 void UnaryOperator::accept(StmtVisitor &visitor) { visitor.visit(*this); }
 void UnaryOperator::accept(ConstStmtVisitor &visitor) const {
   visitor.visit(*this);

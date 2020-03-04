@@ -14,6 +14,7 @@ class ContinueStmt;
 class BreakStmt;
 class ReturnStmt;
 class DeclStmt;
+class TupleExpr;
 class UnaryOperator;
 class BinaryOperator;
 class CallExpr;
@@ -48,6 +49,7 @@ protected:
   using BreakStmtType = typename cond_const<Const, BreakStmt>::type;
   using ReturnStmtType = typename cond_const<Const, ReturnStmt>::type;
   using DeclStmtType = typename cond_const<Const, DeclStmt>::type;
+  using TupleExprType = typename cond_const<Const, TupleExpr>::type;
   using UnaryOperatorType = typename cond_const<Const, UnaryOperator>::type;
   using BinaryOperatorType = typename cond_const<Const, BinaryOperator>::type;
   using CallExprType = typename cond_const<Const, CallExpr>::type;
@@ -87,6 +89,7 @@ public:
   virtual void visit(BreakStmtType &);
   virtual void visit(ReturnStmtType &);
   virtual void visit(DeclStmtType &);
+  virtual void visit(TupleExprType &);
   virtual void visit(UnaryOperatorType &);
   virtual void visit(BinaryOperatorType &);
   virtual void visit(CallExprType &);
