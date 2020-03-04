@@ -36,21 +36,19 @@ static cl::opt<DeployPlatformKind> DeployPlatform(
                                 "workaround use sha256 instead")),
     cl::cat(SollCategory));
 
-static cl::opt<ActionKind> Action("action", cl::Optional, cl::ValueRequired,
-                                  cl::init(EmitWasm),
-                                  cl::values(clEnumVal(ASTDump, "")),
-                                  cl::values(clEnumVal(EmitAssembly, "")),
-                                  cl::values(clEnumVal(EmitBC, "")),
-                                  cl::values(clEnumVal(EmitLLVM, "")),
-                                  cl::values(clEnumVal(EmitLLVMOnly, "")),
-                                  cl::values(clEnumVal(EmitCodeGenOnly, "")),
-                                  cl::values(clEnumVal(EmitObj, "")),
-                                  cl::values(clEnumVal(EmitWasm, "")),
-                                  cl::values(clEnumVal(EmitFuncSig, "")),
-                                  cl::values(clEnumVal(EmitABI, "")),
-                                  cl::values(clEnumVal(InitOnly, "")),
-                                  cl::values(clEnumVal(ParseSyntaxOnly, "")),
-                                  cl::cat(SollCategory));
+static cl::opt<ActionKind> Action(
+    "action", cl::Optional, cl::ValueRequired, cl::init(EmitWasm),
+    cl::values(clEnumVal(ASTDump, "")), cl::values(clEnumVal(EmitAssembly, "")),
+    cl::values(clEnumVal(EmitBC, "")), cl::values(clEnumVal(EmitLLVM, "")),
+    cl::values(clEnumVal(EmitLLVMOnly, "")),
+    cl::values(clEnumVal(EmitCodeGenOnly, "")),
+    cl::values(clEnumVal(EmitObj, "")), cl::values(clEnumVal(EmitWasm, "")),
+    cl::values(clEnumVal(EmitFuncSig, "")), cl::values(clEnumVal(EmitABI, "")),
+    cl::values(clEnumVal(InitOnly, "")),
+    cl::values(clEnumVal(ParseSyntaxOnly, "")), cl::cat(SollCategory));
+
+static cl::opt<bool> Runtime("runtime", cl::desc("Generate for runtime code"),
+                             cl::cat(SollCategory));
 
 static cl::opt<TargetKind>
     Target("target", cl::Optional, cl::ValueRequired, cl::init(EWASM),
@@ -81,6 +79,8 @@ bool CompilerInvocation::ParseCommandLineOptions(
     TargetOpts.DeployPlatform = DeployPlatform;
   }
   TargetOpts.BackendTarget = Target;
+
+  CodeGenOpts.Runtime = Runtime;
   return true;
 }
 

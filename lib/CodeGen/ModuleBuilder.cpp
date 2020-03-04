@@ -16,15 +16,17 @@ class CodeGeneratorImpl : public CodeGenerator,
 protected:
   std::unique_ptr<llvm::Module> M;
   std::unique_ptr<CodeGen::CodeGenModule> Builder;
+  const CodeGenOptions &CodeGenOpts;
   const TargetOptions &TargetOpts;
   bool isEVM() const noexcept { return TargetOpts.BackendTarget == EVM; }
   bool isEWASM() const noexcept { return TargetOpts.BackendTarget == EWASM; }
 
 public:
   CodeGeneratorImpl(DiagnosticsEngine &diags, llvm::StringRef ModuleName,
-                    llvm::LLVMContext &C, const TargetOptions &TargetOpts)
+                    llvm::LLVMContext &C, const CodeGenOptions &CGO,
+                    const TargetOptions &TargetOpts)
       : Diags(diags), Ctx(nullptr),
-        M(std::make_unique<llvm::Module>(ModuleName, C)),
+        M(std::make_unique<llvm::Module>(ModuleName, C)), CodeGenOpts(CGO),
         TargetOpts(TargetOpts) {}
 
   CodeGen::CodeGenModule &CGM() { return *Builder; }
@@ -43,7 +45,7 @@ public:
       M->setDataLayout(llvm::DataLayout("e-m:e-p:32:32-i64:64-n32:64-S128"));
     }
     Builder = std::make_unique<CodeGen::CodeGenModule>(
-        Context, *M, Entry, NestedEntries, Diags, TargetOpts);
+        Context, *M, Entry, NestedEntries, Diags, CodeGenOpts, TargetOpts);
   }
 
   void HandleSourceUnit(ASTContext &C, SourceUnit &S) override {
@@ -82,8 +84,9 @@ namespace soll {
 CodeGenerator *CreateLLVMCodeGen(DiagnosticsEngine &Diags,
                                  llvm::StringRef ModuleName,
                                  llvm::LLVMContext &C,
+                                 const CodeGenOptions &CodeGenOpts,
                                  const TargetOptions &TargetOpts) {
-  return new CodeGeneratorImpl(Diags, ModuleName, C, TargetOpts);
+  return new CodeGeneratorImpl(Diags, ModuleName, C, CodeGenOpts, TargetOpts);
 }
 
 llvm::Module *CodeGenerator::getModule() {

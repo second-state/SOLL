@@ -35,6 +35,7 @@ public:
 class BackendConsumer : public ASTConsumer {
   BackendAction Action;
   DiagnosticsEngine &Diags;
+  const CodeGenOptions &CodeGenOpts;
   const TargetOptions &TargetOpts;
   std::string InFile;
   std::unique_ptr<llvm::raw_pwrite_stream> AsmOutStream;
@@ -103,8 +104,8 @@ private:
       llvm::consumeError(Object->discard());
       return llvm::errorCodeToError(EC);
     }
-    EmitBackendOutput(Diags, TargetOpts, Module.getDataLayout(), &Module,
-                      BackendAction::EmitObj, std::move(OutStream));
+    EmitBackendOutput(Diags, CodeGenOpts, TargetOpts, Module.getDataLayout(),
+                      &Module, BackendAction::EmitObj, std::move(OutStream));
     lld::wasm::link({"wasm-ld", "--entry", "main", "--gc-sections",
                      "--allow-undefined", Object->TmpName.c_str(), "-o",
                      Wasm->TmpName.c_str()},
@@ -124,12 +125,14 @@ private:
 
 public:
   BackendConsumer(BackendAction Action, DiagnosticsEngine &Diags,
-                  TargetOptions &TargetOpts, const std::string &InFile,
+                  const CodeGenOptions &CodeGenOpts,
+                  const TargetOptions &TargetOpts, const std::string &InFile,
                   std::unique_ptr<llvm::raw_pwrite_stream> OS,
                   llvm::LLVMContext &C)
-      : Action(Action), Diags(Diags), TargetOpts(TargetOpts), InFile(InFile),
-        AsmOutStream(std::move(OS)), Context(nullptr),
-        Gen(CreateLLVMCodeGen(Diags, InFile, C, TargetOpts)) {}
+      : Action(Action), Diags(Diags), CodeGenOpts(CodeGenOpts),
+        TargetOpts(TargetOpts), InFile(InFile), AsmOutStream(std::move(OS)),
+        Context(nullptr),
+        Gen(CreateLLVMCodeGen(Diags, InFile, C, CodeGenOpts, TargetOpts)) {}
   llvm::Module *getModule() const { return Gen->getModule(); }
 
   CodeGenerator *getCodeGenerator() { return Gen.get(); }
@@ -174,8 +177,9 @@ public:
       AsmOutStream.reset();
 
     } else {
-      EmitBackendOutput(Diags, TargetOpts, getModule()->getDataLayout(),
-                        getModule(), Action, std::move(AsmOutStream));
+      EmitBackendOutput(Diags, CodeGenOpts, TargetOpts,
+                        getModule()->getDataLayout(), getModule(), Action,
+                        std::move(AsmOutStream));
     }
   }
 };
@@ -223,9 +227,9 @@ CodeGenAction::CreateASTConsumer(CompilerInstance &CI, llvm::StringRef InFile) {
     return nullptr;
   }
 
-  return std::make_unique<BackendConsumer>(Action, CI.getDiagnostics(),
-                                           CI.getTargetOpts(), InFile,
-                                           std::move(OS), *VMContext);
+  return std::make_unique<BackendConsumer>(
+      Action, CI.getDiagnostics(), CI.getCodeGenOpts(), CI.getTargetOpts(),
+      InFile, std::move(OS), *VMContext);
 }
 
 EmitAssemblyAction::EmitAssemblyAction(llvm::LLVMContext *VMContext)

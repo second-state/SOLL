@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #pragma once
 #include "soll/AST/ASTConsumer.h"
+#include "soll/Basic/CodeGenOptions.h"
 #include "soll/Basic/TargetOptions.h"
 #include <llvm/ADT/StringRef.h>
 #include <llvm/IR/LLVMContext.h>
@@ -29,6 +30,7 @@ public:
 CodeGenerator *CreateLLVMCodeGen(DiagnosticsEngine &Diags,
                                  llvm::StringRef ModuleName,
                                  llvm::LLVMContext &C,
+                                 const CodeGenOptions &CodeGenOpts,
                                  const TargetOptions &TargetOpts);
 
 } // namespace soll

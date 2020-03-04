@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #pragma once
+#include "soll/Basic/CodeGenOptions.h"
 #include "soll/Basic/Diagnostic.h"
 #include "soll/Basic/FileSystemOptions.h"
 #include "soll/Basic/TargetOptions.h"
@@ -17,6 +18,7 @@ class DiagnosticOptions;
 class CompilerInvocation {
   llvm::IntrusiveRefCntPtr<DiagnosticOptions> DiagnosticOpts;
   std::unique_ptr<DiagnosticRenderer> DiagRenderer;
+  CodeGenOptions CodeGenOpts;
   FileSystemOptions FileSystemOpts;
   FrontendOptions FrontendOpts;
   TargetOptions TargetOpts;
@@ -27,6 +29,9 @@ public:
                                DiagnosticsEngine &Diags);
   DiagnosticOptions &GetDiagnosticOptions();
   DiagnosticRenderer &GetDiagnosticRenderer();
+
+  CodeGenOptions &getCodeGenOpts() { return CodeGenOpts; }
+  const CodeGenOptions &getCodeGenOpts() const { return CodeGenOpts; }
 
   FileSystemOptions &getFileSystemOpts() { return FileSystemOpts; }
   const FileSystemOptions &getFileSystemOpts() const { return FileSystemOpts; }

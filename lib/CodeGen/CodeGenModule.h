@@ -4,6 +4,7 @@
 #include "soll/AST/Decl.h"
 #include "soll/AST/DeclAsm.h"
 #include "soll/AST/DeclYul.h"
+#include "soll/Basic/CodeGenOptions.h"
 #include "soll/Basic/TargetOptions.h"
 #include <llvm/ADT/APInt.h>
 #include <llvm/IR/ConstantFolder.h>
@@ -50,6 +51,7 @@ class CodeGenModule : public CodeGenTypeCache {
   std::string &Entry;
   std::vector<std::pair<std::string, std::string>> &NestedEntries;
   DiagnosticsEngine &Diags;
+  const CodeGenOptions &CodeGenOpts;
   const TargetOptions &TargetOpts;
   llvm::LLVMContext &VMContext;
   llvm::IRBuilder<llvm::ConstantFolder> Builder;
@@ -128,7 +130,8 @@ public:
 
   CodeGenModule(ASTContext &C, llvm::Module &Module, std::string &Entry,
                 std::vector<std::pair<std::string, std::string>> &NestedEntries,
-                DiagnosticsEngine &Diags, const TargetOptions &TargetOpts);
+                DiagnosticsEngine &Diags, const CodeGenOptions &CodeGenOpts,
+                const TargetOptions &TargetOpts);
   llvm::Function *getIntrinsic(unsigned IID,
                                llvm::ArrayRef<llvm::Type *> Typs = llvm::None);
   llvm::Module &getModule() const { return TheModule; }

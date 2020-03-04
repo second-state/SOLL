@@ -7,6 +7,7 @@
 
 namespace soll {
 class DiagnosticsEngine;
+class CodeGenOptions;
 
 enum class BackendAction {
   EmitAssembly, ///< Emit native assembly files
@@ -15,10 +16,10 @@ enum class BackendAction {
   EmitNothing,  ///< Don't emit anything (benchmarking mode)
   EmitMCNull,   ///< Run CodeGen, but don't emit anything
   EmitObj,      ///< Emit native object files
-  EmitWasm      ///< Emit wasm linked files
+  EmitWasm,     ///< Emit wasm linked files
 };
 
-void EmitBackendOutput(DiagnosticsEngine &Diags,
+void EmitBackendOutput(DiagnosticsEngine &Diags, const CodeGenOptions &CGOpts,
                        const TargetOptions &TargetOpts,
                        const llvm::DataLayout &TDesc, llvm::Module *M,
                        BackendAction Action,

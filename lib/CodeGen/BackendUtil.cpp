@@ -21,6 +21,7 @@ namespace soll {
 
 class EmitAssemblyHelper {
   DiagnosticsEngine &Diags;
+  const CodeGenOptions &CodeGenOpts;
   const TargetOptions &TargetOpts;
   llvm::Module *TheModule;
   std::unique_ptr<llvm::raw_pwrite_stream> OS;
@@ -35,9 +36,10 @@ class EmitAssemblyHelper {
 public:
   std::unique_ptr<llvm::TargetMachine> TM;
 
-  EmitAssemblyHelper(DiagnosticsEngine &Diags, const TargetOptions &TargetOpts,
-                     llvm::Module *M)
-      : Diags(Diags), TargetOpts(TargetOpts), TheModule(M) {}
+  EmitAssemblyHelper(DiagnosticsEngine &Diags, const CodeGenOptions &CGOpts,
+                     const TargetOptions &TargetOpts, llvm::Module *M)
+      : Diags(Diags), CodeGenOpts(CGOpts), TargetOpts(TargetOpts),
+        TheModule(M) {}
 
   /// Generates the TargetMachine.
   /// Leaves TM unchanged if it is unable to create the target machine.
@@ -204,12 +206,12 @@ void EmitAssemblyHelper::EmitAssembly(
   }
 }
 
-void EmitBackendOutput(DiagnosticsEngine &Diags,
+void EmitBackendOutput(DiagnosticsEngine &Diags, const CodeGenOptions &CGOpts,
                        const TargetOptions &TargetOpts,
                        const llvm::DataLayout &TDesc, llvm::Module *TheModule,
                        BackendAction Action,
                        std::unique_ptr<llvm::raw_pwrite_stream> OS) {
-  EmitAssemblyHelper AsmHelper(Diags, TargetOpts, TheModule);
+  EmitAssemblyHelper AsmHelper(Diags, CGOpts, TargetOpts, TheModule);
 
   AsmHelper.EmitAssembly(Action, std::move(OS));
 

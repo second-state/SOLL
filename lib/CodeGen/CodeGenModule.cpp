@@ -42,9 +42,11 @@ namespace soll::CodeGen {
 CodeGenModule::CodeGenModule(
     ASTContext &C, llvm::Module &M, std::string &E,
     std::vector<std::pair<std::string, std::string>> &NE,
-    DiagnosticsEngine &Diags, const TargetOptions &TargetOpts)
+    DiagnosticsEngine &Diags, const CodeGenOptions &CodeGenOpts,
+    const TargetOptions &TargetOpts)
     : Context(C), TheModule(M), Entry(E), NestedEntries(NE), Diags(Diags),
-      TargetOpts(TargetOpts), VMContext(M.getContext()), Builder(VMContext) {
+      CodeGenOpts(CodeGenOpts), TargetOpts(TargetOpts),
+      VMContext(M.getContext()), Builder(VMContext) {
   initTypes();
   if (isEVM()) {
     initEVMOpcodeDeclaration();
@@ -91,9 +93,9 @@ void CodeGenModule::initMemorySection() {
   MemorySize->setUnnamedAddr(llvm::GlobalVariable::UnnamedAddr::Global);
   MemorySize->setAlignment(256);
 
-  HeapBase = new llvm::GlobalVariable(
-      TheModule, Int8Ty, false, llvm::GlobalVariable::ExternalLinkage,
-      nullptr, "__heap_base");
+  HeapBase = new llvm::GlobalVariable(TheModule, Int8Ty, false,
+                                      llvm::GlobalVariable::ExternalLinkage,
+                                      nullptr, "__heap_base");
   HeapBase->setAlignment(1);
 
   Func_updateMemorySize = llvm::Function::Create(
@@ -961,6 +963,12 @@ void CodeGenModule::emitContractDecl(const ContractDecl *CD) {
 }
 
 void CodeGenModule::emitContractConstructorDecl(const ContractDecl *CD) {
+  if (CodeGenOpts.Runtime) {
+    // Generate runtime version only, no constructor.
+    getEntry() = "solidity.main";
+    return;
+  }
+
   llvm::Function *Contract;
   {
     llvm::FunctionType *FT = llvm::FunctionType::get(BytesTy, false);
@@ -1778,7 +1786,8 @@ llvm::Value *CodeGenModule::emitReturnDataCopyBytes(llvm::Value *DataOffset,
 }
 
 llvm::Value *CodeGenModule::emitCallDataLoad(llvm::Value *DataOffset) {
-  llvm::Value *CallDataVPtr = Builder.CreateAlloca(Int8Ty, Builder.getIntN(256, 32));
+  llvm::Value *CallDataVPtr =
+      Builder.CreateAlloca(Int8Ty, Builder.getIntN(256, 32));
   emitCallDataCopy(CallDataVPtr, Builder.CreateZExtOrTrunc(DataOffset, Int32Ty),
                    Builder.getInt32(32));
   llvm::Value *CallDataPtr = Builder.CreateBitCast(CallDataVPtr, Int256PtrTy);

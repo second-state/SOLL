@@ -51,6 +51,13 @@ public:
   explicit CompilerInstance();
   CompilerInvocation &getInvocation();
 
+  CodeGenOptions &getCodeGenOpts() {
+    return Invocation->getCodeGenOpts();
+  }
+  const CodeGenOptions &getCodeGenOpts() const {
+    return Invocation->getCodeGenOpts();
+  }
+
   FileSystemOptions &getFileSystemOpts() {
     return Invocation->getFileSystemOpts();
   }
