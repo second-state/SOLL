@@ -217,9 +217,9 @@ LexNextToken:
       char Char2 = getCharAndSize(CurPtr + SizeTmp, SizeTmp2);
       if (Char2 == 'x') {
         unsigned SizeTmp3;
-        char Char3 = getCharAndSize(CurPtr + SizeTmp2, SizeTmp3);
+        char Char3 = getCharAndSize(CurPtr + SizeTmp + SizeTmp2, SizeTmp3);
         if (Char3 == '"' || Char3 == '\'') {
-          return LexStringLiteral(CurPtr + SizeTmp3, Char3,
+          return LexStringLiteral(CurPtr + SizeTmp + SizeTmp2 + SizeTmp3, Char3,
                                   tok::hex_string_literal);
         }
       }

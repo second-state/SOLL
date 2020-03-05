@@ -123,12 +123,19 @@ std::string Parser::stringUnquote(llvm::StringRef Quoted) {
 }
 
 std::string Parser::hexUnquote(llvm::StringRef Quoted) {
-  if (Quoted.size() % 2 != 0) {
+  const char *TokBegin = Quoted.data();
+  const char *TokEnd = TokBegin + Quoted.size() - 1;
+  assert(TokBegin[0] == 'h');
+  assert(TokBegin[1] == 'e');
+  assert(TokBegin[2] == 'x');
+  assert(TokBegin[3] == '"' || TokBegin[3] == '\'');
+  assert(TokEnd[0] == TokBegin[3]);
+  if (Quoted.size() % 2 != 1) {
     Diag(diag::err_hex_escape_incomplete);
     return std::string();
   }
   std::string Result;
-  for (std::size_t I = 0; I < Quoted.size(); I += 2) {
+  for (std::size_t I = 4; I < Quoted.size() - 1; I += 2) {
     Result.push_back((llvm::hexDigitValue(Quoted[I]) << 4) |
                      llvm::hexDigitValue(Quoted[I + 1]));
   }

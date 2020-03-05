@@ -87,13 +87,17 @@ unique_ptr<YulCode> Parser::parseYulCode() {
 unique_ptr<YulData> Parser::parseYulData() {
   const SourceLocation Begin = Tok.getLocation();
   ConsumeToken();
-  auto Name = stringUnquote(std::string(Tok.getLiteralData(), Tok.getLength()));
+  llvm::StringRef NameRef(Tok.getLiteralData(), Tok.getLength());
+  auto Name = Tok.is(tok::string_literal) ? stringUnquote(NameRef)
+                                          : hexUnquote(NameRef);
   ConsumeStringToken();
-  auto Body = make_unique<StringLiteral>(
-      Tok, stringUnquote(std::string(Tok.getLiteralData(), Tok.getLength())));
+  llvm::StringRef BodyRef(Tok.getLiteralData(), Tok.getLength());
+  std::string BodyStr = Tok.is(tok::string_literal) ? stringUnquote(BodyRef)
+                                                    : hexUnquote(BodyRef);
+  auto Body = make_unique<StringLiteral>(Tok, std::move(BodyStr));
   ConsumeStringToken();
-  auto Data = make_unique<YulData>(SourceRange(Begin, Tok.getEndLoc()), Name,
-                                   std::move(Body));
+  auto Data = make_unique<YulData>(SourceRange(Begin, Tok.getEndLoc()),
+                                   std::move(Name), std::move(Body));
   return Data;
 }
 
