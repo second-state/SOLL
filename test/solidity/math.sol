@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-// RUN: %soll %s
+// RUN: %soll --runtime --action=EmitLLVM %s
 pragma solidity ^0.5.0;
 
 contract Math {
