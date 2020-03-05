@@ -55,12 +55,12 @@ unique_ptr<YulObject> Parser::parseYulObject() {
   ExpectAndConsume(tok::l_brace);
 
   auto Code = parseYulCode();
+  auto ObjectList = make_unique_vector<YulObject>();
   auto DataList = make_unique_vector<YulData>();
 
   while (Tok.isNot(tok::r_brace)) {
     if (isObject(Tok)) {
-      assert(false && "not support declare an object inside other object");
-      __builtin_unreachable();
+      ObjectList.push_back(parseYulObject());
     } else if (isData(Tok)) {
       DataList.push_back(parseYulData());
     } else {
@@ -69,9 +69,9 @@ unique_ptr<YulObject> Parser::parseYulObject() {
   }
 
   ExpectAndConsume(tok::r_brace);
-  auto Obj = make_unique<YulObject>(
-      SourceRange(Begin, Tok.getEndLoc()), Name, std::move(Code),
-      make_unique_vector<YulObject>(), std::move(DataList));
+  auto Obj = make_unique<YulObject>(SourceRange(Begin, Tok.getEndLoc()), Name,
+                                    std::move(Code), std::move(ObjectList),
+                                    std::move(DataList));
   return Obj;
 }
 
@@ -88,12 +88,12 @@ unique_ptr<YulData> Parser::parseYulData() {
   const SourceLocation Begin = Tok.getLocation();
   ConsumeToken();
   auto Name = stringUnquote(std::string(Tok.getLiteralData(), Tok.getLength()));
+  ConsumeStringToken();
   auto Body = make_unique<StringLiteral>(
       Tok, stringUnquote(std::string(Tok.getLiteralData(), Tok.getLength())));
   ConsumeStringToken();
   auto Data = make_unique<YulData>(SourceRange(Begin, Tok.getEndLoc()), Name,
                                    std::move(Body));
-  ConsumeStringToken();
   return Data;
 }
 

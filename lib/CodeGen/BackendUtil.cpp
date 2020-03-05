@@ -98,6 +98,7 @@ bool EmitAssemblyHelper::AddEmitPasses(llvm::legacy::PassManager &CodeGenPasses,
   // Add LibraryInfo.
   auto TLII = std::make_unique<llvm::TargetLibraryInfoImpl>(
       llvm::Triple(TheModule->getTargetTriple()));
+  TLII->disableAllFunctions();
   CodeGenPasses.add(new llvm::TargetLibraryInfoWrapperPass(*TLII));
 
   // Normal mode, emit a .s or .o file by running the code generator. Note,
@@ -144,6 +145,7 @@ void EmitAssemblyHelper::EmitAssembly(
   // preset TLI.
   auto TLII = std::make_unique<llvm::TargetLibraryInfoImpl>(
       llvm::Triple(TheModule->getTargetTriple()));
+  TLII->disableAllFunctions();
   FAM.registerPass([&] { return llvm::TargetLibraryAnalysis(*TLII); });
   MAM.registerPass([&] { return llvm::TargetLibraryAnalysis(*TLII); });
 

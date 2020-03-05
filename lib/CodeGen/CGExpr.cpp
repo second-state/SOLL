@@ -1128,6 +1128,68 @@ ExprValue CodeGenFunction::emitSpecialCallExpr(const Identifier *SI,
   }
 }
 
+llvm::Value *CodeGenFunction::emitGetDataSize(const CallExpr *CE) {
+  if (auto *ICE =
+          dynamic_cast<const ImplicitCastExpr *>(CE->getArguments()[0])) {
+    if (auto *SL = dynamic_cast<const StringLiteral *>(ICE->getSubExpr())) {
+      std::string Name = SL->getValue();
+      auto ObjectOrData = CGM.lookupYulDataOrYulObject(Name);
+      return std::visit(
+          [this, &Name](auto Ptr) -> llvm::Value * {
+            if constexpr (std::is_same_v<decltype(Ptr), const YulData *>) {
+              llvm::GlobalVariable *Data = CGM.getYulDataAddr(Ptr);
+              auto Size = Data->getType()
+                              ->getPointerElementType()
+                              ->getArrayNumElements();
+              return Builder.getIntN(256, Size);
+            } else if constexpr (std::is_same_v<decltype(Ptr),
+                                                const YulObject *>) {
+              llvm::Function *Object =
+                  CGM.getModule().getFunction(Name + ".object");
+              auto *ObjectBytes = Builder.CreateCall(Object);
+              return Builder.CreateExtractValue(ObjectBytes, {0});
+            } else {
+              assert(false && "datasize needs a valid data name");
+              return Builder.getIntN(256, 0);
+            }
+          },
+          ObjectOrData);
+    }
+  }
+  assert(false && "dataoffset() needs a string literal");
+  __builtin_unreachable();
+}
+
+llvm::Value *CodeGenFunction::emitGetDataOffset(const CallExpr *CE) {
+  if (auto *ICE =
+          dynamic_cast<const ImplicitCastExpr *>(CE->getArguments()[0])) {
+    if (auto *SL = dynamic_cast<const StringLiteral *>(ICE->getSubExpr())) {
+      std::string Name = SL->getValue();
+      auto ObjectOrData = CGM.lookupYulDataOrYulObject(Name);
+      return std::visit(
+          [this, &Name](auto Ptr) -> llvm::Value * {
+            if constexpr (std::is_same_v<decltype(Ptr), const YulData *>) {
+              llvm::GlobalVariable *Data = CGM.getYulDataAddr(Ptr);
+              return Builder.CreatePtrToInt(Data, Int256Ty);
+            } else if constexpr (std::is_same_v<decltype(Ptr),
+                                                const YulObject *>) {
+              llvm::Function *Object =
+                  CGM.getModule().getFunction(Name + ".object");
+              auto *ObjectBytes = Builder.CreateCall(Object);
+              auto *Data = Builder.CreateExtractValue(ObjectBytes, {1});
+              return Builder.CreatePtrToInt(Data, Int256Ty);
+            } else {
+              assert(false && "dataoffset needs a valid data name");
+              return Builder.getIntN(256, 0);
+            }
+          },
+          ObjectOrData);
+    }
+  }
+  assert(false && "dataoffset() needs a string literal");
+  __builtin_unreachable();
+}
+
 llvm::Value *CodeGenFunction::emitAsmCallMLoad(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
   llvm::Value *Pos = emitExpr(Arguments[0]).load(Builder, CGM);
@@ -1357,6 +1419,11 @@ ExprValue CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   case AsmIdentifier::SpecialIdentifier::calldatasize:
     return ExprValue::getRValue(
         CE, Builder.CreateZExtOrTrunc(CGM.emitGetCallDataSize(), CGM.Int256Ty));
+  case AsmIdentifier::SpecialIdentifier::dataoffset:
+    return ExprValue::getRValue(CE, emitGetDataOffset(CE));
+  case AsmIdentifier::SpecialIdentifier::datasize:
+    return ExprValue::getRValue(CE, emitGetDataSize(CE));
+  case AsmIdentifier::SpecialIdentifier::datacopy:
   case AsmIdentifier::SpecialIdentifier::codecopy:
     emitAsmCallCodeCopy(CE);
     return ExprValue();
@@ -1386,9 +1453,6 @@ ExprValue CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   case AsmIdentifier::SpecialIdentifier::extcodesize:
   case AsmIdentifier::SpecialIdentifier::extcodecopy:
   case AsmIdentifier::SpecialIdentifier::extcodehash:
-  case AsmIdentifier::SpecialIdentifier::datasize:
-  case AsmIdentifier::SpecialIdentifier::dataoffset:
-  case AsmIdentifier::SpecialIdentifier::datacopy:
   case AsmIdentifier::SpecialIdentifier::discard:
   case AsmIdentifier::SpecialIdentifier::discardu256:
   case AsmIdentifier::SpecialIdentifier::splitu256tou64:

@@ -110,6 +110,9 @@ private:
   llvm::Value *emitAbiEncodePacked(const CallExpr *CE);
   llvm::Value *emitAbiEncode(const CallExpr *CE);
 
+  llvm::Value *emitGetDataSize(const CallExpr *CE);
+  llvm::Value *emitGetDataOffset(const CallExpr *CE);
+
   llvm::Value *emitAsmCallMLoad(const CallExpr *CE);
   void emitAsmCallMStore(const CallExpr *CE);
   void emitAsmCallMStore8(const CallExpr *CE);

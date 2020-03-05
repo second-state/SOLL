@@ -95,6 +95,9 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
       {"calldatasize", AsmIdentifier::SpecialIdentifier::calldatasize},
       {"codecopy", AsmIdentifier::SpecialIdentifier::codecopy},
       /// object
+      {"datasize", AsmIdentifier::SpecialIdentifier::datasize},
+      {"dataoffset", AsmIdentifier::SpecialIdentifier::dataoffset},
+      {"datacopy", AsmIdentifier::SpecialIdentifier::datacopy},
       /// misc
       {"keccak256", AsmIdentifier::SpecialIdentifier::keccak256},
   };
@@ -312,6 +315,19 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
           std::vector<TypePtr>{
               std::make_shared<IntegerType>(IntegerType::IntKind::U256)});
       break;
+    case AsmIdentifier::SpecialIdentifier::datasize: ///< (string) -> u256
+      Ty = std::make_shared<FunctionType>(
+          std::vector<TypePtr>{std::make_shared<StringType>()},
+          std::vector<TypePtr>{
+              std::make_shared<IntegerType>(IntegerType::IntKind::U256)});
+      break;
+    case AsmIdentifier::SpecialIdentifier::dataoffset: ///< (string) -> u256
+      Ty = std::make_shared<FunctionType>(
+          std::vector<TypePtr>{std::make_shared<StringType>()},
+          std::vector<TypePtr>{
+              std::make_shared<IntegerType>(IntegerType::IntKind::U256)});
+      break;
+    case AsmIdentifier::SpecialIdentifier::datacopy:
     case AsmIdentifier::SpecialIdentifier::codecopy: ///< (u256, u256, u256) ->
                                                      ///< void
       Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);

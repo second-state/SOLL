@@ -106,10 +106,21 @@ private:
     }
     EmitBackendOutput(Diags, CodeGenOpts, TargetOpts, Module.getDataLayout(),
                       &Module, BackendAction::EmitObj, std::move(OutStream));
-    lld::wasm::link({"wasm-ld", "--entry", "main", "--gc-sections",
-                     "--allow-undefined", Object->TmpName.c_str(), "-o",
-                     Wasm->TmpName.c_str()},
-                    false, llvm::errs());
+    const char *Args[] = {
+      "wasm-ld",
+      "--entry",
+      "main",
+      "--gc-sections",
+      "--allow-undefined",
+#if LLVM_VERSION_MAJOR == 9
+      // workaround for https://reviews.llvm.org/D63833
+      "--export=__heap_base",
+#endif
+      Object->TmpName.c_str(),
+      "-o",
+      Wasm->TmpName.c_str()
+    };
+    lld::wasm::link(Args, false, llvm::errs());
 
     auto Binary = llvm::MemoryBuffer::getFile(Wasm->TmpName);
     if (!Binary) {

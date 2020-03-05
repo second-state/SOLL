@@ -962,6 +962,12 @@ void CodeGenModule::emitContractDecl(const ContractDecl *CD) {
   emitContractDispatcherDecl(CD);
 }
 
+llvm::Function *CodeGenModule::emitNestedObjectGetter(llvm::StringRef Name) {
+  llvm::FunctionType *FT = llvm::FunctionType::get(BytesTy, false);
+  return llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                    Name, TheModule);
+}
+
 void CodeGenModule::emitContractConstructorDecl(const ContractDecl *CD) {
   if (CodeGenOpts.Runtime) {
     // Generate runtime version only, no constructor.
@@ -969,13 +975,8 @@ void CodeGenModule::emitContractConstructorDecl(const ContractDecl *CD) {
     return;
   }
 
-  llvm::Function *Contract;
-  {
-    llvm::FunctionType *FT = llvm::FunctionType::get(BytesTy, false);
-    Contract = llvm::Function::Create(FT, llvm::Function::InternalLinkage,
-                                      "solidity.contract", TheModule);
-    NestedEntries.emplace_back("solidity.main", "solidity.contract");
-  }
+  llvm::Function *Contract = emitNestedObjectGetter("solidity.contract");
+  NestedEntries.emplace_back("solidity.main", "solidity.contract");
 
   llvm::Function *Ctor;
   {
@@ -1349,19 +1350,36 @@ void CodeGenModule::emitVarDecl(const VarDecl *VD) {
 
 void CodeGenModule::emitYulObject(const YulObject *YO) {
   assert(nullptr != YO->getCode());
-  emitYulCode(YO->getCode());
   for (const auto *O : YO->getObjectList()) {
     emitYulObject(O);
+    {
+      const std::string Name = O->getName();
+      emitNestedObjectGetter(Name + ".object");
+      NestedEntries.emplace_back(Name + ".main", Name + ".object");
+      /*
+      llvm::Function *DataSize = llvm::Function::Create(
+          llvm::FunctionType::get(Int256Ty, false),
+          llvm::Function::InternalLinkage, ".datasize", TheModule);
+      llvm::Function *DataOffset = llvm::Function::Create(
+          llvm::FunctionType::get(Int8PtrTy, false),
+          llvm::Function::InternalLinkage, ".dataoffset", TheModule);
+      */
+      LookupYulDataOrYulObject.try_emplace(Name, O);
+    }
+    getEntry().clear();
   }
   for (const auto *D : YO->getDataList()) {
     emitYulData(D);
   }
+  emitYulCode(YO->getCode(), YO->getName());
 }
 
-void CodeGenModule::emitYulCode(const YulCode *YC) {
+void CodeGenModule::emitYulCode(const YulCode *YC, llvm::StringRef Name) {
+  std::string FunctionName = Name.str() + ".main";
+  getEntry() = FunctionName;
   llvm::FunctionType *FT = llvm::FunctionType::get(VoidTy, {}, false);
   llvm::Function *Main = llvm::Function::Create(
-      FT, llvm::Function::ExternalLinkage, "main", TheModule);
+      FT, llvm::Function::ExternalLinkage, FunctionName, TheModule);
   llvm::BasicBlock *Entry = llvm::BasicBlock::Create(VMContext, "entry", Main);
   Builder.SetInsertPoint(Entry);
   CodeGenFunction(*this).generateYulCode(YC);
@@ -1369,10 +1387,12 @@ void CodeGenModule::emitYulCode(const YulCode *YC) {
 }
 
 void CodeGenModule::emitYulData(const YulData *YD) {
+  llvm::StringRef Name = YD->getName();
   std::string Data = YD->getBody()->getValue();
-  llvm::Constant *DataValue =
-      createGlobalStringPtr(VMContext, getModule(), Data);
-  YulDataMap.try_emplace(YD, DataValue);
+  llvm::GlobalVariable *Variable =
+      createGlobalString(VMContext, getModule(), Data, Name);
+  YulDataMap.try_emplace(YD, Variable);
+  LookupYulDataOrYulObject.try_emplace(Name, YD);
 }
 
 std::string CodeGenModule::getMangledName(const CallableVarDecl *CVD) {

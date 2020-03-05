@@ -58,7 +58,9 @@ class CodeGenModule : public CodeGenTypeCache {
   llvm::GlobalVariable *MemorySize;
   llvm::GlobalVariable *HeapBase;
   llvm::DenseMap<const VarDecl *, llvm::GlobalVariable *> StateVarDeclMap;
-  llvm::DenseMap<const YulData *, llvm::Constant *> YulDataMap;
+  llvm::DenseMap<const YulData *, llvm::GlobalVariable *> YulDataMap;
+  llvm::StringMap<std::variant<const YulData *, const YulObject *>>
+      LookupYulDataOrYulObject;
   std::size_t StateVarAddrCursor;
 
   llvm::Function *Func_call = nullptr;
@@ -201,13 +203,14 @@ public:
   llvm::Value *emitGetAddress();
 
 private:
+  llvm::Function *emitNestedObjectGetter(llvm::StringRef Name);
   void emitContractConstructorDecl(const ContractDecl *CD);
   void emitContractDispatcherDecl(const ContractDecl *CD);
   void emitEventDecl(const EventDecl *ED);
   void emitFunctionDecl(const FunctionDecl *FD);
   void emitVarDecl(const VarDecl *VD);
 
-  void emitYulCode(const YulCode *YC);
+  void emitYulCode(const YulCode *YC, llvm::StringRef Name);
   void emitYulData(const YulData *YD);
   void emitAsmVarDecl(const AsmVarDecl *VD);
 
@@ -230,8 +233,24 @@ public:
   llvm::Function *createOrGetLLVMFunction(const CallableVarDecl *CVD);
   llvm::GlobalVariable *getMemorySize() { return MemorySize; }
   llvm::GlobalVariable *getHeapBase() { return HeapBase; }
-  llvm::GlobalVariable *getStateVarAddr(const VarDecl *VD) {
+  llvm::GlobalVariable *getStateVarAddr(const VarDecl *VD) const {
     return StateVarDeclMap.lookup(VD);
+  }
+  llvm::GlobalVariable *getYulDataAddr(const YulData *YD) const {
+    return YulDataMap.lookup(YD);
+  }
+  std::variant<std::monostate, const YulData *, const YulObject *>
+  lookupYulDataOrYulObject(llvm::StringRef Name) const {
+    auto Iterator = LookupYulDataOrYulObject.find(Name);
+    if (Iterator == LookupYulDataOrYulObject.end()) {
+      return std::monostate();
+    }
+    return std::visit(
+        [](const auto *Ptr) {
+          return std::variant<std::monostate, const YulData *,
+                              const YulObject *>(Ptr);
+        },
+        Iterator->second);
   }
 };
 
