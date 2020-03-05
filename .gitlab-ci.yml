@@ -61,10 +61,12 @@ compile:wasm:
   variables:
     SOLL_PATH: "${BASE_BINDIR}/tools/soll/soll"
   script:
-    - bash -c "./utils/compile -v sol ewasm ${TEST_ENVDIR}/test/*.sol"
-    - bash -c "./utils/compile -v yul ewasm ${TEST_ENVDIR}/test/*.yul"
-    - bash -c "./utils/compile -v yul ewasm test/yul/switch.yul"
-    - bash -c "./utils/compile -v yul ewasm test/yul/tuple.yul"
+    - bash -c "for f in $TEST_ENVDIR/test/*.sol; do $SOLL_PATH \$f; done"
+    - bash -c "for f in $TEST_ENVDIR/test/*.wasm; do mv -- \$f \${f%.wasm}.deploy.wasm; done"
+    - bash -c "for f in $TEST_ENVDIR/test/*.sol; do $SOLL_PATH -runtime \$f; done"
+    - bash -c "for f in $TEST_ENVDIR/test/*.yul; do $SOLL_PATH -lang=Yul \$f; done"
+    - bash -c "$SOLL_PATH -lang=Yul test/yul/switch.yul"
+    - bash -c "$SOLL_PATH -lang=Yul test/yul/tuple.yul"
   after_script:
     - cp ${TEST_ENVDIR}/test/*.wasm ${BASE_BINDIR}
     - cp test/yul/*.wasm ${BASE_BINDIR}
