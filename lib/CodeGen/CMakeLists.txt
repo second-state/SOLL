@@ -12,6 +12,7 @@ add_llvm_library(sollCodeGen
   sollFrontend
   lldWasm
   lldCommon
+  binaryen
   LINK_COMPONENTS
   codegen
   passes

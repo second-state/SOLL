@@ -11,6 +11,56 @@
 #include <llvm/Support/ToolOutputFile.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 
+extern "C" {
+typedef void *BinaryenModuleRef;
+void BinaryenModuleDispose(BinaryenModuleRef module);
+void BinaryenRemoveExport(BinaryenModuleRef module, const char *externalName);
+BinaryenModuleRef BinaryenModuleRead(const char *input, size_t inputSize);
+size_t BinaryenModuleWrite(BinaryenModuleRef module, char *output,
+                           size_t outputSize);
+void BinaryenModuleOptimize(BinaryenModuleRef module);
+void BinaryenSetOptimizeLevel(int level);
+void BinaryenSetShrinkLevel(int level);
+void BinaryenSetDebugInfo(int on);
+}
+
+namespace {
+llvm::Error removeExports(const std::string &Filename) {
+  BinaryenModuleRef WasmModule;
+  size_t BufferSize = 0;
+
+  {
+    auto Binary = llvm::MemoryBuffer::getFile(Filename);
+    if (!Binary) {
+      return llvm::errorCodeToError(Binary.getError());
+    }
+
+    auto Buffer = (*Binary)->getBuffer();
+    BufferSize = Buffer.size();
+    WasmModule = BinaryenModuleRead(Buffer.data(), Buffer.size());
+  }
+
+  BinaryenRemoveExport(WasmModule, "__heap_base");
+  BinaryenRemoveExport(WasmModule, "__data_end");
+  BinaryenSetOptimizeLevel(0);
+  BinaryenSetShrinkLevel(0);
+  BinaryenModuleOptimize(WasmModule);
+
+  std::vector<char> OutputBuffer(BufferSize);
+  auto Size =
+      BinaryenModuleWrite(WasmModule, OutputBuffer.data(), OutputBuffer.size());
+  BinaryenModuleDispose(WasmModule);
+
+  std::error_code EC;
+  auto WasmStream = llvm::raw_fd_ostream(Filename, EC);
+  if (EC) {
+    return llvm::errorCodeToError(EC);
+  }
+  WasmStream.write(OutputBuffer.data(), Size);
+  return llvm::Error::success();
+}
+} // namespace
+
 namespace soll {
 
 class BackendConsumer;
@@ -122,12 +172,13 @@ private:
     };
     lld::wasm::link(Args, false, llvm::errs());
 
-    auto Binary = llvm::MemoryBuffer::getFile(Wasm->TmpName);
-    if (!Binary) {
+    if (auto Error = removeExports(Wasm->TmpName)) {
       llvm::consumeError(Wasm->discard());
       llvm::consumeError(Object->discard());
-      return llvm::errorCodeToError(Binary.getError());
+      return Error;
     }
+
+    auto Binary = llvm::MemoryBuffer::getFile(Wasm->TmpName);
 
     llvm::consumeError(Wasm->discard());
     llvm::consumeError(Object->discard());
