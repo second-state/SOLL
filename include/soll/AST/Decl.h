@@ -242,6 +242,22 @@ public:
   bool isStateVariable() const { return IsStateVariable; }
 };
 
+class StructDecl : public Decl {
+private:
+  TypePtr Ty;
+
+public:
+  StructDecl(SourceRange L, llvm::StringRef Name,
+             const std::vector<TypePtr> &ET, const std::vector<std::string> &EN)
+      : Decl(L, Name, Visibility::Default),
+        Ty(std::make_shared<StructType>(ET, EN)) {}
+
+  void accept(DeclVisitor &Visitor) override;
+  void accept(ConstDeclVisitor &Visitor) const override;
+
+  TypePtr getType() const { return Ty; }
+};
+
 class ModifierInvocation {
   std::string ModifierName;
   std::vector<ExprPtr> Arguments;

@@ -296,6 +296,13 @@ Sema::CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr, Token Tok) {
             std::make_unique<Identifier>(Tok, Iter->second, Ty));
       }
     }
+    if (auto *VD = dynamic_cast<const VarDecl *>(I->getCorrespondDecl())) {
+      if (dynamic_cast<const StructType *>(VD->GetType().get())) {
+        return std::make_unique<MemberExpr>(
+            L, std::move(BaseExpr),
+            std::make_unique<Identifier>(Tok, VD->GetType()));
+      }
+    }
   }
   // unresolvable now
   return std::make_unique<MemberExpr>(L, std::move(BaseExpr),

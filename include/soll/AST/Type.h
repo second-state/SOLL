@@ -374,6 +374,34 @@ public:
 
 class StructType : public Type {
   // TODO
+  std::vector<TypePtr> ElementTypes;
+  std::vector<std::string> ElementNames;
+
+public:
+  StructType(const std::vector<TypePtr> &ET, const std::vector<std::string> &EN)
+      : ElementTypes(ET), ElementNames(EN) {}
+  Category getCategory() const override { return Category::Struct; }
+  std::string getName() const override { return "struct"; }
+  bool isDynamic() const override {
+    for (TypePtr T : ElementTypes) {
+      if (T->isDynamic())
+        return true;
+    }
+    return false;
+  }
+  bool shouldEndianLess() const override { return false; }
+  unsigned getABIStaticSize() const override {
+    unsigned Res = 0;
+    for (TypePtr T : ElementTypes) {
+      Res += T->getABIStaticSize();
+    }
+    return Res;
+  }
+  size_t getElementSize() const { return ElementTypes.size(); }
+  const std::vector<TypePtr> &getElementTypes() const { return ElementTypes; }
+  const std::vector<std::string> &getElementNames() const {
+    return ElementNames;
+  }
 };
 
 class ContractType : public Type {

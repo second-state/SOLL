@@ -77,6 +77,7 @@ private:
                                                  bool AllowModifiers);
   std::unique_ptr<FunctionDecl>
   parseFunctionDefinitionOrFunctionTypeStateVariable();
+  std::unique_ptr<StructDecl> parseStructDeclaration();
   std::unique_ptr<VarDecl>
   parseVariableDeclaration(VarDeclParserOptions const &Options = {},
                            TypePtr &&LookAheadArrayType = nullptr);

@@ -568,14 +568,16 @@ std::unique_ptr<ContractDecl> Parser::parseContractDefinition() {
         if (FD->isConstructor()) {
           if (Constructor) {
             Diag(FD->getLocation().getBegin(), diag::err_multiple_constuctors);
-            Diag(Constructor->getLocation().getBegin(), diag::note_previous_definition);
+            Diag(Constructor->getLocation().getBegin(),
+                 diag::note_previous_definition);
             assert(false && "multiple constructor defined!");
           }
           Constructor = std::move(FD);
         } else if (FD->isFallback()) {
           if (Fallback) {
             Diag(FD->getLocation().getBegin(), diag::err_multiple_fallbacks);
-            Diag(Fallback->getLocation().getBegin(), diag::note_previous_definition);
+            Diag(Fallback->getLocation().getBegin(),
+                 diag::note_previous_definition);
             assert(false && "multiple fallback defined!");
           }
           Fallback = std::move(FD);
@@ -585,9 +587,7 @@ std::unique_ptr<ContractDecl> Parser::parseContractDefinition() {
       }
       Actions.EraseFunRtnTys();
     } else if (Tok.is(tok::kw_struct)) {
-      // TODO: contract tok::kw_struct
-      Diag(diag::err_unimplemented_token) << tok::kw_struct;
-      return nullptr;
+      SubNodes.push_back(parseStructDeclaration());
     } else if (Tok.is(tok::kw_enum)) {
       // TODO: contract tok::kw_enum
       Diag(diag::err_unimplemented_token) << tok::kw_enum;
@@ -649,7 +649,8 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
     Result.Name = Tok.getIdentifierInfo()->getName();
     ConsumeToken(); // identifier
   } else {
-    Diag(diag::err_expected_after) << "'function'" << "identifier";
+    Diag(diag::err_expected_after) << "'function'"
+                                   << "identifier";
     assert(false);
   }
 
@@ -731,6 +732,38 @@ Parser::parseFunctionDefinitionOrFunctionTypeStateVariable() {
     // TODO: State Variable case.
     return nullptr;
   }
+}
+
+std::unique_ptr<StructDecl> Parser::parseStructDeclaration() {
+  const SourceLocation Begin = Tok.getLocation();
+  ConsumeToken(); // 'struct'
+  llvm::StringRef Name = Tok.getIdentifierInfo()->getName();
+  ConsumeToken(); // Name
+  if (ExpectAndConsume(tok::l_brace)) {
+    return nullptr;
+  }
+  SourceLocation End = Tok.getEndLoc();
+  std::vector<TypePtr> ElementTypes;
+  std::vector<std::string> ElementNames;
+  while (Tok.isNot(tok::eof)) {
+    if (Tok.is(tok::r_brace)) {
+      End = Tok.getEndLoc();
+      ConsumeBrace();
+      break;
+    }
+    TypePtr T = parseTypeName(false);
+    std::string ElementName = Tok.getIdentifierInfo()->getName().str();
+    ConsumeToken();
+    if (ExpectAndConsumeSemi()) {
+      return nullptr;
+    }
+    ElementTypes.emplace_back(T);
+    ElementNames.emplace_back(ElementName);
+  }
+  auto SD = std::make_unique<StructDecl>(SourceRange(Begin, End), Name,
+                                         ElementTypes, ElementNames);
+  Actions.addDecl(SD.get());
+  return SD;
 }
 
 bool Parser::ConsumeAndStoreUntil(tok::TokenKind T1, tok::TokenKind T2,
@@ -959,9 +992,17 @@ TypePtr Parser::parseTypeName(bool AllowVar) {
     T = parseMapping();
   } else if (Kind == tok::identifier || Kind == tok::raw_identifier) {
     // TODO: parseTypeName tok::identifier
-    Diag(diag::err_unimplemented_token) << Kind;
-    ConsumeToken(); // identifier
-    return nullptr;
+    llvm::StringRef Name = Tok.getIdentifierInfo()->getName();
+    Decl *D = Actions.lookupName(Name);
+    if (auto SD = dynamic_cast<StructDecl *>(D)) {
+      T = SD->getType();
+      HaveType = true;
+      ConsumeToken(); // identifier
+    } else {
+      Diag(diag::err_unimplemented_token) << Kind;
+      ConsumeToken(); // identifier
+      return nullptr;
+    }
   } else {
     assert(false && "Expected Type Name");
     return nullptr;

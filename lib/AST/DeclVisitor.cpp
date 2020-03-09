@@ -55,6 +55,10 @@ template <bool Const> void DeclVisitorBase<Const>::visit(VarDeclType &) {
   // leaf, do nothing
 }
 
+template <bool Const> void DeclVisitorBase<Const>::visit(StructDeclType &) {
+  // leaf, do nothing
+}
+
 template <bool Const>
 void DeclVisitorBase<Const>::visit(ModifierInvocationType &) {
   // leaf, do nothing

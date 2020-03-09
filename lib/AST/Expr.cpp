@@ -57,6 +57,11 @@ Identifier::Identifier(const Token &T, Decl *D)
   updateTypeFromCurrentDecl();
 }
 
+Identifier::Identifier(const Token &T, TypePtr Ty)
+    : Expr(SourceRange(T.getLocation(), T.getEndLoc()), ValueKind::VK_LValue,
+           std::move(Ty)),
+      T(T), D() {}
+
 Identifier::Identifier(const Token &T, SpecialIdentifier D, TypePtr Ty)
     : Expr(SourceRange(T.getLocation(), T.getEndLoc()), ValueKind::VK_LValue,
            std::move(Ty)),

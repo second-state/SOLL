@@ -94,6 +94,7 @@ private:
 public:
   Identifier(const Token &T);
   Identifier(const Token &T, Decl *D);
+  Identifier(const Token &T, TypePtr Ty);
   Identifier(const Token &T, SpecialIdentifier D, TypePtr Ty);
 
   bool isResolved() const { return !std::holds_alternative<std::monostate>(D); }

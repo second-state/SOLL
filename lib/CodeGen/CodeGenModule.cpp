@@ -941,6 +941,7 @@ void CodeGenModule::initEcrecover() {
 
 void CodeGenModule::emitContractDecl(const ContractDecl *CD) {
   for (const auto *D : CD->getSubNodes()) {
+    // TODO: handle struct definition
     if (const auto *ED = dynamic_cast<const EventDecl *>(D)) {
       emitEventDecl(ED);
     } else if (const auto *FD = dynamic_cast<const FunctionDecl *>(D)) {

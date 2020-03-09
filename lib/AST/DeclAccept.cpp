@@ -44,6 +44,11 @@ void CallableVarDecl::accept(ConstDeclVisitor &visitor) const {
 void VarDecl::accept(DeclVisitor &visitor) { visitor.visit(*this); }
 void VarDecl::accept(ConstDeclVisitor &visitor) const { visitor.visit(*this); }
 
+void StructDecl::accept(DeclVisitor &visitor) { visitor.visit(*this); }
+void StructDecl::accept(ConstDeclVisitor &visitor) const {
+  visitor.visit(*this);
+}
+
 void YulCode::accept(DeclVisitor &visitor) { visitor.visit(*this); }
 void YulCode::accept(ConstDeclVisitor &visitor) const { visitor.visit(*this); }
 

@@ -13,6 +13,7 @@ class EventDecl;
 class ParamList;
 class CallableVarDecl;
 class VarDecl;
+class StructDecl;
 class ModifierInvocation;
 
 class YulCode;
@@ -31,6 +32,7 @@ protected:
   using ParamListType = typename cond_const<Const, ParamList>::type;
   using CallableVarDeclType = typename cond_const<Const, CallableVarDecl>::type;
   using VarDeclType = typename cond_const<Const, VarDecl>::type;
+  using StructDeclType = typename cond_const<Const, StructDecl>::type;
   using ModifierInvocationType =
       typename cond_const<Const, ModifierInvocation>::type;
 
@@ -50,6 +52,7 @@ public:
   virtual void visit(ParamListType &);
   virtual void visit(CallableVarDeclType &);
   virtual void visit(VarDeclType &);
+  virtual void visit(StructDeclType &);
   virtual void visit(ModifierInvocationType &);
 
   virtual void visit(YulCodeType &);
