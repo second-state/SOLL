@@ -1332,12 +1332,26 @@ std::unique_ptr<Stmt> Parser::parseSimpleStatement() {
     assert(false && "Unhandle statement.");
   }
   if (IsParenExpr) {
-    const SourceLocation End = Tok.getEndLoc();
-    if (ExpectAndConsume(tok::r_paren)) {
-      return nullptr;
+    std::vector<ExprPtr> Comps;
+    Comps.emplace_back(std::move(Expression));
+
+    while (Tok.getKind() != tok::r_paren)
+    {
+      ExpectAndConsume(tok::comma);
+      if (Tok.getKind() == tok::comma || Tok.getKind()==tok::r_paren) {
+        Comps.emplace_back(ExprPtr());
+      } else {
+        Comps.emplace_back(parseExpression());
+      }
     }
-    return parseExpression(std::make_unique<ParenExpr>(SourceRange(Begin, End),
-                                                       std::move(Expression)));
+
+    ExpectAndConsume(tok::r_paren);
+
+    const SourceLocation End = Tok.getEndLoc();
+    bool IsArray = false;
+    return parseExpression(std::make_unique<TupleExpr>(SourceRange(Begin, End),
+                                                       std::move(Comps),
+                                                       IsArray));
   }
   return Expression;
 }
@@ -1777,15 +1791,39 @@ std::unique_ptr<Expr> Parser::parsePrimaryExpression() {
     // Special cases: ()/[] is empty tuple/array type, (x) is not a real tuple,
     // (x,) is one-dimensional tuple, elements in arrays cannot be left out,
     // only in tuples.
+    std::vector<ExprPtr> Comps;
     const SourceLocation Begin = Tok.getLocation();
     const tok::TokenKind OppositeKind =
         (Kind == tok::l_paren ? tok::r_paren : tok::r_square);
+    bool IsArray = (Kind == tok::l_square);
     ConsumeAnyToken(); // '[' or '('
-    auto E = parseExpression();
+
+    if (OppositeKind != Tok.getKind()) {
+      while (true) {
+        if (Tok.getKind() != tok::comma && Tok.getKind() != OppositeKind) {
+          Comps.emplace_back(parseExpression());
+        } else if (IsArray) {
+          // Expected expression (inline array elements cannot be omitted).
+        } else {
+          Comps.emplace_back(ExprPtr());
+        }
+
+        if (Tok.getKind() == OppositeKind) {
+          break;
+        }
+
+        ExpectAndConsume(tok::comma);
+      }
+    }
     const SourceLocation End = Tok.getEndLoc();
     ExpectAndConsume(OppositeKind);
-    Expression =
-        std::make_unique<ParenExpr>(SourceRange(Begin, End), std::move(E));
+    if (!IsArray && Comps.size() == 1) {// something like (e) is not a tuple
+      Expression =
+        std::make_unique<ParenExpr>(SourceRange(Begin, End), std::move(Comps.back()));
+    } else {
+      Expression =
+        std::make_unique<TupleExpr>(SourceRange(Begin, End), std::move(Comps), IsArray);
+    }
     break;
   }
   default:
