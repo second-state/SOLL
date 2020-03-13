@@ -175,7 +175,7 @@ private:
     if (auto Error = removeExports(Wasm->TmpName)) {
       llvm::consumeError(Wasm->discard());
       llvm::consumeError(Object->discard());
-      return Error;
+      return std::move(Error);
     }
 
     auto Binary = llvm::MemoryBuffer::getFile(Wasm->TmpName);

@@ -35,7 +35,7 @@ SyntaxOnlyAction::~SyntaxOnlyAction() {}
 std::unique_ptr<ASTConsumer>
 SyntaxOnlyAction::CreateASTConsumer(CompilerInstance &CI,
                                     llvm::StringRef InFile) {
-  return llvm::make_unique<ASTConsumer>();
+  return std::make_unique<ASTConsumer>();
 }
 
 } // namespace soll

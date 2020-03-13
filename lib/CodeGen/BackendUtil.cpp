@@ -147,7 +147,9 @@ void EmitAssemblyHelper::EmitAssembly(
       llvm::Triple(TheModule->getTargetTriple()));
   TLII->disableAllFunctions();
   FAM.registerPass([&] { return llvm::TargetLibraryAnalysis(*TLII); });
+#if LLVM_VERSION_MAJOR <= 9
   MAM.registerPass([&] { return llvm::TargetLibraryAnalysis(*TLII); });
+#endif
 
   // Register all the basic analyses with the managers.
   PB.registerModuleAnalyses(MAM);
