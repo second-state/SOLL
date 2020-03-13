@@ -1,8 +1,17 @@
 FROM ubuntu:18.04
 
 RUN apt update \
+    && apt install -y software-properties-common
+
+RUN apt update \
     && apt install -y \
         llvm-8-dev \
         llvm-8-tools \
+        liblld-8-dev \
         wget
+
+RUN add-apt-repository -y ppa:hnakamur/binaryen \
+    && apt update \
+    && apt install binaryen
+
 RUN rm -rf /var/lib/apt/lists/*
