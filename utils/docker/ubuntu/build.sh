@@ -23,20 +23,22 @@ function docker_build
 }
 
 # Build all images.
-docker_build Dockerfile.base        ubuntu-base
-docker_build Dockerfile.build-gcc   ubuntu-gcc          \
+docker_build Dockerfile.base            ubuntu-base
+docker_build Dockerfile.build-gcc       ubuntu-gcc          \
     --build-arg "BASE=${NAME}:ubuntu-base"
-docker_build Dockerfile.build-clang ubuntu-clang        \
+docker_build Dockerfile.build-clang     ubuntu-clang        \
     --build-arg "BASE=${NAME}:ubuntu-base"
-docker_build Dockerfile.compile     ubuntu-compile      \
+docker_build Dockerfile.build-evm-llvm  ubuntu-evm-llvm     \
+    --build-arg "BASE=${NAME}:ubuntu-clang"
+docker_build Dockerfile.compile         ubuntu-compile      \
     --build-arg "BASE=${NAME}:ubuntu-base"
-docker_build Dockerfile.test        ubuntu-test         \
+docker_build Dockerfile.test            ubuntu-test         \
     --build-arg "BASE=${NAME}:ubuntu-base"
-docker_build Dockerfile.coverage    ubuntu-coverage     \
+docker_build Dockerfile.coverage        ubuntu-coverage     \
     --build-arg "BASE=${NAME}:ubuntu-base"
-docker_build Dockerfile.compile     im-gcc-compile      \
+docker_build Dockerfile.compile         im-gcc-compile      \
     --build-arg "BASE=${NAME}:ubuntu-gcc"
-docker_build Dockerfile.test        latest              \
+docker_build Dockerfile.test            latest              \
     --build-arg "BASE=${NAME}:im-gcc-compile"
 
 # Remove intermediate images.

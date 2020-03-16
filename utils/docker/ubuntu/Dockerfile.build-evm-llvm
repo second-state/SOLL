@@ -1,8 +1,10 @@
-FROM secondstate/soll:ubuntu-clang
+ARG BASE=secondstate/soll:ubuntu-clang
+FROM ${BASE}
 
 RUN apt update \
     && apt install -y \
         python-psutil \
+        liblld-8-dev \
         git
 RUN rm -rf /var/lib/apt/lists/*
 
