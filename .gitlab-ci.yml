@@ -93,33 +93,34 @@ test:wasm:
     policy: pull
 
 # Jobs for EVM backend
-ubuntu-clang:evm:
-  <<: *build_job
-  tags: ["evm"]
-  variables:
-    CMAKE_OPTIONS: "-DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true -DLLVM_EXTERNAL_LIT=${LIT_PATH} -DSOLL_ENABLE_EVM=true -DLLVM_CMAKE_PATH=${EVM_BINDIR}"
-    KEY: "ubuntu-evm-llvm"
+#ubuntu-clang:evm:
+#  <<: *build_job
+#  tags: ["evm"]
+#  variables:
+#    CMAKE_OPTIONS: "-DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true -DLLVM_EXTERNAL_LIT=${LIT_PATH} -DSOLL_ENABLE_EVM=true -DLLVM_CMAKE_PATH=${EVM_BINDIR}"
+#    KEY: "ubuntu-evm-llvm"
 
-compile:evm:
-  stage: compile
-  image: secondstate/soll:ubuntu-evm-llvm
-  needs: ["ubuntu-clang:evm"]
-  tags: ["evm"]
-  variables:
-    SOLL_PATH: "${BASE_BINDIR}/tools/soll/soll"
-  script:
-    - bash -c "./utils/compile -v sol evm ${TEST_ENVDIR}/test/*.sol"
-  cache:
-    <<: *cache_paths
-    key: ubuntu-evm-llvm
-    policy: pull-push
+#compile:evm:
+#  stage: compile
+#  image: secondstate/soll:ubuntu-evm-llvm
+#  needs: ["ubuntu-clang:evm"]
+#  tags: ["evm"]
+#  variables:
+#    SOLL_PATH: "${BASE_BINDIR}/tools/soll/soll"
+#  script:
+#    - bash -c "./utils/compile -v sol evm ${TEST_ENVDIR}/test/*.sol"
+#  cache:
+#    <<: *cache_paths
+#    key: ubuntu-evm-llvm
+#    policy: pull-push
 
 # Jobs for Coverage Report
 coverage:ubuntu:
   <<: *build_job
   tags: ["coverage"]
   variables:
-    CMAKE_OPTIONS: "-DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true -DSOLL_COVERAGE=true -DLLVM_EXTERNAL_LIT=${LIT_PATH} -DSOLL_ENABLE_EVM=true -DLLVM_CMAKE_PATH=${EVM_BINDIR}"
+    CMAKE_OPTIONS: "-DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true -DSOLL_COVERAGE=true -DLLVM_EXTERNAL_LIT=${LIT_PATH}"
+#    CMAKE_OPTIONS: "-DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true -DSOLL_COVERAGE=true -DLLVM_EXTERNAL_LIT=${LIT_PATH} -DSOLL_ENABLE_EVM=true -DLLVM_CMAKE_PATH=${EVM_BINDIR}"
     KEY: "ubuntu-coverage"
 
 coverage:test:
