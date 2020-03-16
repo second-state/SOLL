@@ -13,7 +13,6 @@ LLLINK=${LLLINK:-$(command -v llvm-link)}
 WASM_LD=$(command -v wasm-ld-8)
 WASM_LD=${WASM_LD:-$(command -v wasm-ld-9)}
 WASM_LD=${WASM_LD:-$(command -v wasm-ld)}
-WASM_OPT=$(command -v wasm-opt)
 WASM2WAT=$(command -v wasm2wat)
 WAT2WASM=$(command -v wat2wasm)
 CUT=$(command -v cut)
@@ -96,19 +95,11 @@ for INPUT in "$@"; do
     run "$LLC" -O3 -filetype=obj "$BASE.bc" || exit 1
     run "$WASM_LD" --entry main --gc-sections --allow-undefined "$BASE.o" -o "$BASE.wasm" || exit 1
     remove_exports "$BASE.wasm" || exit 1
-    if [ "$WASM_OPT" ]; then
-        run "$WASM_OPT" -O4 "$BASE.wasm" -o "$BASE-opt.wasm" || exit 1
-        bin2deploy "$BASE-opt.wasm" "$BASE.deploy.ll"
-    else
-        bin2deploy "$BASE.wasm" "$BASE.deploy.ll"
-    fi
+    bin2deploy "$BASE.wasm" "$BASE.deploy.ll"
     entry ctor "$BASE.ctor.ll"
     run "$LLLINK" "$BASE.ll" "$BASE.deploy.ll" "$BASE.ctor.ll" -o "$BASE.deploy.bc" || exit 1
     run "$LLOPT" -std-link-opts -Oz "$BASE.deploy.bc" -o "$BASE.deploy.bc" || exit 1
     run "$LLC" -O3 -filetype=obj "$BASE.deploy.bc" || exit 1
     run "$WASM_LD" --entry main --gc-sections --allow-undefined "$BASE.deploy.o" -o "$BASE.deploy.wasm" || exit 1
     remove_exports "$BASE.deploy.wasm" || exit 1
-    if [ "$WASM_OPT" ]; then
-        run "$WASM_OPT" -O4 "$BASE.deploy.wasm" -o "$BASE-opt.deploy.wasm" || exit 1
-    fi
 done
