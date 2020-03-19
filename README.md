@@ -41,7 +41,7 @@ To get started with our demonstration, you will need prepare two components at f
 
 - Pre-install **Docker** and pull our [docker image](https://hub.docker.com/r/secondstate/soll)
 > *We provide an image include build and execute environment (recommend).
-> If you don't want to use docker directly you will need below tools (cmake, llvm, xxd, wabt, node.js).*
+> If you don't want to use docker directly you will need below tools (cmake, llvm, binaryen, xxd, wabt, node.js).*
 
 - **SOLL** https://github.com/second-state/soll
 
