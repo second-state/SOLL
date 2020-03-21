@@ -1798,7 +1798,7 @@ Parser::parseFunctionCallArguments() {
     }
     ConsumeToken(); // ')'
   } else {
-    Ret.first = std::move(parseFunctionCallListArguments());
+    Ret.first = parseFunctionCallListArguments();
   }
   return Ret;
 }

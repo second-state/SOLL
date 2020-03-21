@@ -9,10 +9,11 @@ static const constexpr enum llvm::raw_ostream::Colors noteColor =
     llvm::raw_ostream::WHITE;
 static const constexpr enum llvm::raw_ostream::Colors remarkColor =
     llvm::raw_ostream::BLUE;
-static const constexpr enum llvm::raw_ostream::Colors fixitColor =
-    llvm::raw_ostream::GREEN;
-static const constexpr enum llvm::raw_ostream::Colors caretColor =
-    llvm::raw_ostream::GREEN;
+// -Wunused-const-variable
+// static const constexpr enum llvm::raw_ostream::Colors fixitColor =
+//     llvm::raw_ostream::GREEN;
+// static const constexpr enum llvm::raw_ostream::Colors caretColor =
+//     llvm::raw_ostream::GREEN;
 static const constexpr enum llvm::raw_ostream::Colors warningColor =
     llvm::raw_ostream::MAGENTA;
 static const constexpr enum llvm::raw_ostream::Colors templateColor =

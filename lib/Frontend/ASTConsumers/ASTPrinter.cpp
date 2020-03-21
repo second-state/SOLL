@@ -228,6 +228,7 @@ public:
   void visit(FunctionDeclType &) override;
   void visit(EventDeclType &) override;
   void visit(ParamListType &) override;
+  void visit(CallableVarDeclType &) override;
   void visit(VarDeclType &) override;
   void visit(ModifierInvocationType &) override;
 
@@ -317,6 +318,10 @@ void ASTPrinter::visit(ParamListType &param) {
   os() << indent() << "ParamList\n";
   ConstDeclVisitor::visit(param);
   unindent();
+}
+
+void ASTPrinter::visit(CallableVarDeclType& param) {
+  // TODO
 }
 
 void ASTPrinter::visit(VarDeclType &decl) {

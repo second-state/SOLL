@@ -807,6 +807,7 @@ llvm::Value *CodeGenFunction::emitCallAddressStaticcall(const CallExpr *CE,
   llvm::Value *ReturnDataSize = CGM.emitReturnDataSize();
   llvm::Value *ReturnData =
       CGM.emitReturnDataCopyBytes(Builder.getInt32(0), ReturnDataSize);
+  (void)ReturnData; // -Wunused-variable
   // Todo:
   // return tuple (~bool(Val), ReturnData)
   return Builder.CreateNot(Builder.CreateTrunc(Val, BoolTy));
@@ -841,6 +842,7 @@ CodeGenFunction::emitCallAddressDelegatecall(const CallExpr *CE,
   llvm::Value *ReturnDataSize = CGM.emitReturnDataSize();
   llvm::Value *ReturnData =
       CGM.emitReturnDataCopyBytes(Builder.getInt32(0), ReturnDataSize);
+  (void)ReturnData; // -Wunused-variable
   // Todo:
   // return tuple (Cond, ReturnData)
   return Builder.CreateTrunc(Cond, BoolTy);
@@ -876,6 +878,7 @@ llvm::Value *CodeGenFunction::emitCallAddressCall(const CallExpr *CE,
   llvm::Value *ReturnDataSize = CGM.emitReturnDataSize();
   llvm::Value *ReturnData =
       CGM.emitReturnDataCopyBytes(Builder.getInt32(0), ReturnDataSize);
+  (void)ReturnData; // -Wunused-variable
   // Todo:
   // return tuple (Cond, ReturnData)
   return Builder.CreateTrunc(Cond, BoolTy);

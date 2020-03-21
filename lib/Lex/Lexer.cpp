@@ -591,7 +591,6 @@ Token Lexer::LexNumericConstant(const char *CurPtr) {
 
 Token Lexer::LexStringLiteral(const char *CurPtr, char Quote,
                               tok::TokenKind Kind) {
-  const char *AfterQuote = CurPtr;
   // Does this string contain the \0 character?
   const char *NulCharacter = nullptr;
 

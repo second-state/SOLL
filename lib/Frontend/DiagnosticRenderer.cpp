@@ -17,7 +17,7 @@ void DiagnosticRenderer::emitDiagnostic(FullSourceLoc Loc,
     llvm::SmallVector<CharSourceRange, 20> MutableRanges(Ranges.begin(),
                                                          Ranges.end());
 
-    FullSourceLoc UnexpandedLoc = Loc;
+    // FullSourceLoc UnexpandedLoc = Loc;
 
     // Loc = Loc.getFileLoc();
 

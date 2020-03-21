@@ -47,6 +47,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     -Wno-unknown-warning-option
     -Wno-init-list-lifetime
     -Wno-unused-parameter
+    -Wno-unused-private-field
     )
 endif()
 
