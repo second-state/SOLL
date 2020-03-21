@@ -97,6 +97,7 @@ public:
   Identifier(const Token &T, TypePtr Ty);
   Identifier(const Token &T, SpecialIdentifier D, TypePtr Ty);
 
+  bool isStateVariable() const;
   bool isResolved() const { return !std::holds_alternative<std::monostate>(D); }
   bool isSpecialIdentifier() const {
     return std::holds_alternative<SpecialIdentifier>(D);

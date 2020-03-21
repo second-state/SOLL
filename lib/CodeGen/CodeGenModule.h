@@ -209,6 +209,7 @@ private:
   void emitEventDecl(const EventDecl *ED);
   void emitFunctionDecl(const FunctionDecl *FD);
   void emitVarDecl(const VarDecl *VD);
+  void emitStructDecl(const StructDecl *SD);
 
   void emitYulCode(const YulCode *YC, llvm::StringRef Name);
   void emitYulData(const YulData *YD);

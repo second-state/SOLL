@@ -948,6 +948,8 @@ void CodeGenModule::emitContractDecl(const ContractDecl *CD) {
       emitFunctionDecl(FD);
     } else if (const auto *VD = dynamic_cast<const VarDecl *>(D)) {
       emitVarDecl(VD);
+    } else if (const auto *SD = dynamic_cast<const StructDecl *>(D)) {
+      emitStructDecl(SD);
     } else {
       assert(false && "unknown subnode type!");
     }
@@ -1349,6 +1351,18 @@ void CodeGenModule::emitVarDecl(const VarDecl *VD) {
   StateVarDeclMap.try_emplace(VD, StateVarAddr);
 }
 
+void CodeGenModule::emitStructDecl(const StructDecl *SD) {
+  if (auto STy = dynamic_cast<StructType *>(SD->getType().get())) {
+    std::vector<llvm::Type *> LLVMTy;
+    for (auto ET : STy->getElementTypes()) {
+      LLVMTy.emplace_back(getLLVMType(ET.get()));
+    }
+    llvm::ArrayRef<llvm::Type *> Elements(LLVMTy);
+    auto Tp = llvm::StructType::create(VMContext, {Elements}, "struct");
+    STy->setLLVMType(Tp);
+  }
+}
+
 void CodeGenModule::emitYulObject(const YulObject *YO) {
   assert(nullptr != YO->getCode());
   for (const auto *O : YO->getObjectList()) {
@@ -1432,6 +1446,11 @@ llvm::Type *CodeGenModule::getLLVMType(const Type *Ty) {
                                   ArrayTy->getLength().getLimitedValue());
     }
   }
+  case Type::Category::Struct:
+    return dynamic_cast<const StructType *>(Ty)->getLLVMType();
+  case Type::Category::Mapping:
+    assert(false && "Mapping is unsupported!");
+    __builtin_unreachable();
   default:
     assert(false && "unsupported type!");
     __builtin_unreachable();
@@ -1462,6 +1481,7 @@ llvm::Type *CodeGenModule::getStaticLLVMType(const Type *Ty) {
           ArrayTy->getLength().getLimitedValue());
     }
   }
+  case Type::Category::Struct: // TODO: static struct type
   default:
     assert(false && "unsupported type!");
     __builtin_unreachable();

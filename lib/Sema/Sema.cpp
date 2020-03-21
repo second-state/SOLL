@@ -297,10 +297,11 @@ Sema::CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr, Token Tok) {
       }
     }
     if (auto *VD = dynamic_cast<const VarDecl *>(I->getCorrespondDecl())) {
-      if (dynamic_cast<const StructType *>(VD->GetType().get())) {
+      if (auto *ST = dynamic_cast<const StructType *>(VD->GetType().get())) {
         return std::make_unique<MemberExpr>(
             L, std::move(BaseExpr),
-            std::make_unique<Identifier>(Tok, VD->GetType()));
+            std::make_unique<Identifier>(
+                Tok, ST->getElementTypes()[ST->getElementIndex(Name.str())]));
       }
     }
   }

@@ -4,6 +4,7 @@
 #include "soll/AST/ASTForward.h"
 #include <cassert>
 #include <llvm/ADT/APInt.h>
+#include <llvm/IR/DerivedTypes.h>
 #include <memory>
 #include <optional>
 #include <sstream>
@@ -376,6 +377,7 @@ class StructType : public Type {
   // TODO
   std::vector<TypePtr> ElementTypes;
   std::vector<std::string> ElementNames;
+  llvm::StructType *Tp;
 
 public:
   StructType(const std::vector<TypePtr> &ET, const std::vector<std::string> &EN)
@@ -396,6 +398,59 @@ public:
       Res += T->getABIStaticSize();
     }
     return Res;
+  }
+  void setLLVMType(llvm::StructType *T) {
+    if (!Tp)
+      Tp = T;
+  }
+  llvm::Type *getLLVMType() const { return Tp; }
+  size_t getElementIndex(std::string Name) const {
+    size_t i = 0;
+    for (; i < ElementNames.size(); ++i) {
+      if (ElementNames[i] == Name) {
+        break;
+      }
+    }
+    return i;
+  }
+  size_t getStoragePos(size_t ElementIndex) const {
+    size_t Pos = 0;
+    for (size_t i = 0; i < ElementIndex; ++i) {
+      switch (ElementTypes[i]->getCategory()) {
+      case Type::Category::Address:
+      case Type::Category::Bool:
+      case Type::Category::FixedBytes:
+      case Type::Category::Integer:
+      case Type::Category::RationalNumber:
+      case Type::Category::String:
+      case Type::Category::Bytes: {
+        Pos += 1;
+        break;
+      }
+      case Type::Category::Array: {
+        auto ArrTy = dynamic_cast<const ArrayType *>(ElementTypes[i].get());
+        if (ArrTy->isDynamicSized()) {
+          Pos += 1;
+        } else {
+          unsigned BitPerElement = ArrTy->getElementType()->getBitNum();
+          unsigned ElementPerSlot = 256 / BitPerElement;
+          unsigned Length = ArrTy->getLength().getLimitedValue();
+          return Length / ElementPerSlot + (Length % ElementPerSlot != 0);
+        }
+        break;
+      }
+      case Type::Category::Struct: {
+        auto StructTy = dynamic_cast<const StructType *>(ElementTypes[i].get());
+        Pos += StructTy->getStoragePos(StructTy->getElementSize());
+        break;
+      }
+      default: {
+        assert(false && "unsupport type for struct!");
+        __builtin_unreachable();
+      }
+      }
+    }
+    return Pos;
   }
   size_t getElementSize() const { return ElementTypes.size(); }
   const std::vector<TypePtr> &getElementTypes() const { return ElementTypes; }

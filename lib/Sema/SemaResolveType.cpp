@@ -51,6 +51,7 @@ bool isAllowedTypeForBinary(BinaryOperatorKind BOK, const Type::Category TyC) {
   case Type::Category::Array:
   case Type::Category::String:
   case Type::Category::Bytes:
+  case Type::Category::Struct:
     return BOK == BO_Assign;
   default:
     return false;

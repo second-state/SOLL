@@ -606,6 +606,28 @@ private:
         assert(false && "unsupported special member access");
         __builtin_unreachable();
       }
+    } else {
+      ExprValue StructValue = visit(ME->getBase());
+      auto ST =
+          dynamic_cast<const StructType *>(ME->getBase()->getType().get());
+      unsigned ElementIndex =
+          ST->getElementIndex(ME->getName()->getName().str());
+      if (StructValue.getValueKind() == ValueKind::VK_SValue) {
+        llvm::Value *Base = Builder.CreateLoad(StructValue.getValue());
+        llvm::Value *Pos =
+            Builder.getIntN(256, ST->getStoragePos(ElementIndex));
+        llvm::Value *ElemAddress = Builder.CreateAdd(Base, Pos);
+        llvm::Value *Address = Builder.CreateAlloca(CGF.Int256Ty);
+        Builder.CreateStore(ElemAddress, Address);
+        return ExprValue(ME->getName()->getType().get(), ValueKind::VK_SValue,
+                         Address);
+      } else {
+        llvm::Value *Value = StructValue.load(Builder, CGM);
+        llvm::Value *Element =
+            Builder.CreateExtractValue(Value, {ElementIndex});
+        return ExprValue(ME->getName()->getType().get(), ValueKind::VK_LValue,
+                         Element);
+      }
     }
 
     assert(false && "unsupported non-special member access");

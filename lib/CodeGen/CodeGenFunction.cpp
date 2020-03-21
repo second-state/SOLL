@@ -208,6 +208,7 @@ llvm::Value *CodeGenFunction::emitVarDecl(const Decl *VD) {
   case Type::Category::String:
   case Type::Category::Bytes:
   case Type::Category::Array:
+  case Type::Category::Struct:
     Builder.CreateStore(llvm::ConstantAggregateZero::get(LLVMTy), Addr);
     break;
   default:

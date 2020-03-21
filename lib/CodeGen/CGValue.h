@@ -22,6 +22,7 @@ public:
   }
   const Type *getType() const { return Ty; }
   llvm::Value *getValue() const { return V; }
+  ValueKind getValueKind() const { return Kind; }
   template <typename T>
   llvm::Value *load(T &Builder, CodeGenModule &CGM,
                     llvm::StringRef Name = "") const {
