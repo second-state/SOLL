@@ -65,7 +65,6 @@ bool CompilerInvocation::ParseCommandLineOptions(
   llvm::cl::SetVersionPrinter(printSOLLVersion);
   llvm::cl::ParseCommandLineOptions(Arg.size(), Arg.data());
 
-  DiagnosticOpts = new DiagnosticOptions();
   DiagnosticOpts->ShowColors = llvm::sys::Process::StandardErrHasColors();
   DiagRenderer =
       std::make_unique<TextDiagnostic>(llvm::errs(), *DiagnosticOpts);
