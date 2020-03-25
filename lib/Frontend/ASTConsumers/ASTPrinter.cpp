@@ -244,6 +244,7 @@ public:
   void visit(UnaryOperatorType &) override;
   void visit(BinaryOperatorType &) override;
   void visit(CallExprType &) override;
+  void visit(TupleExprType &) override;
   void visit(ParenExprType &) override;
   void visit(MemberExprType &) override;
   void visit(IndexAccessType &) override;
@@ -415,6 +416,20 @@ void ASTPrinter::visit(BinaryOperatorType &op) {
 void ASTPrinter::visit(CallExprType &call) {
   os() << indent() << "CallExpr " << ToString(call.getType()) << "\n";
   ConstStmtVisitor::visit(call);
+  unindent();
+}
+
+void ASTPrinter::visit(TupleExprType &tuple) {
+  os() << indent() << "Tuple \n";
+  //ConstStmtVisitor::visit(tuple);
+  for (auto comps:tuple.getComponents()) {
+    if (comps) {
+      comps->accept(*this);
+    } else {
+      os() << indent() << "(empty) \n";
+      unindent();
+    }
+  }
   unindent();
 }
 
