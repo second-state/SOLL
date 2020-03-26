@@ -738,6 +738,10 @@ std::unique_ptr<StructDecl> Parser::parseStructDeclaration() {
   const SourceLocation Begin = Tok.getLocation();
   ConsumeToken(); // 'struct'
   llvm::StringRef Name = Tok.getIdentifierInfo()->getName();
+  if (Actions.lookupName(Name)) {
+    Diag(diag::err_duplicate_definition) << Name.str();
+    return nullptr;
+  }
   ConsumeToken(); // Name
   if (ExpectAndConsume(tok::l_brace)) {
     return nullptr;

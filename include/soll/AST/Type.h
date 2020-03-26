@@ -50,6 +50,7 @@ public:
   virtual bool isDynamic() const = 0;
   virtual bool shouldEndianLess() const = 0;
   virtual unsigned getABIStaticSize() const = 0;
+  virtual unsigned getStorageSize() const { return 32; }
   virtual bool isEqual(Type const &Ty) const {
     return Ty.getCategory() == getCategory();
   }
@@ -297,6 +298,7 @@ public:
     assert(false && "mapping is not allowed here");
     __builtin_unreachable();
   }
+  unsigned getStorageSize() const override { return 32; }
 };
 
 class ArrayType : public ReferenceType {
@@ -333,6 +335,16 @@ public:
     } else {
       return getElementType()->getABIStaticSize() *
              getLength().getLimitedValue();
+    }
+  }
+  unsigned getStorageSize() const override {
+    if (isDynamicSized()) {
+      return 32;
+    } else {
+      unsigned BitPerElement = getElementType()->getBitNum();
+      unsigned ElementPerSlot = 256 / BitPerElement;
+      unsigned Length = getLength().getLimitedValue();
+      return (Length / ElementPerSlot + (Length % ElementPerSlot != 0)) * 32;
     }
   }
 };
@@ -399,6 +411,9 @@ public:
     }
     return Res;
   }
+  unsigned getStorageSize() const override {
+    return getStoragePos(getElementSize());
+  }
   void setLLVMType(llvm::StructType *T) {
     if (!Tp)
       Tp = T;
@@ -416,39 +431,7 @@ public:
   size_t getStoragePos(size_t ElementIndex) const {
     size_t Pos = 0;
     for (size_t i = 0; i < ElementIndex; ++i) {
-      switch (ElementTypes[i]->getCategory()) {
-      case Type::Category::Address:
-      case Type::Category::Bool:
-      case Type::Category::FixedBytes:
-      case Type::Category::Integer:
-      case Type::Category::RationalNumber:
-      case Type::Category::String:
-      case Type::Category::Bytes: {
-        Pos += 1;
-        break;
-      }
-      case Type::Category::Array: {
-        auto ArrTy = dynamic_cast<const ArrayType *>(ElementTypes[i].get());
-        if (ArrTy->isDynamicSized()) {
-          Pos += 1;
-        } else {
-          unsigned BitPerElement = ArrTy->getElementType()->getBitNum();
-          unsigned ElementPerSlot = 256 / BitPerElement;
-          unsigned Length = ArrTy->getLength().getLimitedValue();
-          return Length / ElementPerSlot + (Length % ElementPerSlot != 0);
-        }
-        break;
-      }
-      case Type::Category::Struct: {
-        auto StructTy = dynamic_cast<const StructType *>(ElementTypes[i].get());
-        Pos += StructTy->getStoragePos(StructTy->getElementSize());
-        break;
-      }
-      default: {
-        assert(false && "unsupport type for struct!");
-        __builtin_unreachable();
-      }
-      }
+      Pos += ElementTypes[i]->getStorageSize() / 32;
     }
     return Pos;
   }

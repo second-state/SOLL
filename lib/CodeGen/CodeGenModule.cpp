@@ -46,7 +46,7 @@ CodeGenModule::CodeGenModule(
     const TargetOptions &TargetOpts)
     : Context(C), TheModule(M), Entry(E), NestedEntries(NE), Diags(Diags),
       CodeGenOpts(CodeGenOpts), TargetOpts(TargetOpts),
-      VMContext(M.getContext()), Builder(VMContext) {
+      VMContext(M.getContext()), Builder(VMContext), StateVarAddrCursor(0) {
   initTypes();
   if (isEVM()) {
     initEVMOpcodeDeclaration();
@@ -967,8 +967,8 @@ void CodeGenModule::emitContractDecl(const ContractDecl *CD) {
 
 llvm::Function *CodeGenModule::emitNestedObjectGetter(llvm::StringRef Name) {
   llvm::FunctionType *FT = llvm::FunctionType::get(BytesTy, false);
-  return llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
-                                    Name, TheModule);
+  return llvm::Function::Create(FT, llvm::Function::ExternalLinkage, Name,
+                                TheModule);
 }
 
 void CodeGenModule::emitContractConstructorDecl(const ContractDecl *CD) {
@@ -1342,10 +1342,11 @@ void CodeGenModule::emitFunctionDecl(const FunctionDecl *FD) {
 }
 
 void CodeGenModule::emitVarDecl(const VarDecl *VD) {
-  const std::size_t Index = StateVarAddrCursor++;
+  const std::size_t Index = StateVarAddrCursor;
   llvm::GlobalVariable *StateVarAddr = new llvm::GlobalVariable(
       TheModule, Int256Ty, true, llvm::GlobalVariable::InternalLinkage,
       Builder.getIntN(256, Index), VD->getName());
+  StateVarAddrCursor += VD->GetType()->getStorageSize() / 32;
   StateVarAddr->setUnnamedAddr(llvm::GlobalVariable::UnnamedAddr::Local);
   StateVarAddr->setAlignment(256);
   StateVarDeclMap.try_emplace(VD, StateVarAddr);
