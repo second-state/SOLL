@@ -33,6 +33,7 @@ public:
   TypePtr getType() { return Ty; }
   const TypePtr &getType() const { return Ty; }
   void setType(TypePtr Ty) { this->Ty = Ty; }
+  virtual bool isStateVariable() const { return false; };
 };
 
 class Identifier : public Expr {
@@ -97,7 +98,7 @@ public:
   Identifier(const Token &T, TypePtr Ty);
   Identifier(const Token &T, SpecialIdentifier D, TypePtr Ty);
 
-  bool isStateVariable() const;
+  bool isStateVariable() const override;
   bool isResolved() const { return !std::holds_alternative<std::monostate>(D); }
   bool isSpecialIdentifier() const {
     return std::holds_alternative<SpecialIdentifier>(D);
@@ -334,6 +335,7 @@ public:
   const Expr *getSubExpr() const { return SubExpr.get(); }
   CastKind getCastKind() const { return CastK; }
   void setCastKind(CastKind CK) { CastK = CK; }
+  bool isStateVariable() const override;
 };
 
 class ImplicitCastExpr : public CastExpr {
@@ -375,6 +377,7 @@ public:
     this->setType(Name->getType());
     this->Name = std::move(Name);
   }
+  bool isStateVariable() const override;
 
   Expr *getBase() { return Base.get(); }
   const Expr *getBase() const { return Base.get(); }
@@ -401,7 +404,7 @@ public:
   Expr *getIndex() { return Index.get(); }
   const Expr *getIndex() const { return Index.get(); }
 
-  bool isStateVariable() const;
+  bool isStateVariable() const override;
 
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
@@ -417,6 +420,7 @@ public:
   Expr *getSubExpr() { return Val.get(); }
   const Expr *getSubExpr() const { return Val.get(); }
 
+  bool isStateVariable() const override;
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
 };

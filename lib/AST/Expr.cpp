@@ -5,13 +5,26 @@
 
 namespace soll {
 
-bool IndexAccess::isStateVariable() const {
-  if (auto ID = dynamic_cast<const Identifier *>(getBase())) {
-    return ID->isStateVariable();
-  } else if (auto IA = dynamic_cast<const IndexAccess *>(getBase())) {
-    return IA->isStateVariable();
+bool Identifier::isStateVariable() const {
+  if (auto *D = dynamic_cast<const VarDecl *>(getCorrespondDecl())) {
+    return D->isStateVariable();
   }
   return false;
+}
+
+bool CastExpr::isStateVariable() const {
+  return getSubExpr()->isStateVariable();
+}
+
+bool MemberExpr::isStateVariable() const {
+  return getBase()->isStateVariable();
+}
+
+bool IndexAccess::isStateVariable() const {
+  return getBase()->isStateVariable();
+}
+bool ParenExpr::isStateVariable() const {
+  return getSubExpr()->isStateVariable();
 }
 
 ///
@@ -79,10 +92,4 @@ void Identifier::updateTypeFromCurrentDecl() {
   }
 }
 
-bool Identifier::isStateVariable() const {
-  if (auto *D = dynamic_cast<const VarDecl *>(getCorrespondDecl())) {
-    return D->isStateVariable();
-  }
-  return false;
-}
 } // namespace soll

@@ -331,6 +331,14 @@ public:
         return;
       }
       break;
+    case Type::Category::Struct:
+      if (auto *ST =
+              dynamic_cast<const StructType *>(ME.getBase()->getType().get())) {
+        ME.setName(std::make_unique<Identifier>(
+            Tok, ST->getElementTypes()[ST->getElementIndex(Name.str())]));
+        return;
+      }
+      break;
     default:
       break;
     }

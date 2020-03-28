@@ -386,7 +386,6 @@ public:
 };
 
 class StructType : public Type {
-  // TODO
   std::vector<TypePtr> ElementTypes;
   std::vector<std::string> ElementNames;
   llvm::StructType *Tp;
@@ -397,7 +396,7 @@ public:
   Category getCategory() const override { return Category::Struct; }
   std::string getName() const override { return "struct"; }
   bool isDynamic() const override {
-    for (TypePtr T : ElementTypes) {
+    for (const auto &T : ElementTypes) {
       if (T->isDynamic())
         return true;
     }
@@ -406,7 +405,7 @@ public:
   bool shouldEndianLess() const override { return false; }
   unsigned getABIStaticSize() const override {
     unsigned Res = 0;
-    for (TypePtr T : ElementTypes) {
+    for (const auto &T : ElementTypes) {
       Res += T->getABIStaticSize();
     }
     return Res;
