@@ -5,10 +5,10 @@
 
 In this guide, we will introduce how to use SOLL to compile smart contracts and execute these contracts by our benchmark.
 
-In following sections, we provide four parts to show how to compile and execute smart contracts by yourself.
+In the following sections, we provide four parts to show how to compile and execute smart contracts by yourself.
 
-1. Prepare required environment.
-2. Build SOLL compiler from source code.
+1. Prepare the required environment.
+2. Build the SOLL compiler from source code.
 3. Generate Ewasm bytecodes from our demo contracts and execute them.
     - [0-0-1.sol](../../doc/examples/0-0-1.sol) - A basic smart contract example (SaftMath)
     - [0-0-2.sol](../../doc/examples/0-0-2.sol) - A partial function example of [ERC20](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md) contract.
@@ -22,7 +22,7 @@ In following sections, we provide four parts to show how to compile and execute 
     - [0-0-3.sol](../../doc/examples/0-0-3.sol) - A full function example of [ERC20](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md) contract.
     - [0-0-6.yul](../../doc/examples/0-0-6.yul) - A Yul file generated from solc with version 0.6.1.
 
-2. SOLL regression tests and our Solidity and Yul tests coverage.
+2. SOLL regression tests and our Solidity and Yul test coverage.
 
 ## Working Tree
 ```
@@ -30,22 +30,22 @@ soll
 ├── (...)
 ├── build                 // Build code path, manually create it
 ├── doc
-│   ├── (...)
-│   └── example           // Examples of every release
-│       ├── 0-0-1.sol     // A basic smart contract example (SafeMath)
+│   ├── (...)
+│   └── example           // Examples of every release
+│       ├── 0-0-1.sol     // A basic smart contract example (SafeMath)
 │       ├── 0-0-2.sol     // A partial version of ERC20 contract
 │       ├── 0-0-3.sol     // A full function example of ERC20 contract
-│       ├── 0-0-4.yul     // A fibonacci sequence example written in Yul
-│       ├── 0-0-6.sol     // A smart contract base on 0-0-3.sol
+│       ├── 0-0-4.yul     // A fibonacci sequence example written in Yul
+│       ├── 0-0-6.sol     // A smart contract base on 0-0-3.sol
 │       │                 // (Only remove some statements that solc generate ir is not support)
-│       └── 0-0-6.yul     // Generated from 0-0-6.sol by solc version 0.6.1
+│       └── 0-0-6.yul     // Generated from 0-0-6.sol by solc version 0.6.1
 ├── (...)
 └── utils
     ├── (...)
     └── ewasm-testbench
-        ├── (...)
-        ├── safeMath.js   // 0-0-1.sol Test Environment
-        └── erc20.js      // 0-0-2.sol Test Environment
+        ├── (...)
+        ├── safeMath.js   // 0-0-1.sol Test Environment
+        └── erc20.js      // 0-0-2.sol Test Environment
 ```
 
 ## Build SOLL
@@ -81,7 +81,7 @@ Build SOLL without enabling our built-in test suite.
 
 ### Compile and execute SafeMath smart contract
 
-To show how to use SOLL to compile and execute smart contracts, we provide a very basic example to demonstrate it. In this example, the smart contract will provide Safe Math machnism that will make sure that calculation results will not be overflow or divided by zero. In following steps, we will show how to compile this example and use our benchmark to run this smart contract.
+To show how to use SOLL to compile and execute smart contracts, we provide a very basic example to demonstrate it. In this example, the smart contract will provide a Safe Math mechanism that will make sure that calculation results will not be overflow or divide by zero. In the following steps, we will show how to compile this example and use our benchmark to run this smart contract.
 
 #### **Step 1. Use SOLL generate WASM file from given contract**
 
@@ -99,7 +99,7 @@ Preprocessing before test
 
 #### **Step 2. Run in Test Env**
 
-We use "16 divides 7" as our smart contract function to check whether our "SafeMath" execute correctly or not.
+We use "16 divides 7" as our smart contract function to check whether our "SafeMath" executes correctly or not.
 
 ```bash
 (docker) $ ./safeMath.js safeMath.wasm div 16 7
@@ -124,7 +124,7 @@ finish(66032, 32)
 
 ### Execute an ERC20 smart contract compiled by SOLL
 
-We provide an example 0-0-2.sol, to demonstrate how to use SOLL to compile and execute ERC20 contracts. In this example, we use 0-0-2.sol that contains very core functions of ERC20 contract to demonstrate how to compile and execute ERC20 contracts.
+We provide an example 0-0-2.sol, to demonstrate how to use SOLL to compile and execute ERC20 contracts. In this example, we use 0-0-2.sol that contains very core functions of the ERC20 contract to demonstrate how to compile and execute ERC20 contracts.
 
 #### **Step 1. Use SOLL generate WASM file from given contract**
 
@@ -206,7 +206,7 @@ The result should be the same as the following content.
 
 ### Compile and execute Yul code
 
-To show how to use SOLL to compile and execute Yul code, we also provide a very basic example to demonstrate it. In this example, the code will calculate first ten numbers of the Fibonacci sequence and store them into storage with address 0 to 9 . In following steps, we will show how to compile this example and use our benchmark to run this code.
+To show how to use SOLL to compile and execute Yul code, we also provide a very basic example to demonstrate it. In this example, the code will calculate the first ten numbers of the Fibonacci sequence and store them into storage with addresses 0 to 9. In the following steps, we will show how to compile this example and use our benchmark to run this code.
 
 #### **Step 1. Use SOLL generate WASM file from Yul code**
 
@@ -238,7 +238,7 @@ The result should be the same as the following content.
 
 ### Deploy and execute Ewasm on DevChain.
 > **[DevChain](https://github.com/second-state/devchain/tree/devchain)**  
-> The Second State DevChain features a powerful and easy-to-use virtual machine that can quickly get you started with smart contract and DApp development. Our devchain supports Ewasm by [hera](https://github.com/ewasm/hera) through EVMC interface.
+> The Second State DevChain features a powerful and easy-to-use virtual machine that can quickly get you started with the smart contract and DApp development. Our devchain supports Ewasm by [hera](https://github.com/ewasm/hera) through the EVMC interface.
 
 #### **Step 1. Generate Ewasm from solidity contract and Yul code**
 
@@ -295,7 +295,7 @@ Then exit SOLL container goto next step.
 > docker run -d --rm --name devchain -v $PWD/data:/devchain secondstate/devchain:devchain node start --home /devchain
 ```
 
-- Get a shell from devchain container.
+- Get a shell from a devchain container.
 
 ```bash
 > docker exec -it devchain bash
@@ -307,7 +307,7 @@ Then exit SOLL container goto next step.
 (devchain docker) $ /app/devchain attach http://localhost:8545
 ```
 
-- Unlock demo account with a long expiration time.
+- Unlock the demo account with a long expiration time.
 
 ```javascript
 (RPC host) $ personal.unlockAccount(cmt.accounts[0], '1234', 9999999)
@@ -357,7 +357,7 @@ The result should similar to the following content.
 }
 ```
 
-- You can check the contract deployed was success by getCode(contract address)
+- You can check the contract deployed was succeeded by getCode(contract address)
 
 ```javascript
 (RPC host) $ cmt.getCode("0x9e05b78ea853a4b093694645561c4bfc953a6f62")
@@ -368,7 +368,7 @@ The result should similar to the following content.
 "0x0061736d01000000..." (omitted, runtime Ewasm bytecode)
 ```
 
-- Send transaction execute a contract function `transfer`
+- Send the transaction to execute a contract function `transfer`
     - data
         - 0xa9059cbb : transfer(address,uint256) function signature
         - 0x77beb894fc9b0ed41231e51f128a347043960a9d : just use personal.listAccounts[1] as receive address
@@ -397,7 +397,7 @@ The result should similar to the following content.
 ```
 
 The result should similar to the following content.
-> The logs section will show that we emit an event in `transfer` function.
+> The logs section will show that we emit an event in the `transfer` function.
 
 ```javascript
 {
@@ -428,7 +428,7 @@ The result should similar to the following content.
 
 **Demo 2. Deploy and execute Ewasm generated from Yul code.**
 
-> The all steps are the same with demo 1.  
+> All steps are the same with demo 1.  
 > You only need use **0-0-6.wasm Ewasm bytecode** replace deploy transaction. 
 
 (Omitted) 

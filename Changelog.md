@@ -1,12 +1,13 @@
 [//]: # (SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception)
 
-### 0.0.6 (2020-03-xx)
+### 0.0.6 (2020-03-31)
 
 Language Features:
 
 * Solidity:
     * Support abi.encode and abi.encodePacked. (excluding array type)
     * Support fallback keyword. (solidity spec >= 0.6.0)
+    * Support struct decleration. (with limited members’ types)
 * Yul:
     * Support tuple usage.
         * return, declaration, assignment
@@ -27,8 +28,8 @@ Compiler Features:
     * Throw error messages for unimplemented features:
         * Redefine constructor or fallback function.
     * Add color on/off option.
-* Add command-line action options for distinguish generate ewasm could be deployed on chain or normal case.
-    * `-deploy=Chain`: Ewasm vm (Hera) not support keccak256 yet, so for workaround use sha256 instead. (Default)
+* Add command-line action options for distinguishing generate ewasm could be deployed on-chain or normal case.
+    * `-deploy=Chain`: Ewasm VM (Hera) not support keccak256 yet, so for workaround use sha256 instead. (Default)
     * `-deploy=Normal`: Normal behavior.
 * Add command-line action options for generating object files.
     * `-action=EmitAssembly`: Emit a .s file.
@@ -45,7 +46,7 @@ Bugfixes:
 
 * Add ImplicitCastExpr on return statement.
 * Fix mismatch EEI functions `blockhash`.
-* Keep full event signature as topic 0 field when emit event.
+* Keep full event signature as topic 0 field when emitting event.
 * Fix built-in function minor issues:
     * `iszero`, `shl`, `shr`, `sar`
 * Remove unexpected message when `soll -action=EmitFuncSig`.
@@ -106,12 +107,12 @@ Language Features:
 
 Compiler Features:
 
-* Add command-line version option for checking current SOLL version.
+* Add command-line version option for checking the current SOLL version.
     * `-version`
 * Add command-line language options for supporting Yul input file.
     * `-lang=Sol`: Input file is written in Solidity. (Default)
     * `-lang=Yul`: Input file is written in Yul.
-* Add testing framework for unittest and regrassion test.
+* Add testing framework for unittest and regression test.
 * Integrate Solidity compilation test and libyul test from ethereum/solidity.
 
 
@@ -119,7 +120,7 @@ Compiler Features:
 
 Language Features:
 
-* Support partial builtin global variable
+* Support partial built-in global variable
     * msg.sender, msg.value, msg.data.
     * tx.gasprice, tx.origin.
     * block.coinbase, block.difficulty, block.gaslimit, block.number, block.timestamp.
@@ -165,7 +166,7 @@ Compiler Features:
 
 Bugfixes:
 
-* Fix a precedence issue related to binary operator.
+* Fix a precedence issue related to the binary operator.
 
 
 ### 0.0.1 (2019-07-31)
