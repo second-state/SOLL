@@ -3,7 +3,7 @@
 #include "soll/AST/Expr.h"
 #include "soll/AST/ExprAsm.h"
 #include <llvm/IR/Value.h>
-
+#include <vector>
 namespace soll::CodeGen {
 
 class ExprValue {
@@ -12,22 +12,39 @@ class ExprValue {
   llvm::Value *V;
   llvm::Value *Shift;
 
+  bool IsTupleValue;
+  bool IsSlot;
+  std::vector<ExprValue> Values;
+
 public:
   ExprValue() {}
   ExprValue(const Type *Ty, ValueKind Kind, llvm::Value *V,
-            llvm::Value *Shift = nullptr)
-      : Ty(Ty), Kind(Kind), V(V), Shift(Shift) {}
+            llvm::Value *Shift = nullptr, bool IsSlot = false)
+      : Ty(Ty), Kind(Kind), V(V), Shift(Shift), IsTupleValue(false), IsSlot(IsSlot) {}
+  ExprValue(const Type *Ty, std::vector<ExprValue> &&Values)
+      : Ty(Ty), Kind(ValueKind::VK_SValue), V(nullptr), Shift(nullptr),
+        IsTupleValue(true), IsSlot(false), Values(Values) {}
   static ExprValue getRValue(const Expr *E, llvm::Value *V) {
     return ExprValue(E->getType().get(), ValueKind::VK_RValue, V);
+  }
+  static ExprValue getSlot() {
+    return ExprValue(nullptr, ValueKind::VK_RValue, nullptr, nullptr, true);
   }
   const Type *getType() const { return Ty; }
   llvm::Value *getValue() const { return V; }
   ValueKind getValueKind() const { return Kind; }
   void setValue(llvm::Value *Value) { this->V = Value; }
   void setShift(llvm::Value *Shift) { this->Shift = Shift; }
+  std::vector<ExprValue> &getValues() { return Values; }
+  bool isTuple() const { return IsTupleValue; }
+  bool isSlot() const { return IsSlot; }
   template <typename T>
   llvm::Value *load(T &Builder, CodeGenModule &CGM,
                     llvm::StringRef Name = "") const {
+    if (isTuple() || isSlot()) {
+      return nullptr;
+    }
+    
     switch (Kind) {
     case ValueKind::VK_Unknown:
       assert(false && "Kind == Unknown");
@@ -219,6 +236,12 @@ public:
   }
   template <typename T>
   void store(T &Builder, CodeGenModule &CGM, llvm::Value *Value) const {
+    if (isTuple()) {
+      assert(false && "Tuple can not store directly!");
+    }
+    if (isSlot()) {
+      return ;
+    }
     switch (Kind) {
     case ValueKind::VK_Unknown:
       assert(false && "Kind == Unknown");

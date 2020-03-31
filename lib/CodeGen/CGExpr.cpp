@@ -42,6 +42,9 @@ public:
     if (auto CE = dynamic_cast<const ConstantExpr *>(E)) {
       return visit(CE);
     }
+    if (auto TE = dynamic_cast<const TupleExpr *>(E)) {
+      return visit(TE);
+    }
     if (auto I = dynamic_cast<const Identifier *>(E)) {
       return visit(I);
     }
@@ -217,7 +220,23 @@ private:
       ExprValue RHSVar = visit(BO->getRHS());
       llvm::Value *RHSVal = RHSVar.load(Builder, CGM);
       if (BO->getOpcode() == BO_Assign) {
-        LHSVar.store(Builder, CGM, RHSVal);
+        if (LHSVar.isTuple() || RHSVar.isTuple()) {
+          assert(LHSVar.isTuple() == RHSVar.isTuple());
+          std::size_t Num =
+              std::min(LHSVar.getValues().size(), RHSVar.getValues().size());
+
+          std::vector<llvm::Value *> Buf;
+          for (std::size_t idx = 0; idx < Num; ++idx) {
+            Buf.emplace_back(RHSVar.getValues()[idx].load(Builder, CGM));
+          }
+
+          for (std::size_t idx = 0; idx < Num; ++idx) {
+            LHSVar.getValues()[idx].store(Builder, CGM, Buf[idx]);
+          }
+
+        } else {
+          LHSVar.store(Builder, CGM, RHSVal);
+        }
       } else {
         const bool Signed = isSigned(Ty);
         llvm::Value *LHSVal = LHSVar.load(Builder, CGM);
@@ -484,6 +503,26 @@ private:
     }
     }
     return ExprValue::getRValue(CE, nullptr);
+  }
+  // https://github.com/ethereum/solidity/blob/develop/libsolidity/codegen/ExpressionCompiler.cpp#L329
+  ExprValue visit(const TupleExpr *TE) {
+    if (TE->isInlineArray()) {
+      // TODO
+      assert(false);
+    } else {
+      std::vector<ExprValue> Values;
+      std::vector<TypePtr> Types;
+      for (auto const &comp : TE->getComponents()) {
+        if (comp) {
+          auto Expr = visit(comp);
+
+          Values.emplace_back(std::move(Expr));
+        } else {
+          Values.emplace_back(ExprValue::getSlot());
+        }
+      }
+      return ExprValue(TE->getType().get(), std::move(Values));
+    }
   }
 
   ExprValue visit(const ParenExpr *PE) { return visit(PE->getSubExpr()); }

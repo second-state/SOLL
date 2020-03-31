@@ -398,7 +398,7 @@ public:
   std::string getName() const override { return "tuple"; }
   bool isDynamic() const override { 
     for (const auto &ETys:ElementTypes) {
-      if (ETys->isDynamic()) {
+      if ( ETys == nullptr || ETys->isDynamic()) {
         return true;
       }
     }
@@ -407,7 +407,13 @@ public:
   unsigned getABIStaticSize() const override {
     unsigned Size = 0;
     for (const auto &ETys:ElementTypes) {
-      if (ETys->isDynamic()) {
+      if (!ETys) {
+        // make as a empty string
+        // head(x) = enc( uint256(...) )
+        Size += 32;
+        // tail(x) = enc("")
+        Size += 32;
+      } else if (ETys->isDynamic()) {
         // head(x) = enc( uint256(...) )
         Size += 32;
         // tail(x) = enc(x)

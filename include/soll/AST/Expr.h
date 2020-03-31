@@ -7,6 +7,7 @@
 #include "soll/Basic/IdentifierTable.h"
 #include "soll/Lex/Token.h"
 
+#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
@@ -125,22 +126,36 @@ public:
 /**
  * Tuple, parenthesized expression, or bracketed expression.
  * Examples: (1, 2), (x,), (x), (), [1, 2],
- * Individual components might be empty shared pointers (as in the second example).
- * The respective types in lvalue context are: 2-tuple, 2-tuple (with wildcard), type of x, 0-tuple
- * Not in lvalue context: 2-tuple, _1_-tuple, type of x, 0-tuple.
+ * Individual components might be empty shared pointers (as in the second
+ * example). The respective types in lvalue context are: 2-tuple, 2-tuple (with
+ * wildcard), type of x, 0-tuple Not in lvalue context: 2-tuple, _1_-tuple, type
+ * of x, 0-tuple.
  */
 class TupleExpr : public Expr {
   std::vector<ExprPtr> Components;
   bool IsArray;
+
 public:
   TupleExpr(SourceRange L, std::vector<ExprPtr> &&comps, bool IsArr)
-      : Expr(L), Components(std::move(comps)), IsArray(IsArr) {}
+      : Expr(L), Components(std::move(comps)), IsArray(IsArr) {
+    std::vector<TypePtr> Types;
+    for (const auto &comp : Components) {
+      if (comp) {
+        Types.emplace_back(comp->getType());
+      } else {
+        Types.emplace_back(nullptr);
+      }
+    }
+    setType(std::make_shared<TupleType>(std::move(Types)));
+  }
 
   std::vector<Expr *> getComponents();
   std::vector<const Expr *> getComponents() const;
-  
+
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
+
+  bool isInlineArray() const { return IsArray; }
 };
 
 /// UnaryOperator: A unary operation such as "++a" or "!a",
