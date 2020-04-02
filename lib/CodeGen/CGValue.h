@@ -2,9 +2,15 @@
 #include "CodeGenModule.h"
 #include "soll/AST/Expr.h"
 #include "soll/AST/ExprAsm.h"
+#include <iostream>
 #include <llvm/IR/Value.h>
 #include <vector>
+#include <memory>
+
 namespace soll::CodeGen {
+
+class ExprValue;
+using ExprValuePtr = std::shared_ptr<ExprValue>;
 
 class ExprValue {
   const Type *Ty;
@@ -12,39 +18,52 @@ class ExprValue {
   llvm::Value *V;
   llvm::Value *Shift;
 
-  bool IsTupleValue;
-  bool IsSlot;
-  std::vector<ExprValue> Values;
-
 public:
   ExprValue() {}
   ExprValue(const Type *Ty, ValueKind Kind, llvm::Value *V,
-            llvm::Value *Shift = nullptr, bool IsSlot = false)
-      : Ty(Ty), Kind(Kind), V(V), Shift(Shift), IsTupleValue(false), IsSlot(IsSlot) {}
-  ExprValue(const Type *Ty, std::vector<ExprValue> &&Values)
-      : Ty(Ty), Kind(ValueKind::VK_SValue), V(nullptr), Shift(nullptr),
-        IsTupleValue(true), IsSlot(false), Values(Values) {}
-  static ExprValue getRValue(const Expr *E, llvm::Value *V) {
-    return ExprValue(E->getType().get(), ValueKind::VK_RValue, V);
+            llvm::Value *Shift = nullptr)
+      : Ty(Ty), Kind(Kind), V(V), Shift(Shift) {}
+  static ExprValuePtr getRValue(const Expr *E, llvm::Value *V) {
+    return std::make_shared<ExprValue>(E->getType().get(), ValueKind::VK_RValue, V);
   }
-  static ExprValue getSlot() {
-    return ExprValue(nullptr, ValueKind::VK_RValue, nullptr, nullptr, true);
-  }
+
+  /*template <typename T>
+  static ExprValue getTupleRValue(T &Builder, CodeGenModule &CGM, const Expr *E,
+                                  const ExprValue &V) {
+    auto TupleTy = dynamic_cast<const TupleType *>(E->getType().get());
+    auto Vals = V.getValuesCopy();
+    size_t EleNum = Vals.size();
+
+    assert(TupleTy);
+    assert(V.isTuple());
+    assert(TupleTy->getElementTypes().size() == Vals.size());
+
+    std::vector<ExprValue> Rvals;
+    for (size_t i = 0; i < EleNum; ++i) {
+      Rvals.emplace_back(ExprValue(TupleTy->getElementTypes()[i].get(),
+                                   ValueKind::VK_RValue,
+                                   Vals[i].load(Builder, CGM)));
+    }
+    return ExprValue(E->getType().get(), ValueKind::VK_RValue,
+                     std::move(Rvals));
+  }*/
+
   const Type *getType() const { return Ty; }
   llvm::Value *getValue() const { return V; }
   ValueKind getValueKind() const { return Kind; }
   void setValue(llvm::Value *Value) { this->V = Value; }
   void setShift(llvm::Value *Shift) { this->Shift = Shift; }
-  std::vector<ExprValue> &getValues() { return Values; }
-  bool isTuple() const { return IsTupleValue; }
-  bool isSlot() const { return IsSlot; }
+  virtual bool isTuple() const { return false; }
+  virtual bool isSlot() const { return false; }
+
   template <typename T>
   llvm::Value *load(T &Builder, CodeGenModule &CGM,
                     llvm::StringRef Name = "") const {
     if (isTuple() || isSlot()) {
+      std::cerr << "## alert! Try load tuple from ExprVal!" << std::endl;
       return nullptr;
     }
-    
+
     switch (Kind) {
     case ValueKind::VK_Unknown:
       assert(false && "Kind == Unknown");
@@ -240,7 +259,7 @@ public:
       assert(false && "Tuple can not store directly!");
     }
     if (isSlot()) {
-      return ;
+      return;
     }
     switch (Kind) {
     case ValueKind::VK_Unknown:
@@ -410,6 +429,34 @@ public:
     }
     assert(false && "unknown kind!");
     __builtin_unreachable();
+  }
+};
+
+class ExprValueTuple : public ExprValue {
+  /*ExprValue(const Type *Ty, ValueKind Kind, llvm::Value *V,
+              llvm::Value *Shift = nullptr, bool IsSlot = false)*/
+  std::vector<ExprValuePtr> Values;
+
+public:
+  ExprValueTuple(const Type *Ty, ValueKind Kind,
+                 std::vector<ExprValuePtr> &&Values)
+      : ExprValue(Ty, Kind, nullptr, nullptr), Values(Values) {}
+
+  std::vector<ExprValuePtr> &getValues() { return Values; }
+  std::vector<ExprValuePtr> getValuesCopy() const { return Values; }
+
+  virtual bool isTuple() const override { return true; }
+
+  template <typename T>
+  std::vector<llvm::Value *> load(T &Builder, CodeGenModule &CGM) const {
+    std::vector<llvm::Value *> result;
+
+    for (auto &Val:Values) {
+      // TODO: Val is also maybe a ExprValueTuple
+      // we need a super class to store llvm::Value *
+    }
+
+    return result;
   }
 };
 

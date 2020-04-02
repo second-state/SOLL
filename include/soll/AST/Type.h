@@ -389,24 +389,24 @@ class TupleType : public Type {
   std::vector<TypePtr> ElementTypes;
 
 public:
-  TupleType(std::vector<TypePtr> &&ETys)
-      : ElementTypes(std::move(ETys)) {}
+  TupleType(std::vector<TypePtr> &&ETys) : ElementTypes(std::move(ETys)) {}
 
   const std::vector<TypePtr> &getElementTypes() const { return ElementTypes; }
 
   Category getCategory() const override { return Category::Tuple; }
   std::string getName() const override { return "tuple"; }
-  bool isDynamic() const override { 
-    for (const auto &ETys:ElementTypes) {
-      if ( ETys == nullptr || ETys->isDynamic()) {
+  bool isDynamic() const override {
+    for (const auto &ETys : ElementTypes) {
+      if (ETys == nullptr || ETys->isDynamic()) {
         return true;
       }
     }
-    return false; 
+    return false;
   }
+  virtual bool shouldEndianLess() const override { return false; }
   unsigned getABIStaticSize() const override {
     unsigned Size = 0;
-    for (const auto &ETys:ElementTypes) {
+    for (const auto &ETys : ElementTypes) {
       if (!ETys) {
         // make as a empty string
         // head(x) = enc( uint256(...) )
@@ -427,13 +427,24 @@ public:
     }
     return Size;
   }
+  virtual unsigned getStorageSize() const override { return 32; }
   bool isEqual(Type const &Ty) const override {
     if (!Type::isEqual(Ty)) {
       return false;
     }
     auto const &T = static_cast<TupleType const &>(Ty);
-    return std::equal(getElementTypes().cbegin(), getElementTypes().cend(),
-                      T.getElementTypes().cbegin(), T.getElementTypes().cend());
+
+    if (getElementTypes().size() != T.getElementTypes().size()) {
+      return false;
+    }
+
+    bool result = true;
+    size_t EleNum = getElementTypes().size();
+
+    for (size_t idx = 0; idx < EleNum; ++idx) {
+      result &= getElementTypes()[idx]->isEqual(*T.getElementTypes()[idx]);
+    }
+    return result;
   }
 };
 

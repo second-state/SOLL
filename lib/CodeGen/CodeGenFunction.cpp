@@ -170,7 +170,7 @@ void CodeGenFunction::emitDeclStmt(const DeclStmt *DS) {
     Addrs.push_back(emitVarDecl(VD));
   }
   if (DS->getValue()) {
-    llvm::Value *Val = emitExpr(DS->getValue()).load(Builder, CGM);
+    llvm::Value *Val = emitExpr(DS->getValue())->load(Builder, CGM);
     if (Addrs.size() == 1) {
       Builder.CreateStore(Val, Addrs.front());
     } else {
@@ -325,7 +325,7 @@ void CodeGenFunction::emitBreakStmt(const BreakStmt *BS) {
 void CodeGenFunction::emitReturnStmt(const ReturnStmt *RS) {
   if (const Expr *E = RS->getRetValue()) {
     assert(ReturnValue != nullptr && "return on void function?");
-    Builder.CreateStore(emitExpr(E).load(Builder, CGM), ReturnValue);
+    Builder.CreateStore(emitExpr(E)->load(Builder, CGM), ReturnValue);
   } else {
     assert(ReturnValue == nullptr && "return nothing on non-void function?");
   }
@@ -383,7 +383,7 @@ void CodeGenFunction::emitAsmCaseStmt(const AsmCaseStmt *CS,
   // TODO:
   // - handle non-integer case-value.
   llvm::BasicBlock *CaseBB = createBasicBlock("switch.case");
-  llvm::Value *CaseV = emitExpr(CS->getLHS()).load(Builder, CGM);
+  llvm::Value *CaseV = emitExpr(CS->getLHS())->load(Builder, CGM);
   if (auto ConstV = llvm::dyn_cast<llvm::ConstantInt>(CaseV)) {
     Switch->addCase(ConstV, CaseBB);
   } else { ///< wrong code
@@ -402,7 +402,7 @@ void CodeGenFunction::emitAsmSwitchStmt(const AsmSwitchStmt *SS) {
   // TODO:
   // - handle nested switch statements.
   // - handle large case range.
-  llvm::Value *CondV = emitExpr(SS->getCond()).load(Builder, CGM);
+  llvm::Value *CondV = emitExpr(SS->getCond())->load(Builder, CGM);
   llvm::BasicBlock *DefaultBB = createBasicBlock("switch.default");
   llvm::BasicBlock *SwitchExit = createBasicBlock("switch.end");
   llvm::SwitchInst *Switch = Builder.CreateSwitch(CondV, DefaultBB);
@@ -419,13 +419,13 @@ void CodeGenFunction::emitAsmSwitchStmt(const AsmSwitchStmt *SS) {
 }
 
 void CodeGenFunction::emitAsmAssignmentStmt(const AsmAssignmentStmt *AS) {
-  llvm::SmallVector<ExprValue, 8> LHSs;
+  llvm::SmallVector<ExprValuePtr, 8> LHSs;
   for (const auto *AI : AS->getLHS()->getIdentifiers()) {
     LHSs.push_back(emitExpr(AI));
   }
-  llvm::Value *RHSV = emitExpr(AS->getRHS()).load(Builder, CGM);
+  llvm::Value *RHSV = emitExpr(AS->getRHS())->load(Builder, CGM);
   if (LHSs.size() == 1) {
-    LHSs.front().store(Builder, CGM, RHSV);
+    LHSs.front()->store(Builder, CGM, RHSV);
   } else {
     const auto RTy = RHSV->getType();
     assert(RTy->isStructTy() && "expect mutiple values on RHS");
@@ -435,7 +435,7 @@ void CodeGenFunction::emitAsmAssignmentStmt(const AsmAssignmentStmt *AS) {
 
     unsigned int Idx = 0;
     for (auto &LHS : LHSs) {
-      LHS.store(Builder, CGM, Builder.CreateExtractValue(RHSV, Idx++));
+      LHS->store(Builder, CGM, Builder.CreateExtractValue(RHSV, Idx++));
     }
   }
 }
@@ -455,15 +455,15 @@ void CodeGenFunction::emitAsmLeaveStmt(const AsmLeaveStmt *LS) {
   Builder.SetInsertPoint(LeaveReturn);
 }
 
-ExprValue CodeGenFunction::emitBoolExpr(const Expr *E) {
-  llvm::Value *Condition = emitExpr(E).load(Builder, CGM);
+ExprValuePtr CodeGenFunction::emitBoolExpr(const Expr *E) {
+  llvm::Value *Condition = emitExpr(E)->load(Builder, CGM);
   return ExprValue::getRValue(E, Condition);
 }
 
 void CodeGenFunction::emitBranchOnBoolExpr(const Expr *E,
                                            llvm::BasicBlock *TrueBlock,
                                            llvm::BasicBlock *FalseBlock) {
-  Builder.CreateCondBr(emitBoolExpr(E).load(Builder, CGM), TrueBlock,
+  Builder.CreateCondBr(emitBoolExpr(E)->load(Builder, CGM), TrueBlock,
                        FalseBlock);
 }
 

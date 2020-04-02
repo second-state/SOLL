@@ -14,7 +14,7 @@ public:
   ExprEmitter(CodeGenFunction &CGF)
       : CGF(CGF), CGM(CGF.getCodeGenModule()), Builder(CGF.getBuilder()),
         VMContext(CGF.getLLVMContext()) {}
-  ExprValue visit(const Expr *E) {
+  ExprValuePtr visit(const Expr *E) {
     if (auto UO = dynamic_cast<const UnaryOperator *>(E)) {
       return visit(UO);
     }
@@ -144,10 +144,10 @@ public:
   }
 
 private:
-  ExprValue visit(const UnaryOperator *UO) {
+  ExprValuePtr visit(const UnaryOperator *UO) {
     const Expr *SubExpr = UO->getSubExpr();
-    ExprValue SubVal = visit(SubExpr);
-    llvm::Value *Value = SubVal.load(Builder, CGM);
+    ExprValuePtr SubVal = visit(SubExpr);
+    llvm::Value *Value = SubVal->load(Builder, CGM);
     if (UO->isArithmeticOp()) {
       switch (UO->getOpcode()) {
       case UnaryOperatorKind::UO_Plus:
@@ -172,24 +172,24 @@ private:
     } else {
       switch (UO->getOpcode()) {
       case UnaryOperatorKind::UO_PostInc:
-        SubVal.store(Builder, CGM,
+        SubVal->store(Builder, CGM,
                      Builder.CreateAdd(
                          Value, llvm::ConstantInt::get(Value->getType(), 1)));
         break;
       case UnaryOperatorKind::UO_PostDec:
-        SubVal.store(Builder, CGM,
+        SubVal->store(Builder, CGM,
                      Builder.CreateSub(
                          Value, llvm::ConstantInt::get(Value->getType(), 1)));
         break;
       case UnaryOperatorKind::UO_PreInc:
         Value = Builder.CreateAdd(Value,
                                   llvm::ConstantInt::get(Value->getType(), 1));
-        SubVal.store(Builder, CGM, Value);
+        SubVal->store(Builder, CGM, Value);
         break;
       case UnaryOperatorKind::UO_PreDec:
         Value = Builder.CreateSub(Value,
                                   llvm::ConstantInt::get(Value->getType(), 1));
-        SubVal.store(Builder, CGM, Value);
+        SubVal->store(Builder, CGM, Value);
         break;
       default:
         assert(false && "unknown op");
@@ -212,34 +212,40 @@ private:
     }
   }
 
-  ExprValue visit(const BinaryOperator *BO) {
+  ExprValuePtr visit(const BinaryOperator *BO) {
     const Type *Ty = BO->getType().get();
     llvm::Value *V = nullptr;
     if (BO->isAssignmentOp()) {
-      ExprValue LHSVar = visit(BO->getLHS());
-      ExprValue RHSVar = visit(BO->getRHS());
-      llvm::Value *RHSVal = RHSVar.load(Builder, CGM);
+      ExprValuePtr LHSVar = visit(BO->getLHS());
+      ExprValuePtr RHSVar = visit(BO->getRHS());
+      llvm::Value *RHSVal = RHSVar->load(Builder, CGM);
       if (BO->getOpcode() == BO_Assign) {
-        if (LHSVar.isTuple() || RHSVar.isTuple()) {
-          assert(LHSVar.isTuple() == RHSVar.isTuple());
+        if (LHSVar->isTuple() || RHSVar->isTuple()) {
+          assert(LHSVar->isTuple());
+          assert(RHSVar->isTuple());
+          assert(false);
+
+          /*ExprValueTuple &LHSVarT = dynamic_cast<ExprValueTuple &>(LHSVar);
+          ExprValueTuple &RHSVarT = dynamic_cast<ExprValueTuple &>(RHSVar);
+
           std::size_t Num =
               std::min(LHSVar.getValues().size(), RHSVar.getValues().size());
 
           std::vector<llvm::Value *> Buf;
           for (std::size_t idx = 0; idx < Num; ++idx) {
-            Buf.emplace_back(RHSVar.getValues()[idx].load(Builder, CGM));
+            Buf.emplace_back(RHSVar.getValues()[idx]->load(Builder, CGM));
           }
 
           for (std::size_t idx = 0; idx < Num; ++idx) {
-            LHSVar.getValues()[idx].store(Builder, CGM, Buf[idx]);
-          }
+            LHSVar.getValues()[idx]->store(Builder, CGM, Buf[idx]);
+          }*/
 
         } else {
-          LHSVar.store(Builder, CGM, RHSVal);
+          LHSVar->store(Builder, CGM, RHSVal);
         }
       } else {
         const bool Signed = isSigned(Ty);
-        llvm::Value *LHSVal = LHSVar.load(Builder, CGM);
+        llvm::Value *LHSVal = LHSVar->load(Builder, CGM);
         switch (BO->getOpcode()) {
         case BO_MulAssign:
           LHSVal = Builder.CreateMul(LHSVal, RHSVal, "BO_MulAssign");
@@ -285,7 +291,7 @@ private:
           break;
         default:;
         }
-        LHSVar.store(Builder, CGM, LHSVal);
+        LHSVar->store(Builder, CGM, LHSVal);
       }
       V = RHSVal;
     } else if (BO->isAdditiveOp() || BO->isMultiplicativeOp() ||
@@ -294,8 +300,8 @@ private:
       const bool Signed = isSigned(Ty);
 
       using Pred = llvm::CmpInst::Predicate;
-      llvm::Value *LHS = visit(BO->getLHS()).load(Builder, CGM);
-      llvm::Value *RHS = visit(BO->getRHS()).load(Builder, CGM);
+      llvm::Value *LHS = visit(BO->getLHS())->load(Builder, CGM);
+      llvm::Value *RHS = visit(BO->getRHS())->load(Builder, CGM);
       switch (BO->getOpcode()) {
       case BinaryOperatorKind::BO_Add:
         V = Builder.CreateAdd(LHS, RHS, "BO_ADD");
@@ -385,7 +391,7 @@ private:
 
         Builder.SetInsertPoint(RHSBlock);
         llvm::Value *RHSCond =
-            CGF.emitBoolExpr(BO->getRHS()).load(Builder, CGM);
+            CGF.emitBoolExpr(BO->getRHS())->load(Builder, CGM);
         Builder.CreateBr(ContBlock);
         Builder.SetInsertPoint(ContBlock);
         PN->addIncoming(RHSCond, RHSBlock);
@@ -404,7 +410,7 @@ private:
 
         Builder.SetInsertPoint(RHSBlock);
         llvm::Value *RHSCond =
-            CGF.emitBoolExpr(BO->getRHS()).load(Builder, CGM);
+            CGF.emitBoolExpr(BO->getRHS())->load(Builder, CGM);
         Builder.CreateBr(ContBlock);
         Builder.SetInsertPoint(ContBlock);
         PN->addIncoming(RHSCond, RHSBlock);
@@ -422,15 +428,15 @@ private:
     return ExprValue::getRValue(BO, V);
   }
 
-  ExprValue visit(const CastExpr *CE) {
-    ExprValue InVal = visit(CE->getSubExpr());
+  ExprValuePtr visit(const CastExpr *CE) {std::cerr<<"visit ct"<<std::endl;
+    ExprValuePtr InVal = visit(CE->getSubExpr());
     if (CE->getCastKind() == CastKind::None) {
       return InVal;
     }
 
     const Type *OrigInTy = CE->getSubExpr()->getType().get();
     const Type *OrigOutTy = CE->getType().get();
-    llvm::Value *In = InVal.load(Builder, CGM);
+    llvm::Value *In = InVal->load(Builder, CGM);
 
     switch (CE->getCastKind()) {
     case CastKind::None:
@@ -455,7 +461,11 @@ private:
     }
     case CastKind::TypeCast: {
       if (OrigInTy->getCategory() == OrigOutTy->getCategory()) {
-        return ExprValue::getRValue(CE, In);
+        if (OrigInTy->getCategory()==Type::Category::Tuple) {
+          //return ExprValue::getTupleRValue(Builder, CGM, CE, InVal); 
+          assert(false);
+        }
+        return ExprValue::getRValue(CE, In); 
       }
       if (dynamic_cast<const AddressType *>(OrigInTy) ||
           dynamic_cast<const AddressType *>(OrigOutTy)) {
@@ -505,29 +515,28 @@ private:
     return ExprValue::getRValue(CE, nullptr);
   }
   // https://github.com/ethereum/solidity/blob/develop/libsolidity/codegen/ExpressionCompiler.cpp#L329
-  ExprValue visit(const TupleExpr *TE) {
+  ExprValuePtr visit(const TupleExpr *TE) {
     if (TE->isInlineArray()) {
       // TODO
       assert(false);
     } else {
-      std::vector<ExprValue> Values;
+      std::vector<ExprValuePtr> Values;
       std::vector<TypePtr> Types;
       for (auto const &comp : TE->getComponents()) {
         if (comp) {
           auto Expr = visit(comp);
-
           Values.emplace_back(std::move(Expr));
         } else {
-          Values.emplace_back(ExprValue::getSlot());
+          //Values.emplace_back(ExprValue::getSlot());
         }
       }
-      return ExprValue(TE->getType().get(), std::move(Values));
+      return std::make_shared<ExprValueTuple>(TE->getType().get(), ValueKind::VK_SValue, std::move(Values));
     }
   }
 
-  ExprValue visit(const ParenExpr *PE) { return visit(PE->getSubExpr()); }
+  ExprValuePtr visit(const ParenExpr *PE) { return visit(PE->getSubExpr()); }
 
-  ExprValue visit(const Identifier *ID) {
+  ExprValuePtr visit(const Identifier *ID) {
     if (ID->isSpecialIdentifier()) {
       switch (ID->getSpecialIdentifier()) {
       case Identifier::SpecialIdentifier::this_: {
@@ -544,16 +553,16 @@ private:
     if (auto *VD = dynamic_cast<const VarDecl *>(D)) {
       const Type *Ty = VD->GetType().get();
       if (VD->isStateVariable()) {
-        return ExprValue(Ty, ValueKind::VK_SValue, CGM.getStateVarAddr(VD));
+        return std::make_shared<ExprValue>(Ty, ValueKind::VK_SValue, CGM.getStateVarAddr(VD));
       } else {
-        return ExprValue(Ty, ValueKind::VK_LValue, CGF.getAddrOfLocalVar(VD));
+        return std::make_shared<ExprValue>(Ty, ValueKind::VK_LValue, CGF.getAddrOfLocalVar(VD));
       }
     }
     assert(false && "unknown Identifier");
     __builtin_unreachable();
   }
 
-  ExprValue visit(const CallExpr *CE) { return CGF.emitCallExpr(CE); }
+  ExprValuePtr visit(const CallExpr *CE) { return CGF.emitCallExpr(CE); }
 
   void emitCheckArrayOutOfBound(llvm::Value *ArrSz, llvm::Value *Index) {
     using namespace std::string_literals;
@@ -575,36 +584,84 @@ private:
     Builder.SetInsertPoint(Continue);
   }
 
-  ExprValue visit(const IndexAccess *IA) {
-    ExprValue Base = visit(IA->getBase());
-    ExprValue Index = visit(IA->getIndex());
+  ExprValuePtr visit(const IndexAccess *IA) {
+    ExprValuePtr Base = visit(IA->getBase());
+    ExprValuePtr Index = visit(IA->getIndex());
     const Type *Ty = IA->getType().get();
 
-    if (const auto *MType = dynamic_cast<const MappingType *>(Base.getType())) {
+    if (const auto *MType = dynamic_cast<const MappingType *>(Base->getType())) {
       llvm::Value *Pos =
-          CGM.getEndianlessValue(Builder.CreateLoad(Base.getValue()));
+          CGM.getEndianlessValue(Builder.CreateLoad(Base->getValue()));
       llvm::Value *Key;
       if (MType->getKeyType()->isDynamic()) {
-        Key = Index.load(Builder, CGM);
+        Key = Index->load(Builder, CGM);
       } else {
         Key = CGM.getEndianlessValue(
-            Builder.CreateZExtOrTrunc(Index.load(Builder, CGM), CGF.Int256Ty));
+            Builder.CreateZExtOrTrunc(Index->load(Builder, CGM), CGF.Int256Ty));
       }
       llvm::Value *Bytes = CGM.emitConcatBytes({Key, Pos});
       llvm::Value *AddressPtr = Builder.CreateAlloca(CGF.Int256Ty);
       Builder.CreateStore(CGM.emitKeccak256(Bytes), AddressPtr);
-      return ExprValue(Ty, ValueKind::VK_SValue, AddressPtr);
+      return std::make_shared<ExprValue>(Ty, ValueKind::VK_SValue, AddressPtr);
     }
-    if (const auto *ArrTy = dynamic_cast<const ArrayType *>(Base.getType())) {
-      llvm::Value *IndexValue = Index.load(Builder, CGF.getCodeGenModule());
-      return arrayIndexAccess(Base, IndexValue, Ty, ArrTy,
-                              IA->isStateVariable());
+    if (const auto *ArrTy = dynamic_cast<const ArrayType *>(Base->getType())) {
+      // Array Type : Fixed Size Mem Array, Fixed Sized Storage Array, Dynamic
+      // Sized Storage Array
+      // Require Index to be unsigned 256-bit Int
+
+      llvm::Value *IndexValue = Index->load(Builder, CGM);
+      if (!IA->isStateVariable()) {
+        // TODO : Assume only Integer Array
+        llvm::Value *ArraySize = Builder.getInt(ArrTy->getLength());
+        emitCheckArrayOutOfBound(ArraySize, IndexValue);
+        llvm::Value *Address =
+            Builder.CreateInBoundsGEP(CGM.getLLVMType(ArrTy), Base->getValue(),
+                                      {Builder.getIntN(256, 0), IndexValue});
+        return std::make_shared<ExprValue>(Ty, ValueKind::VK_LValue, Address);
+      }
+
+      llvm::Value *Pos = Builder.CreateLoad(Base->getValue());
+      if (ArrTy->isDynamicSized()) {
+        // load array size and check
+        auto LengthTy = IntegerType::getIntN(256);
+        ExprValue BaseLength(&LengthTy, ValueKind::VK_SValue, Base->getValue());
+        llvm::Value *ArraySize = BaseLength.load(Builder, CGM);
+        emitCheckArrayOutOfBound(ArraySize, IndexValue);
+
+        // load array position
+        llvm::Value *Bytes =
+            CGM.emitConcateBytes({CGM.getEndianlessValue(Pos)});
+        Pos = CGM.emitKeccak256(Bytes);
+      } else {
+        // Fixed Size Storage Array
+        llvm::Value *ArraySize = Builder.getInt(ArrTy->getLength());
+        emitCheckArrayOutOfBound(ArraySize, IndexValue);
+      }
+
+      unsigned BitPerElement = ArrTy->getElementType()->getBitNum();
+      unsigned ElementPerSlot = 256 / BitPerElement;
+
+      if (ElementPerSlot != 1) {
+        llvm::Value *StorageIndex = Builder.CreateUDiv(
+            IndexValue, Builder.getIntN(256, ElementPerSlot));
+        llvm::Value *Shift = Builder.CreateURem(
+            IndexValue, Builder.getIntN(256, ElementPerSlot));
+        llvm::Value *ElemAddress = Builder.CreateAdd(Pos, StorageIndex);
+        llvm::Value *Address = Builder.CreateAlloca(CGF.Int256Ty);
+        Builder.CreateStore(ElemAddress, Address);
+        return std::make_shared<ExprValue>(Ty, ValueKind::VK_SValue, Address, Shift);
+      } else {
+        llvm::Value *ElemAddress = Builder.CreateAdd(Pos, IndexValue);
+        llvm::Value *Address = Builder.CreateAlloca(CGF.Int256Ty);
+        Builder.CreateStore(ElemAddress, Address);
+        return std::make_shared<ExprValue>(Ty, ValueKind::VK_SValue, Address);
+      }
     }
     assert(false && "unknown IndexAccess type");
     __builtin_unreachable();
   }
 
-  ExprValue visit(const MemberExpr *ME) {
+  ExprValuePtr visit(const MemberExpr *ME) {
     if (ME->getName()->isSpecialIdentifier()) {
       switch (ME->getName()->getSpecialIdentifier()) {
       case Identifier::SpecialIdentifier::msg_sender: {
@@ -665,7 +722,7 @@ private:
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::address_balance: {
-        llvm::Value *Address = CGF.emitExpr(ME->getBase()).load(Builder, CGM);
+        llvm::Value *Address = CGF.emitExpr(ME->getBase())->load(Builder, CGM);
         llvm::Value *Val = CGM.getEndianlessValue(
             CGM.emitGetExternalBalance(CGM.getEndianlessValue(Address)));
         return ExprValue::getRValue(ME, Builder.CreateZExt(Val, CGF.Int256Ty));
@@ -675,7 +732,7 @@ private:
         __builtin_unreachable();
       }
     } else {
-      ExprValue StructValue = visit(ME->getBase());
+      ExprValuePtr StructValue = visit(ME->getBase());
       auto ST =
           dynamic_cast<const StructType *>(ME->getBase()->getType().get());
       unsigned ElementIndex =
@@ -687,11 +744,11 @@ private:
     __builtin_unreachable();
   }
 
-  ExprValue visit(const BooleanLiteral *BL) {
+  ExprValuePtr visit(const BooleanLiteral *BL) {
     return ExprValue::getRValue(BL, Builder.getInt1(BL->getValue()));
   }
 
-  ExprValue visit(const StringLiteral *SL) {
+  ExprValuePtr visit(const StringLiteral *SL) {
     const std::string &StringData = SL->getValue();
     llvm::Value *String = llvm::ConstantAggregateZero::get(CGF.StringTy);
     llvm::Constant *Ptr = createGlobalStringPtr(CGF.getLLVMContext(),
@@ -703,15 +760,15 @@ private:
     return ExprValue::getRValue(SL, String);
   }
 
-  ExprValue visit(const NumberLiteral *NL) {
+  ExprValuePtr visit(const NumberLiteral *NL) {
     return ExprValue::getRValue(NL, Builder.getInt(NL->getValue()));
   }
 
-  ExprValue visit(const AsmIdentifier *YI) {
+  ExprValuePtr visit(const AsmIdentifier *YI) {
     const Decl *D = YI->getCorrespondDecl();
 
     if (auto *VD = dynamic_cast<const AsmVarDecl *>(D)) {
-      return ExprValue(VD->GetType().get(), ValueKind::VK_LValue,
+      return std::make_shared<ExprValue>(VD->GetType().get(), ValueKind::VK_LValue,
                        CGF.getAddrOfLocalVar(VD));
     }
     __builtin_unreachable();
@@ -1282,7 +1339,7 @@ void CodeGenFunction::emitCallRequire(const CallExpr *CE) {
 
   Builder.SetInsertPoint(Revert);
   if (Arguments.size() == 2) {
-    llvm::Value *Message = emitExpr(Arguments[1]).load(Builder, CGM);
+    llvm::Value *Message = emitExpr(Arguments[1])->load(Builder, CGM);
     CGM.emitRevert(
         Builder.CreateExtractValue(Message, {1}),
         Builder.CreateTrunc(Builder.CreateExtractValue(Message, {0}), Int32Ty));
@@ -1314,7 +1371,7 @@ void CodeGenFunction::emitCallRevert(const CallExpr *CE) {
   assert(Arguments.size() == 0 || Arguments.size() == 1);
 
   if (Arguments.size() == 1) {
-    llvm::Value *Message = emitExpr(Arguments[0]).load(Builder, CGM);
+    llvm::Value *Message = emitExpr(Arguments[0])->load(Builder, CGM);
     CGM.emitRevert(
         Builder.CreateExtractValue(Message, {1}),
         Builder.CreateTrunc(Builder.CreateExtractValue(Message, {0}), Int32Ty));
@@ -1326,9 +1383,9 @@ void CodeGenFunction::emitCallRevert(const CallExpr *CE) {
 llvm::Value *CodeGenFunction::emitCallAddmod(const CallExpr *CE) {
   // addmod
   auto Arguments = CE->getArguments();
-  llvm::Value *A = emitExpr(Arguments[0]).load(Builder, CGM);
-  llvm::Value *B = emitExpr(Arguments[1]).load(Builder, CGM);
-  llvm::Value *K = emitExpr(Arguments[2]).load(Builder, CGM);
+  llvm::Value *A = emitExpr(Arguments[0])->load(Builder, CGM);
+  llvm::Value *B = emitExpr(Arguments[1])->load(Builder, CGM);
+  llvm::Value *K = emitExpr(Arguments[2])->load(Builder, CGM);
   llvm::Value *AddAB = Builder.CreateAdd(A, B);
   llvm::Value *Res = Builder.CreateURem(AddAB, K);
   return Res;
@@ -1337,9 +1394,9 @@ llvm::Value *CodeGenFunction::emitCallAddmod(const CallExpr *CE) {
 llvm::Value *CodeGenFunction::emitCallMulmod(const CallExpr *CE) {
   // mulmod
   auto Arguments = CE->getArguments();
-  llvm::Value *A = emitExpr(Arguments[0]).load(Builder, CGM);
-  llvm::Value *B = emitExpr(Arguments[1]).load(Builder, CGM);
-  llvm::Value *K = emitExpr(Arguments[2]).load(Builder, CGM);
+  llvm::Value *A = emitExpr(Arguments[0])->load(Builder, CGM);
+  llvm::Value *B = emitExpr(Arguments[1])->load(Builder, CGM);
+  llvm::Value *K = emitExpr(Arguments[2])->load(Builder, CGM);
   llvm::Value *MulAB = Builder.CreateMul(A, B);
   llvm::Value *Res = Builder.CreateURem(MulAB, K);
   return Res;
@@ -1348,21 +1405,21 @@ llvm::Value *CodeGenFunction::emitCallMulmod(const CallExpr *CE) {
 llvm::Value *CodeGenFunction::emitCallKeccak256(const CallExpr *CE) {
   // keccak256 function
   auto Arguments = CE->getArguments();
-  llvm::Value *MessageValue = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *MessageValue = emitExpr(Arguments[0])->load(Builder, CGM);
   return CGM.emitKeccak256(MessageValue);
 }
 
 llvm::Value *CodeGenFunction::emitCallSha256(const CallExpr *CE) {
   // sha256 function
   auto Arguments = CE->getArguments();
-  llvm::Value *MessageValue = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *MessageValue = emitExpr(Arguments[0])->load(Builder, CGM);
   return CGM.emitSha256(MessageValue);
 }
 
 llvm::Value *CodeGenFunction::emitCallRipemd160(const CallExpr *CE) {
   // ripemd160 function
   auto Arguments = CE->getArguments();
-  llvm::Value *MessageValue = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *MessageValue = emitExpr(Arguments[0])->load(Builder, CGM);
   llvm::Value *Val = Builder.CreateCall(
       CGM.getModule().getFunction("solidity.ripemd160"), {MessageValue});
   return Builder.CreateTrunc(Val, Int160Ty);
@@ -1371,11 +1428,11 @@ llvm::Value *CodeGenFunction::emitCallRipemd160(const CallExpr *CE) {
 llvm::Value *CodeGenFunction::emitCallEcrecover(const CallExpr *CE) {
   // ecrecover function
   auto Arguments = CE->getArguments();
-  llvm::Value *HashValue = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *HashValue = emitExpr(Arguments[0])->load(Builder, CGM);
   llvm::Value *RecoveryIdValue =
-      Builder.CreateZExt(emitExpr(Arguments[1]).load(Builder, CGM), Int256Ty);
-  llvm::Value *RValue = emitExpr(Arguments[2]).load(Builder, CGM);
-  llvm::Value *SValue = emitExpr(Arguments[3]).load(Builder, CGM);
+      Builder.CreateZExt(emitExpr(Arguments[1])->load(Builder, CGM), Int256Ty);
+  llvm::Value *RValue = emitExpr(Arguments[2])->load(Builder, CGM);
+  llvm::Value *SValue = emitExpr(Arguments[3])->load(Builder, CGM);
   llvm::Value *Val =
       Builder.CreateCall(CGM.getModule().getFunction("solidity.ecrecover"),
                          {HashValue, RecoveryIdValue, RValue, SValue});
@@ -1385,7 +1442,7 @@ llvm::Value *CodeGenFunction::emitCallEcrecover(const CallExpr *CE) {
 llvm::Value *CodeGenFunction::emitCallBlockHash(const CallExpr *CE) {
   // blockhash function
   auto Arguments = CE->getArguments();
-  llvm::Value *NumberValue = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *NumberValue = emitExpr(Arguments[0])->load(Builder, CGM);
   llvm::Value *Val = CGM.getEndianlessValue(CGM.emitGetBlockHash(NumberValue));
   return Val;
 }
@@ -1394,10 +1451,10 @@ llvm::Value *CodeGenFunction::emitCallAddressStaticcall(const CallExpr *CE,
                                                         const MemberExpr *ME) {
   // address_staticcall function
   auto Arguments = CE->getArguments();
-  llvm::Value *Address = emitExpr(ME->getBase()).load(Builder, CGM);
+  llvm::Value *Address = emitExpr(ME->getBase())->load(Builder, CGM);
   llvm::Value *AddressPtr = Builder.CreateAlloca(AddressTy);
   Builder.CreateStore(CGM.getEndianlessValue(Address), AddressPtr);
-  llvm::Value *MemoryValue = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *MemoryValue = emitExpr(Arguments[0])->load(Builder, CGM);
 
   llvm::Value *Length = Builder.CreateTrunc(
       Builder.CreateExtractValue(MemoryValue, {0}), Int32Ty, "length");
@@ -1435,10 +1492,10 @@ CodeGenFunction::emitCallAddressDelegatecall(const CallExpr *CE,
                                              const MemberExpr *ME) {
   // address_staticcall function
   auto Arguments = CE->getArguments();
-  llvm::Value *Address = emitExpr(ME->getBase()).load(Builder, CGM);
+  llvm::Value *Address = emitExpr(ME->getBase())->load(Builder, CGM);
   llvm::Value *AddressPtr = Builder.CreateAlloca(AddressTy);
   Builder.CreateStore(CGM.getEndianlessValue(Address), AddressPtr);
-  llvm::Value *MemoryValue = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *MemoryValue = emitExpr(Arguments[0])->load(Builder, CGM);
 
   llvm::Value *Length = Builder.CreateTrunc(
       Builder.CreateExtractValue(MemoryValue, {0}), Int32Ty, "length");
@@ -1469,10 +1526,10 @@ llvm::Value *CodeGenFunction::emitCallAddressCall(const CallExpr *CE,
                                                   const MemberExpr *ME) {
   // address_call function
   auto Arguments = CE->getArguments();
-  llvm::Value *Address = emitExpr(ME->getBase()).load(Builder, CGM);
+  llvm::Value *Address = emitExpr(ME->getBase())->load(Builder, CGM);
   llvm::Value *AddressPtr = Builder.CreateAlloca(AddressTy);
   Builder.CreateStore(CGM.getEndianlessValue(Address), AddressPtr);
-  llvm::Value *MemoryValue = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *MemoryValue = emitExpr(Arguments[0])->load(Builder, CGM);
 
   llvm::Value *Length = Builder.CreateTrunc(
       Builder.CreateExtractValue(MemoryValue, {0}), Int32Ty, "length");
@@ -1506,10 +1563,10 @@ llvm::Value *CodeGenFunction::emitCallAddressSend(const CallExpr *CE,
                                                   bool NeedRevert) {
   // address_call function
   auto Arguments = CE->getArguments();
-  llvm::Value *Address = emitExpr(ME->getBase()).load(Builder, CGM);
+  llvm::Value *Address = emitExpr(ME->getBase())->load(Builder, CGM);
   llvm::Value *AddressPtr = Builder.CreateAlloca(AddressTy);
   Builder.CreateStore(CGM.getEndianlessValue(Address), AddressPtr);
-  llvm::Value *Amount = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *Amount = emitExpr(Arguments[0])->load(Builder, CGM);
   llvm::Value *AmountPtr = Builder.CreateAlloca(Int128Ty);
   Builder.CreateStore(
       CGM.getEndianlessValue(Builder.CreateZExtOrTrunc(Amount, Int128Ty)),
@@ -1595,7 +1652,7 @@ llvm::Value *CodeGenFunction::emitAbiEncode(const CallExpr *CE) {
   return Bytes;
 }
 
-ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
+ExprValuePtr CodeGenFunction::emitCallExpr(const CallExpr *CE) {
   auto Expr = CE->getCalleeExpr();
   auto ME = dynamic_cast<const MemberExpr *>(Expr);
   if (ME) {
@@ -1619,7 +1676,7 @@ ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
   }
   std::vector<llvm::Value *> Args;
   for (auto Argument : CE->getArguments()) {
-    Args.push_back(emitExpr(Argument).load(Builder, CGM));
+    Args.push_back(emitExpr(Argument)->load(Builder, CGM));
   }
   if (auto FD = dynamic_cast<const FunctionDecl *>(D)) {
     llvm::Function *F = CGM.createOrGetLLVMFunction(FD);
@@ -1655,7 +1712,7 @@ ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
       }
     }
     CGM.emitLog(Data[0], Builder.getInt32(32), Topics);
-    return ExprValue();
+    return std::make_shared<ExprValue>();
   }
   if (auto AFD = dynamic_cast<const AsmFunctionDecl *>(D)) {
     llvm::Function *F = CGM.createOrGetLLVMFunction(AFD);
@@ -1667,19 +1724,19 @@ ExprValue CodeGenFunction::emitCallExpr(const CallExpr *CE) {
   __builtin_unreachable();
 }
 
-ExprValue CodeGenFunction::emitSpecialCallExpr(const Identifier *SI,
+ExprValuePtr CodeGenFunction::emitSpecialCallExpr(const Identifier *SI,
                                                const CallExpr *CE,
                                                const MemberExpr *ME) {
   switch (SI->getSpecialIdentifier()) {
   case Identifier::SpecialIdentifier::require:
     emitCallRequire(CE);
-    return ExprValue();
+    return std::make_shared<ExprValue>();
   case Identifier::SpecialIdentifier::assert_:
     emitCallAssert(CE);
-    return ExprValue();
+    return std::make_shared<ExprValue>();
   case Identifier::SpecialIdentifier::revert:
     emitCallRevert(CE);
-    return ExprValue();
+    return std::make_shared<ExprValue>();
   case Identifier::SpecialIdentifier::gasleft:
     assert(CE->getArguments().empty() && "gasleft require no arguments");
     return ExprValue::getRValue(CE, CGM.emitGetGasLeft());
@@ -1705,7 +1762,7 @@ ExprValue CodeGenFunction::emitSpecialCallExpr(const Identifier *SI,
     return ExprValue::getRValue(CE, emitCallAddressCall(CE, ME));
   case Identifier::SpecialIdentifier::address_transfer:
     emitCallAddressSend(CE, ME, true);
-    return ExprValue();
+    return std::make_shared<ExprValue>();
   case Identifier::SpecialIdentifier::address_send:
     return ExprValue::getRValue(CE, emitCallAddressSend(CE, ME, false));
   case Identifier::SpecialIdentifier::abi_encodePacked:
@@ -1782,7 +1839,7 @@ llvm::Value *CodeGenFunction::emitAsmCallDataOffset(const CallExpr *CE) {
 
 llvm::Value *CodeGenFunction::emitAsmCallMLoad(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
-  llvm::Value *Pos = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *Pos = emitExpr(Arguments[0])->load(Builder, CGM);
   llvm::Value *CPtr =
       Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.cptr");
   llvm::Value *Ptr = Builder.CreateBitCast(CPtr, Int256PtrTy, "heap.ptr");
@@ -1793,22 +1850,22 @@ llvm::Value *CodeGenFunction::emitAsmCallMLoad(const CallExpr *CE) {
 
 void CodeGenFunction::emitAsmCallMStore(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
-  llvm::Value *Pos = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *Pos = emitExpr(Arguments[0])->load(Builder, CGM);
   llvm::Value *CPtr =
       Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.cptr");
   llvm::Value *Ptr = Builder.CreateBitCast(CPtr, Int256PtrTy, "heap.ptr");
   Builder.CreateStore(
-      CGM.getEndianlessValue(emitExpr(Arguments[1]).load(Builder, CGM)), Ptr);
+      CGM.getEndianlessValue(emitExpr(Arguments[1])->load(Builder, CGM)), Ptr);
   CGM.emitUpdateMemorySize(Pos, Builder.getIntN(256, 32));
 }
 
 void CodeGenFunction::emitAsmCallMStore8(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
-  llvm::Value *Pos = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *Pos = emitExpr(Arguments[0])->load(Builder, CGM);
   llvm::Value *Ptr =
       Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.ptr");
   llvm::Value *Value = Builder.CreateZExtOrTrunc(
-      emitExpr(Arguments[1]).load(Builder, CGM), CGM.Int8Ty);
+      emitExpr(Arguments[1])->load(Builder, CGM), CGM.Int8Ty);
   Builder.CreateStore(Value, Ptr);
   CGM.emitUpdateMemorySize(Pos, Builder.getIntN(256, 1));
 }
@@ -1821,7 +1878,7 @@ llvm::Value *CodeGenFunction::emitAsmCallSLoad(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
   auto Val =
       CGM.emitStorageLoad(CGM.getEndianlessValue(Builder.CreateZExtOrTrunc(
-          emitExpr(Arguments[0]).load(Builder, CGM), CGM.Int256Ty)));
+          emitExpr(Arguments[0])->load(Builder, CGM), CGM.Int256Ty)));
   return CGM.getEndianlessValue(Val);
 }
 
@@ -1829,43 +1886,43 @@ void CodeGenFunction::emitAsmCallSStore(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
   CGM.emitStorageStore(
       CGM.getEndianlessValue(Builder.CreateZExtOrTrunc(
-          emitExpr(Arguments[0]).load(Builder, CGM), CGM.Int256Ty)),
+          emitExpr(Arguments[0])->load(Builder, CGM), CGM.Int256Ty)),
       CGM.getEndianlessValue(Builder.CreateZExtOrTrunc(
-          emitExpr(Arguments[1]).load(Builder, CGM), CGM.Int256Ty)));
+          emitExpr(Arguments[1])->load(Builder, CGM), CGM.Int256Ty)));
 }
 
 void CodeGenFunction::emitAsmCallReturn(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
-  llvm::Value *Pos = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *Pos = emitExpr(Arguments[0])->load(Builder, CGM);
   llvm::Value *Ptr =
       Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.cptr");
-  llvm::Value *Length = emitExpr(Arguments[1]).load(Builder, CGM);
+  llvm::Value *Length = emitExpr(Arguments[1])->load(Builder, CGM);
   CGM.emitUpdateMemorySize(Pos, Length);
   CGM.emitFinish(Ptr, Builder.CreateZExtOrTrunc(Length, CGM.Int32Ty));
 }
 
 void CodeGenFunction::emitAsmCallRevert(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
-  llvm::Value *Pos = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *Pos = emitExpr(Arguments[0])->load(Builder, CGM);
   llvm::Value *Ptr =
       Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.cptr");
-  llvm::Value *Length = emitExpr(Arguments[1]).load(Builder, CGM);
+  llvm::Value *Length = emitExpr(Arguments[1])->load(Builder, CGM);
   CGM.emitUpdateMemorySize(Pos, Length);
   CGM.emitRevert(Ptr, Builder.CreateZExtOrTrunc(Length, CGM.Int32Ty));
 }
 
 void CodeGenFunction::emitAsmCallLog(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
-  llvm::Value *Pos = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *Pos = emitExpr(Arguments[0])->load(Builder, CGM);
   llvm::Value *Data =
       Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.cptr");
-  llvm::Value *DataLength = emitExpr(Arguments[1]).load(Builder, CGM);
+  llvm::Value *DataLength = emitExpr(Arguments[1])->load(Builder, CGM);
   std::vector<llvm::Value *> Topics;
   for (size_t I = 2; I < Arguments.size(); I++) {
     llvm::Value *ValPtr = Builder.CreateAlloca(Int256Ty, nullptr);
     Builder.CreateStore(
         CGM.getEndianlessValue(Builder.CreateZExtOrTrunc(
-            emitExpr(Arguments[I]).load(Builder, CGM), CGM.Int256Ty)),
+            emitExpr(Arguments[I])->load(Builder, CGM), CGM.Int256Ty)),
         ValPtr);
     Topics.emplace_back(ValPtr);
   }
@@ -1876,17 +1933,17 @@ void CodeGenFunction::emitAsmCallLog(const CallExpr *CE) {
 llvm::Value *CodeGenFunction::emitAsmCallCallDataLoad(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
   return CGM.getEndianlessValue(
-      CGM.emitCallDataLoad(emitExpr(Arguments[0]).load(Builder, CGM)));
+      CGM.emitCallDataLoad(emitExpr(Arguments[0])->load(Builder, CGM)));
 }
 
 void CodeGenFunction::emitAsmCallCodeCopy(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
-  llvm::Value *Pos = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *Pos = emitExpr(Arguments[0])->load(Builder, CGM);
   llvm::Value *Ptr =
       Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.ptr");
   llvm::Value *Code = Builder.CreateIntToPtr(
-      emitExpr(Arguments[1]).load(Builder, CGM), Int8PtrTy);
-  llvm::Value *Length = emitExpr(Arguments[2]).load(Builder, CGM);
+      emitExpr(Arguments[1])->load(Builder, CGM), Int8PtrTy);
+  llvm::Value *Length = emitExpr(Arguments[2])->load(Builder, CGM);
   CGM.emitUpdateMemorySize(Pos, Length);
   CGM.emitMemcpy(Ptr, Code, Builder.CreateZExtOrTrunc(Length, CGM.Int32Ty));
 }
@@ -1894,15 +1951,15 @@ void CodeGenFunction::emitAsmCallCodeCopy(const CallExpr *CE) {
 llvm::Value *CodeGenFunction::emitAsmCallkeccak256(const CallExpr *CE) {
   // keccak256 function
   auto Arguments = CE->getArguments();
-  llvm::Value *Pos = emitExpr(Arguments[0]).load(Builder, CGM);
+  llvm::Value *Pos = emitExpr(Arguments[0])->load(Builder, CGM);
   llvm::Value *Ptr =
       Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.cptr");
-  llvm::Value *Length = emitExpr(Arguments[1]).load(Builder, CGM);
+  llvm::Value *Length = emitExpr(Arguments[1])->load(Builder, CGM);
   CGM.emitUpdateMemorySize(Pos, Length);
   return CGM.emitKeccak256(Ptr, Length);
 }
 
-ExprValue CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
+ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
                                                   const CallExpr *CE) {
   switch (SI->getSpecialIdentifier()) {
   /// logical
@@ -1941,35 +1998,35 @@ ExprValue CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
     return ExprValue::getRValue(CE, emitAsmCallMLoad(CE));
   case AsmIdentifier::SpecialIdentifier::mstore:
     emitAsmCallMStore(CE);
-    return ExprValue();
+    return std::make_shared<ExprValue>();
   case AsmIdentifier::SpecialIdentifier::mstore8:
     emitAsmCallMStore8(CE);
-    return ExprValue();
+    return std::make_shared<ExprValue>();
   case AsmIdentifier::SpecialIdentifier::msize:
     return ExprValue::getRValue(CE, emitAsmCallMSize(CE));
   case AsmIdentifier::SpecialIdentifier::sload:
     return ExprValue::getRValue(CE, emitAsmCallSLoad(CE));
   case AsmIdentifier::SpecialIdentifier::sstore:
     emitAsmCallSStore(CE);
-    return ExprValue();
+    return std::make_shared<ExprValue>();
   /// execution control
   case AsmIdentifier::SpecialIdentifier::stop:
     CGM.emitFinish(llvm::ConstantPointerNull::get(Int8PtrTy),
                    Builder.getInt32(0));
-    return ExprValue();
+    return std::make_shared<ExprValue>();
   case AsmIdentifier::SpecialIdentifier::return_:
     emitAsmCallReturn(CE);
-    return ExprValue();
+    return std::make_shared<ExprValue>();
   case AsmIdentifier::SpecialIdentifier::revert:
     emitAsmCallRevert(CE);
-    return ExprValue();
+    return std::make_shared<ExprValue>();
   case AsmIdentifier::SpecialIdentifier::log0:
   case AsmIdentifier::SpecialIdentifier::log1:
   case AsmIdentifier::SpecialIdentifier::log2:
   case AsmIdentifier::SpecialIdentifier::log3:
   case AsmIdentifier::SpecialIdentifier::log4:
     emitAsmCallLog(CE);
-    return ExprValue();
+    return std::make_shared<ExprValue>();
   /// state
   case AsmIdentifier::SpecialIdentifier::blockcoinbase:
     return ExprValue::getRValue(
@@ -2022,7 +2079,7 @@ ExprValue CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   case AsmIdentifier::SpecialIdentifier::datacopy:
   case AsmIdentifier::SpecialIdentifier::codecopy:
     emitAsmCallCodeCopy(CE);
-    return ExprValue();
+    return std::make_shared<ExprValue>();
   /// misc
   case AsmIdentifier::SpecialIdentifier::keccak256:
     return ExprValue::getRValue(CE, emitAsmCallkeccak256(CE));

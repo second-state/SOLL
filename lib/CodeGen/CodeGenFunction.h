@@ -87,8 +87,8 @@ private:
 
   void emitBranchOnBoolExpr(const Expr *E, llvm::BasicBlock *TrueBlock,
                             llvm::BasicBlock *FalseBlock);
-  ExprValue emitExpr(const Expr *E);
-  ExprValue emitBoolExpr(const Expr *E);
+  ExprValuePtr emitExpr(const Expr *E);
+  ExprValuePtr emitBoolExpr(const Expr *E);
   void emitCallRequire(const CallExpr *CE);
   void emitCallAssert(const CallExpr *CE);
   void emitCallRevert(const CallExpr *CE);
@@ -125,10 +125,10 @@ private:
   void emitAsmCallCodeCopy(const CallExpr *CE);
   llvm::Value *emitAsmCallkeccak256(const CallExpr *CE);
 
-  ExprValue emitCallExpr(const CallExpr *CE);
-  ExprValue emitSpecialCallExpr(const Identifier *SI, const CallExpr *CE,
+  ExprValuePtr emitCallExpr(const CallExpr *CE);
+  ExprValuePtr emitSpecialCallExpr(const Identifier *SI, const CallExpr *CE,
                                 const MemberExpr *ME);
-  ExprValue emitAsmSpecialCallExpr(const AsmIdentifier *SI, const CallExpr *CE);
+  ExprValuePtr emitAsmSpecialCallExpr(const AsmIdentifier *SI, const CallExpr *CE);
 
   friend class ExprEmitter;
 };
