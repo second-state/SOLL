@@ -159,7 +159,10 @@ std::pair<bool, llvm::APInt> Parser::numericParse(llvm::StringRef Literal,
       Result *= Unit;
     }
     unsigned BitWidth = Result.getActiveBits();
-    Result = Result.trunc((BitWidth + 7) & ~7);
+    unsigned TruncWidth = (BitWidth + 7) & ~7;
+    if (TruncWidth < Result.getBitWidth()) {
+      Result = Result.trunc(TruncWidth);
+    }
   }
   return {Signed, Result};
 }
