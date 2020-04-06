@@ -214,10 +214,12 @@ public:
             BO.getOpcode() == BO_Exp ||
             RHSTy->isImplicitlyConvertibleTo(*LHSTy)) {
           setTypeForBinary(Actions, BO, LHS, RHS, LHSTy, RHSTy, LHSTy);
+          StmtVisitor::visit(BO);
           return;
         }
         if (LHSTy->isImplicitlyConvertibleTo(*RHSTy)) {
           setTypeForBinary(Actions, BO, LHS, RHS, LHSTy, RHSTy, RHSTy);
+          StmtVisitor::visit(BO);
           return;
         }
         Actions.Diag(BO.getLocation().getBegin(),
