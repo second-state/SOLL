@@ -89,7 +89,34 @@ bool isAllowedForTypecast(const Type *In, const Type *Out, bool IsLiteral) {
   if (InC == Type::Category::String && IsLiteral) {
     return true;
   }
+  if (InC == Type::Category::Tuple && OutC == Type::Category::Tuple) {
+    auto InT = dynamic_cast<const TupleType *>(In);
+    auto OutT = dynamic_cast<const TupleType *>(Out);
 
+    if (InT->getElementTypes().size() != OutT->getElementTypes().size()) {
+      return false;
+    }
+
+    if (InT->getElementTypes().size() != OutT->getElementTypes().size()) {
+      return false;
+    }
+
+    size_t Size = InT->getElementTypes().size();
+    bool Result = true;
+    for (size_t Idx = 0; Idx < Size; ++Idx) {
+      if (InT->getElementTypes()[Idx]) {
+        if (OutT->getElementTypes()[Idx]) {
+          Result &=
+              isAllowedForTypecast(InT->getElementTypes()[Idx].get(),
+                                   OutT->getElementTypes()[Idx].get(), false);
+        }
+      } else {
+        Result &= OutT->getElementTypes()[Idx] == nullptr;
+      }
+    }
+
+    return Result;
+  }
   return false;
 }
 

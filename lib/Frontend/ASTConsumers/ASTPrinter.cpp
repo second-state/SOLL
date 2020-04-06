@@ -140,6 +140,18 @@ std::string ToString(soll::TypePtr type) {
                        "]")
         .str();
   }
+  case soll::Type::Category::Tuple: {
+    auto tu = static_cast<const soll::TupleType *>(type.get());
+    std::string Res = "tuple(";
+
+    for (size_t i = 0; i < tu->getElementTypes().size(); i++) {
+      if (i > 0) 
+        Res += ',';
+      Res += ToString(tu->getElementTypes()[i]);
+    }
+    Res += ")";
+    return Res;
+  }
   case soll::Type::Category::Mapping: {
     auto mt = static_cast<const soll::MappingType *>(type.get());
     return (llvm::Twine("mapping(") + ToString(mt->getKeyType()) + " => " +

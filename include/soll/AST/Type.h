@@ -442,7 +442,15 @@ public:
     size_t EleNum = getElementTypes().size();
 
     for (size_t idx = 0; idx < EleNum; ++idx) {
-      result &= getElementTypes()[idx]->isEqual(*T.getElementTypes()[idx]);
+      if (getElementTypes()[idx]) {
+        if (!T.getElementTypes()[idx]) {
+          result = false;
+          break;
+        }
+        result &= getElementTypes()[idx]->isEqual(*T.getElementTypes()[idx]);
+      } else {
+        result &= T.getElementTypes()[idx] == nullptr;
+      }
     }
     return result;
   }
