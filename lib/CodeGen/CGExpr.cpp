@@ -173,13 +173,13 @@ private:
       switch (UO->getOpcode()) {
       case UnaryOperatorKind::UO_PostInc:
         SubVal->store(Builder, CGM,
-                     Builder.CreateAdd(
-                         Value, llvm::ConstantInt::get(Value->getType(), 1)));
+                      Builder.CreateAdd(
+                          Value, llvm::ConstantInt::get(Value->getType(), 1)));
         break;
       case UnaryOperatorKind::UO_PostDec:
         SubVal->store(Builder, CGM,
-                     Builder.CreateSub(
-                         Value, llvm::ConstantInt::get(Value->getType(), 1)));
+                      Builder.CreateSub(
+                          Value, llvm::ConstantInt::get(Value->getType(), 1)));
         break;
       case UnaryOperatorKind::UO_PreInc:
         Value = Builder.CreateAdd(Value,
@@ -218,28 +218,23 @@ private:
     if (BO->isAssignmentOp()) {
       ExprValuePtr LHSVar = visit(BO->getLHS());
       ExprValuePtr RHSVar = visit(BO->getRHS());
+      // TODO : Fix this
       llvm::Value *RHSVal = RHSVar->load(Builder, CGM);
       if (BO->getOpcode() == BO_Assign) {
         if (LHSVar->isTuple() || RHSVar->isTuple()) {
           assert(LHSVar->isTuple());
           assert(RHSVar->isTuple());
-          assert(false);
 
-          /*ExprValueTuple &LHSVarT = dynamic_cast<ExprValueTuple &>(LHSVar);
-          ExprValueTuple &RHSVarT = dynamic_cast<ExprValueTuple &>(RHSVar);
+          ExprValueTuple *LHSVarT =
+              dynamic_cast<ExprValueTuple *>(LHSVar.get());
+          ExprValueTuple *RHSVarT =
+              dynamic_cast<ExprValueTuple *>(RHSVar.get());
 
-          std::size_t Num =
-              std::min(LHSVar.getValues().size(), RHSVar.getValues().size());
+          auto RHSVals = RHSVarT->load(Builder, CGM);
+          LHSVarT->store(Builder, CGM, RHSVals);
 
-          std::vector<llvm::Value *> Buf;
-          for (std::size_t idx = 0; idx < Num; ++idx) {
-            Buf.emplace_back(RHSVar.getValues()[idx]->load(Builder, CGM));
-          }
-
-          for (std::size_t idx = 0; idx < Num; ++idx) {
-            LHSVar.getValues()[idx]->store(Builder, CGM, Buf[idx]);
-          }*/
-
+          RHSVal = nullptr;
+          return ExprValueTuple::getRValue(BO, RHSVals);
         } else {
           LHSVar->store(Builder, CGM, RHSVal);
         }
@@ -428,7 +423,7 @@ private:
     return ExprValue::getRValue(BO, V);
   }
 
-  ExprValuePtr visit(const CastExpr *CE) {std::cerr<<"visit ct"<<std::endl;
+  ExprValuePtr visit(const CastExpr *CE) {
     ExprValuePtr InVal = visit(CE->getSubExpr());
     if (CE->getCastKind() == CastKind::None) {
       return InVal;
@@ -436,6 +431,7 @@ private:
 
     const Type *OrigInTy = CE->getSubExpr()->getType().get();
     const Type *OrigOutTy = CE->getType().get();
+    // TODO: check InVal is tuple
     llvm::Value *In = InVal->load(Builder, CGM);
 
     switch (CE->getCastKind()) {
@@ -443,6 +439,12 @@ private:
       assert(false);
       __builtin_unreachable();
     case CastKind::LValueToRValue: {
+      if (InVal->isTuple()) {
+        auto InValT = dynamic_cast<const ExprValueTuple *>(InVal.get());
+        assert(InValT);
+        auto Ins = InValT->load(Builder, CGM);
+        return ExprValueTuple::getRValue(CE, Ins);
+      }
       return ExprValue::getRValue(CE, In);
     }
     case CastKind::IntegralCast: {
@@ -461,11 +463,13 @@ private:
     }
     case CastKind::TypeCast: {
       if (OrigInTy->getCategory() == OrigOutTy->getCategory()) {
-        if (OrigInTy->getCategory()==Type::Category::Tuple) {
-          //return ExprValue::getTupleRValue(Builder, CGM, CE, InVal); 
-          assert(false);
+        if (OrigInTy->getCategory() == Type::Category::Tuple) {
+          auto InValT = dynamic_cast<const ExprValueTuple *>(InVal.get());
+          assert(InValT);
+          auto Ins = InValT->load(Builder, CGM);
+          return ExprValueTuple::getRValue(CE, Ins);
         }
-        return ExprValue::getRValue(CE, In); 
+        return ExprValue::getRValue(CE, In);
       }
       if (dynamic_cast<const AddressType *>(OrigInTy) ||
           dynamic_cast<const AddressType *>(OrigOutTy)) {
@@ -514,7 +518,7 @@ private:
     }
     return ExprValue::getRValue(CE, nullptr);
   }
-  // https://github.com/ethereum/solidity/blob/develop/libsolidity/codegen/ExpressionCompiler.cpp#L329
+
   ExprValuePtr visit(const TupleExpr *TE) {
     if (TE->isInlineArray()) {
       // TODO
@@ -527,10 +531,11 @@ private:
           auto Expr = visit(comp);
           Values.emplace_back(std::move(Expr));
         } else {
-          //Values.emplace_back(ExprValue::getSlot());
+          Values.emplace_back(std::make_shared<ExprValueSlot>());
         }
       }
-      return std::make_shared<ExprValueTuple>(TE->getType().get(), ValueKind::VK_SValue, std::move(Values));
+      return std::make_shared<ExprValueTuple>(
+          TE->getType().get(), ValueKind::VK_SValue, std::move(Values));
     }
   }
 
@@ -553,9 +558,11 @@ private:
     if (auto *VD = dynamic_cast<const VarDecl *>(D)) {
       const Type *Ty = VD->GetType().get();
       if (VD->isStateVariable()) {
-        return std::make_shared<ExprValue>(Ty, ValueKind::VK_SValue, CGM.getStateVarAddr(VD));
+        return std::make_shared<ExprValue>(Ty, ValueKind::VK_SValue,
+                                           CGM.getStateVarAddr(VD));
       } else {
-        return std::make_shared<ExprValue>(Ty, ValueKind::VK_LValue, CGF.getAddrOfLocalVar(VD));
+        return std::make_shared<ExprValue>(Ty, ValueKind::VK_LValue,
+                                           CGF.getAddrOfLocalVar(VD));
       }
     }
     assert(false && "unknown Identifier");
@@ -589,7 +596,8 @@ private:
     ExprValuePtr Index = visit(IA->getIndex());
     const Type *Ty = IA->getType().get();
 
-    if (const auto *MType = dynamic_cast<const MappingType *>(Base->getType())) {
+    if (const auto *MType =
+            dynamic_cast<const MappingType *>(Base->getType())) {
       llvm::Value *Pos =
           CGM.getEndianlessValue(Builder.CreateLoad(Base->getValue()));
       llvm::Value *Key;
@@ -649,7 +657,8 @@ private:
         llvm::Value *ElemAddress = Builder.CreateAdd(Pos, StorageIndex);
         llvm::Value *Address = Builder.CreateAlloca(CGF.Int256Ty);
         Builder.CreateStore(ElemAddress, Address);
-        return std::make_shared<ExprValue>(Ty, ValueKind::VK_SValue, Address, Shift);
+        return std::make_shared<ExprValue>(Ty, ValueKind::VK_SValue, Address,
+                                           Shift);
       } else {
         llvm::Value *ElemAddress = Builder.CreateAdd(Pos, IndexValue);
         llvm::Value *Address = Builder.CreateAlloca(CGF.Int256Ty);
@@ -768,8 +777,8 @@ private:
     const Decl *D = YI->getCorrespondDecl();
 
     if (auto *VD = dynamic_cast<const AsmVarDecl *>(D)) {
-      return std::make_shared<ExprValue>(VD->GetType().get(), ValueKind::VK_LValue,
-                       CGF.getAddrOfLocalVar(VD));
+      return std::make_shared<ExprValue>(
+          VD->GetType().get(), ValueKind::VK_LValue, CGF.getAddrOfLocalVar(VD));
     }
     __builtin_unreachable();
   }
@@ -1725,8 +1734,8 @@ ExprValuePtr CodeGenFunction::emitCallExpr(const CallExpr *CE) {
 }
 
 ExprValuePtr CodeGenFunction::emitSpecialCallExpr(const Identifier *SI,
-                                               const CallExpr *CE,
-                                               const MemberExpr *ME) {
+                                                  const CallExpr *CE,
+                                                  const MemberExpr *ME) {
   switch (SI->getSpecialIdentifier()) {
   case Identifier::SpecialIdentifier::require:
     emitCallRequire(CE);
@@ -1960,7 +1969,7 @@ llvm::Value *CodeGenFunction::emitAsmCallkeccak256(const CallExpr *CE) {
 }
 
 ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
-                                                  const CallExpr *CE) {
+                                                     const CallExpr *CE) {
   switch (SI->getSpecialIdentifier()) {
   /// logical
   case AsmIdentifier::SpecialIdentifier::not_: ///< should be handled in Sema

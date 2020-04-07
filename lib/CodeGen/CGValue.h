@@ -4,9 +4,8 @@
 #include "soll/AST/ExprAsm.h"
 #include <iostream>
 #include <llvm/IR/Value.h>
-#include <vector>
 #include <memory>
-
+#include <vector>
 namespace soll::CodeGen {
 
 class ExprValue;
@@ -24,29 +23,9 @@ public:
             llvm::Value *Shift = nullptr)
       : Ty(Ty), Kind(Kind), V(V), Shift(Shift) {}
   static ExprValuePtr getRValue(const Expr *E, llvm::Value *V) {
-    return std::make_shared<ExprValue>(E->getType().get(), ValueKind::VK_RValue, V);
+    return std::make_shared<ExprValue>(E->getType().get(), ValueKind::VK_RValue,
+                                       V);
   }
-
-  /*template <typename T>
-  static ExprValue getTupleRValue(T &Builder, CodeGenModule &CGM, const Expr *E,
-                                  const ExprValue &V) {
-    auto TupleTy = dynamic_cast<const TupleType *>(E->getType().get());
-    auto Vals = V.getValuesCopy();
-    size_t EleNum = Vals.size();
-
-    assert(TupleTy);
-    assert(V.isTuple());
-    assert(TupleTy->getElementTypes().size() == Vals.size());
-
-    std::vector<ExprValue> Rvals;
-    for (size_t i = 0; i < EleNum; ++i) {
-      Rvals.emplace_back(ExprValue(TupleTy->getElementTypes()[i].get(),
-                                   ValueKind::VK_RValue,
-                                   Vals[i].load(Builder, CGM)));
-    }
-    return ExprValue(E->getType().get(), ValueKind::VK_RValue,
-                     std::move(Rvals));
-  }*/
 
   const Type *getType() const { return Ty; }
   llvm::Value *getValue() const { return V; }
@@ -447,17 +426,58 @@ public:
 
   virtual bool isTuple() const override { return true; }
 
+  static ExprValuePtr getRValue(const Expr *E, std::vector<llvm::Value *> VT) {
+    std::vector<ExprValuePtr> Exprs;
+    size_t Size = VT.size();
+
+    auto TupleTy = dynamic_cast<const TupleType *>(E->getType().get());
+
+    assert(TupleTy && E->getType()->getCategory() == Type::Category::Tuple);
+    assert(TupleTy->getElementTypes().size() == VT.size());
+
+    for (size_t Idx = 0; Idx < Size; ++Idx) {
+      Exprs.emplace_back(
+          std::make_shared<ExprValue>(TupleTy->getElementTypes()[Idx].get(),
+                                      ValueKind::VK_RValue, VT[Idx]));
+    }
+
+    return std::make_shared<ExprValueTuple>(TupleTy, ValueKind::VK_RValue,
+                                            std::move(Exprs));
+  }
+
   template <typename T>
   std::vector<llvm::Value *> load(T &Builder, CodeGenModule &CGM) const {
     std::vector<llvm::Value *> result;
 
-    for (auto &Val:Values) {
+    for (auto &Val : Values) {
       // TODO: Val is also maybe a ExprValueTuple
       // we need a super class to store llvm::Value *
+      assert(!Val->isTuple());
+      result.emplace_back(std::move(Val->load(Builder, CGM)));
     }
-
     return result;
   }
+
+  template <typename T>
+  void store(T &Builder, CodeGenModule &CGM,
+             const std::vector<llvm::Value *> &Vals) const {
+    assert(Values.size() == Vals.size());
+    size_t Size = Values.size();
+    for (size_t Idx = 0; Idx < Size; ++Idx) {
+      // TODO: Val is also maybe a ExprValueTuple
+      // we need a super class to store llvm::Value *
+      assert(!Values[Idx]->isTuple());
+      Values[Idx]->store(Builder, CGM, Vals[Idx]);
+    }
+
+    return;
+  }
+};
+
+class ExprValueSlot : public ExprValue {
+public:
+  virtual bool isSlot() const override { return true; }
+  ExprValueSlot() {}
 };
 
 } // namespace soll::CodeGen
