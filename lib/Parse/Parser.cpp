@@ -1333,12 +1333,13 @@ std::unique_ptr<Stmt> Parser::parseSimpleStatement() {
   }
   if (IsParenExpr) {
     std::vector<ExprPtr> Comps;
+    bool ReachComma = false;
     Comps.emplace_back(std::move(Expression));
 
-    while (Tok.getKind() != tok::r_paren)
-    {
+    while (Tok.getKind() != tok::r_paren) {
       ExpectAndConsume(tok::comma);
-      if (Tok.getKind() == tok::comma || Tok.getKind()==tok::r_paren) {
+      ReachComma = true;
+      if (Tok.getKind() == tok::comma || Tok.getKind() == tok::r_paren) {
         Comps.emplace_back(ExprPtr());
       } else {
         Comps.emplace_back(parseExpression());
@@ -1349,9 +1350,14 @@ std::unique_ptr<Stmt> Parser::parseSimpleStatement() {
 
     const SourceLocation End = Tok.getEndLoc();
     bool IsArray = false;
-    return parseExpression(std::make_unique<TupleExpr>(SourceRange(Begin, End),
-                                                       std::move(Comps),
-                                                       IsArray));
+
+    if (!ReachComma) {
+      return parseExpression(std::make_unique<ParenExpr>(
+          SourceRange(Begin, End), std::move(Comps.back())));
+    }
+
+    return parseExpression(std::make_unique<TupleExpr>(
+        SourceRange(Begin, End), std::move(Comps), IsArray));
   }
   return Expression;
 }
@@ -1817,12 +1823,12 @@ std::unique_ptr<Expr> Parser::parsePrimaryExpression() {
     }
     const SourceLocation End = Tok.getEndLoc();
     ExpectAndConsume(OppositeKind);
-    if (!IsArray && Comps.size() == 1) {// something like (e) is not a tuple
-      Expression =
-        std::make_unique<ParenExpr>(SourceRange(Begin, End), std::move(Comps.back()));
+    if (!IsArray && Comps.size() == 1) { // something like (e) is not a tuple
+      Expression = std::make_unique<ParenExpr>(SourceRange(Begin, End),
+                                               std::move(Comps.back()));
     } else {
-      Expression =
-        std::make_unique<TupleExpr>(SourceRange(Begin, End), std::move(Comps), IsArray);
+      Expression = std::make_unique<TupleExpr>(SourceRange(Begin, End),
+                                               std::move(Comps), IsArray);
     }
     break;
   }
