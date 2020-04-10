@@ -214,18 +214,20 @@ public:
       return;
     }
 
-    for (const auto &[EntryName, FuncName] : Gen->getNestedEntries()) {
-      auto ClonedModule = llvm::CloneModule(*getModule());
-      emitEntry(*ClonedModule, EntryName);
+    if (TargetOpts.BackendTarget == EWASM) {
+      for (const auto &[EntryName, FuncName] : Gen->getNestedEntries()) {
+        auto ClonedModule = llvm::CloneModule(*getModule());
+        emitEntry(*ClonedModule, EntryName);
 
-      auto Binary = compileAndLink(*ClonedModule);
-      if (!Binary) {
-        llvm::errs() << Binary.takeError() << '\n';
-        return;
+        auto Binary = compileAndLink(*ClonedModule);
+        if (!Binary) {
+          llvm::errs() << Binary.takeError() << '\n';
+          return;
+        }
+
+        emitNestedBytecodeFunction(*getModule(), FuncName,
+                                   (*Binary)->getBuffer());
       }
-
-      emitNestedBytecodeFunction(*getModule(), FuncName,
-                                 (*Binary)->getBuffer());
     }
 
     emitEntry(*getModule(), Gen->getEntry());
@@ -237,7 +239,6 @@ public:
       }
       (*AsmOutStream) << (*Binary)->getBuffer();
       AsmOutStream.reset();
-
     } else {
       EmitBackendOutput(Diags, CodeGenOpts, TargetOpts,
                         getModule()->getDataLayout(), getModule(), Action,

@@ -81,9 +81,10 @@ void EmitAssemblyHelper::CreateTargetMachine(bool MustCreateTM) {
   const llvm::Target *TheTarget =
       llvm::TargetRegistry::lookupTarget(Triple, Error);
   if (!TheTarget) {
-    if (MustCreateTM)
-      // Diags.Report(diag::err_fe_unable_to_create_target) << Error;
-      return;
+    if (MustCreateTM) {
+      Diags.Report(diag::err_fe_unable_to_create_target) << Error;
+    }
+    return;
   }
 
   llvm::TargetOptions Options;
@@ -116,6 +117,20 @@ bool EmitAssemblyHelper::AddEmitPasses(llvm::legacy::PassManager &CodeGenPasses,
 
 void EmitAssemblyHelper::EmitAssembly(
     BackendAction Action, std::unique_ptr<llvm::raw_pwrite_stream> OS) {
+  // FIXME: We only allow generating LLVM IR for EVM backend.
+  // If the EVM target machine can be created correctly and the EVM-ld
+  // is implemented, then we can integrate EVM backend code generation
+  // in the same way as EWASM.
+  if (TargetOpts.BackendTarget == EVM) {
+    if (Action == BackendAction::EmitLL) {
+      TheModule->print(*OS, nullptr, false);
+    } else {
+      Diags.Report(diag::err_fe_only_accept_emitllvm_for_evm_target);
+    }
+    return;
+  }
+
+  // The following section is for EWASM backend.
   bool RequiresCodeGen =
       (Action != BackendAction::EmitNothing &&
        Action != BackendAction::EmitBC && Action != BackendAction::EmitLL);

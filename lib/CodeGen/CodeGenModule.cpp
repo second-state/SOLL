@@ -3,7 +3,6 @@
 #include "CodeGenFunction.h"
 #include <llvm/IR/Attributes.h>
 #include <llvm/IR/Constants.h>
-#include <llvm/IR/Intrinsics.h>
 
 /*
 // for testing purpose
@@ -140,144 +139,272 @@ llvm::Function *CodeGenModule::getIntrinsic(unsigned IID,
 }
 
 void CodeGenModule::initEVMOpcodeDeclaration() {
-#if !defined(ENABLE_EVM_BACKEND)
-  llvm::errs() << "Your LLVM backend targets doesn't support EVM!\n";
-  exit(1);
-#else
   llvm::FunctionType *FT = nullptr;
+  llvm::Attribute EVMAttr = llvm::Attribute::get(VMContext, "llvm", "evm");
 
   // evm_calldatacopy
   FT = llvm::FunctionType::get(VoidTy, {EVMIntTy, EVMIntTy, EVMIntTy}, false);
-  Func_callDataCopy = getIntrinsic(llvm::Intrinsic::evm_calldatacopy, FT);
+  Func_callDataCopy = llvm::Function::Create(
+      FT, llvm::Function::ExternalLinkage, "llvm.evm.calldatacopy", TheModule);
+  Func_callDataCopy->addFnAttr(EVMAttr);
+  Func_callDataCopy->addFnAttr(
+      llvm::Attribute::get(VMContext, "evm", "calldatacopy"));
+  Func_callDataCopy->addFnAttr(llvm::Attribute::WriteOnly);
+  Func_callDataCopy->addFnAttr(llvm::Attribute::NoUnwind);
+  Func_callDataCopy->addParamAttr(0, llvm::Attribute::WriteOnly);
 
   // evm_calldatasize
   FT = llvm::FunctionType::get(EVMIntTy, {}, false);
-  Func_getCallDataSize = getIntrinsic(llvm::Intrinsic::evm_calldatasize, FT);
+  Func_getCallDataSize = llvm::Function::Create(
+      FT, llvm::Function::ExternalLinkage, "llvm.evm.calldatasize", TheModule);
+  Func_getCallDataSize->addFnAttr(EVMAttr);
+  Func_getCallDataSize->addFnAttr(
+      llvm::Attribute::get(VMContext, "evm", "calldatasize"));
+  Func_getCallDataSize->addFnAttr(llvm::Attribute::ReadOnly);
+  Func_getCallDataSize->addFnAttr(llvm::Attribute::NoUnwind);
 
   // evm_sha3
   FT = llvm::FunctionType::get(EVMIntTy, {EVMIntTy, EVMIntTy}, false);
-  Func_sha3 = getIntrinsic(llvm::Intrinsic::evm_sha3, FT);
+  Func_sha3 = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                     "llvm.evm.sha3", TheModule);
+  Func_sha3->addFnAttr(EVMAttr);
+  Func_sha3->addFnAttr(llvm::Attribute::get(VMContext, "evm", "sha3"));
 
   // evm_call
   FT = llvm::FunctionType::get(
       EVMIntTy,
       {EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy},
       false);
-  Func_call = getIntrinsic(llvm::Intrinsic::evm_call, FT);
+  Func_call = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                     "llvm.evm.call", TheModule);
+  Func_call->addFnAttr(EVMAttr);
+  Func_call->addFnAttr(llvm::Attribute::get(VMContext, "evm", "call"));
+  Func_call->addFnAttr(llvm::Attribute::NoUnwind);
 
   // evm_staticcall
   FT = llvm::FunctionType::get(
       EVMIntTy, {EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy},
       false);
-  Func_callStatic = getIntrinsic(llvm::Intrinsic::evm_staticcall, FT);
+  Func_callStatic = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                           "llvm.evm.staticcall", TheModule);
+  Func_callStatic->addFnAttr(EVMAttr);
+  Func_callStatic->addFnAttr(
+      llvm::Attribute::get(VMContext, "evm", "staticcall"));
+  Func_callStatic->addFnAttr(llvm::Attribute::NoUnwind);
 
   // evm_delegatecall
   FT = llvm::FunctionType::get(
       EVMIntTy, {EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy},
       false);
-  Func_callDelegate = getIntrinsic(llvm::Intrinsic::evm_delegatecall, FT);
+  Func_callDelegate = llvm::Function::Create(
+      FT, llvm::Function::ExternalLinkage, "llvm.evm.delegatecall", TheModule);
+  Func_callDelegate->addFnAttr(EVMAttr);
+  Func_callDelegate->addFnAttr(
+      llvm::Attribute::get(VMContext, "evm", "delegatecall"));
+  Func_callDelegate->addFnAttr(llvm::Attribute::NoUnwind);
 
   // evm_sstore
   FT = llvm::FunctionType::get(VoidTy, {EVMIntTy, EVMIntTy}, false);
-  Func_storageStore = getIntrinsic(llvm::Intrinsic::evm_sstore, FT);
+  Func_storageStore = llvm::Function::Create(
+      FT, llvm::Function::ExternalLinkage, "llvm.evm.sstore", TheModule);
+  Func_storageStore->addFnAttr(EVMAttr);
+  Func_storageStore->addFnAttr(
+      llvm::Attribute::get(VMContext, "evm", "sstore"));
+  Func_storageStore->addFnAttr(llvm::Attribute::NoUnwind);
 
   // evm_sload
   FT = llvm::FunctionType::get(EVMIntTy, {EVMIntTy}, false);
-  Func_storageLoad = getIntrinsic(llvm::Intrinsic::evm_sload, FT);
+  Func_storageLoad = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                            "llvm.evm.sload", TheModule);
+  Func_storageLoad->addFnAttr(EVMAttr);
+  Func_storageLoad->addFnAttr(llvm::Attribute::get(VMContext, "evm", "sload"));
+  Func_storageLoad->addFnAttr(llvm::Attribute::NoUnwind);
 
   // evm_caller
   FT = llvm::FunctionType::get(AddressTy, {}, false);
-  Func_getCaller = getIntrinsic(llvm::Intrinsic::evm_caller, FT);
+  Func_getCaller = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                          "llvm.evm.caller", TheModule);
+  Func_getCaller->addFnAttr(EVMAttr);
+  Func_getCaller->addFnAttr(llvm::Attribute::get(VMContext, "evm", "caller"));
+  Func_getCaller->addFnAttr(llvm::Attribute::ArgMemOnly);
+  Func_getCaller->addFnAttr(llvm::Attribute::NoUnwind);
+  Func_getCaller->addParamAttr(0, llvm::Attribute::WriteOnly);
 
   // evm_callvalue
   FT = llvm::FunctionType::get(EVMIntTy, {}, false);
-  Func_getCallValue = getIntrinsic(llvm::Intrinsic::evm_callvalue, FT);
+  Func_getCallValue = llvm::Function::Create(
+      FT, llvm::Function::ExternalLinkage, "llvm.evm.callvalue", TheModule);
+  Func_getCallValue->addFnAttr(EVMAttr);
+  Func_getCallValue->addFnAttr(
+      llvm::Attribute::get(VMContext, "evm", "callvalue"));
 
-  // evm_callvalue
+  // evm_callcopy
   FT = llvm::FunctionType::get(VoidTy, {EVMIntTy, EVMIntTy, EVMIntTy}, false);
-  Func_codeCopy = getIntrinsic(llvm::Intrinsic::evm_codecopy, FT);
+  Func_codeCopy = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                         "llvm.evm.codecopy", TheModule);
+  Func_codeCopy->addFnAttr(EVMAttr);
+  Func_codeCopy->addFnAttr(llvm::Attribute::get(VMContext, "evm", "codecopy"));
+  Func_codeCopy->addFnAttr(llvm::Attribute::ArgMemOnly);
+  Func_codeCopy->addFnAttr(llvm::Attribute::NoUnwind);
 
   // evm_log0
   FT = llvm::FunctionType::get(VoidTy, {EVMIntTy, EVMIntTy}, false);
-  Func_log0 = getIntrinsic(llvm::Intrinsic::evm_log0, FT);
+  Func_log0 = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                     "llvm.evm.log0", TheModule);
+  Func_log0->addFnAttr(EVMAttr);
+  Func_log0->addFnAttr(llvm::Attribute::get(VMContext, "evm", "log0"));
+  Func_log0->addFnAttr(llvm::Attribute::NoUnwind);
 
   // evm_log1
   FT = llvm::FunctionType::get(VoidTy, {EVMIntTy, EVMIntTy, EVMIntTy}, false);
-  Func_log1 = getIntrinsic(llvm::Intrinsic::evm_log1, FT);
+  Func_log1 = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                     "llvm.evm.log1", TheModule);
+  Func_log1->addFnAttr(EVMAttr);
+  Func_log1->addFnAttr(llvm::Attribute::get(VMContext, "evm", "log1"));
+  Func_log1->addFnAttr(llvm::Attribute::NoUnwind);
 
   // evm_log2
   FT = llvm::FunctionType::get(VoidTy, {EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy},
                                false);
-  Func_log2 = getIntrinsic(llvm::Intrinsic::evm_log2, FT);
+  Func_log2 = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                     "llvm.evm.log2", TheModule);
+  Func_log2->addFnAttr(EVMAttr);
+  Func_log2->addFnAttr(llvm::Attribute::get(VMContext, "evm", "log2"));
+  Func_log2->addFnAttr(llvm::Attribute::NoUnwind);
 
   // evm_log3
   FT = llvm::FunctionType::get(
       VoidTy, {EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy}, false);
-  Func_log3 = getIntrinsic(llvm::Intrinsic::evm_log3, FT);
+  Func_log3 = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                     "llvm.evm.log3", TheModule);
+  Func_log3->addFnAttr(EVMAttr);
+  Func_log3->addFnAttr(llvm::Attribute::get(VMContext, "evm", "log3"));
+  Func_log3->addFnAttr(llvm::Attribute::NoUnwind);
 
   // evm_log4
   FT = llvm::FunctionType::get(
       VoidTy, {EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy, EVMIntTy},
       false);
-  Func_log4 = getIntrinsic(llvm::Intrinsic::evm_log4, FT);
+  Func_log4 = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                     "llvm.evm.log4", TheModule);
+  Func_log4->addFnAttr(EVMAttr);
+  Func_log4->addFnAttr(llvm::Attribute::get(VMContext, "evm", "log4"));
+  Func_log4->addFnAttr(llvm::Attribute::NoUnwind);
 
   // evm_gas
   FT = llvm::FunctionType::get(EVMIntTy, {}, false);
-  Func_getGasLeft = getIntrinsic(llvm::Intrinsic::evm_gas, FT);
+  Func_getGasLeft = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                           "llvm.evm.gas", TheModule);
+  Func_getGasLeft->addFnAttr(EVMAttr);
+  Func_getGasLeft->addFnAttr(llvm::Attribute::get(VMContext, "evm", "gas"));
+  Func_getGasLeft->addFnAttr(llvm::Attribute::NoUnwind);
 
   // finish
   FT = llvm::FunctionType::get(VoidTy, {EVMIntTy, EVMIntTy}, false);
-  Func_finish = getIntrinsic(llvm::Intrinsic::evm_return, FT);
+  Func_finish = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                       "llvm.evm.return", TheModule);
+  Func_finish->addFnAttr(EVMAttr);
+  Func_finish->addFnAttr(llvm::Attribute::get(VMContext, "evm", "return"));
+  Func_finish->addFnAttr(llvm::Attribute::WriteOnly);
+  Func_finish->addFnAttr(llvm::Attribute::NoUnwind);
 
   // revert
   FT = llvm::FunctionType::get(VoidTy, {EVMIntTy, EVMIntTy}, false);
-  Func_revert = getIntrinsic(llvm::Intrinsic::evm_revert, FT);
+  Func_revert = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                       "llvm.evm.revert", TheModule);
+  Func_revert->addFnAttr(EVMAttr);
+  Func_revert->addFnAttr(llvm::Attribute::get(VMContext, "evm", "revert"));
+  Func_revert->addFnAttr(llvm::Attribute::WriteOnly);
+  Func_revert->addFnAttr(llvm::Attribute::NoUnwind);
 
   // returnDataSize
   FT = llvm::FunctionType::get(EVMIntTy, {}, false);
-  Func_returnDataSize = getIntrinsic(llvm::Intrinsic::evm_returndatasize, FT);
+  Func_returnDataSize =
+      llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                             "llvm.evm.returndatasize", TheModule);
+  Func_returnDataSize->addFnAttr(EVMAttr);
+  Func_returnDataSize->addFnAttr(
+      llvm::Attribute::get(VMContext, "evm", "returndatasize"));
 
   // returnDataCopy
   FT = llvm::FunctionType::get(VoidTy, {EVMIntTy, EVMIntTy, EVMIntTy}, false);
-  Func_returnDataCopy = getIntrinsic(llvm::Intrinsic::evm_returndatacopy, FT);
+  Func_returnDataCopy =
+      llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                             "llvm.evm.returndatacopy", TheModule);
+  Func_returnDataCopy->addFnAttr(EVMAttr);
+  Func_returnDataCopy->addFnAttr(
+      llvm::Attribute::get(VMContext, "evm", "returndatacopy"));
+  Func_returnDataCopy->addFnAttr(llvm::Attribute::NoUnwind);
 
   // getTxGasPrice
   FT = llvm::FunctionType::get(VoidTy, {Int128PtrTy}, false);
-  Func_getTxGasPrice = getIntrinsic(llvm::Intrinsic::evm_gasprice, FT);
+  Func_getTxGasPrice = llvm::Function::Create(
+      FT, llvm::Function::ExternalLinkage, "llvm.evm.gasprice", TheModule);
+  Func_getTxGasPrice->addFnAttr(EVMAttr);
+  Func_getTxGasPrice->addFnAttr(
+      llvm::Attribute::get(VMContext, "evm", "gasprice"));
 
   // getTxOrigin
   FT = llvm::FunctionType::get(VoidTy, {AddressPtrTy}, false);
-  Func_getTxOrigin = getIntrinsic(llvm::Intrinsic::evm_origin, FT);
+  Func_getTxOrigin = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                            "llvm.evm.origin", TheModule);
+  Func_getTxOrigin->addFnAttr(EVMAttr);
+  Func_getTxOrigin->addFnAttr(llvm::Attribute::get(VMContext, "evm", "origin"));
 
   // getBlockCoinbase
   FT = llvm::FunctionType::get(VoidTy, {AddressPtrTy}, false);
-  Func_getBlockCoinbase = getIntrinsic(llvm::Intrinsic::evm_coinbase, FT);
+  Func_getBlockCoinbase = llvm::Function::Create(
+      FT, llvm::Function::ExternalLinkage, "llvm.evm.coinbase", TheModule);
+  Func_getBlockCoinbase->addFnAttr(EVMAttr);
+  Func_getBlockCoinbase->addFnAttr(
+      llvm::Attribute::get(VMContext, "evm", "coinbase"));
 
   // getBlockDifficulty
   FT = llvm::FunctionType::get(VoidTy, {Int256PtrTy}, false);
-  Func_getBlockDifficulty = getIntrinsic(llvm::Intrinsic::evm_difficulty, FT);
+  Func_getBlockDifficulty = llvm::Function::Create(
+      FT, llvm::Function::ExternalLinkage, "llvm.evm.difficulty", TheModule);
+  Func_getBlockDifficulty->addFnAttr(EVMAttr);
+  Func_getBlockDifficulty->addFnAttr(
+      llvm::Attribute::get(VMContext, "evm", "difficulty"));
 
   // getBlockGasLimit
   FT = llvm::FunctionType::get(Int64PtrTy, {}, false);
-  Func_getBlockGasLimit = getIntrinsic(llvm::Intrinsic::evm_gaslimit, FT);
+  Func_getBlockGasLimit = llvm::Function::Create(
+      FT, llvm::Function::ExternalLinkage, "llvm.evm.gaslimit", TheModule);
+  Func_getBlockGasLimit->addFnAttr(EVMAttr);
+  Func_getBlockGasLimit->addFnAttr(
+      llvm::Attribute::get(VMContext, "evm", "gaslimit"));
 
   // getBlockNumber
   FT = llvm::FunctionType::get(Int64PtrTy, {}, false);
-  Func_getBlockNumber = getIntrinsic(llvm::Intrinsic::evm_number, FT);
+  Func_getBlockNumber = llvm::Function::Create(
+      FT, llvm::Function::ExternalLinkage, "llvm.evm.number", TheModule);
+  Func_getBlockNumber->addFnAttr(EVMAttr);
+  Func_getBlockNumber->addFnAttr(
+      llvm::Attribute::get(VMContext, "evm", "number"));
 
   // getBlockTimestamp
   FT = llvm::FunctionType::get(Int64PtrTy, {}, false);
-  Func_getBlockTimestamp = getIntrinsic(llvm::Intrinsic::evm_timestamp, FT);
+  Func_getBlockTimestamp = llvm::Function::Create(
+      FT, llvm::Function::ExternalLinkage, "llvm.evm.timestamp", TheModule);
+  Func_getBlockTimestamp->addFnAttr(EVMAttr);
+  Func_getBlockTimestamp->addFnAttr(
+      llvm::Attribute::get(VMContext, "evm", "timestamp"));
 
   // getExternalBalance
   FT = llvm::FunctionType::get(Int64PtrTy, {}, false);
-  Func_getExternalBalance = getIntrinsic(llvm::Intrinsic::evm_balance, FT);
+  Func_getExternalBalance = llvm::Function::Create(
+      FT, llvm::Function::ExternalLinkage, "llvm.evm.balance", TheModule);
+  Func_getExternalBalance->addFnAttr(EVMAttr);
+  Func_getExternalBalance->addFnAttr(
+      llvm::Attribute::get(VMContext, "evm", "balance"));
 
   // getAddress
   FT = llvm::FunctionType::get(VoidTy, {AddressPtrTy}, false);
-  Func_getAddress = getIntrinsic(llvm::Intrinsic::evm_address, FT);
-
-#endif
+  Func_getAddress = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                           "llvm.evm.address", TheModule);
+  Func_getAddress->addFnAttr(EVMAttr);
+  Func_getAddress->addFnAttr(llvm::Attribute::get(VMContext, "evm", "address"));
 }
 
 void CodeGenModule::initEEIDeclaration() {
