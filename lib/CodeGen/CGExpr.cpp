@@ -449,7 +449,7 @@ private:
     llvm::BasicBlock *Revert = CGF.createBasicBlock("revert");
 
     llvm::Value *OutOfBound = Builder.CreateICmpUGE(
-        Index, Builder.CreateZExt(ArrSz, Index->getType()));
+        Index, Builder.CreateZExtOrTrunc(ArrSz, Index->getType()));
     Builder.CreateCondBr(OutOfBound, Revert, Continue);
 
     Builder.SetInsertPoint(Revert);
@@ -526,7 +526,8 @@ private:
         Builder.CreateStore(ElemAddress, Address);
         return ExprValue(Ty, ValueKind::VK_SValue, Address, Shift);
       } else {
-        llvm::Value *ElemAddress = Builder.CreateAdd(Pos, IndexValue);
+        llvm::Value *ElemAddress = Builder.CreateAdd(
+            Pos, Builder.CreateZExtOrTrunc(IndexValue, Pos->getType()));
         llvm::Value *Address = Builder.CreateAlloca(CGF.Int256Ty);
         Builder.CreateStore(ElemAddress, Address);
         return ExprValue(Ty, ValueKind::VK_SValue, Address);
