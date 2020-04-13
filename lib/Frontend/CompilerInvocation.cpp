@@ -47,6 +47,16 @@ static cl::opt<ActionKind> Action(
     cl::values(clEnumVal(InitOnly, "")),
     cl::values(clEnumVal(ParseSyntaxOnly, "")), cl::cat(SollCategory));
 
+static cl::opt<OptLevel> OptimizationLevel(
+    cl::Optional, cl::init(O0), cl::desc("Optimization level"),
+    cl::cat(SollCategory),
+    cl::values(clEnumVal(O0, "No optimizations"),
+               clEnumVal(O1, "Enable trivial optimizations"),
+               clEnumVal(O2, "Enable default optimizations"),
+               clEnumVal(O3, "Enable expensive optimizations"),
+               clEnumVal(Os, "Enable default optimizations for size"),
+               clEnumVal(Oz, "Enable expensive optimizations for size")));
+
 static cl::opt<bool> Runtime("runtime", cl::desc("Generate for runtime code"),
                              cl::cat(SollCategory));
 
@@ -79,6 +89,7 @@ bool CompilerInvocation::ParseCommandLineOptions(
   }
   TargetOpts.BackendTarget = Target;
 
+  CodeGenOpts.OptimizationLevel = OptimizationLevel;
   CodeGenOpts.Runtime = Runtime;
   return true;
 }

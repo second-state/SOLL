@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "soll/CodeGen/BackendUtil.h"
+#include "soll/Basic/CodeGenOptions.h"
 #include "soll/Basic/Diagnostic.h"
 #include "soll/Basic/DiagnosticFrontend.h"
 #include "soll/Basic/TargetOptions.h"
@@ -163,8 +164,26 @@ void EmitAssemblyHelper::EmitAssembly(
   if (TargetOpts.BackendTarget == EWASM) {
     MPM.addPass(LoweringInteger());
   }
-
-  MPM.addPass(PB.buildPerModuleDefaultPipeline(llvm::PassBuilder::O0));
+  switch (CodeGenOpts.OptimizationLevel) {
+  case O0:
+  default:
+    break;
+  case O1:
+    MPM.addPass(PB.buildPerModuleDefaultPipeline(llvm::PassBuilder::O1));
+    break;
+  case O2:
+    MPM.addPass(PB.buildPerModuleDefaultPipeline(llvm::PassBuilder::O2));
+    break;
+  case O3:
+    MPM.addPass(PB.buildPerModuleDefaultPipeline(llvm::PassBuilder::O3));
+    break;
+  case Os:
+    MPM.addPass(PB.buildPerModuleDefaultPipeline(llvm::PassBuilder::Os));
+    break;
+  case Oz:
+    MPM.addPass(PB.buildPerModuleDefaultPipeline(llvm::PassBuilder::Oz));
+    break;
+  }
   MPM.addPass(llvm::AlwaysInlinerPass());
   MPM.run(*TheModule, MAM);
 

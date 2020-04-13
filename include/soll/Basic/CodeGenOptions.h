@@ -3,8 +3,12 @@
 
 namespace soll {
 
+enum OptLevel { O0, O1, O2, O3, Os, Oz };
+
 class CodeGenOptions {
 public:
+  /// Optimization level.
+  OptLevel OptimizationLevel;
   /// Generate for runtime only.
   bool Runtime;
 };
