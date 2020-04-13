@@ -518,9 +518,11 @@ private:
 
       if (ElementPerSlot != 1) {
         llvm::Value *StorageIndex = Builder.CreateUDiv(
-            IndexValue, Builder.getIntN(256, ElementPerSlot));
+            Builder.CreateZExtOrTrunc(IndexValue, CGF.Int256Ty),
+            Builder.getIntN(256, ElementPerSlot));
         llvm::Value *Shift = Builder.CreateURem(
-            IndexValue, Builder.getIntN(256, ElementPerSlot));
+            Builder.CreateZExtOrTrunc(IndexValue, CGF.Int256Ty),
+            Builder.getIntN(256, ElementPerSlot));
         llvm::Value *ElemAddress = Builder.CreateAdd(Pos, StorageIndex);
         llvm::Value *Address = Builder.CreateAlloca(CGF.Int256Ty);
         Builder.CreateStore(ElemAddress, Address);
@@ -727,6 +729,7 @@ void CodeGenFunction::emitCallRevert(const CallExpr *CE) {
         Builder.CreateTrunc(Builder.CreateExtractValue(Message, {0}), Int32Ty));
   }
   Builder.CreateUnreachable();
+  Builder.SetInsertPoint(createBasicBlock("after.revert"));
 }
 
 llvm::Value *CodeGenFunction::emitCallAddmod(const CallExpr *CE) {
