@@ -16,6 +16,7 @@ contract ABI_encoding {
     int32[][2] Arr2;
     int[][2][] Arr3;
     int[3][2][] Arr4;
+    int64[] Arr5;
     function Jinkela() public payable returns(uint){
         return 12341234;
     }
@@ -27,13 +28,11 @@ contract ABI_encoding {
     function encodePacked() public payable returns(bytes memory){
         return abi.encodePacked(a,s1,b,abi.encodePacked(a,b,c,d,e),Jinkela(),b1,d,s2,e);
     }
-    /* // TODO: array
     function encodeArray() public payable returns(bytes){
-        return abi.encode(Arr1, Arr2, Arr3);
+        return abi.encode(Arr1, Arr2, Arr3, Arr5);
     }
 
     function encodePackedArray() public payable returns(bytes){
-        return abi.encodePacked(Arr1, Arr4);
+        return abi.encodePacked(Arr1, Arr4, Arr5);
     }
-    */
 }

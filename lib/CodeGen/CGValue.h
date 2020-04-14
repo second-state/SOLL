@@ -48,7 +48,8 @@ public:
         llvm::Type *ValueTy = Builder.getIntNTy(Ty->getBitNum());
         Val = Builder.CreateZExtOrTrunc(CGM.getEndianlessValue(Val), ValueTy);
         if (Shift != nullptr) {
-          Val = Builder.CreateLShr(Val, Shift);
+          Val = Builder.CreateLShr(Val,
+                                   Builder.CreateZExtOrTrunc(Shift, ValueTy));
         }
         return Builder.CreateTruncOrBitCast(Val, CGM.getLLVMType(Ty), Name);
       }

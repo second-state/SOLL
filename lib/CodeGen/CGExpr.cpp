@@ -713,8 +713,7 @@ public:
       bool IsStateVariable;
       std::tie(Value, IsStateVariable) = V;
       if (Value.getType()->isDynamic()) {
-        Size = Builder.CreateAdd(Size,
-                                 getEncodeSize(Value, Builder.getIntN(32, 32)));
+        Size = Builder.CreateAdd(Size, Builder.getIntN(32, 32));
       }
       Size = Builder.CreateAdd(Size, getEncodeSize(Value, IsStateVariable));
     }
@@ -754,7 +753,7 @@ public:
       ExprValue Value;
       bool IsStateVariable;
       std::tie(Value, IsStateVariable) = Values[i];
-      llvm::Value *TailPos = Builder.CreateZExt(
+      llvm::Value *TailPos = Builder.CreateZExtOrTrunc(
           Builder.CreatePtrDiff(Int8Ptr, Int8PtrBegin), CGM.Int256Ty);
       copyToInt8Ptr(Head, TailPos, false);
       Int8Ptr = emitEncode(Int8Ptr, Value, IsStateVariable);
@@ -815,6 +814,8 @@ private:
           llvm::BasicBlock::Create(VMContext, "loop", ThisFunc);
       llvm::BasicBlock *LoopEnd =
           llvm::BasicBlock::Create(VMContext, "loop_end", ThisFunc);
+      llvm::BasicBlock *EndRecursive =
+          llvm::BasicBlock::Create(VMContext, "recursive_end", ThisFunc);
 
       llvm::Value *Index = Builder.getIntN(32, 0);
 
@@ -834,19 +835,21 @@ private:
       llvm::Value *NextIndex =
           Builder.CreateAdd(PHIIndex, Builder.getIntN(32, 1));
       llvm::Value *NextSize = Builder.CreateAdd(PHISize, ResSize);
+      Builder.CreateBr(EndRecursive);
+      Builder.SetInsertPoint(EndRecursive);
 
       Condition = Builder.CreateICmpULT(NextIndex, ArrayLength);
       Builder.CreateCondBr(Condition, Loop, LoopEnd);
 
       PHIIndex->addIncoming(Index, Start);
-      PHIIndex->addIncoming(NextIndex, Loop);
+      PHIIndex->addIncoming(NextIndex, EndRecursive);
       PHISize->addIncoming(Size, Start);
-      PHISize->addIncoming(NextSize, Loop);
+      PHISize->addIncoming(NextSize, EndRecursive);
 
       Builder.SetInsertPoint(LoopEnd);
       PHISize = Builder.CreatePHI(CGM.Int32Ty, 2);
       PHISize->addIncoming(Size, Start);
-      PHISize->addIncoming(NextSize, Loop);
+      PHISize->addIncoming(NextSize, EndRecursive);
       return PHISize;
     }
     case Type::Category::Struct:
@@ -902,6 +905,8 @@ private:
           llvm::BasicBlock::Create(VMContext, "loop", ThisFunc);
       llvm::BasicBlock *LoopEnd =
           llvm::BasicBlock::Create(VMContext, "loop_end", ThisFunc);
+      llvm::BasicBlock *EndRecursive =
+          llvm::BasicBlock::Create(VMContext, "recursive_end", ThisFunc);
 
       llvm::Value *Index = Builder.getIntN(32, 0);
 
@@ -920,19 +925,21 @@ private:
       llvm::Value *NextIndex =
           Builder.CreateAdd(PHIIndex, Builder.getIntN(32, 1));
       llvm::Value *NextSize = Builder.CreateAdd(PHISize, ResSize);
+      Builder.CreateBr(EndRecursive);
+      Builder.SetInsertPoint(EndRecursive);
 
       Condition = Builder.CreateICmpULT(NextIndex, ArrayLength);
       Builder.CreateCondBr(Condition, Loop, LoopEnd);
 
       PHIIndex->addIncoming(Index, Start);
-      PHIIndex->addIncoming(NextIndex, Loop);
+      PHIIndex->addIncoming(NextIndex, EndRecursive);
       PHISize->addIncoming(Size, Start);
-      PHISize->addIncoming(NextSize, Loop);
+      PHISize->addIncoming(NextSize, EndRecursive);
 
       Builder.SetInsertPoint(LoopEnd);
       PHISize = Builder.CreatePHI(CGM.Int32Ty, 2);
       PHISize->addIncoming(Size, Start);
-      PHISize->addIncoming(NextSize, Loop);
+      PHISize->addIncoming(NextSize, EndRecursive);
       return PHISize;
     }
     case Type::Category::Struct:
@@ -969,6 +976,8 @@ private:
           llvm::BasicBlock::Create(VMContext, "loop", ThisFunc);
       llvm::BasicBlock *LoopEnd =
           llvm::BasicBlock::Create(VMContext, "loop_end", ThisFunc);
+      llvm::BasicBlock *EndRecursive =
+          llvm::BasicBlock::Create(VMContext, "recursive_end", ThisFunc);
 
       const auto *ArrTy = dynamic_cast<const ArrayType *>(Ty);
       if (IsArrayElement && ArrTy->isDynamicSized()) {
@@ -980,61 +989,36 @@ private:
           Builder.CreateZExtOrTrunc(getArrayLength(Value, ArrTy), CGM.Int32Ty);
       llvm::Value *Index = Builder.getIntN(32, 0);
 
-      llvm::BasicBlock *GetIndexAccess = nullptr;
-      llvm::BasicBlock *GetIndexAccessEnd = nullptr;
-      llvm::Value *Shift = nullptr;
-      llvm::PHINode *PHIAddress = nullptr;
-      unsigned ElementPerSlot = getElementPerSlot(IsStateVariable, ArrTy);
-      if (ElementPerSlot > 1) {
-        GetIndexAccess =
-            llvm::BasicBlock::Create(VMContext, "IndexAccess", ThisFunc);
-        GetIndexAccessEnd =
-            llvm::BasicBlock::Create(VMContext, "IndexAccess_end", ThisFunc);
-      }
-
       llvm::Value *Condition = Builder.CreateICmpULT(Index, ArrayLength);
       Builder.CreateCondBr(Condition, Loop, LoopEnd);
 
       Builder.SetInsertPoint(Loop);
       llvm::PHINode *PHIIndex = Builder.CreatePHI(CGM.Int32Ty, 2);
       llvm::PHINode *PHIInt8Ptr = Builder.CreatePHI(CGM.Int8PtrTy, 2);
-      if (ElementPerSlot > 1) {
-        Shift =
-            Builder.CreateURem(PHIIndex, Builder.getIntN(32, ElementPerSlot));
-        Condition = Builder.CreateICmpEQ(Shift, Builder.getIntN(32, 0));
-        Builder.CreateCondBr(Condition, GetIndexAccess, GetIndexAccessEnd);
 
-        Builder.SetInsertPoint(GetIndexAccess);
-        PHIAddress = Builder.CreatePHI(CGM.Int256PtrTy, 2);
-      }
       ExprValue IndexAccessValue = ExprEmitter(CGF).arrayIndexAccess(
           Value, PHIIndex, ArrTy->getElementType().get(), ArrTy,
           IsStateVariable);
-      if (ElementPerSlot > 1) {
-        Builder.CreateBr(GetIndexAccessEnd);
 
-        PHIAddress->addIncoming(IndexAccessValue.getValue(), GetIndexAccess);
-        PHIAddress->addIncoming(PHIAddress, Loop);
-
-        Builder.SetInsertPoint(GetIndexAccessEnd);
-        IndexAccessValue.setValue(PHIAddress);
-        IndexAccessValue.setShift(
-            Builder.CreateZExtOrTrunc(Shift, CGM.Int256Ty));
-      }
       llvm::Value *NextInt8Ptr =
           emitEncodePacked(PHIInt8Ptr, IndexAccessValue, IsStateVariable, true);
       llvm::Value *NextIndex =
           Builder.CreateAdd(PHIIndex, Builder.getIntN(32, 1));
+      Builder.CreateBr(EndRecursive);
+      Builder.SetInsertPoint(EndRecursive);
 
       Condition = Builder.CreateICmpULT(NextIndex, ArrayLength);
       Builder.CreateCondBr(Condition, Loop, LoopEnd);
 
       PHIIndex->addIncoming(Index, Start);
-      PHIIndex->addIncoming(NextIndex, Loop);
+      PHIIndex->addIncoming(NextIndex, EndRecursive);
       PHIInt8Ptr->addIncoming(Int8Ptr, Start);
-      PHIInt8Ptr->addIncoming(NextInt8Ptr, Loop);
+      PHIInt8Ptr->addIncoming(NextInt8Ptr, EndRecursive);
 
       Builder.SetInsertPoint(LoopEnd);
+      PHIInt8Ptr = Builder.CreatePHI(CGM.Int8PtrTy, 2);
+      PHIInt8Ptr->addIncoming(Int8Ptr, Start);
+      PHIInt8Ptr->addIncoming(NextInt8Ptr, EndRecursive);
       return PHIInt8Ptr;
     }
     case Type::Category::Struct:
@@ -1060,15 +1044,15 @@ private:
     case Type::Category::Bool: {
       llvm::Value *Result = Value.load(Builder, CGM);
       if (IsArrayElement) {
-        Result = Builder.CreateZExt(Result, CGF.Int256Ty);
+        Result = Builder.CreateZExtOrTrunc(Result, CGF.Int256Ty);
       }
-      return copyToInt8Ptr(Int8Ptr, Builder.CreateZExt(Result, CGF.Int8Ty),
-                           true);
+      return copyToInt8Ptr(Int8Ptr,
+                           Builder.CreateZExtOrTrunc(Result, CGF.Int8Ty), true);
     }
     default: {
       llvm::Value *Result = Value.load(Builder, CGM);
       if (IsArrayElement) {
-        Result = Builder.CreateZExt(Result, CGF.Int256Ty);
+        Result = Builder.CreateZExtOrTrunc(Result, CGF.Int256Ty);
       }
       return copyToInt8Ptr(Int8Ptr, Result, true);
     }
@@ -1100,6 +1084,8 @@ private:
           llvm::BasicBlock::Create(VMContext, "loop", ThisFunc);
       llvm::BasicBlock *LoopEnd =
           llvm::BasicBlock::Create(VMContext, "loop_end", ThisFunc);
+      llvm::BasicBlock *EndRecursive =
+          llvm::BasicBlock::Create(VMContext, "recursive_end", ThisFunc);
 
       const auto *ArrTy = dynamic_cast<const ArrayType *>(Ty);
       llvm::Value *ArrayLengthInt256 =
@@ -1123,18 +1109,6 @@ private:
       }
       llvm::Value *Index = Builder.getIntN(32, 0);
 
-      llvm::BasicBlock *GetIndexAccess = nullptr;
-      llvm::BasicBlock *GetIndexAccessEnd = nullptr;
-      llvm::Value *Shift = nullptr;
-      llvm::PHINode *PHIAddress = nullptr;
-      unsigned ElementPerSlot = getElementPerSlot(IsStateVariable, ArrTy);
-      if (ElementPerSlot > 1) {
-        GetIndexAccess =
-            llvm::BasicBlock::Create(VMContext, "IndexAccess", ThisFunc);
-        GetIndexAccessEnd =
-            llvm::BasicBlock::Create(VMContext, "IndexAccess_end", ThisFunc);
-      }
-
       llvm::Value *Condition = Builder.CreateICmpULT(Index, ArrayLength);
       Builder.CreateCondBr(Condition, Loop, LoopEnd);
 
@@ -1144,32 +1118,14 @@ private:
       if (ArrTy->getElementType()->isDynamic())
         PHIHead = Builder.CreatePHI(CGM.Int8PtrTy, 2);
       llvm::PHINode *PHITail = Builder.CreatePHI(CGM.Int8PtrTy, 2);
-      if (ElementPerSlot > 1) {
-        Shift =
-            Builder.CreateURem(PHIIndex, Builder.getIntN(32, ElementPerSlot));
-        Condition = Builder.CreateICmpEQ(Shift, Builder.getIntN(32, 0));
-        Builder.CreateCondBr(Condition, GetIndexAccess, GetIndexAccessEnd);
 
-        Builder.SetInsertPoint(GetIndexAccess);
-        PHIAddress = Builder.CreatePHI(CGM.Int256PtrTy, 2);
-      }
       ExprValue IndexAccessValue = ExprEmitter(CGF).arrayIndexAccess(
           Value, PHIIndex, ArrTy->getElementType().get(), ArrTy,
           IsStateVariable);
-      if (ElementPerSlot > 1) {
-        Builder.CreateBr(GetIndexAccessEnd);
 
-        PHIAddress->addIncoming(IndexAccessValue.getValue(), GetIndexAccess);
-        PHIAddress->addIncoming(PHIAddress, Loop);
-
-        Builder.SetInsertPoint(GetIndexAccessEnd);
-        IndexAccessValue.setValue(PHIAddress);
-        IndexAccessValue.setShift(
-            Builder.CreateZExtOrTrunc(Shift, CGM.Int256Ty));
-      }
       llvm::Value *NextHead = nullptr;
       if (ArrTy->getElementType()->isDynamic()) {
-        llvm::Value *TailPos = Builder.CreateZExt(
+        llvm::Value *TailPos = Builder.CreateZExtOrTrunc(
             Builder.CreatePtrDiff(PHITail, Int8PtrBegin), CGM.Int256Ty);
         NextHead = copyToInt8Ptr(PHIHead, TailPos, true);
       }
@@ -1177,21 +1133,26 @@ private:
           emitEncode(PHITail, IndexAccessValue, IsStateVariable);
       llvm::Value *NextIndex =
           Builder.CreateAdd(PHIIndex, Builder.getIntN(32, 1));
+      Builder.CreateBr(EndRecursive);
+      Builder.SetInsertPoint(EndRecursive);
 
       Condition = Builder.CreateICmpULT(NextIndex, ArrayLength);
       Builder.CreateCondBr(Condition, Loop, LoopEnd);
 
       PHIIndex->addIncoming(Index, Start);
-      PHIIndex->addIncoming(NextIndex, Loop);
+      PHIIndex->addIncoming(NextIndex, EndRecursive);
       if (ArrTy->getElementType()->isDynamic()) {
         PHIHead->addIncoming(Head, Start);
-        PHIHead->addIncoming(NextHead, Loop);
+        PHIHead->addIncoming(NextHead, EndRecursive);
       }
       PHITail->addIncoming(Tail, Start);
-      PHITail->addIncoming(NextTail, Loop);
+      PHITail->addIncoming(NextTail, EndRecursive);
 
       Builder.SetInsertPoint(LoopEnd);
-      return Tail;
+      PHITail = Builder.CreatePHI(CGM.Int8PtrTy, 2);
+      PHITail->addIncoming(Tail, Start);
+      PHITail->addIncoming(NextTail, EndRecursive);
+      return PHITail;
     }
     case Type::Category::Struct:
     case Type::Category::Tuple:
@@ -1214,7 +1175,7 @@ private:
     }
     default: {
       llvm::Value *Result = Value.load(Builder, CGM);
-      Result = Builder.CreateZExt(Result, CGF.Int256Ty);
+      Result = Builder.CreateZExtOrTrunc(Result, CGF.Int256Ty);
       return copyToInt8Ptr(Int8Ptr, Result, true);
     }
     }
@@ -1232,6 +1193,7 @@ private:
       if (IncreasePtr)
         return Builder.CreateInBoundsGEP(Int8Ptr, {Length});
     } else {
+      Value = CGM.getEndianlessValue(Value);
       llvm::Value *CPtr =
           Builder.CreatePointerCast(Int8Ptr, llvm::PointerType::getUnqual(Ty));
       Builder.CreateStore(Value, CPtr);
@@ -1532,17 +1494,9 @@ llvm::Value *CodeGenFunction::emitAbiEncodePacked(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
   std::vector<std::pair<ExprValue, bool>> Args;
   for (auto Arg : Arguments) {
-    if (auto CE = dynamic_cast<const CastExpr *>(Arg)) {
+    if (auto CE = dynamic_cast<const CastExpr *>(Arg))
       Arg = CE->getSubExpr();
-    }
-    bool IsStateVariable = false; // for array index access
-    if (auto IA = dynamic_cast<const IndexAccess *>(Arg)) {
-      IsStateVariable = IA->isStateVariable();
-    } else if (auto ID = dynamic_cast<const Identifier *>(Arg)) {
-      if (auto *D = dynamic_cast<const VarDecl *>(ID->getCorrespondDecl())) {
-        IsStateVariable = D->isStateVariable();
-      }
-    }
+    bool IsStateVariable = Arg->isStateVariable(); // for array index access
     Args.emplace_back(emitExpr(Arg), IsStateVariable);
   }
   AbiEmitter Emitter(*this);
@@ -1563,17 +1517,9 @@ llvm::Value *CodeGenFunction::emitAbiEncode(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
   std::vector<std::pair<ExprValue, bool>> Args;
   for (auto Arg : Arguments) {
-    if (auto CE = dynamic_cast<const CastExpr *>(Arg)) {
+    if (auto CE = dynamic_cast<const CastExpr *>(Arg))
       Arg = CE->getSubExpr();
-    }
-    bool IsStateVariable = false; // for array index access
-    if (auto IA = dynamic_cast<const IndexAccess *>(Arg)) {
-      IsStateVariable = IA->isStateVariable();
-    } else if (auto ID = dynamic_cast<const Identifier *>(Arg)) {
-      if (auto *D = dynamic_cast<const VarDecl *>(ID->getCorrespondDecl())) {
-        IsStateVariable = D->isStateVariable();
-      }
-    }
+    bool IsStateVariable = Arg->isStateVariable(); // for array index access
     Args.emplace_back(emitExpr(Arg), IsStateVariable);
   }
   AbiEmitter Emitter(*this);
