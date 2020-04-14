@@ -83,7 +83,7 @@ test:wasm:
   before_script:
     - cp ${BASE_BINDIR}/*.wasm ${TEST_ENVDIR}/test
   script:
-    - bash -c "cd ${BASE_BINDIR} && ctest"
+    - bash -c "cd ${BASE_BINDIR} && ctest --output-on-failure"
     - bash -c "cd ${TEST_ENVDIR} && mocha"
     - bash -c "cd ${TEST_ENVDIR} && ./index.js test/switch.wasm '' '{}'"
     - bash -c "cd ${TEST_ENVDIR} && ./index.js test/tuple.wasm '' '{}'"
