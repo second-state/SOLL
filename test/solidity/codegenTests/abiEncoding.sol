@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 // RUN: %soll %s
 pragma solidity ^0.5.0;
+pragma experimental ABIEncoderV2;
 
 contract ABI_encoding {
     uint a;
@@ -34,5 +35,26 @@ contract ABI_encoding {
 
     function encodePackedArray() public payable returns(bytes){
         return abi.encodePacked(Arr1, Arr4, Arr5);
+    }
+
+    struct ST{
+        uint a;
+        int16 b;
+        address c;
+        bool d;
+        string s1;
+        string s2;
+        bytes b1;
+        bytes b2;
+        bytes8 e;
+        int16[7][] Arr1;
+        int32[][2] Arr2;
+        int[][2][] Arr3;
+        int[3][2][] Arr4;
+        int64[] Arr5;
+    }
+    ST st;
+    function encodeStruct() public payable returns(bytes){
+        return abi.encode(st);
     }
 }

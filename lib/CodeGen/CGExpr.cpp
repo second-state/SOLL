@@ -64,6 +64,23 @@ public:
     __builtin_unreachable();
   }
 
+  ExprValue structIndexAccess(const ExprValue &StructValue,
+                              unsigned ElementIndex, const StructType *STy) {
+    auto ET = STy->getElementTypes()[ElementIndex];
+    if (StructValue.getValueKind() == ValueKind::VK_SValue) {
+      llvm::Value *Base = Builder.CreateLoad(StructValue.getValue());
+      llvm::Value *Pos = Builder.getIntN(256, STy->getStoragePos(ElementIndex));
+      llvm::Value *ElemAddress = Builder.CreateAdd(Base, Pos);
+      llvm::Value *Address = Builder.CreateAlloca(CGF.Int256Ty);
+      Builder.CreateStore(ElemAddress, Address);
+      return ExprValue(ET.get(), ValueKind::VK_SValue, Address);
+    } else {
+      llvm::Value *Value = StructValue.load(Builder, CGM);
+      llvm::Value *Element = Builder.CreateExtractValue(Value, {ElementIndex});
+      return ExprValue(ET.get(), ValueKind::VK_LValue, Element);
+    }
+  }
+
   ExprValue arrayIndexAccess(const ExprValue &Base, llvm::Value *IndexValue,
                              const Type *Ty, const ArrayType *ArrTy,
                              bool isStateVariable) {
@@ -624,22 +641,7 @@ private:
           dynamic_cast<const StructType *>(ME->getBase()->getType().get());
       unsigned ElementIndex =
           ST->getElementIndex(ME->getName()->getName().str());
-      if (StructValue.getValueKind() == ValueKind::VK_SValue) {
-        llvm::Value *Base = Builder.CreateLoad(StructValue.getValue());
-        llvm::Value *Pos =
-            Builder.getIntN(256, ST->getStoragePos(ElementIndex));
-        llvm::Value *ElemAddress = Builder.CreateAdd(Base, Pos);
-        llvm::Value *Address = Builder.CreateAlloca(CGF.Int256Ty);
-        Builder.CreateStore(ElemAddress, Address);
-        return ExprValue(ME->getName()->getType().get(), ValueKind::VK_SValue,
-                         Address);
-      } else {
-        llvm::Value *Value = StructValue.load(Builder, CGM);
-        llvm::Value *Element =
-            Builder.CreateExtractValue(Value, {ElementIndex});
-        return ExprValue(ME->getName()->getType().get(), ValueKind::VK_LValue,
-                         Element);
-      }
+      return structIndexAccess(StructValue, ElementIndex, ST);
     }
 
     assert(false && "unsupported non-special member access");
@@ -942,7 +944,17 @@ private:
       PHISize->addIncoming(NextSize, EndRecursive);
       return PHISize;
     }
-    case Type::Category::Struct:
+    case Type::Category::Struct: {
+      const auto *STy = dynamic_cast<const StructType *>(Ty);
+      std::vector<std::pair<ExprValue, bool>> Values;
+      bool IsStateVariable = Value.getValueKind() == ValueKind::VK_SValue;
+      unsigned ElementSize = STy->getElementSize();
+      for (unsigned i = 0; i < ElementSize; ++i) {
+        Values.emplace_back(ExprEmitter(CGF).structIndexAccess(Value, i, STy),
+                            IsStateVariable);
+      }
+      return getEncodeTupleSize(Values);
+    }
     case Type::Category::Tuple:
     case Type::Category::Contract:
     case Type::Category::Function:
@@ -1154,7 +1166,17 @@ private:
       PHITail->addIncoming(NextTail, EndRecursive);
       return PHITail;
     }
-    case Type::Category::Struct:
+    case Type::Category::Struct: {
+      const auto *STy = dynamic_cast<const StructType *>(Ty);
+      std::vector<std::pair<ExprValue, bool>> Values;
+      bool IsStateVariable = Value.getValueKind() == ValueKind::VK_SValue;
+      unsigned ElementSize = STy->getElementSize();
+      for (unsigned i = 0; i < ElementSize; ++i) {
+        Values.emplace_back(ExprEmitter(CGF).structIndexAccess(Value, i, STy),
+                            IsStateVariable);
+      }
+      return emitEncodeTuple(Int8Ptr, Values);
+    }
     case Type::Category::Tuple:
       assert(false && "This type is not supported currently for abi.encode");
       __builtin_unreachable();
