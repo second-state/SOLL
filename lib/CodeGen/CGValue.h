@@ -53,8 +53,12 @@ public:
       case Type::Category::String:
       case Type::Category::Bytes: {
         llvm::Function *ThisFunc = Builder.GetInsertBlock()->getParent();
-        llvm::Function *StorageLoad =
-            CGM.getModule().getFunction("ethereum.storageLoad");
+        llvm::Function *StorageLoad = nullptr;
+        if (CGM.isEVM()) {
+          StorageLoad = CGM.getModule().getFunction("llvm.evm.sload");
+        } else if (CGM.isEWASM()) {
+          StorageLoad = CGM.getModule().getFunction("ethereum.storageLoad");
+        }
         llvm::BasicBlock *InlineSlot =
             llvm::BasicBlock::Create(CGM.getLLVMContext(), "inline", ThisFunc);
         llvm::BasicBlock *ExtendSlot =
@@ -93,8 +97,8 @@ public:
                                1);
         llvm::Value *InlinePtr =
             Builder.CreateAlloca(CGM.Int8Ty, Builder.getInt16(32));
-        CGM.emitMemcpy(Builder.CreateBitCast(InlinePtr, CGM.Int8PtrTy),
-                       Builder.CreateBitCast(ValPtr, CGM.Int8PtrTy),
+        CGM.emitMemcpy(Builder.CreateBitCast(InlinePtr, CGM.BytesElemPtrTy),
+                       Builder.CreateBitCast(ValPtr, CGM.BytesElemPtrTy),
                        Builder.CreateZExtOrTrunc(InlineLength, CGM.Int32Ty));
         Builder.CreateBr(Done);
 
@@ -128,9 +132,17 @@ public:
         llvm::PHINode *PHIAddress = Builder.CreatePHI(CGM.Int256Ty, 2);
         llvm::PHINode *PHIAddressPtr = Builder.CreatePHI(CGM.Int256PtrTy, 2);
         Builder.CreateStore(CGM.getEndianlessValue(PHIAddress), PHIAddressPtr);
-        Builder.CreateCall(
-            StorageLoad,
-            {PHIAddressPtr, Builder.CreateBitCast(PHIPtr, CGM.Int256PtrTy)});
+        if (CGM.isEVM()) {
+          llvm::Value *LoadV = Builder.CreateCall(
+              StorageLoad,
+              {CGM.getEndianlessValue(Builder.CreateLoad(PHIAddressPtr))});
+          Builder.CreateStore(CGM.getEndianlessValue(LoadV),
+                              Builder.CreateBitCast(PHIPtr, CGM.Int256PtrTy));
+        } else if (CGM.isEWASM()) {
+          Builder.CreateCall(
+              StorageLoad,
+              {PHIAddressPtr, Builder.CreateBitCast(PHIPtr, CGM.Int256PtrTy)});
+        }
         llvm::Value *NextRemain =
             Builder.CreateSub(PHIRemain, Builder.getIntN(256, 32));
         llvm::Value *NextAddress =
@@ -165,9 +177,16 @@ public:
         AddressPtr = Builder.CreateAlloca(CGM.Int256Ty);
         Builder.CreateStore(CGM.getEndianlessValue(PHIAddress), AddressPtr);
         ValPtr = Builder.CreateAlloca(CGM.Int256Ty);
-        Builder.CreateCall(StorageLoad, {AddressPtr, ValPtr});
-        CGM.emitMemcpy(Builder.CreateBitCast(PHIPtr, CGM.Int8PtrTy),
-                       Builder.CreateBitCast(ValPtr, CGM.Int8PtrTy),
+        if (CGM.isEVM()) {
+          llvm::Value *LoadV = Builder.CreateCall(
+              StorageLoad,
+              {CGM.getEndianlessValue(Builder.CreateLoad(AddressPtr))});
+          Builder.CreateStore(CGM.getEndianlessValue(LoadV), ValPtr);
+        } else if (CGM.isEWASM()) {
+          Builder.CreateCall(StorageLoad, {AddressPtr, ValPtr});
+        }
+        CGM.emitMemcpy(Builder.CreateBitCast(PHIPtr, CGM.BytesElemPtrTy),
+                       Builder.CreateBitCast(ValPtr, CGM.BytesElemPtrTy),
                        Builder.CreateZExtOrTrunc(PHIRemain, CGM.Int32Ty));
         Builder.CreateBr(Done);
 
@@ -271,8 +290,8 @@ public:
         // +----------+----------+---------+-------+
 
         Builder.SetInsertPoint(InlineSlot);
-        CGM.emitMemcpy(Builder.CreateBitCast(ValPtr, CGM.Int8PtrTy),
-                       Builder.CreateBitCast(Ptr, CGM.Int8PtrTy),
+        CGM.emitMemcpy(Builder.CreateBitCast(ValPtr, CGM.BytesElemPtrTy),
+                       Builder.CreateBitCast(Ptr, CGM.BytesElemPtrTy),
                        Builder.CreateZExtOrTrunc(Length, CGM.Int32Ty));
         llvm::Value *Val = Builder.CreateLoad(ValPtr);
         Val = Builder.CreateOr(Val, CGM.getEndianlessValue(LengthEncode));
@@ -349,8 +368,8 @@ public:
         AddressPtr = Builder.CreateAlloca(CGM.Int256Ty);
         Builder.CreateStore(CGM.getEndianlessValue(PHIAddress), AddressPtr);
         ValPtr = Builder.CreateAlloca(CGM.Int256Ty);
-        CGM.emitMemcpy(Builder.CreateBitCast(ValPtr, CGM.Int8PtrTy),
-                       Builder.CreateBitCast(PHIPtr, CGM.Int8PtrTy),
+        CGM.emitMemcpy(Builder.CreateBitCast(ValPtr, CGM.BytesElemPtrTy),
+                       Builder.CreateBitCast(PHIPtr, CGM.BytesElemPtrTy),
                        Builder.CreateZExtOrTrunc(PHIRemain, CGM.Int32Ty));
         CGM.emitStorageStore(Builder.CreateLoad(AddressPtr),
                              Builder.CreateLoad(ValPtr));

@@ -77,8 +77,26 @@ void CodeGenModule::initTypes() {
   Int160PtrTy = AddressPtrTy;
   Int256PtrTy = llvm::Type::getIntNPtrTy(VMContext, 256);
 
-  BytesTy = llvm::StructType::create(VMContext, {Int256Ty, Int8PtrTy}, "bytes");
-  StringTy = llvm::StructType::create(VMContext, {Int256Ty, Int8PtrTy},
+  if (isEVM()) {
+    ArgsElemTy = Int256Ty;
+    ArgsElemPtrTy = Int256PtrTy;
+    BytesElemTy = Int256Ty;
+    BytesElemPtrTy = Int256PtrTy;
+    ReturnElemTy = Int256Ty;
+    ReturnElemPtrTy = Int256PtrTy;
+  } else if (isEWASM()) {
+    ArgsElemTy = Int8Ty;
+    ArgsElemPtrTy = Int8PtrTy;
+    BytesElemTy = Int8Ty;
+    BytesElemPtrTy = Int8PtrTy;
+    ReturnElemTy = Int8Ty;
+    ReturnElemPtrTy = Int8PtrTy;
+  } else {
+    __builtin_unreachable();
+  }
+  BytesTy =
+      llvm::StructType::create(VMContext, {Int256Ty, BytesElemPtrTy}, "bytes");
+  StringTy = llvm::StructType::create(VMContext, {Int256Ty, BytesElemPtrTy},
                                       "string", false);
 
   EVMIntTy = Int256Ty;
@@ -710,7 +728,8 @@ void CodeGenModule::initHelperDeclaration() {
   }
 
   Func_memcpy = llvm::Function::Create(
-      llvm::FunctionType::get(VoidTy, {Int8PtrTy, Int8PtrTy, Int32Ty}, false),
+      llvm::FunctionType::get(VoidTy, {BytesElemPtrTy, BytesElemPtrTy, Int32Ty},
+                              false),
       llvm::Function::InternalLinkage, "solidity.memcpy", TheModule);
   Func_memcpy->addFnAttr(llvm::Attribute::NoUnwind);
   initMemcpy();
@@ -820,8 +839,8 @@ void CodeGenModule::initMemcpy() {
   Builder.CreateCondBr(Cmp, Loop, Return);
 
   Builder.SetInsertPoint(Loop);
-  llvm::PHINode *SrcPHI = Builder.CreatePHI(Int8PtrTy, 2);
-  llvm::PHINode *DstPHI = Builder.CreatePHI(Int8PtrTy, 2);
+  llvm::PHINode *SrcPHI = Builder.CreatePHI(BytesElemPtrTy, 2);
+  llvm::PHINode *DstPHI = Builder.CreatePHI(BytesElemPtrTy, 2);
   llvm::PHINode *LengthPHI = Builder.CreatePHI(Int32Ty, 2);
 
   llvm::Value *Value = Builder.CreateLoad(SrcPHI);
@@ -1310,7 +1329,7 @@ void CodeGenModule::emitABIStore(const Type *Ty, llvm::StringRef Name,
         Builder.CreateAlloca(Int256Ty, nullptr, Name + ".ret.ptr");
     Builder.CreateStore(RetB, RetPtr);
     llvm::Value *RetVPtr =
-        Builder.CreateBitCast(RetPtr, Int8PtrTy, Name + ".ret.vptr");
+        Builder.CreateBitCast(RetPtr, ReturnElemPtrTy, Name + ".ret.vptr");
     emitFinish(RetVPtr, Builder.getInt32(32));
     break;
   }
@@ -1328,7 +1347,7 @@ void CodeGenModule::emitABIStore(const Type *Ty, llvm::StringRef Name,
     llvm::Value *RetSize = Builder.CreateAdd(RetLenTrunc, Builder.getInt32(32),
                                              Name + ".ret.size");
     llvm::Value *RetPtr =
-        Builder.CreateAlloca(Int8Ty, RetSize, Name + ".ret.ptr");
+        Builder.CreateAlloca(BytesElemTy, RetSize, Name + ".ret.ptr");
     llvm::Value *RetLenVPtr =
         Builder.CreateInBoundsGEP(RetPtr, {Builder.getInt32(0)});
     llvm::Value *RetLenPtr =
@@ -1342,7 +1361,7 @@ void CodeGenModule::emitABIStore(const Type *Ty, llvm::StringRef Name,
     Builder.CreateCall(Func_memcpy, {RetDataPtr, RetData, RetLenTrunc});
 
     llvm::Value *RetVPtr =
-        Builder.CreateBitCast(RetPtr, Int8PtrTy, Name + ".ret.vptr");
+        Builder.CreateBitCast(RetPtr, ReturnElemPtrTy, Name + ".ret.vptr");
     emitFinish(RetVPtr, Builder.CreateTrunc(RetSize, Int32Ty));
     break;
   }
@@ -1364,8 +1383,8 @@ void CodeGenModule::emitABILoad(const FunctionDecl *FD,
   if (ABIStaticSize > 0) {
     auto *ArgsBuf = Builder.CreateAlloca(
         Int8Ty, Builder.getInt32(ABIStaticSize), MangledName + ".args.buf");
-    auto *ArgsPtr =
-        Builder.CreateBitCast(ArgsBuf, Int8PtrTy, MangledName + ".args.ptr");
+    auto *ArgsPtr = Builder.CreateBitCast(ArgsBuf, ArgsElemPtrTy,
+                                          MangledName + ".args.ptr");
     emitCallDataCopy(ArgsPtr, Builder.getInt32(4),
                      Builder.getInt32(ABIStaticSize));
 
@@ -1390,10 +1409,16 @@ void CodeGenModule::emitABILoad(const FunctionDecl *FD,
       Builder.CreateBr(DynamicLoader);
 
       Builder.SetInsertPoint(DynamicLoader);
-      llvm::Value *SizeBuf = Builder.CreateAlloca(Int8Ty, Builder.getInt32(32),
-                                                  MangledName + ".size.buf");
-      llvm::Value *SizePtr =
-          Builder.CreateBitCast(SizeBuf, Int8PtrTy, MangledName + ".size.ptr");
+      llvm::IntegerType *BufferTy = Int8Ty;
+      llvm::PointerType *BufferPtrTy = Int8PtrTy;
+      if (isEVM()) {
+        BufferTy = Int256Ty;
+        BufferPtrTy = Int256PtrTy;
+      }
+      llvm::Value *SizeBuf = Builder.CreateAlloca(
+          BufferTy, Builder.getInt32(32), MangledName + ".size.buf");
+      llvm::Value *SizePtr = Builder.CreateBitCast(SizeBuf, BufferPtrTy,
+                                                   MangledName + ".size.ptr");
       for (size_t I : ArgsDynamic) {
         llvm::StringRef Name = Fparams[I]->getName();
         llvm::Value *Base =
@@ -1407,7 +1432,7 @@ void CodeGenModule::emitABILoad(const FunctionDecl *FD,
         llvm::Value *ValB = Builder.CreateLoad(Int256Ty, Ptr, Name + ".size.b");
         llvm::Value *DynamicSize = getEndianlessValue(ValB);
         llvm::Value *ArgDynPtr =
-            Builder.CreateAlloca(Int8Ty, DynamicSize, Name + ".dyn.ptr");
+            Builder.CreateAlloca(ArgsElemTy, DynamicSize, Name + ".dyn.ptr");
         emitCallDataCopy(
             ArgDynPtr,
             Builder.CreateAdd(Base, Builder.getInt32(36), Name + ".offset"),
@@ -1697,6 +1722,11 @@ bool CodeGenModule::isDynamicType(llvm::Type *Ty) {
 
 llvm::Value *
 CodeGenModule::emitConcateBytes(llvm::ArrayRef<llvm::Value *> Values) {
+  unsigned BitWidth = 8;
+  if (isEVM()) {
+    BitWidth = 256;
+  }
+
   llvm::Value *ArrayLength = Builder.getInt32(0);
   for (llvm::Value *Value : Values) {
     llvm::Type *Ty = Value->getType();
@@ -1706,11 +1736,11 @@ CodeGenModule::emitConcateBytes(llvm::ArrayRef<llvm::Value *> Values) {
       ArrayLength = Builder.CreateAdd(ArrayLength, Length);
     } else {
       ArrayLength = Builder.CreateAdd(
-          ArrayLength, Builder.getInt32(Ty->getIntegerBitWidth() / 8));
+          ArrayLength, Builder.getInt32(Ty->getIntegerBitWidth() / BitWidth));
     }
   }
 
-  llvm::Value *Array = Builder.CreateAlloca(Int8Ty, ArrayLength, "concat");
+  llvm::Value *Array = Builder.CreateAlloca(BytesElemTy, ArrayLength, "concat");
   llvm::Value *Index = Builder.getInt32(0);
   for (llvm::Value *Value : Values) {
     llvm::Value *Ptr = Builder.CreateInBoundsGEP(Array, {Index});
@@ -1719,15 +1749,16 @@ CodeGenModule::emitConcateBytes(llvm::ArrayRef<llvm::Value *> Values) {
       llvm::Value *Length = Builder.CreateZExtOrTrunc(
           Builder.CreateExtractValue(Value, {0}), Int32Ty);
       llvm::Value *SrcBytes = Builder.CreateExtractValue(Value, {1});
-      Builder.CreateCall(Func_memcpy, {Builder.CreateBitCast(Ptr, Int8PtrTy),
-                                       SrcBytes, Length});
+      Builder.CreateCall(
+          Func_memcpy,
+          {Builder.CreateBitCast(Ptr, BytesElemPtrTy), SrcBytes, Length});
       Index = Builder.CreateAdd(Index, Length);
     } else {
       llvm::Value *CPtr =
           Builder.CreatePointerCast(Ptr, llvm::PointerType::getUnqual(Ty));
       Builder.CreateStore(Value, CPtr);
-      Index = Builder.CreateAdd(Index,
-                                Builder.getInt32(Ty->getIntegerBitWidth() / 8));
+      Index = Builder.CreateAdd(
+          Index, Builder.getInt32(Ty->getIntegerBitWidth() / BitWidth));
     }
   }
 
@@ -1935,7 +1966,7 @@ llvm::Value *CodeGenModule::emitReturnDataSize() {
 
 llvm::Value *CodeGenModule::emitReturnDataCopyBytes(llvm::Value *DataOffset,
                                                     llvm::Value *DataLength) {
-  llvm::Value *ResultOffset = Builder.CreateAlloca(Int8Ty, DataLength);
+  llvm::Value *ResultOffset = Builder.CreateAlloca(ReturnElemTy, DataLength);
   if (isEVM()) {
     auto DestOffset = Builder.CreatePtrToInt(ResultOffset, EVMIntTy);
     auto Offset = Builder.CreateZExtOrTrunc(DataOffset, EVMIntTy);

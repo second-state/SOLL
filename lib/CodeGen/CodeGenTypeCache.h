@@ -22,8 +22,16 @@ struct CodeGenTypeCache {
   /// i160*
   llvm::PointerType *AddressPtrTy, *Int160PtrTy;
 
+  /// args types
+  llvm::IntegerType *ArgsElemTy;
+  llvm::PointerType *ArgsElemPtrTy;
+  /// return types
+  llvm::IntegerType *ReturnElemTy;
+  llvm::PointerType *ReturnElemPtrTy;
   /// bytes
   llvm::StructType *BytesTy;
+  llvm::IntegerType *BytesElemTy;
+  llvm::PointerType *BytesElemPtrTy;
   /// String
   llvm::StructType *StringTy;
 
