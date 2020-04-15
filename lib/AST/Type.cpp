@@ -34,4 +34,22 @@ bool IntegerType::isExplicitlyConvertibleTo(Type const &_convertTo) const {
     return false;
   }
 }
+
+bool TupleType::isImplicitlyConvertibleTo(Type const &_other) const {
+  if (_other.getCategory() != Category::Integer) {
+    return false;
+  }
+  TupleType const &convertTo = dynamic_cast<TupleType const &>(_other);
+  bool result = true;
+  std::size_t num = ElementTypes.size();
+
+  for (std::size_t idx = 0; idx < num; ++idx)
+    result &= ElementTypes[idx]->isImplicitlyConvertibleTo(
+        *convertTo.getElementTypes()[idx]);
+  return result;
+}
+
+bool TupleType::isExplicitlyConvertibleTo(Type const &_convertTo) const {
+  return false;
+}
 } // namespace soll

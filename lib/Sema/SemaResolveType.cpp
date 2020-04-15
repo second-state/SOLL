@@ -572,6 +572,18 @@ void Sema::resolveImplicitCast(ImplicitCastExpr &IC, TypePtr DstTy,
   if (!SrcTy) {
     return;
   }
+  if (SrcTy->getCategory() == Type::Category::Tuple) {
+    assert(DstTy->getCategory() == Type::Category::Tuple);
+    auto SrcTup = dynamic_cast<TupleExpr *>(IC.getSubExpr());
+    auto DstTupTy = dynamic_cast<const TupleType *>(DstTy.get());
+    std::size_t Num = SrcTup->getComponents().size();
+    for (std::size_t Idx = 0; Idx < Num; ++Idx) {
+      auto TIC = dynamic_cast<ImplicitCastExpr *>(SrcTup->getComponents()[Idx]);
+      if (TIC)
+        resolveImplicitCast(*TIC, DstTupTy->getElementTypes()[Idx],
+                            PrefereLValue);
+    }
+  }
   if (DstTy->isEqual(*SrcTy)) {
     IC.setType(SrcTy);
     if (!PrefereLValue) {

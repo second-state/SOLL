@@ -392,6 +392,8 @@ public:
   TupleType(std::vector<TypePtr> &&ETys) : ElementTypes(std::move(ETys)) {}
 
   const std::vector<TypePtr> &getElementTypes() const { return ElementTypes; }
+  bool isImplicitlyConvertibleTo(Type const &_other) const override;
+  bool isExplicitlyConvertibleTo(Type const &_convertTo) const override;
 
   Category getCategory() const override { return Category::Tuple; }
   std::string getName() const override { return "tuple"; }

@@ -1356,6 +1356,11 @@ std::unique_ptr<Stmt> Parser::parseSimpleStatement() {
           SourceRange(Begin, End), std::move(Comps.back())));
     }
 
+    for (auto &comp : Comps) {
+      if (comp)
+        comp = Actions.CreateDummy(std::move(comp));
+    }
+
     return parseExpression(std::make_unique<TupleExpr>(
         SourceRange(Begin, End), std::move(Comps), IsArray));
   }
@@ -1827,6 +1832,10 @@ std::unique_ptr<Expr> Parser::parsePrimaryExpression() {
       Expression = std::make_unique<ParenExpr>(SourceRange(Begin, End),
                                                std::move(Comps.back()));
     } else {
+      for (auto &comp : Comps) {
+        if (comp)
+          comp = Actions.CreateDummy(std::move(comp));
+      }
       Expression = std::make_unique<TupleExpr>(SourceRange(Begin, End),
                                                std::move(Comps), IsArray);
     }

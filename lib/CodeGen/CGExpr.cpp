@@ -432,8 +432,9 @@ private:
     const Type *OrigInTy = CE->getSubExpr()->getType().get();
     const Type *OrigOutTy = CE->getType().get();
     // TODO: check InVal is tuple
-    llvm::Value *In = InVal->load(Builder, CGM);
-
+    llvm::Value *In = nullptr;
+    if (!InVal->isTuple())
+      In = InVal->load(Builder, CGM);
     switch (CE->getCastKind()) {
     case CastKind::None:
       assert(false);
