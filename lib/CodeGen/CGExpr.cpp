@@ -394,11 +394,12 @@ private:
         // XXX: it's should be allowed in assembly only
         llvm::Value *Dst =
             Builder.CreateAlloca(CGM.Int8Ty, Builder.getInt16(32));
+        llvm::Value *Ptr = Builder.CreateBitCast(Dst, CGM.Int256PtrTy);
+        Builder.CreateStore(Builder.getIntN(256, 0), Ptr);
         llvm::Value *Length = Builder.CreateExtractValue(In, {0});
         llvm::Value *Src = Builder.CreateExtractValue(In, {1});
         CGM.emitMemcpy(Dst, Src,
                        Builder.CreateZExtOrTrunc(Length, CGM.Int32Ty));
-        llvm::Value *Ptr = Builder.CreateBitCast(Dst, CGM.Int256PtrTy);
         return ExprValue::getRValue(
             CE, CGM.getEndianlessValue(Builder.CreateLoad(Ptr)));
       }
