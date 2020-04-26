@@ -67,30 +67,30 @@ public:
     __builtin_unreachable();
   }
 
-  ExprValue structIndexAccess(const ExprValue &StructValue,
+  ExprValuePtr structIndexAccess(const ExprValuePtr StructValue,
                               unsigned ElementIndex, const StructType *STy) {
     auto ET = STy->getElementTypes()[ElementIndex];
-    if (StructValue.getValueKind() == ValueKind::VK_SValue) {
-      llvm::Value *Base = Builder.CreateLoad(StructValue.getValue());
+    if (StructValue->getValueKind() == ValueKind::VK_SValue) {
+      llvm::Value *Base = Builder.CreateLoad(StructValue->getValue());
       llvm::Value *Pos = Builder.getIntN(256, STy->getStoragePos(ElementIndex));
       llvm::Value *ElemAddress = Builder.CreateAdd(Base, Pos);
       llvm::Value *Address = Builder.CreateAlloca(CGF.Int256Ty);
       Builder.CreateStore(ElemAddress, Address);
-      return ExprValue(ET.get(), ValueKind::VK_SValue, Address);
+      return std::make_shared<ExprValue>(ET.get(), ValueKind::VK_SValue, Address);
     } else {
-      llvm::Value *Value = StructValue.load(Builder, CGM);
+      llvm::Value *Value = StructValue->load(Builder, CGM);
       llvm::Value *Element = Builder.CreateExtractValue(Value, {ElementIndex});
-      return ExprValue(ET.get(), ValueKind::VK_LValue, Element);
+      return std::make_shared<ExprValue>(ET.get(), ValueKind::VK_LValue, Element);
     }
   }
 
-  ExprValue arrayIndexAccess(const ExprValue &Base, llvm::Value *IndexValue,
+  ExprValuePtr arrayIndexAccess(const ExprValuePtr &Base, llvm::Value *IndexValue,
                              const Type *Ty, const ArrayType *ArrTy,
                              bool isStateVariable) {
     // Array Type : Fixed Size Mem Array, Fixed Sized Storage Array, Dynamic
     // Sized Storage Array
     // Require Index to be unsigned 256-bit Int
-    llvm::Value *Value = Base.getValue();
+    llvm::Value *Value = Base->getValue();
     if (!isStateVariable) {
       // TODO : Assume only fixSized Integer Array
       llvm::Value *ArraySize = Builder.getInt(ArrTy->getLength());
@@ -98,7 +98,7 @@ public:
       llvm::Value *Address = Builder.CreateInBoundsGEP(
           CGF.getCodeGenModule().getLLVMType(ArrTy), Value,
           {Builder.getIntN(256, 0), IndexValue});
-      return ExprValue(Ty, ValueKind::VK_LValue, Address);
+      return std::make_shared<ExprValue>(Ty, ValueKind::VK_LValue, Address);
     }
 
     llvm::Value *Pos = Builder.CreateLoad(Value);
@@ -133,13 +133,13 @@ public:
           Pos, Builder.CreateZExtOrTrunc(StorageIndex, Pos->getType()));
       llvm::Value *Address = Builder.CreateAlloca(CGF.Int256Ty);
       Builder.CreateStore(ElemAddress, Address);
-      return ExprValue(Ty, ValueKind::VK_SValue, Address, Shift);
+      return std::make_shared<ExprValue>(Ty, ValueKind::VK_SValue, Address, Shift);
     } else {
       llvm::Value *ElemAddress = Builder.CreateAdd(
           Pos, Builder.CreateZExtOrTrunc(IndexValue, Pos->getType()));
       llvm::Value *Address = Builder.CreateAlloca(CGF.Int256Ty);
       Builder.CreateStore(ElemAddress, Address);
-      return ExprValue(Ty, ValueKind::VK_SValue, Address);
+      return std::make_shared<ExprValue>(Ty, ValueKind::VK_SValue, Address);
     }
   }
 
@@ -639,7 +639,7 @@ private:
 
         // load array position
         llvm::Value *Bytes =
-            CGM.emitConcateBytes({CGM.getEndianlessValue(Pos)});
+            CGM.emitConcatBytes({CGM.getEndianlessValue(Pos)});
         Pos = CGM.emitKeccak256(Bytes);
       } else {
         // Fixed Size Storage Array
@@ -802,10 +802,10 @@ public:
       : CGF(CGF), CGM(CGF.getCodeGenModule()), Builder(CGF.getBuilder()),
         VMContext(CGF.getLLVMContext()) {}
   llvm::Value *getEncodePackedTupleSize(
-      const std::vector<std::pair<ExprValue, bool>> &Values) {
+      const std::vector<std::pair<ExprValuePtr, bool>> &Values) {
     llvm::Value *Size = Builder.getIntN(32, 0);
     for (const auto &V : Values) {
-      ExprValue Value;
+      ExprValuePtr Value;
       bool IsStateVariable;
       std::tie(Value, IsStateVariable) = V;
       Size =
@@ -814,13 +814,13 @@ public:
     return Size;
   }
   llvm::Value *
-  getEncodeTupleSize(const std::vector<std::pair<ExprValue, bool>> &Values) {
+  getEncodeTupleSize(const std::vector<std::pair<ExprValuePtr, bool>> &Values) {
     llvm::Value *Size = Builder.getIntN(32, 0);
     for (const auto &V : Values) {
-      ExprValue Value;
+      ExprValuePtr Value;
       bool IsStateVariable;
       std::tie(Value, IsStateVariable) = V;
-      if (Value.getType()->isDynamic()) {
+      if (Value->getType()->isDynamic()) {
         Size = Builder.CreateAdd(Size, Builder.getIntN(32, 32));
       }
       Size = Builder.CreateAdd(Size, getEncodeSize(Value, IsStateVariable));
@@ -829,9 +829,9 @@ public:
   }
   llvm::Value *
   emitEncodePackedTuple(llvm::Value *Int8Ptr,
-                        const std::vector<std::pair<ExprValue, bool>> &Values) {
+                        const std::vector<std::pair<ExprValuePtr, bool>> &Values) {
     for (const auto &V : Values) {
-      ExprValue Value;
+      ExprValuePtr Value;
       bool IsStateVariable;
       std::tie(Value, IsStateVariable) = V;
       Int8Ptr = emitEncodePacked(Int8Ptr, Value, IsStateVariable);
@@ -840,14 +840,14 @@ public:
   }
   llvm::Value *
   emitEncodeTuple(llvm::Value *Int8Ptr,
-                  const std::vector<std::pair<ExprValue, bool>> &Values) {
+                  const std::vector<std::pair<ExprValuePtr, bool>> &Values) {
     llvm::Value *Int8PtrBegin = Int8Ptr;
     std::vector<std::pair<llvm::Value *, size_t>> DynamicPos;
     for (size_t i = 0; i < Values.size(); ++i) {
-      ExprValue Value;
+      ExprValuePtr Value;
       bool IsStateVariable;
       std::tie(Value, IsStateVariable) = Values[i];
-      if (Value.getType()->isDynamic()) {
+      if (Value->getType()->isDynamic()) {
         DynamicPos.emplace_back(Int8Ptr, i);
         Int8Ptr = Builder.CreateInBoundsGEP(Int8Ptr, {Builder.getIntN(32, 32)});
       } else {
@@ -858,7 +858,7 @@ public:
       llvm::Value *Head;
       size_t i;
       std::tie(Head, i) = DP;
-      ExprValue Value;
+      ExprValuePtr Value;
       bool IsStateVariable;
       std::tie(Value, IsStateVariable) = Values[i];
       llvm::Value *TailPos = Builder.CreateZExtOrTrunc(
@@ -870,10 +870,10 @@ public:
   }
 
 private:
-  llvm::Value *getArrayLength(const ExprValue &Base, const ArrayType *ArrTy) {
+  llvm::Value *getArrayLength(const ExprValuePtr &Base, const ArrayType *ArrTy) {
     if (ArrTy->isDynamicSized()) {
       auto LengthTy = IntegerType::getIntN(256);
-      llvm::Value *Value = Base.load(Builder, CGM);
+      llvm::Value *Value = Base->load(Builder, CGM);
       ExprValue BaseLength(&LengthTy, ValueKind::VK_SValue, Value);
       return BaseLength.load(Builder, CGM);
     } else {
@@ -887,13 +887,13 @@ private:
     unsigned ElementPerSlot = 256 / BitPerElement;
     return ElementPerSlot;
   }
-  llvm::Value *getEncodePackedSize(const ExprValue &Value,
+  llvm::Value *getEncodePackedSize(const ExprValuePtr &Value,
                                    bool IsStateVariable) {
-    const Type *Ty = Value.getType();
+    const Type *Ty = Value->getType();
     switch (Ty->getCategory()) {
     case Type::Category::String:
     case Type::Category::Bytes: {
-      llvm::Value *Bytes = Value.load(Builder, CGM);
+      llvm::Value *Bytes = Value->load(Builder, CGM);
       llvm::Value *Length = Builder.CreateZExtOrTrunc(
           Builder.CreateExtractValue(Bytes, {0}), CGF.Int32Ty);
       return Length;
@@ -934,7 +934,7 @@ private:
       llvm::PHINode *PHIIndex = Builder.CreatePHI(CGM.Int32Ty, 2);
       llvm::PHINode *PHISize = Builder.CreatePHI(CGM.Int32Ty, 2);
 
-      ExprValue IndexAccessValue = ExprEmitter(CGF).arrayIndexAccess(
+      ExprValuePtr IndexAccessValue = ExprEmitter(CGF).arrayIndexAccess(
           Value, PHIIndex, ArrTy->getElementType().get(), ArrTy,
           IsStateVariable);
 
@@ -974,12 +974,12 @@ private:
       return Builder.getIntN(32, Ty->getBitNum() / 8);
     }
   }
-  llvm::Value *getEncodeSize(const ExprValue &Value, bool IsStateVariable) {
-    const Type *Ty = Value.getType();
+  llvm::Value *getEncodeSize(const ExprValuePtr &Value, bool IsStateVariable) {
+    const Type *Ty = Value->getType();
     switch (Ty->getCategory()) {
     case Type::Category::String:
     case Type::Category::Bytes: {
-      llvm::Value *Bytes = Value.load(Builder, CGM);
+      llvm::Value *Bytes = Value->load(Builder, CGM);
       llvm::Value *Length = Builder.CreateZExtOrTrunc(
           Builder.CreateExtractValue(Bytes, {0}), CGF.Int32Ty);
       return Builder.CreateMul(
@@ -1025,7 +1025,7 @@ private:
       llvm::PHINode *PHIIndex = Builder.CreatePHI(CGM.Int32Ty, 2);
       llvm::PHINode *PHISize = Builder.CreatePHI(CGM.Int32Ty, 2);
 
-      ExprValue IndexAccessValue = ExprEmitter(CGF).arrayIndexAccess(
+      ExprValuePtr IndexAccessValue = ExprEmitter(CGF).arrayIndexAccess(
           Value, PHIIndex, ArrTy->getElementType().get(), ArrTy,
           IsStateVariable);
 
@@ -1052,8 +1052,8 @@ private:
     }
     case Type::Category::Struct: {
       const auto *STy = dynamic_cast<const StructType *>(Ty);
-      std::vector<std::pair<ExprValue, bool>> Values;
-      bool IsStateVariable = Value.getValueKind() == ValueKind::VK_SValue;
+      std::vector<std::pair<ExprValuePtr, bool>> Values;
+      bool IsStateVariable = Value->getValueKind() == ValueKind::VK_SValue;
       unsigned ElementSize = STy->getElementSize();
       for (unsigned i = 0; i < ElementSize; ++i) {
         Values.emplace_back(ExprEmitter(CGF).structIndexAccess(Value, i, STy),
@@ -1072,10 +1072,10 @@ private:
       return Builder.getIntN(32, Ty->getABIStaticSize());
     }
   }
-  llvm::Value *emitEncodePacked(llvm::Value *Int8Ptr, const ExprValue &Value,
+  llvm::Value *emitEncodePacked(llvm::Value *Int8Ptr, const ExprValuePtr &Value,
                                 bool IsStateVariable,
                                 bool IsArrayElement = false) {
-    const Type *Ty = Value.getType();
+    const Type *Ty = Value->getType();
     switch (Ty->getCategory()) {
     case Type::Category::String:
     case Type::Category::Bytes: {
@@ -1084,7 +1084,7 @@ private:
                "This type is not available currently for abi.encodePacked");
         __builtin_unreachable();
       }
-      llvm::Value *Bytes = Value.load(Builder, CGM);
+      llvm::Value *Bytes = Value->load(Builder, CGM);
       return copyToInt8Ptr(Int8Ptr, Bytes, true);
     }
     case Type::Category::Array: {
@@ -1114,7 +1114,7 @@ private:
       llvm::PHINode *PHIIndex = Builder.CreatePHI(CGM.Int32Ty, 2);
       llvm::PHINode *PHIInt8Ptr = Builder.CreatePHI(CGM.Int8PtrTy, 2);
 
-      ExprValue IndexAccessValue = ExprEmitter(CGF).arrayIndexAccess(
+      ExprValuePtr IndexAccessValue = ExprEmitter(CGF).arrayIndexAccess(
           Value, PHIIndex, ArrTy->getElementType().get(), ArrTy,
           IsStateVariable);
 
@@ -1148,7 +1148,7 @@ private:
              "This type is not available currently for abi.encodePacked");
       __builtin_unreachable();
     case Type::Category::FixedBytes: {
-      llvm::Value *Result = Value.load(Builder, CGM);
+      llvm::Value *Result = Value->load(Builder, CGM);
       Int8Ptr = copyToInt8Ptr(Int8Ptr, Result, true);
       if (IsArrayElement) {
         const auto *FixedBytesTy = dynamic_cast<const FixedBytesType *>(Ty);
@@ -1160,7 +1160,7 @@ private:
       return Int8Ptr;
     }
     case Type::Category::Bool: {
-      llvm::Value *Result = Value.load(Builder, CGM);
+      llvm::Value *Result = Value->load(Builder, CGM);
       if (IsArrayElement) {
         Result = Builder.CreateZExtOrTrunc(Result, CGF.Int256Ty);
       }
@@ -1168,7 +1168,7 @@ private:
                            Builder.CreateZExtOrTrunc(Result, CGF.Int8Ty), true);
     }
     default: {
-      llvm::Value *Result = Value.load(Builder, CGM);
+      llvm::Value *Result = Value->load(Builder, CGM);
       if (IsArrayElement) {
         Result = Builder.CreateZExtOrTrunc(Result, CGF.Int256Ty);
       }
@@ -1176,13 +1176,13 @@ private:
     }
     }
   }
-  llvm::Value *emitEncode(llvm::Value *Int8Ptr, const ExprValue &Value,
+  llvm::Value *emitEncode(llvm::Value *Int8Ptr, const ExprValuePtr &Value,
                           bool IsStateVariable) {
-    const Type *Ty = Value.getType();
+    const Type *Ty = Value->getType();
     switch (Ty->getCategory()) {
     case Type::Category::String:
     case Type::Category::Bytes: {
-      llvm::Value *Bytes = Value.load(Builder, CGM);
+      llvm::Value *Bytes = Value->load(Builder, CGM);
       llvm::Value *Length = Builder.CreateZExtOrTrunc(
           Builder.CreateExtractValue(Bytes, {0}), CGF.Int32Ty);
       llvm::Value *PadRightLength = Builder.CreateURem(
@@ -1237,7 +1237,7 @@ private:
         PHIHead = Builder.CreatePHI(CGM.Int8PtrTy, 2);
       llvm::PHINode *PHITail = Builder.CreatePHI(CGM.Int8PtrTy, 2);
 
-      ExprValue IndexAccessValue = ExprEmitter(CGF).arrayIndexAccess(
+      ExprValuePtr IndexAccessValue = ExprEmitter(CGF).arrayIndexAccess(
           Value, PHIIndex, ArrTy->getElementType().get(), ArrTy,
           IsStateVariable);
 
@@ -1274,8 +1274,8 @@ private:
     }
     case Type::Category::Struct: {
       const auto *STy = dynamic_cast<const StructType *>(Ty);
-      std::vector<std::pair<ExprValue, bool>> Values;
-      bool IsStateVariable = Value.getValueKind() == ValueKind::VK_SValue;
+      std::vector<std::pair<ExprValuePtr, bool>> Values;
+      bool IsStateVariable = Value->getValueKind() == ValueKind::VK_SValue;
       unsigned ElementSize = STy->getElementSize();
       for (unsigned i = 0; i < ElementSize; ++i) {
         Values.emplace_back(ExprEmitter(CGF).structIndexAccess(Value, i, STy),
@@ -1292,7 +1292,7 @@ private:
       assert(false && "This type is not available currently for abi.encode");
       __builtin_unreachable();
     case Type::Category::FixedBytes: {
-      llvm::Value *Result = Value.load(Builder, CGM);
+      llvm::Value *Result = Value->load(Builder, CGM);
       Int8Ptr = copyToInt8Ptr(Int8Ptr, Result, true);
       const auto *FixedBytesTy = dynamic_cast<const FixedBytesType *>(Ty);
       unsigned PadRightLength = 32 - FixedBytesTy->getBitNum() / 8;
@@ -1302,7 +1302,7 @@ private:
       return Int8Ptr;
     }
     default: {
-      llvm::Value *Result = Value.load(Builder, CGM);
+      llvm::Value *Result = Value->load(Builder, CGM);
       Result = Builder.CreateZExtOrTrunc(Result, CGF.Int256Ty);
       return copyToInt8Ptr(Int8Ptr, Result, true);
     }
@@ -1333,7 +1333,7 @@ private:
   }
 };
 
-ExprValue CodeGenFunction::emitExpr(const Expr *E) {
+ExprValuePtr CodeGenFunction::emitExpr(const Expr *E) {
   return ExprEmitter(*this).visit(E);
 }
 
@@ -1620,7 +1620,7 @@ llvm::Value *CodeGenFunction::emitCallAddressSend(const CallExpr *CE,
 llvm::Value *CodeGenFunction::emitAbiEncodePacked(const CallExpr *CE) {
   // abi_encodePacked
   auto Arguments = CE->getArguments();
-  std::vector<std::pair<ExprValue, bool>> Args;
+  std::vector<std::pair<ExprValuePtr, bool>> Args;
   for (auto Arg : Arguments) {
     if (auto CE = dynamic_cast<const CastExpr *>(Arg))
       Arg = CE->getSubExpr();
@@ -1643,7 +1643,7 @@ llvm::Value *CodeGenFunction::emitAbiEncodePacked(const CallExpr *CE) {
 llvm::Value *CodeGenFunction::emitAbiEncode(const CallExpr *CE) {
   // abi_encode
   auto Arguments = CE->getArguments();
-  std::vector<std::pair<ExprValue, bool>> Args;
+  std::vector<std::pair<ExprValuePtr, bool>> Args;
   for (auto Arg : Arguments) {
     if (auto CE = dynamic_cast<const CastExpr *>(Arg))
       Arg = CE->getSubExpr();
