@@ -95,7 +95,7 @@ In this guide, we will list all Solidity language features and briefly summarize
 - Modifier declaration and usage
   - Keyword `modifier` is not yet supported.
   - Developers should extend their modifier logic into function body directly
-- Multiple contracts declartion.
+- Multiple contracts declaration.
   - Developers can declare only one contract in a single file.
 - Contract inheritance
   - Keyword `is` is not yet supported.

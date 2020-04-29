@@ -32,7 +32,7 @@ If you want to execute ewasm compiled from Yul, refer to the [DevGuide](DevGuide
 
 Below will describe some under implement language features.
 
-|                                             feature                                              |                           item                           |         exmaple         |
+|                                             feature                                              |                           item                           |         example         |
 |--------------------------------------------------------------------------------------------------|----------------------------------------------------------|-------------------------|
 | statement                                                                                        | Switch with string literal                               | case ""                 |
 | [Yul built-in function](https://solidity.readthedocs.io/en/v0.5.12/yul.html#low-level-functions) | logic not/and/or/xor <br>(conflict with inline assembly) |                         |
