@@ -1,5 +1,32 @@
 [//]: # (SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception)
 
+### 0.1.0 (2020-04-29)
+
+Language Features:
+
+* Solidity:
+    * Support abi.encode and abi.encodePacked. (including array type) [Experimental]
+
+Compiler Features:
+
+* Support optimization options:
+    * `--O0`: Disable optimizations
+    * `--O1`: Enable trivial optimizations
+    * `--O2`: Enable default optimizations
+    * `--O3`: Enable expensive optimizations
+    * `--Os`: Enable default optimizations for size
+    * `--Oz`: Enable expensive optimizations for size
+* Support EVM backend via [EVM\_LLVM 8](https://github.com/etclabscore/evm_llvm/tree/evm_80)
+    * In current stage, SOLL will generate LLVM IR for EVM backend target only.
+    * Developers should use generated LLVM IR files and compile them with llc from EVM\_LLVM 8 to get EVM bytecodes.
+    * Disable integer lowering when using EVM backend. Only allow 256 bits integer type.
+
+Bugfixes:
+
+* Fix bad APInt trunc in parser
+* Fix bad array size and index trunc in codegen
+* Fix syntax error on `revert()` and array access
+
 ### 0.0.6 (2020-03-31)
 
 Language Features:

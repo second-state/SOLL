@@ -52,11 +52,11 @@ To get started with our demonstration, you will need to prepare two components a
 > docker pull secondstate/soll
 ```
 
-- Get Source Code from Github and checkout to the latest version, 0.0.6.
+- Get Source Code from Github and checkout to the latest version, 0.1.0.
 ```bash
 > git clone --recursive https://github.com/second-state/soll.git
 > cd soll
-> git checkout 0.0.6
+> git checkout 0.1.0
 ```
 
 ## 3.2 Launch Environment
@@ -203,6 +203,12 @@ at block: 1115129 (Tue, 07 Apr 2020 06:51:46 UTC)
 // Initialize txhash for storing transaction hash of deployed contract.
 > var txhash = "0x";
 
+// Create deployment parameters
+> var params = {
+    from: fromAccount,
+    data: bytecode,
+    gas: 5000000
+};
 
 // Deploy smart contract
 > contract.new(params,

@@ -54,8 +54,8 @@ Below will describe some under implement language features.
 |                                                                                                  | extcodesize                                              |                         |
 |                                                                                                  | extcodecopy                                              |                         |
 |                                                                                                  | extcodehash                                              |                         |
-|                                                                                                  | *datasize (see below)                                    |                         |
-|                                                                                                  | *dataoffset (see below)                                  |                         |
+|                                                                                                  | \*datasize (see below)                                    |                         |
+|                                                                                                  | \*dataoffset (see below)                                  |                         |
 |                                                                                                  | discard                                                  |                         |
 |                                                                                                  | discardu256                                              |                         |
 |                                                                                                  | splitu256tou64                                           |                         |
