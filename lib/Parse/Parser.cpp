@@ -1313,11 +1313,17 @@ std::unique_ptr<Stmt> Parser::parseSimpleStatement() {
   LookAheadInfo StatementType;
   IndexAccessedPath Iap;
   std::unique_ptr<Expr> Expression;
+  size_t EmptyComponents = 0;
 
   bool IsParenExpr = false;
   if (isTokenParen()) {
     ConsumeParen();
     IsParenExpr = true;
+
+    while (Tok.getKind() == tok::comma) {
+      ExpectAndConsume(tok::comma);
+      EmptyComponents++;
+    }
   }
 
   std::tie(StatementType, Iap) = tryParseIndexAccessedPath();
@@ -1332,9 +1338,13 @@ std::unique_ptr<Stmt> Parser::parseSimpleStatement() {
     assert(false && "Unhandle statement.");
   }
   if (IsParenExpr) {
-    std::vector<ExprPtr> Comps;
+    std::vector<ExprPtr> Comps(EmptyComponents);
     bool ReachComma = false;
     Comps.emplace_back(std::move(Expression));
+
+    if (EmptyComponents != 0) { // already meet
+      ReachComma = true;
+    }
 
     while (Tok.getKind() != tok::r_paren) {
       ExpectAndConsume(tok::comma);
