@@ -151,7 +151,7 @@ contract LMSRMarketMaker is MarketMaker {
 
         // finally, if the distribution looks like [BIG, tiny, tiny...], using a
         // BIG offset will cause the tiny quantities to go really negative
-        // causing the associated exponentials to vanish.
+        // causing the associated exponential to vanish.
 
         int maxQuantity = Math.max(netOutcomeTokensSold);
         require(logN >= 0 && int(funding) >= 0);

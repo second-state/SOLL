@@ -198,7 +198,7 @@ contract ico is safeMath {
 
     function setICOEthPrice(uint256 value) external {
         /*
-            Setting of the ICO ETC USD rates which can only be calle by a pre-defined address.
+            Setting of the ICO ETC USD rates which can only be callee by a pre-defined address.
             After this function is completed till the call of the next function (which is at least an exchangeRateDelay array) this rate counts.
             With this process avoiding the sudden rate changes.
 
