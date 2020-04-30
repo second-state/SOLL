@@ -32,7 +32,7 @@ contract Struct {
         c.b.a.a = 6;
         //b.m[71] = 22;
         //a.d[2] = 8;
-        a.c[2] = 8;
+        //a.c[2] = 8;
         //return a.c[2];
     }
 }
