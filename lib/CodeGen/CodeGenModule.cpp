@@ -239,7 +239,7 @@ void CodeGenModule::initEVMOpcodeDeclaration() {
   Func_storageLoad->addFnAttr(llvm::Attribute::NoUnwind);
 
   // evm_caller
-  FT = llvm::FunctionType::get(AddressTy, {}, false);
+  FT = llvm::FunctionType::get(EVMIntTy, {}, false);
   Func_getCaller = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
                                           "llvm.evm.caller", TheModule);
   Func_getCaller->addFnAttr(EVMAttr);
@@ -1791,7 +1791,8 @@ llvm::Value *CodeGenModule::emitGetCallValue() {
 
 llvm::Value *CodeGenModule::emitGetCaller() {
   if (isEVM()) {
-    return Builder.CreateCall(Func_getCaller, {});
+    llvm::Value *Address = Builder.CreateCall(Func_getCaller, {});
+    return Builder.CreateZExtOrTrunc(Address, AddressTy);
   } else if (isEWASM()) {
     llvm::Value *ValPtr = Builder.CreateAlloca(AddressTy);
     Builder.CreateCall(Func_getCaller, {ValPtr});
