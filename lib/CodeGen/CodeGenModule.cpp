@@ -418,7 +418,7 @@ void CodeGenModule::initEVMOpcodeDeclaration() {
       llvm::Attribute::get(VMContext, "evm", "balance"));
 
   // getAddress
-  FT = llvm::FunctionType::get(VoidTy, {AddressPtrTy}, false);
+  FT = llvm::FunctionType::get(EVMIntTy, {}, false);
   Func_getAddress = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
                                            "llvm.evm.address", TheModule);
   Func_getAddress->addFnAttr(EVMAttr);
@@ -2257,7 +2257,8 @@ llvm::Value *CodeGenModule::emitGetExternalBalance(llvm::Value *Address) {
 
 llvm::Value *CodeGenModule::emitGetAddress() {
   if (isEVM()) {
-    return Builder.CreateCall(Func_getAddress, {});
+    llvm::Value *Val = Builder.CreateCall(Func_getAddress, {});
+    return Builder.CreateZExtOrTrunc(Val, AddressTy);
   } else if (isEWASM()) {
     llvm::Value *ValPtr = Builder.CreateAlloca(AddressTy);
     Builder.CreateCall(Func_getAddress, {ValPtr});
