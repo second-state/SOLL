@@ -68,7 +68,7 @@ public:
   }
 
   ExprValuePtr structIndexAccess(const ExprValuePtr StructValue,
-                              unsigned ElementIndex, const StructType *STy) {
+                                 unsigned ElementIndex, const StructType *STy) {
     auto ET = STy->getElementTypes()[ElementIndex];
     if (StructValue->getValueKind() == ValueKind::VK_SValue) {
       llvm::Value *Base = Builder.CreateLoad(StructValue->getValue());
@@ -76,17 +76,19 @@ public:
       llvm::Value *ElemAddress = Builder.CreateAdd(Base, Pos);
       llvm::Value *Address = Builder.CreateAlloca(CGF.Int256Ty);
       Builder.CreateStore(ElemAddress, Address);
-      return std::make_shared<ExprValue>(ET.get(), ValueKind::VK_SValue, Address);
+      return std::make_shared<ExprValue>(ET.get(), ValueKind::VK_SValue,
+                                         Address);
     } else {
       llvm::Value *Value = StructValue->load(Builder, CGM);
       llvm::Value *Element = Builder.CreateExtractValue(Value, {ElementIndex});
-      return std::make_shared<ExprValue>(ET.get(), ValueKind::VK_LValue, Element);
+      return std::make_shared<ExprValue>(ET.get(), ValueKind::VK_LValue,
+                                         Element);
     }
   }
 
-  ExprValuePtr arrayIndexAccess(const ExprValuePtr &Base, llvm::Value *IndexValue,
-                             const Type *Ty, const ArrayType *ArrTy,
-                             bool isStateVariable) {
+  ExprValuePtr arrayIndexAccess(const ExprValuePtr &Base,
+                                llvm::Value *IndexValue, const Type *Ty,
+                                const ArrayType *ArrTy, bool isStateVariable) {
     // Array Type : Fixed Size Mem Array, Fixed Sized Storage Array, Dynamic
     // Sized Storage Array
     // Require Index to be unsigned 256-bit Int
@@ -133,7 +135,8 @@ public:
           Pos, Builder.CreateZExtOrTrunc(StorageIndex, Pos->getType()));
       llvm::Value *Address = Builder.CreateAlloca(CGF.Int256Ty);
       Builder.CreateStore(ElemAddress, Address);
-      return std::make_shared<ExprValue>(Ty, ValueKind::VK_SValue, Address, Shift);
+      return std::make_shared<ExprValue>(Ty, ValueKind::VK_SValue, Address,
+                                         Shift);
     } else {
       llvm::Value *ElemAddress = Builder.CreateAdd(
           Pos, Builder.CreateZExtOrTrunc(IndexValue, Pos->getType()));
@@ -218,10 +221,10 @@ private:
     if (BO->isAssignmentOp()) {
       ExprValuePtr LHSVar = visit(BO->getLHS());
       ExprValuePtr RHSVar = visit(BO->getRHS());
-      // TODO : Fix this
-      llvm::Value *RHSVal = RHSVar->load(Builder, CGM);
+      llvm::Value *RHSVal =
+          RHSVar->isTuple() ? nullptr : RHSVar->load(Builder, CGM);
       if (BO->getOpcode() == BO_Assign) {
-        if (LHSVar->isTuple() || RHSVar->isTuple()) {
+        if (LHSVar->isTuple() && RHSVar->isTuple()) {
           assert(LHSVar->isTuple());
           assert(RHSVar->isTuple());
 
@@ -431,7 +434,6 @@ private:
 
     const Type *OrigInTy = CE->getSubExpr()->getType().get();
     const Type *OrigOutTy = CE->getType().get();
-    // TODO: check InVal is tuple
     llvm::Value *In = nullptr;
     if (!InVal->isTuple())
       In = InVal->load(Builder, CGM);
@@ -522,8 +524,7 @@ private:
 
   ExprValuePtr visit(const TupleExpr *TE) {
     if (TE->isInlineArray()) {
-      // TODO
-      assert(false);
+      assert(false && "InlineArray is not yet supported");
     } else {
       std::vector<ExprValuePtr> Values;
       std::vector<TypePtr> Types;
@@ -638,8 +639,7 @@ private:
         emitCheckArrayOutOfBound(ArraySize, IndexValue);
 
         // load array position
-        llvm::Value *Bytes =
-            CGM.emitConcatBytes({CGM.getEndianlessValue(Pos)});
+        llvm::Value *Bytes = CGM.emitConcatBytes({CGM.getEndianlessValue(Pos)});
         Pos = CGM.emitKeccak256(Bytes);
       } else {
         // Fixed Size Storage Array
@@ -827,9 +827,9 @@ public:
     }
     return Size;
   }
-  llvm::Value *
-  emitEncodePackedTuple(llvm::Value *Int8Ptr,
-                        const std::vector<std::pair<ExprValuePtr, bool>> &Values) {
+  llvm::Value *emitEncodePackedTuple(
+      llvm::Value *Int8Ptr,
+      const std::vector<std::pair<ExprValuePtr, bool>> &Values) {
     for (const auto &V : Values) {
       ExprValuePtr Value;
       bool IsStateVariable;
@@ -870,7 +870,8 @@ public:
   }
 
 private:
-  llvm::Value *getArrayLength(const ExprValuePtr &Base, const ArrayType *ArrTy) {
+  llvm::Value *getArrayLength(const ExprValuePtr &Base,
+                              const ArrayType *ArrTy) {
     if (ArrTy->isDynamicSized()) {
       auto LengthTy = IntegerType::getIntN(256);
       llvm::Value *Value = Base->load(Builder, CGM);

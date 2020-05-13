@@ -5,13 +5,13 @@ namespace soll {
 
 bool IntegerType::isImplicitlyConvertibleTo(Type const &_other) const {
   if (_other.getCategory() == Category::Integer) {
-    IntegerType const &convertTo = dynamic_cast<IntegerType const &>(_other);
-    if (this->getBitNum() > convertTo.getBitNum())
+    IntegerType const &ConvertTo = dynamic_cast<IntegerType const &>(_other);
+    if (this->getBitNum() > ConvertTo.getBitNum())
       return false;
     else if (this->isSigned())
-      return convertTo.isSigned();
+      return ConvertTo.isSigned();
     else
-      return !convertTo.isSigned() || convertTo.getBitNum() > this->getBitNum();
+      return !ConvertTo.isSigned() || ConvertTo.getBitNum() > this->getBitNum();
   }
   if (_other.getCategory() == Category::Bool) {
     return true;

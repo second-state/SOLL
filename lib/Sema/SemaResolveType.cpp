@@ -93,7 +93,7 @@ bool isAllowedForTypecast(const Type *In, const Type *Out, bool IsLiteral, const
     auto InT = dynamic_cast<const TupleType *>(In);
     auto OutT = dynamic_cast<const TupleType *>(Out);
     auto TupleE = dynamic_cast<const TupleExpr *>(SE);
-    assert (TupleE);
+    assert (TupleE && "expect SE is a TupleExpr");
     if (InT->getElementTypes().size() != OutT->getElementTypes().size()) {
       return false;
     }

@@ -1366,9 +1366,9 @@ std::unique_ptr<Stmt> Parser::parseSimpleStatement() {
           SourceRange(Begin, End), std::move(Comps.back())));
     }
 
-    for (auto &comp : Comps) {
-      if (comp)
-        comp = Actions.CreateDummy(std::move(comp));
+    for (auto &Comp : Comps) {
+      if (Comp)
+        Comp = Actions.CreateDummy(std::move(Comp));
     }
 
     return parseExpression(std::make_unique<TupleExpr>(
@@ -1825,6 +1825,7 @@ std::unique_ptr<Expr> Parser::parsePrimaryExpression() {
           Comps.emplace_back(parseExpression());
         } else if (IsArray) {
           // Expected expression (inline array elements cannot be omitted).
+          Diag(diag::err_unimplemented_inline_array);
         } else {
           Comps.emplace_back(ExprPtr());
         }

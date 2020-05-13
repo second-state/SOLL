@@ -509,13 +509,13 @@ class TupleExpr : public Expr {
   bool IsArray;
 
 public:
-  TupleExpr(SourceRange L, std::vector<ExprPtr> &&comps, bool IsArr)
-      : Expr(L), Components(std::move(comps)), IsArray(IsArr) {
+  TupleExpr(SourceRange L, std::vector<ExprPtr> &&Comps, bool IsArr)
+      : Expr(L), Components(std::move(Comps)), IsArray(IsArr) {
     std::vector<TypePtr> Types;
     // Notes : All element are warpped by ImplicitCastExpr
-    for (const auto &comp : Components) {
-      if (comp) {
-        const Expr *A = comp.get();
+    for (const auto &Comp : Components) {
+      if (Comp) {
+        const Expr *A = Comp.get();
         auto CastR = dynamic_cast<const ImplicitCastExpr *>(A);
         Types.emplace_back(CastR->getSubExpr()->getType());
       } else {

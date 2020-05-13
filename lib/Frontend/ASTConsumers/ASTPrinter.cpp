@@ -433,10 +433,9 @@ void ASTPrinter::visit(CallExprType &call) {
 
 void ASTPrinter::visit(TupleExprType &tuple) {
   os() << indent() << "Tuple \n";
-  //ConstStmtVisitor::visit(tuple);
-  for (auto comps:tuple.getComponents()) {
-    if (comps) {
-      comps->accept(*this);
+  for (auto Comps:tuple.getComponents()) {
+    if (Comps) {
+      Comps->accept(*this);
     } else {
       os() << indent() << "(empty) \n";
       unindent();

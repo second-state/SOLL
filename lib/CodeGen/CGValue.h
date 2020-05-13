@@ -2,7 +2,6 @@
 #include "CodeGenModule.h"
 #include "soll/AST/Expr.h"
 #include "soll/AST/ExprAsm.h"
-#include <iostream>
 #include <llvm/IR/Value.h>
 #include <memory>
 #include <vector>
@@ -39,7 +38,6 @@ public:
   llvm::Value *load(T &Builder, CodeGenModule &CGM,
                     llvm::StringRef Name = "") const {
     if (isTuple() || isSlot()) {
-      std::cerr << "## alert! Try load tuple from ExprVal!" << std::endl;
       return nullptr;
     }
 
@@ -452,7 +450,7 @@ public:
     for (auto &Val : Values) {
       // TODO: Val is also maybe a ExprValueTuple
       // we need a super class to store llvm::Value *
-      assert(!Val->isTuple());
+      assert(!Val->isTuple() && "Recursive tuple is not yet supported");
       result.emplace_back(std::move(Val->load(Builder, CGM)));
     }
     return result;
@@ -466,7 +464,7 @@ public:
     for (size_t Idx = 0; Idx < Size; ++Idx) {
       // TODO: Val is also maybe a ExprValueTuple
       // we need a super class to store llvm::Value *
-      assert(!Values[Idx]->isTuple());
+      assert(!Values[Idx]->isTuple() && "Recursive tuple is not yet supported");
       Values[Idx]->store(Builder, CGM, Vals[Idx]);
     }
 
