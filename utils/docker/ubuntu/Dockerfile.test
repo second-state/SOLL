@@ -1,19 +1,11 @@
 ARG BASE=secondstate/soll:ubuntu-base
 FROM ${BASE}
 
-RUN apt update \
-    && apt install -y \
-        cmake \
-        llvm-8-tools \
-        python-psutil \
-        software-properties-common
+RUN wget -O - https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash
+ENV NVM_DIR="$HOME/.nvm"
 
-RUN wget --quiet -O - https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add - \
-    && apt-add-repository 'deb https://deb.nodesource.com/node_10.x xenial main'
+RUN bash -i -c "nvm install v14.5.0" \
+    bash -i -c "nvm use v14.5.0" \
+    bash -i -c "npm install -g mocha"
 
-RUN apt update \
-    && apt install -y \
-        nodejs
 RUN rm -rf /var/lib/apt/lists/*
-
-RUN npm install -g mocha

@@ -3,9 +3,7 @@ FROM ${BASE}
 
 RUN apt update \
     && apt install -y \
-        lld-8 \
+        lld-10 \
+        wabt \
         xxd
 RUN rm -rf /var/lib/apt/lists/*
-RUN wget https://github.com/WebAssembly/wabt/releases/download/1.0.11/wabt-1.0.11-linux.tar.gz \
-    && tar zxvf wabt-1.0.11-linux.tar.gz \
-    && cp -f wabt-1.0.11/* /usr/local/bin/

@@ -3,29 +3,9 @@ FROM ${BASE}
 
 RUN apt update \
     && apt install -y \
-        cmake \
-        g++ \
+        g++-9 \
         gcovr \
-        llvm-8-tools \
-        liblld-8-dev \
-        python-psutil \
         git
 RUN rm -rf /var/lib/apt/lists/*
-
-#WORKDIR /
-#RUN git clone --single-branch --branch EVM \
-#        https://github.com/etclabscore/evm_llvm.git
-
-#RUN mkdir -p /evm_llvm_build
-#WORKDIR /evm_llvm_build
-#RUN cmake -DCMAKE_INSTALL_PREFIX=/evm_llvm_build \
-#        -DLLVM_ENABLE_RTTI=ON \
-#        -DCMAKE_BUILD_TYPE="Release" \
-#        -DLLVM_TARGETS_TO_BUILD="WebAssembly" -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD="EVM" \
-#        /evm_llvm \
-#    && make llc -j8 \
-#    && cmake --build . --target install -- -j 8
-
-#ENV LLVM_DIR=/evm_llvm_build
 
 WORKDIR /

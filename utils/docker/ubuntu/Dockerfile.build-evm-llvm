@@ -3,7 +3,6 @@ FROM ${BASE}
 
 RUN apt update \
     && apt install -y \
-        python-psutil \
         git
 RUN rm -rf /var/lib/apt/lists/*
 
@@ -27,7 +26,7 @@ RUN cmake -DCMAKE_INSTALL_PREFIX=/evm_llvm_build \
     && cmake --build . --target install -- -j 8
 
 ENV LLVM_DIR=/evm_llvm_build
-ENV CC=clang-8
-ENV CXX=clang++-8
+ENV CC=clang-10
+ENV CXX=clang++-10
 
 WORKDIR /
