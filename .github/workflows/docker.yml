@@ -1,0 +1,180 @@
+name: build_docker_images
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+    paths:
+      - utils/docker/ubuntu/**
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  Rebuild-SOLL-ubuntu-base:
+    name: SOLL-ubuntu-base
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: "Rebuild secondstate/soll:ubuntu-base"
+        uses: docker/build-push-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
+          repository: secondstate/soll
+          tags: ubuntu-base
+          add_git_labels: true
+          path: utils/docker/ubuntu
+          dockerfile: utils/docker/ubuntu/Dockerfile.base
+          always_pull: true
+
+  Rebuild-SOLL-ubuntu-gcc:
+    name: SOLL-ubuntu-gcc
+    needs: Rebuild-SOLL-ubuntu-base
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: "Rebuild secondstate/soll:ubuntu-gcc"
+        uses: docker/build-push-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
+          repository: secondstate/soll
+          tags: ubuntu-gcc
+          add_git_labels: true
+          path: utils/docker/ubuntu
+          dockerfile: utils/docker/ubuntu/Dockerfile.build-gcc
+          always_pull: true
+          build_args: BASE=secondstate/soll:ubuntu-base
+
+  Rebuild-SOLL-ubuntu-clang:
+    name: SOLL-ubuntu-clang
+    needs: Rebuild-SOLL-ubuntu-base
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: "Rebuild secondstate/soll:ubuntu-clang"
+        uses: docker/build-push-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
+          repository: secondstate/soll
+          tags: ubuntu-clang
+          add_git_labels: true
+          path: utils/docker/ubuntu
+          dockerfile: utils/docker/ubuntu/Dockerfile.build-clang
+          always_pull: true
+          build_args: BASE=secondstate/soll:ubuntu-base
+
+  Rebuild-SOLL-ubuntu-compile:
+    name: SOLL-ubuntu-compile
+    needs: Rebuild-SOLL-ubuntu-base
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: "Rebuild secondstate/soll:ubuntu-compile"
+        uses: docker/build-push-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
+          repository: secondstate/soll
+          tags: ubuntu-compile
+          add_git_labels: true
+          path: utils/docker/ubuntu
+          dockerfile: utils/docker/ubuntu/Dockerfile.compile
+          always_pull: true
+          build_args: BASE=secondstate/soll:ubuntu-base
+
+  Rebuild-SOLL-ubuntu-test:
+    name: SOLL-ubuntu-test
+    needs: Rebuild-SOLL-ubuntu-base
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: "Rebuild secondstate/soll:ubuntu-test"
+        uses: docker/build-push-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
+          repository: secondstate/soll
+          tags: ubuntu-test
+          add_git_labels: true
+          path: utils/docker/ubuntu
+          dockerfile: utils/docker/ubuntu/Dockerfile.test
+          always_pull: true
+          build_args: BASE=secondstate/soll:ubuntu-base
+
+  Rebuild-SOLL-ubuntu-coverage:
+    name: SOLL-ubuntu-coverage
+    needs: Rebuild-SOLL-ubuntu-base
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: "Rebuild secondstate/soll:ubuntu-coverage"
+        uses: docker/build-push-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
+          repository: secondstate/soll
+          tags: ubuntu-coverage
+          add_git_labels: true
+          path: utils/docker/ubuntu
+          dockerfile: utils/docker/ubuntu/Dockerfile.coverage
+          always_pull: true
+          build_args: BASE=secondstate/soll:ubuntu-base
+
+  Rebuild-SOLL-im-gcc-compile:
+    name: SOLL-im-gcc-compile
+    needs: Rebuild-SOLL-ubuntu-gcc
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: "Rebuild secondstate/soll:im-gcc-compile"
+        uses: docker/build-push-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
+          repository: secondstate/soll
+          tags: im-gcc-compile
+          add_git_labels: true
+          path: utils/docker/ubuntu
+          dockerfile: utils/docker/ubuntu/Dockerfile.compile
+          always_pull: true
+          build_args: BASE=secondstate/soll:ubuntu-gcc
+
+  Rebuild-SOLL-latset:
+    name: SOLL-compile
+    needs: Rebuild-SOLL-im-gcc-compile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: "Rebuild secondstate/soll:latest"
+        uses: docker/build-push-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
+          repository: secondstate/soll
+          tags: latest
+          add_git_labels: true
+          path: utils/docker/ubuntu
+          dockerfile: utils/docker/ubuntu/Dockerfile.test
+          always_pull: true
+          build_args: BASE=secondstate/soll:im-gcc-compile
