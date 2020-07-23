@@ -28,8 +28,8 @@ docker_build Dockerfile.build-gcc       ubuntu-gcc          \
     --build-arg "BASE=${NAME}:ubuntu-base"
 docker_build Dockerfile.build-clang     ubuntu-clang        \
     --build-arg "BASE=${NAME}:ubuntu-base"
-docker_build Dockerfile.build-evm-llvm  ubuntu-evm-llvm     \
-    --build-arg "BASE=${NAME}:ubuntu-clang"
+#docker_build Dockerfile.build-evm-llvm  ubuntu-evm-llvm     \
+#    --build-arg "BASE=${NAME}:ubuntu-clang"
 docker_build Dockerfile.compile         ubuntu-compile      \
     --build-arg "BASE=${NAME}:ubuntu-base"
 docker_build Dockerfile.test            ubuntu-test         \

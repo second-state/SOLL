@@ -3,7 +3,7 @@ FROM ${BASE}
 
 RUN apt update \
     && apt install -y \
-        cmake \
-        g++ \
-        make
+        g++-9
 RUN rm -rf /var/lib/apt/lists/*
+
+ENV CXX=g++-9
