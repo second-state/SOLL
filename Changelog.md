@@ -1,5 +1,12 @@
 [//]: # (SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception)
 
+### 0.1.0 (2020-07-23)
+
+Dependencies:
+
+* Update llvm from 8 to 10
+* Update pre-built docker images
+
 ### 0.1.0 (2020-04-29)
 
 Language Features:
