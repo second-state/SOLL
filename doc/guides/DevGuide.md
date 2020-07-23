@@ -57,11 +57,11 @@ soll
 > docker pull secondstate/soll
 ```
 
-- Get Source Code from Github and checkout to the latest version, 0.1.0.
+- Get Source Code from Github and checkout to the latest version, 0.1.1.
 ```bash
 > git clone --recursive https://github.com/second-state/soll.git
 > cd soll
-> git checkout 0.1.0
+> git checkout 0.1.1
 ```
 
 ### Launch Docker Environment
