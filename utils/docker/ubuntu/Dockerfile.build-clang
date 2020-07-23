@@ -3,15 +3,8 @@ FROM ${BASE}
 
 RUN apt update \
     && apt install -y \
-        software-properties-common
-RUN apt update \
-    && apt install -y \
-        cmake \
-        clang-8 \
-        make
-RUN apt install -y \
-        llvm-8-tools \
-        python-psutil
+        clang-10
+
 RUN rm -rf /var/lib/apt/lists/*
 
-ENV CXX=clang++-8
+ENV CXX=clang++-10
