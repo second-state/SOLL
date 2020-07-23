@@ -45,6 +45,21 @@ To get started with our demonstration, you will need to prepare two components a
 
 - **SOLL** https://github.com/second-state/soll
 
+- If you want to set up the working environment by yourself, please install the following dependencies:
+  - Our docker image is based on Ubuntu 20.04
+  - llvm-10-dev
+  - llvm-10-tools
+  - liblld-10-dev
+  - cmake
+  - make
+  - wget
+  - python-psutil
+  - binaryen
+  - wabt
+  - clang-10 or g++-9
+
+- After SOLL 0.1.1, we use llvm-10 instead of llvm-8, if you want to build the older version of SOLL, please use this docker image: `secondstate/soll:0.1.0`.
+
 ## 3.1 Preparation
 
 - Pull official docker image to get an already established build/execute environment.
@@ -52,11 +67,11 @@ To get started with our demonstration, you will need to prepare two components a
 > docker pull secondstate/soll
 ```
 
-- Get Source Code from Github and checkout to the latest version, 0.1.0.
+- Get Source Code from Github and checkout to the latest version, 0.1.1.
 ```bash
 > git clone --recursive https://github.com/second-state/soll.git
 > cd soll
-> git checkout 0.1.0
+> git checkout 0.1.1
 ```
 
 ## 3.2 Launch Environment
