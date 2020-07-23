@@ -8,6 +8,7 @@
 #include <llvm/IR/ConstantFolder.h>
 #include <llvm/IR/DiagnosticInfo.h>
 #include <llvm/IR/IRBuilder.h>
+#include "llvm/Support/Alignment.h"
 #include <llvm/Support/ToolOutputFile.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 
@@ -120,7 +121,7 @@ private:
                                         llvm::GlobalValue::PrivateLinkage,
                                         StrConstant, FuncName + ".data");
     GV->setUnnamedAddr(llvm::GlobalValue::UnnamedAddr::Global);
-    GV->setAlignment(1);
+    GV->setAlignment(llvm::MaybeAlign(1));
 
     auto *Func = Module.getFunction(FuncName);
     llvm::BasicBlock *Entry =
@@ -170,12 +171,12 @@ private:
       "-o",
       Wasm->TmpName.c_str()
     };
-    lld::wasm::link(Args, false, llvm::errs());
+    lld::wasm::link(llvm::ArrayRef<const char*>(Args), false, llvm::outs(), llvm::errs());
 
     if (auto Error = removeExports(Wasm->TmpName)) {
       llvm::consumeError(Wasm->discard());
       llvm::consumeError(Object->discard());
-      return std::move(Error);
+      return Error;
     }
 
     auto Binary = llvm::MemoryBuffer::getFile(Wasm->TmpName);

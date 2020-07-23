@@ -108,12 +108,12 @@ void CodeGenModule::initMemorySection() {
                                         llvm::GlobalVariable::PrivateLinkage,
                                         Builder.getIntN(256, 0), "memory.size");
   MemorySize->setUnnamedAddr(llvm::GlobalVariable::UnnamedAddr::Global);
-  MemorySize->setAlignment(256);
+  MemorySize->setAlignment(llvm::MaybeAlign(256));
 
   HeapBase = new llvm::GlobalVariable(TheModule, Int8Ty, false,
                                       llvm::GlobalVariable::ExternalLinkage,
                                       nullptr, "__heap_base");
-  HeapBase->setAlignment(1);
+  HeapBase->setAlignment(llvm::MaybeAlign(1));
 
   Func_updateMemorySize = llvm::Function::Create(
       llvm::FunctionType::get(VoidTy, {Int256Ty, Int256Ty}, false),
@@ -1472,7 +1472,7 @@ void CodeGenModule::emitEventDecl(const EventDecl *ED) {
       TheModule, ATy, true, llvm::GlobalVariable::InternalLinkage, Init,
       "solidity.event." + getMangledName(ED));
   EventSignature->setUnnamedAddr(llvm::GlobalVariable::UnnamedAddr::Local);
-  EventSignature->setAlignment(1);
+  EventSignature->setAlignment(llvm::MaybeAlign(1));
 }
 
 void CodeGenModule::emitFunctionDecl(const FunctionDecl *FD) {
@@ -1500,7 +1500,7 @@ void CodeGenModule::emitVarDecl(const VarDecl *VD) {
       Builder.getIntN(256, Index), VD->getName());
   StateVarAddrCursor += VD->GetType()->getStorageSize() / 32;
   StateVarAddr->setUnnamedAddr(llvm::GlobalVariable::UnnamedAddr::Local);
-  StateVarAddr->setAlignment(256);
+  StateVarAddr->setAlignment(llvm::MaybeAlign(256));
   StateVarDeclMap.try_emplace(VD, StateVarAddr);
 }
 

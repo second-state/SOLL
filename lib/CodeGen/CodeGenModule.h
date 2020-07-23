@@ -12,6 +12,7 @@
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Type.h>
+#include "llvm/Support/Alignment.h"
 
 namespace soll {
 
@@ -28,7 +29,7 @@ inline llvm::GlobalVariable *createGlobalString(llvm::LLVMContext &Context,
                                       llvm::GlobalValue::PrivateLinkage,
                                       StrConstant, Name);
   GV->setUnnamedAddr(llvm::GlobalValue::UnnamedAddr::Global);
-  GV->setAlignment(1);
+  GV->setAlignment(llvm::MaybeAlign(1));
   return GV;
 }
 inline llvm::Constant *createGlobalStringPtr(llvm::LLVMContext &Context,
