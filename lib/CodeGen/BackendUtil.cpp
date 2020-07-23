@@ -62,15 +62,15 @@ public:
                     std::unique_ptr<llvm::raw_pwrite_stream> OS);
 };
 
-static llvm::TargetMachine::CodeGenFileType
+static llvm::CodeGenFileType
 getCodeGenFileType(BackendAction Action) {
   if (Action == BackendAction::EmitObj)
-    return llvm::TargetMachine::CGFT_ObjectFile;
+    return llvm::CGFT_ObjectFile;
   else if (Action == BackendAction::EmitMCNull)
-    return llvm::TargetMachine::CGFT_Null;
+    return llvm::CGFT_Null;
   else {
     assert(Action == BackendAction::EmitAssembly && "Invalid action!");
-    return llvm::TargetMachine::CGFT_AssemblyFile;
+    return llvm::CGFT_AssemblyFile;
   }
 }
 
@@ -105,7 +105,7 @@ bool EmitAssemblyHelper::AddEmitPasses(llvm::legacy::PassManager &CodeGenPasses,
 
   // Normal mode, emit a .s or .o file by running the code generator. Note,
   // this also adds codegenerator level optimization passes.
-  llvm::TargetMachine::CodeGenFileType CGFT = getCodeGenFileType(Action);
+  llvm::CodeGenFileType CGFT = getCodeGenFileType(Action);
 
   if (TM->addPassesToEmitFile(CodeGenPasses, OS, nullptr, CGFT, false)) {
     Diags.Report(diag::err_fe_unable_to_interface_with_target);
