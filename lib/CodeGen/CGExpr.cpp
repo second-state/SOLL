@@ -702,8 +702,8 @@ private:
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::tx_gasprice: {
-        llvm::Value *Val = Builder.CreateZExt(
-            CGM.getEndianlessValue(CGM.emitGetTxGasPrice()), CGF.Int256Ty);
+        llvm::Value *Val =
+            Builder.CreateZExt(CGM.emitGetTxGasPrice(), CGF.Int256Ty);
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::tx_origin: {
@@ -715,7 +715,7 @@ private:
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::block_difficulty: {
-        llvm::Value *Val = CGM.getEndianlessValue(CGM.emitGetBlockDifficulty());
+        llvm::Value *Val = CGM.emitGetBlockDifficulty();
         return ExprValue::getRValue(ME, Val);
       }
       case Identifier::SpecialIdentifier::block_gaslimit: {
@@ -733,8 +733,8 @@ private:
       }
       case Identifier::SpecialIdentifier::address_balance: {
         llvm::Value *Address = CGF.emitExpr(ME->getBase())->load(Builder, CGM);
-        llvm::Value *Val = CGM.getEndianlessValue(
-            CGM.emitGetExternalBalance(CGM.getEndianlessValue(Address)));
+        llvm::Value *Val =
+            CGM.emitGetExternalBalance(CGM.getEndianlessValue(Address));
         return ExprValue::getRValue(ME, Builder.CreateZExt(Val, CGF.Int256Ty));
       }
       default:
@@ -1579,9 +1579,7 @@ llvm::Value *CodeGenFunction::emitCallAddressSend(const CallExpr *CE,
   Builder.CreateStore(CGM.getEndianlessValue(Address), AddressPtr);
   llvm::Value *Amount = emitExpr(Arguments[0])->load(Builder, CGM);
   llvm::Value *AmountPtr = Builder.CreateAlloca(Int128Ty);
-  Builder.CreateStore(
-      CGM.getEndianlessValue(Builder.CreateZExtOrTrunc(Amount, Int128Ty)),
-      AmountPtr);
+  Builder.CreateStore(Builder.CreateZExtOrTrunc(Amount, Int128Ty), AmountPtr);
 
   llvm::Value *Length = Builder.getInt32(0);
   llvm::Value *Ptr = Builder.CreateAlloca(Int8Ty, Length);
@@ -2045,8 +2043,7 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
         Builder.CreateZExtOrTrunc(
             CGM.getEndianlessValue(CGM.emitGetBlockCoinbase()), CGM.Int256Ty));
   case AsmIdentifier::SpecialIdentifier::blockdifficulty:
-    return ExprValue::getRValue(
-        CE, CGM.getEndianlessValue(CGM.emitGetBlockDifficulty()));
+    return ExprValue::getRValue(CE, CGM.emitGetBlockDifficulty());
   case AsmIdentifier::SpecialIdentifier::blockgaslimit:
     return ExprValue::getRValue(
         CE,
@@ -2064,8 +2061,7 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
                 CGM.getEndianlessValue(CGM.emitGetTxOrigin()), CGM.Int256Ty));
   case AsmIdentifier::SpecialIdentifier::txgasprice:
     return ExprValue::getRValue(
-        CE, Builder.CreateZExtOrTrunc(
-                CGM.getEndianlessValue(CGM.emitGetTxGasPrice()), CGM.Int256Ty));
+        CE, Builder.CreateZExtOrTrunc(CGM.emitGetTxGasPrice(), CGM.Int256Ty));
   case AsmIdentifier::SpecialIdentifier::gasleft:
     return ExprValue::getRValue(
         CE, Builder.CreateZExtOrTrunc(CGM.emitGetGasLeft(), CGM.Int256Ty));
