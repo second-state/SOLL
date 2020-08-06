@@ -73,4 +73,15 @@ if(SOLL_COVERAGE)
       "${PROJECT_SOURCE_DIR}/utils/json/*"
       "${PROJECT_SOURCE_DIR}/utils/unittests/*"
     )
+  setup_target_for_coverage_gcovr_xml(
+    NAME codecov
+    EXECUTABLE ctest -j ${PROCESSOR_COUNT}
+    DEPENDENCIES soll unittests
+    BASE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+    EXCLUDE
+      "${PROJECT_SOURCE_DIR}/utils/SHA-3/*"
+      "${PROJECT_SOURCE_DIR}/utils/json/*"
+      "${PROJECT_SOURCE_DIR}/utils/unittests/*"
+    )
+
 endif()
