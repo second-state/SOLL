@@ -57,3 +57,33 @@ jobs:
         cd build
         ctest
 
+  build_and_test_gcc_debug:
+    runs-on: ubuntu-latest
+    container:
+      image: secondstate/soll:latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install gcovr
+      run: |
+        apt update
+        apt install -y gcovr
+
+    - name: Setup build folder
+      run: |
+        rm -rf build
+        mkdir -p build
+
+    - name: Build SOLL using g++
+      run: |
+        cd build
+        cmake -DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true -DSOLL_COVERAGE=true ..
+        make -j2
+
+    - name: Generate coverage report
+      run: |
+        cd build
+        make -j2 codecov
+        wget https://codecov.io/bash -O codecov.bash
+        bash codecov.bash -t ${{ secrets.CODECOV_TOKEN }} -X gcov -X coveragepy -X search -X xcode -X gcovout -f codecov.xml
