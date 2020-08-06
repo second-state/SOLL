@@ -57,7 +57,7 @@ jobs:
         cd build
         ctest
 
-  build_and_test_gcc_debug:
+  build_and_test_gcc_debug_coverage:
     runs-on: ubuntu-latest
     container:
       image: secondstate/soll:latest
