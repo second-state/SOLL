@@ -65,10 +65,10 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Install gcovr
+    - name: Install curl and gcovr
       run: |
         apt update
-        apt install -y gcovr
+        apt install -y curl gcovr
 
     - name: Setup build folder
       run: |
