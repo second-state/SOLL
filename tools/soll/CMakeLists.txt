@@ -11,6 +11,7 @@ add_llvm_executable(soll
   main.cpp
   )
 
+if(SOLL_COVERAGE)
 target_link_libraries(soll
   PUBLIC
   gcov
@@ -19,3 +20,11 @@ target_link_libraries(soll
   sollFrontend
   sollFrontendTool
   )
+else()
+target_link_libraries(soll
+  PRIVATE
+  sollBasic
+  sollFrontend
+  sollFrontendTool
+  )
+endif()
