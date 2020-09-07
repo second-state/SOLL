@@ -2116,6 +2116,9 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   case AsmIdentifier::SpecialIdentifier::discardu256:
   case AsmIdentifier::SpecialIdentifier::splitu256tou64:
   case AsmIdentifier::SpecialIdentifier::combineu64tou256:
+  case AsmIdentifier::SpecialIdentifier::address:
+  case AsmIdentifier::SpecialIdentifier::selfbalance:
+  case AsmIdentifier::SpecialIdentifier::returndatasize:
   default:
     assert(false && "special function not supported yet");
     __builtin_unreachable();
