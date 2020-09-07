@@ -58,6 +58,7 @@ public:
     call,
     callcode,
     delegatecall,
+    staticcall,
     abort,
     stop,
     return_,
@@ -79,6 +80,7 @@ public:
     txgasprice,
     gasleft,
     balance,
+    selfbalance,
     this_,
     caller,
     callvalue,
@@ -90,16 +92,25 @@ public:
     extcodesize,
     extcodecopy,
     extcodehash,
+    address,
+    returndatasize,
+    returndatacopy,
     /// object
     datasize,
     dataoffset,
     datacopy,
     /// misc
+    pop,
+    invalid,
+    chainid,
     discard,
     discardu256,
     splitu256tou64,
     combineu64tou256,
     keccak256,
+    setimmutable,
+    loadimmutable,
+    linkersymbol
   };
 
 private:

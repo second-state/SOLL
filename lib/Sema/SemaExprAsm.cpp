@@ -29,6 +29,7 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
       {"modu256", AsmIdentifier::SpecialIdentifier::modu256},
       {"mod", AsmIdentifier::SpecialIdentifier::modu256},
       {"mods256", AsmIdentifier::SpecialIdentifier::mods256},
+      {"smod", AsmIdentifier::SpecialIdentifier::mods256},
       {"signextendu256", AsmIdentifier::SpecialIdentifier::signextendu256},
       {"signextend", AsmIdentifier::SpecialIdentifier::signextendu256},
       {"expu256", AsmIdentifier::SpecialIdentifier::expu256},
@@ -86,6 +87,7 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
       {"blockdifficulty", AsmIdentifier::SpecialIdentifier::blockdifficulty},
       {"difficulty", AsmIdentifier::SpecialIdentifier::blockdifficulty},
       {"blockgaslimit", AsmIdentifier::SpecialIdentifier::blockgaslimit},
+      {"blockhash", AsmIdentifier::SpecialIdentifier::blockhash},
       {"gaslimit", AsmIdentifier::SpecialIdentifier::blockgaslimit},
       {"blocknumber", AsmIdentifier::SpecialIdentifier::blocknumber},
       {"number", AsmIdentifier::SpecialIdentifier::blocknumber},
@@ -97,11 +99,17 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
       {"gasprice", AsmIdentifier::SpecialIdentifier::txgasprice},
       {"gasleft", AsmIdentifier::SpecialIdentifier::gasleft},
       {"gas", AsmIdentifier::SpecialIdentifier::gasleft},
+      {"balance", AsmIdentifier::SpecialIdentifier::balance},
+      {"selfbalance", AsmIdentifier::SpecialIdentifier::selfbalance},
       {"caller", AsmIdentifier::SpecialIdentifier::caller},
       {"callvalue", AsmIdentifier::SpecialIdentifier::callvalue},
       {"calldataload", AsmIdentifier::SpecialIdentifier::calldataload},
       {"calldatasize", AsmIdentifier::SpecialIdentifier::calldatasize},
+      {"codesize", AsmIdentifier::SpecialIdentifier::codesize},
       {"codecopy", AsmIdentifier::SpecialIdentifier::codecopy},
+      {"extcodesize", AsmIdentifier::SpecialIdentifier::extcodesize},
+      {"address", AsmIdentifier::SpecialIdentifier::address},
+      {"returndatasize", AsmIdentifier::SpecialIdentifier::returndatasize},
       /// object
       {"datasize", AsmIdentifier::SpecialIdentifier::datasize},
       {"dataoffset", AsmIdentifier::SpecialIdentifier::dataoffset},
@@ -294,6 +302,10 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
       Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{},
                                           std::vector<TypePtr>{Ty});
       break;
+    case AsmIdentifier::SpecialIdentifier::selfbalance:
+    case AsmIdentifier::SpecialIdentifier::address:
+    case AsmIdentifier::SpecialIdentifier::codesize:
+    case AsmIdentifier::SpecialIdentifier::returndatasize:
     case AsmIdentifier::SpecialIdentifier::gasleft: ///< () -> u256
       Ty = std::make_shared<FunctionType>(
           std::vector<TypePtr>{},
@@ -312,6 +324,9 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
           std::vector<TypePtr>{
               std::make_shared<IntegerType>(IntegerType::IntKind::U256)});
       break;
+    case AsmIdentifier::SpecialIdentifier::balance:
+    case AsmIdentifier::SpecialIdentifier::extcodesize:
+    case AsmIdentifier::SpecialIdentifier::blockhash:
     case AsmIdentifier::SpecialIdentifier::calldataload: ///< (u256) -> u256
       Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
       Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty},
