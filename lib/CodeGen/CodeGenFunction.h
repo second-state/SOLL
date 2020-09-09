@@ -112,6 +112,7 @@ private:
 
   llvm::Value *emitAsmCallDataSize(const CallExpr *CE);
   llvm::Value *emitAsmCallDataOffset(const CallExpr *CE);
+  llvm::Value *emitAsmGetBalance(const CallExpr *CE, bool isSelf);
   llvm::Value *emitAsmCallMLoad(const CallExpr *CE);
   void emitAsmCallMStore(const CallExpr *CE);
   void emitAsmCallMStore8(const CallExpr *CE);

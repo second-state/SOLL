@@ -1846,6 +1846,18 @@ llvm::Value *CodeGenFunction::emitAsmCallDataOffset(const CallExpr *CE) {
   __builtin_unreachable();
 }
 
+llvm::Value *CodeGenFunction::emitAsmGetBalance(const CallExpr *CE,
+                                                bool isSelf) {
+  auto Arguments = CE->getArguments();
+  llvm::Value *Address;
+  if (isSelf) {
+    Address = Builder.CreateZExtOrTrunc(CGM.emitGetAddress(), CGM.Int256Ty);
+  } else {
+    Address = emitExpr(Arguments[0])->load(Builder, CGM);
+  }
+  return CGM.emitGetExternalBalance(Address);
+}
+
 llvm::Value *CodeGenFunction::emitAsmCallMLoad(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
   llvm::Value *Pos = emitExpr(Arguments[0])->load(Builder, CGM);
@@ -2065,6 +2077,10 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   case AsmIdentifier::SpecialIdentifier::gasleft:
     return ExprValue::getRValue(
         CE, Builder.CreateZExtOrTrunc(CGM.emitGetGasLeft(), CGM.Int256Ty));
+  case AsmIdentifier::SpecialIdentifier::balance:
+    return ExprValue::getRValue(CE, emitAsmGetBalance(CE, false));
+  case AsmIdentifier::SpecialIdentifier::selfbalance:
+    return ExprValue::getRValue(CE, emitAsmGetBalance(CE, true));
   case AsmIdentifier::SpecialIdentifier::caller:
     return ExprValue::getRValue(
         CE, Builder.CreateZExtOrTrunc(
@@ -2078,11 +2094,15 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   case AsmIdentifier::SpecialIdentifier::calldatasize:
     return ExprValue::getRValue(
         CE, Builder.CreateZExtOrTrunc(CGM.emitGetCallDataSize(), CGM.Int256Ty));
+  case AsmIdentifier::SpecialIdentifier::address:
+    return ExprValue::getRValue(
+        CE, Builder.CreateZExtOrTrunc(CGM.emitGetAddress(), CGM.AddressTy));
   /// object
   case AsmIdentifier::SpecialIdentifier::dataoffset:
     return ExprValue::getRValue(CE, emitAsmCallDataOffset(CE));
   case AsmIdentifier::SpecialIdentifier::datasize:
     return ExprValue::getRValue(CE, emitAsmCallDataSize(CE));
+
   case AsmIdentifier::SpecialIdentifier::datacopy:
   case AsmIdentifier::SpecialIdentifier::codecopy:
     emitAsmCallCodeCopy(CE);
@@ -2105,20 +2125,17 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   case AsmIdentifier::SpecialIdentifier::abort:
   case AsmIdentifier::SpecialIdentifier::selfdestruct:
   case AsmIdentifier::SpecialIdentifier::blockhash:
-  case AsmIdentifier::SpecialIdentifier::balance:
   case AsmIdentifier::SpecialIdentifier::this_:
   case AsmIdentifier::SpecialIdentifier::calldatacopy:
-  case AsmIdentifier::SpecialIdentifier::codesize:
-  case AsmIdentifier::SpecialIdentifier::extcodesize:
   case AsmIdentifier::SpecialIdentifier::extcodecopy:
   case AsmIdentifier::SpecialIdentifier::extcodehash:
   case AsmIdentifier::SpecialIdentifier::discard:
   case AsmIdentifier::SpecialIdentifier::discardu256:
   case AsmIdentifier::SpecialIdentifier::splitu256tou64:
   case AsmIdentifier::SpecialIdentifier::combineu64tou256:
-  case AsmIdentifier::SpecialIdentifier::address:
-  case AsmIdentifier::SpecialIdentifier::selfbalance:
   case AsmIdentifier::SpecialIdentifier::returndatasize:
+  case AsmIdentifier::SpecialIdentifier::codesize:
+  case AsmIdentifier::SpecialIdentifier::extcodesize:
   default:
     assert(false && "special function not supported yet");
     __builtin_unreachable();

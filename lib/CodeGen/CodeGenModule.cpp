@@ -705,6 +705,22 @@ void CodeGenModule::initEEIDeclaration() {
   Func_getAddress->addFnAttr(Ethereum);
   Func_getAddress->addFnAttr(
       llvm::Attribute::get(VMContext, "wasm-import-name", "getAddress"));
+
+  // getCodeSize
+  FT = llvm::FunctionType::get(VoidTy, {AddressPtrTy}, false);
+  Func_getCodeSize = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                           "ethereum.getCodeSize", TheModule);
+  Func_getCodeSize->addFnAttr(Ethereum);
+  Func_getCodeSize->addFnAttr(
+      llvm::Attribute::get(VMContext, "wasm-import-name", "getCodeSize"));
+
+  // getExternalCodeSize
+  FT = llvm::FunctionType::get(VoidTy, {AddressPtrTy}, false);
+  Func_getExternalCodeSize = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                           "ethereum.getExternalCodeSize", TheModule);
+  Func_getExternalCodeSize->addFnAttr(Ethereum);
+  Func_getExternalCodeSize->addFnAttr(
+      llvm::Attribute::get(VMContext, "wasm-import-name", "getExternalCodeSize"));
 }
 
 void CodeGenModule::initHelperDeclaration() {
@@ -2263,6 +2279,26 @@ llvm::Value *CodeGenModule::emitGetAddress() {
     llvm::Value *ValPtr = Builder.CreateAlloca(AddressTy);
     Builder.CreateCall(Func_getAddress, {ValPtr});
     return Builder.CreateLoad(ValPtr);
+  } else {
+    __builtin_unreachable();
+  }
+}
+
+llvm::Value *CodeGenModule::emitGetCodeSize() {
+  if (isEVM()) {
+    assert(false && "EEI getCodeSize not supported in EVM yet");
+  } else if (isEWASM()) {
+    return Builder.CreateZExt(Builder.CreateCall(Func_getCodeSize, {}), Int32Ty);
+  } else {
+    __builtin_unreachable();
+  }
+}
+
+llvm::Value *CodeGenModule::emitGetExternalCodeSize(llvm::Value *Address) {
+  if (isEVM()) {
+    assert(false && "EEI getExternalCodeSize not supported in EVM yet");
+  } else if (isEWASM()) {
+    return Builder.CreateZExt(Builder.CreateCall(Func_getExternalCodeSize, {Address}), Int32Ty);
   } else {
     __builtin_unreachable();
   }

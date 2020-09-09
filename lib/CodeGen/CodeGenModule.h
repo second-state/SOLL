@@ -95,6 +95,9 @@ class CodeGenModule : public CodeGenTypeCache {
   llvm::Function *Func_getBlockHash = nullptr;
   llvm::Function *Func_getExternalBalance = nullptr;
   llvm::Function *Func_getAddress = nullptr;
+  llvm::Function *Func_getCodeSize = nullptr;
+  llvm::Function *Func_getExternalCodeSize = nullptr;
+
 
   llvm::Function *Func_print32 = nullptr;
 
@@ -202,6 +205,8 @@ public:
   llvm::Value *emitGetBlockHash(llvm::Value *Number);
   llvm::Value *emitGetExternalBalance(llvm::Value *AddressOffset);
   llvm::Value *emitGetAddress();
+  llvm::Value *emitGetCodeSize();
+  llvm::Value *emitGetExternalCodeSize(llvm::Value *Address);
 
 private:
   llvm::Function *emitNestedObjectGetter(llvm::StringRef Name);
