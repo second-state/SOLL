@@ -124,7 +124,9 @@ private:
   void emitAsmCallLog(const CallExpr *CE);
   llvm::Value *emitAsmCallCallDataLoad(const CallExpr *CE);
   void emitAsmCallCodeCopy(const CallExpr *CE);
+  llvm::Value *emitAsmExternalGetCodeSize(const CallExpr *CE);
   llvm::Value *emitAsmCallkeccak256(const CallExpr *CE);
+  llvm::Value *emitAsmGetBlockHash(const CallExpr *CE);
 
   ExprValuePtr emitCallExpr(const CallExpr *CE);
   ExprValuePtr emitSpecialCallExpr(const Identifier *SI, const CallExpr *CE,
