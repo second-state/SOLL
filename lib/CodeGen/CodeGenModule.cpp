@@ -707,7 +707,7 @@ void CodeGenModule::initEEIDeclaration() {
       llvm::Attribute::get(VMContext, "wasm-import-name", "getAddress"));
 
   // getCodeSize
-  FT = llvm::FunctionType::get(VoidTy, {AddressPtrTy}, false);
+  FT = llvm::FunctionType::get(Int32Ty, {}, false);
   Func_getCodeSize = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
                                            "ethereum.getCodeSize", TheModule);
   Func_getCodeSize->addFnAttr(Ethereum);
@@ -715,12 +715,20 @@ void CodeGenModule::initEEIDeclaration() {
       llvm::Attribute::get(VMContext, "wasm-import-name", "getCodeSize"));
 
   // getExternalCodeSize
-  FT = llvm::FunctionType::get(VoidTy, {AddressPtrTy}, false);
+  FT = llvm::FunctionType::get(Int32Ty, {AddressPtrTy}, false);
   Func_getExternalCodeSize = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
                                            "ethereum.getExternalCodeSize", TheModule);
   Func_getExternalCodeSize->addFnAttr(Ethereum);
   Func_getExternalCodeSize->addFnAttr(
       llvm::Attribute::get(VMContext, "wasm-import-name", "getExternalCodeSize"));
+
+  // getReturnDataSize
+  FT = llvm::FunctionType::get(Int32Ty, {}, false);
+  Func_getReturnDataSize = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                           "ethereum.getReturnDataSize", TheModule);
+  Func_getReturnDataSize->addFnAttr(Ethereum);
+  Func_getReturnDataSize->addFnAttr(
+      llvm::Attribute::get(VMContext, "wasm-import-name", "getReturnDataSize"));
 }
 
 void CodeGenModule::initHelperDeclaration() {
@@ -2288,7 +2296,7 @@ llvm::Value *CodeGenModule::emitGetCodeSize() {
   if (isEVM()) {
     assert(false && "EEI getCodeSize not supported in EVM yet");
   } else if (isEWASM()) {
-    return Builder.CreateZExt(Builder.CreateCall(Func_getCodeSize, {}), Int32Ty);
+    return Builder.CreateCall(Func_getCodeSize, {});
   } else {
     __builtin_unreachable();
   }
@@ -2298,7 +2306,17 @@ llvm::Value *CodeGenModule::emitGetExternalCodeSize(llvm::Value *Address) {
   if (isEVM()) {
     assert(false && "EEI getExternalCodeSize not supported in EVM yet");
   } else if (isEWASM()) {
-    return Builder.CreateZExt(Builder.CreateCall(Func_getExternalCodeSize, {Address}), Int32Ty);
+    return Builder.CreateCall(Func_getExternalCodeSize, {Address});
+  } else {
+    __builtin_unreachable();
+  }
+}
+
+llvm::Value *CodeGenModule::emitGetReturnDataSize() {
+  if (isEVM()) {
+    assert(false && "EEI getReturnDataSize not supported in EVM yet");
+  } else if (isEWASM()) {
+    return Builder.CreateCall(Func_getReturnDataSize, {});
   } else {
     __builtin_unreachable();
   }

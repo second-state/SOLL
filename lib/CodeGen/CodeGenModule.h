@@ -97,6 +97,7 @@ class CodeGenModule : public CodeGenTypeCache {
   llvm::Function *Func_getAddress = nullptr;
   llvm::Function *Func_getCodeSize = nullptr;
   llvm::Function *Func_getExternalCodeSize = nullptr;
+  llvm::Function *Func_getReturnDataSize = nullptr;
 
 
   llvm::Function *Func_print32 = nullptr;
@@ -207,6 +208,7 @@ public:
   llvm::Value *emitGetAddress();
   llvm::Value *emitGetCodeSize();
   llvm::Value *emitGetExternalCodeSize(llvm::Value *Address);
+  llvm::Value *emitGetReturnDataSize();
 
 private:
   llvm::Function *emitNestedObjectGetter(llvm::StringRef Name);

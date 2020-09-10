@@ -1969,6 +1969,13 @@ void CodeGenFunction::emitAsmCallCodeCopy(const CallExpr *CE) {
   CGM.emitMemcpy(Ptr, Code, Builder.CreateZExtOrTrunc(Length, CGM.Int32Ty));
 }
 
+llvm::Value *CodeGenFunction::emitAsmExternalGetCodeSize(const CallExpr *CE) {
+  // keccak256 function
+  auto Arguments = CE->getArguments();
+  llvm::Value *Address = emitExpr(Arguments[0])->load(Builder, CGM);
+  return CGM.emitGetExternalCodeSize(Address);
+}
+
 llvm::Value *CodeGenFunction::emitAsmCallkeccak256(const CallExpr *CE) {
   // keccak256 function
   auto Arguments = CE->getArguments();
@@ -1978,6 +1985,12 @@ llvm::Value *CodeGenFunction::emitAsmCallkeccak256(const CallExpr *CE) {
   llvm::Value *Length = emitExpr(Arguments[1])->load(Builder, CGM);
   CGM.emitUpdateMemorySize(Pos, Length);
   return CGM.emitKeccak256(Ptr, Length);
+}
+
+llvm::Value *CodeGenFunction::emitAsmGetBlockHash(const CallExpr *CE) {
+  auto Arguments = CE->getArguments();
+  llvm::Value *Number = emitExpr(Arguments[0])->load(Builder, CGM);
+  return CGM.emitGetBlockHash(Number);
 }
 
 ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
@@ -2060,6 +2073,8 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
     return ExprValue::getRValue(
         CE,
         Builder.CreateZExtOrTrunc(CGM.emitGetBlockGasLimit(), CGM.Int256Ty));
+  case AsmIdentifier::SpecialIdentifier::blockhash:
+    return ExprValue::getRValue(CE, emitAsmGetBlockHash(CE));
   case AsmIdentifier::SpecialIdentifier::blocknumber:
     return ExprValue::getRValue(
         CE, Builder.CreateZExtOrTrunc(CGM.emitGetBlockNumber(), CGM.Int256Ty));
@@ -2096,17 +2111,25 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
         CE, Builder.CreateZExtOrTrunc(CGM.emitGetCallDataSize(), CGM.Int256Ty));
   case AsmIdentifier::SpecialIdentifier::address:
     return ExprValue::getRValue(
-        CE, Builder.CreateZExtOrTrunc(CGM.emitGetAddress(), CGM.AddressTy));
+        CE, Builder.CreateZExtOrTrunc(CGM.emitGetAddress(), CGM.Int256Ty));
   /// object
   case AsmIdentifier::SpecialIdentifier::dataoffset:
     return ExprValue::getRValue(CE, emitAsmCallDataOffset(CE));
   case AsmIdentifier::SpecialIdentifier::datasize:
     return ExprValue::getRValue(CE, emitAsmCallDataSize(CE));
-
   case AsmIdentifier::SpecialIdentifier::datacopy:
   case AsmIdentifier::SpecialIdentifier::codecopy:
     emitAsmCallCodeCopy(CE);
     return std::make_shared<ExprValue>();
+  case AsmIdentifier::SpecialIdentifier::codesize:
+    return ExprValue::getRValue(
+        CE, Builder.CreateZExtOrTrunc(CGM.emitGetCodeSize(), CGM.Int256Ty));
+  case AsmIdentifier::SpecialIdentifier::extcodesize:
+    return ExprValue::getRValue(CE, emitAsmExternalGetCodeSize(CE));
+  case AsmIdentifier::SpecialIdentifier::returndatasize:
+    return ExprValue::getRValue(
+        CE,
+        Builder.CreateZExtOrTrunc(CGM.emitGetReturnDataSize(), CGM.Int256Ty));
   /// misc
   case AsmIdentifier::SpecialIdentifier::keccak256:
     return ExprValue::getRValue(CE, emitAsmCallkeccak256(CE));
@@ -2124,7 +2147,6 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   case AsmIdentifier::SpecialIdentifier::delegatecall:
   case AsmIdentifier::SpecialIdentifier::abort:
   case AsmIdentifier::SpecialIdentifier::selfdestruct:
-  case AsmIdentifier::SpecialIdentifier::blockhash:
   case AsmIdentifier::SpecialIdentifier::this_:
   case AsmIdentifier::SpecialIdentifier::calldatacopy:
   case AsmIdentifier::SpecialIdentifier::extcodecopy:
@@ -2133,9 +2155,6 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   case AsmIdentifier::SpecialIdentifier::discardu256:
   case AsmIdentifier::SpecialIdentifier::splitu256tou64:
   case AsmIdentifier::SpecialIdentifier::combineu64tou256:
-  case AsmIdentifier::SpecialIdentifier::returndatasize:
-  case AsmIdentifier::SpecialIdentifier::codesize:
-  case AsmIdentifier::SpecialIdentifier::extcodesize:
   default:
     assert(false && "special function not supported yet");
     __builtin_unreachable();
