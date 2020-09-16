@@ -1970,7 +1970,6 @@ void CodeGenFunction::emitAsmCallCodeCopy(const CallExpr *CE) {
 }
 
 llvm::Value *CodeGenFunction::emitAsmExternalGetCodeSize(const CallExpr *CE) {
-  // keccak256 function
   auto Arguments = CE->getArguments();
   llvm::Value *Address = emitExpr(Arguments[0])->load(Builder, CGM);
   return CGM.emitGetExternalCodeSize(Address);
@@ -2093,9 +2092,9 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
     return ExprValue::getRValue(
         CE, Builder.CreateZExtOrTrunc(CGM.emitGetGasLeft(), CGM.Int256Ty));
   case AsmIdentifier::SpecialIdentifier::balance:
-    return ExprValue::getRValue(CE, emitAsmGetBalance(CE, false));
+    return ExprValue::getRValue(CE, Builder.CreateZExtOrTrunc(emitAsmGetBalance(CE, false), CGM.Int256Ty));
   case AsmIdentifier::SpecialIdentifier::selfbalance:
-    return ExprValue::getRValue(CE, emitAsmGetBalance(CE, true));
+    return ExprValue::getRValue(CE, Builder.CreateZExtOrTrunc(emitAsmGetBalance(CE, true), CGM.Int256Ty));
   case AsmIdentifier::SpecialIdentifier::caller:
     return ExprValue::getRValue(
         CE, Builder.CreateZExtOrTrunc(

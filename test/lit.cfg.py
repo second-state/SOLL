@@ -25,6 +25,9 @@ config.suffixes = [
 ]
 
 config.available_features = [
+    'address',
+    'balance',
+    'codesize',
     'mload',
     'mstore',
     'mstore8',

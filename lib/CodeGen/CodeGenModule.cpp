@@ -681,7 +681,7 @@ void CodeGenModule::initEEIDeclaration() {
       llvm::Attribute::get(VMContext, "wasm-import-name", "getBlockHash"));
 
   // getExternalBalance
-  FT = llvm::FunctionType::get(VoidTy, {AddressPtrTy, Int128PtrTy}, false);
+  FT = llvm::FunctionType::get(VoidTy, {Int32PtrTy, Int128PtrTy}, false);
   Func_getExternalBalance =
       llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
                              "ethereum.getExternalBalance", TheModule);
@@ -699,7 +699,7 @@ void CodeGenModule::initEEIDeclaration() {
   Func_print32->addFnAttr(llvm::Attribute::NoUnwind);
 
   // getAddress
-  FT = llvm::FunctionType::get(VoidTy, {AddressPtrTy}, false);
+  FT = llvm::FunctionType::get(VoidTy, {Int32PtrTy}, false);
   Func_getAddress = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
                                            "ethereum.getAddress", TheModule);
   Func_getAddress->addFnAttr(Ethereum);
@@ -715,7 +715,7 @@ void CodeGenModule::initEEIDeclaration() {
       llvm::Attribute::get(VMContext, "wasm-import-name", "getCodeSize"));
 
   // getExternalCodeSize
-  FT = llvm::FunctionType::get(Int32Ty, {AddressPtrTy}, false);
+  FT = llvm::FunctionType::get(Int32Ty, {Int32PtrTy}, false);
   Func_getExternalCodeSize = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
                                            "ethereum.getExternalCodeSize", TheModule);
   Func_getExternalCodeSize->addFnAttr(Ethereum);
@@ -2270,8 +2270,9 @@ llvm::Value *CodeGenModule::emitGetExternalBalance(llvm::Value *Address) {
     return Builder.CreateCall(Func_getExternalBalance, {Addr});
   } else if (isEWASM()) {
     llvm::Value *ValPtr = Builder.CreateAlloca(Int128Ty);
-    llvm::Value *AddressPtr = Builder.CreateAlloca(AddressTy);
+    llvm::Value *AddressPtr = Builder.CreateAlloca(Int256Ty);
     Builder.CreateStore(Address, AddressPtr);
+    AddressPtr = Builder.CreateBitCast(AddressPtr, Int32PtrTy, "address.ptr");
     Builder.CreateCall(Func_getExternalBalance, {AddressPtr, ValPtr});
     return Builder.CreateLoad(ValPtr);
   } else {
@@ -2285,6 +2286,7 @@ llvm::Value *CodeGenModule::emitGetAddress() {
     return Builder.CreateZExtOrTrunc(Val, AddressTy);
   } else if (isEWASM()) {
     llvm::Value *ValPtr = Builder.CreateAlloca(AddressTy);
+    ValPtr = Builder.CreateBitCast(ValPtr, Int32PtrTy, "address.ptr");
     Builder.CreateCall(Func_getAddress, {ValPtr});
     return Builder.CreateLoad(ValPtr);
   } else {
