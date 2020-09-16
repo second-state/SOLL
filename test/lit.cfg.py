@@ -28,6 +28,8 @@ config.available_features = [
     'address',
     'balance',
     'codesize',
+    'extcodesize',
+    'blockhash',
     'mload',
     'mstore',
     'mstore8',
@@ -61,6 +63,7 @@ config.available_features = [
     'leave',
     'declareMulti',
     'returnTuple',
+    'returndatasize',
     'objectInObject',
     'implicitCast'
 ]
