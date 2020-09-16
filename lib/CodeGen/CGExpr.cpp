@@ -1974,9 +1974,9 @@ llvm::Value *CodeGenFunction::emitAsmExternalGetCodeSize(const CallExpr *CE) {
 
   llvm::Value *ValPtr = Builder.CreateAlloca(Int256Ty, nullptr);
   Builder.CreateStore(
-        CGM.getEndianlessValue(Builder.CreateZExtOrTrunc(
-            emitExpr(Arguments[0])->load(Builder, CGM), CGM.Int256Ty)),
-        ValPtr);
+      CGM.getEndianlessValue(Builder.CreateZExtOrTrunc(
+          emitExpr(Arguments[0])->load(Builder, CGM), CGM.Int256Ty)),
+      ValPtr);
   ValPtr = Builder.CreateBitCast(ValPtr, CGM.Int32PtrTy);
   return CGM.emitGetExternalCodeSize(ValPtr);
 }
@@ -2079,7 +2079,8 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
         CE,
         Builder.CreateZExtOrTrunc(CGM.emitGetBlockGasLimit(), CGM.Int256Ty));
   case AsmIdentifier::SpecialIdentifier::blockhash:
-    return ExprValue::getRValue(CE, emitAsmGetBlockHash(CE));
+    return ExprValue::getRValue(
+        CE, Builder.CreateZExtOrTrunc(emitAsmGetBlockHash(CE), CGM.Int256Ty));
   case AsmIdentifier::SpecialIdentifier::blocknumber:
     return ExprValue::getRValue(
         CE, Builder.CreateZExtOrTrunc(CGM.emitGetBlockNumber(), CGM.Int256Ty));
@@ -2098,9 +2099,13 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
     return ExprValue::getRValue(
         CE, Builder.CreateZExtOrTrunc(CGM.emitGetGasLeft(), CGM.Int256Ty));
   case AsmIdentifier::SpecialIdentifier::balance:
-    return ExprValue::getRValue(CE, Builder.CreateZExtOrTrunc(emitAsmGetBalance(CE, false), CGM.Int256Ty));
+    return ExprValue::getRValue(
+        CE,
+        Builder.CreateZExtOrTrunc(emitAsmGetBalance(CE, false), CGM.Int256Ty));
   case AsmIdentifier::SpecialIdentifier::selfbalance:
-    return ExprValue::getRValue(CE, Builder.CreateZExtOrTrunc(emitAsmGetBalance(CE, true), CGM.Int256Ty));
+    return ExprValue::getRValue(
+        CE,
+        Builder.CreateZExtOrTrunc(emitAsmGetBalance(CE, true), CGM.Int256Ty));
   case AsmIdentifier::SpecialIdentifier::caller:
     return ExprValue::getRValue(
         CE, Builder.CreateZExtOrTrunc(
@@ -2130,7 +2135,9 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
     return ExprValue::getRValue(
         CE, Builder.CreateZExtOrTrunc(CGM.emitGetCodeSize(), CGM.Int256Ty));
   case AsmIdentifier::SpecialIdentifier::extcodesize:
-    return ExprValue::getRValue(CE, Builder.CreateZExtOrTrunc(emitAsmExternalGetCodeSize(CE), CGM.Int256Ty));
+    return ExprValue::getRValue(
+        CE, Builder.CreateZExtOrTrunc(emitAsmExternalGetCodeSize(CE),
+                                      CGM.Int256Ty));
   case AsmIdentifier::SpecialIdentifier::returndatasize:
     return ExprValue::getRValue(
         CE,
@@ -2150,6 +2157,7 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   case AsmIdentifier::SpecialIdentifier::call:
   case AsmIdentifier::SpecialIdentifier::callcode:
   case AsmIdentifier::SpecialIdentifier::delegatecall:
+  case AsmIdentifier::SpecialIdentifier::staticcall:
   case AsmIdentifier::SpecialIdentifier::abort:
   case AsmIdentifier::SpecialIdentifier::selfdestruct:
   case AsmIdentifier::SpecialIdentifier::this_:
@@ -2160,6 +2168,8 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   case AsmIdentifier::SpecialIdentifier::discardu256:
   case AsmIdentifier::SpecialIdentifier::splitu256tou64:
   case AsmIdentifier::SpecialIdentifier::combineu64tou256:
+  case AsmIdentifier::SpecialIdentifier::returndatacopy:
+
   default:
     assert(false && "special function not supported yet");
     __builtin_unreachable();
