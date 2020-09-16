@@ -1971,8 +1971,14 @@ void CodeGenFunction::emitAsmCallCodeCopy(const CallExpr *CE) {
 
 llvm::Value *CodeGenFunction::emitAsmExternalGetCodeSize(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
-  llvm::Value *Address = emitExpr(Arguments[0])->load(Builder, CGM);
-  return CGM.emitGetExternalCodeSize(Address);
+
+  llvm::Value *ValPtr = Builder.CreateAlloca(Int256Ty, nullptr);
+  Builder.CreateStore(
+        CGM.getEndianlessValue(Builder.CreateZExtOrTrunc(
+            emitExpr(Arguments[0])->load(Builder, CGM), CGM.Int256Ty)),
+        ValPtr);
+  ValPtr = Builder.CreateBitCast(ValPtr, CGM.Int32PtrTy);
+  return CGM.emitGetExternalCodeSize(ValPtr);
 }
 
 llvm::Value *CodeGenFunction::emitAsmCallkeccak256(const CallExpr *CE) {
@@ -2124,7 +2130,7 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
     return ExprValue::getRValue(
         CE, Builder.CreateZExtOrTrunc(CGM.emitGetCodeSize(), CGM.Int256Ty));
   case AsmIdentifier::SpecialIdentifier::extcodesize:
-    return ExprValue::getRValue(CE, emitAsmExternalGetCodeSize(CE));
+    return ExprValue::getRValue(CE, Builder.CreateZExtOrTrunc(emitAsmExternalGetCodeSize(CE), CGM.Int256Ty));
   case AsmIdentifier::SpecialIdentifier::returndatasize:
     return ExprValue::getRValue(
         CE,
