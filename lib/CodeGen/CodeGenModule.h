@@ -73,6 +73,7 @@ class CodeGenModule : public CodeGenTypeCache {
   llvm::Function *Func_getCallValue = nullptr;
   llvm::Function *Func_getCaller = nullptr;
   llvm::Function *Func_codeCopy = nullptr;
+  llvm::Function *Func_externalCodeCopy = nullptr;
   llvm::Function *Func_getGasLeft = nullptr;
   llvm::Function *Func_log = nullptr;
   llvm::Function *Func_log0 = nullptr;
@@ -179,6 +180,9 @@ public:
   llvm::Value *emitReturnDataSize();
   llvm::Value *emitReturnDataCopyBytes(llvm::Value *DataOffset,
                                        llvm::Value *Length);
+  void emitReturnDataCopy(llvm::Value *ResultOffset,
+                          llvm::Value *DataOffset,
+                          llvm::Value *Length);                          
   llvm::Value *emitCallDataLoad(llvm::Value *DataOffset);
   llvm::Value *emitCall(llvm::Value *Gas, llvm::Value *AddressPtr,
                         llvm::Value *ValuePtr, llvm::Value *DataPtr,
@@ -209,6 +213,7 @@ public:
   llvm::Value *emitGetCodeSize();
   llvm::Value *emitGetExternalCodeSize(llvm::Value *Address);
   llvm::Value *emitGetReturnDataSize();
+  llvm::Value *emitExternalCodeCopy(llvm::Value *Address, llvm::Value *Result, llvm::Value *Code, llvm::Value *Length);
 
 private:
   llvm::Function *emitNestedObjectGetter(llvm::StringRef Name);

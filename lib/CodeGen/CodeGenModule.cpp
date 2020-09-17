@@ -532,6 +532,18 @@ void CodeGenModule::initEEIDeclaration() {
   Func_codeCopy->addFnAttr(llvm::Attribute::NoUnwind);
   Func_codeCopy->addParamAttr(0, llvm::Attribute::WriteOnly);
 
+  // externalCodeCopy
+  FT = llvm::FunctionType::get(
+      VoidTy, {Int32PtrTy, Int32PtrTy, Int32Ty, Int32Ty}, false);
+  Func_externalCodeCopy =
+      llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                             "ethereum.externalCodeCopy", TheModule);
+  Func_externalCodeCopy->addFnAttr(Ethereum);
+  Func_externalCodeCopy->addFnAttr(
+      llvm::Attribute::get(VMContext, "wasm-import-name", "externalCodeCopy"));
+  Func_externalCodeCopy->addFnAttr(llvm::Attribute::ArgMemOnly);
+  Func_externalCodeCopy->addFnAttr(llvm::Attribute::NoUnwind);
+
   // getGasLeft
   FT = llvm::FunctionType::get(Int64Ty, {}, false);
   Func_getGasLeft = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
@@ -709,23 +721,25 @@ void CodeGenModule::initEEIDeclaration() {
   // getCodeSize
   FT = llvm::FunctionType::get(Int32Ty, {}, false);
   Func_getCodeSize = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
-                                           "ethereum.getCodeSize", TheModule);
+                                            "ethereum.getCodeSize", TheModule);
   Func_getCodeSize->addFnAttr(Ethereum);
   Func_getCodeSize->addFnAttr(
       llvm::Attribute::get(VMContext, "wasm-import-name", "getCodeSize"));
 
   // getExternalCodeSize
   FT = llvm::FunctionType::get(Int32Ty, {Int32PtrTy}, false);
-  Func_getExternalCodeSize = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
-                                           "ethereum.getExternalCodeSize", TheModule);
+  Func_getExternalCodeSize =
+      llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                             "ethereum.getExternalCodeSize", TheModule);
   Func_getExternalCodeSize->addFnAttr(Ethereum);
-  Func_getExternalCodeSize->addFnAttr(
-      llvm::Attribute::get(VMContext, "wasm-import-name", "getExternalCodeSize"));
+  Func_getExternalCodeSize->addFnAttr(llvm::Attribute::get(
+      VMContext, "wasm-import-name", "getExternalCodeSize"));
 
   // getReturnDataSize
   FT = llvm::FunctionType::get(Int32Ty, {}, false);
-  Func_getReturnDataSize = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
-                                           "ethereum.getReturnDataSize", TheModule);
+  Func_getReturnDataSize =
+      llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                             "ethereum.getReturnDataSize", TheModule);
   Func_getReturnDataSize->addFnAttr(Ethereum);
   Func_getReturnDataSize->addFnAttr(
       llvm::Attribute::get(VMContext, "wasm-import-name", "getReturnDataSize"));
@@ -2010,6 +2024,25 @@ llvm::Value *CodeGenModule::emitReturnDataCopyBytes(llvm::Value *DataOffset,
   return Bytes;
 }
 
+void CodeGenModule::emitReturnDataCopy(llvm::Value *ResultOffset,
+                                       llvm::Value *DataOffset,
+                                       llvm::Value *DataLength) {
+  if (isEVM()) {
+    auto DestOffset = Builder.CreatePtrToInt(ResultOffset, EVMIntTy);
+    auto Offset = Builder.CreateZExtOrTrunc(DataOffset, EVMIntTy);
+    auto Length = Builder.CreateZExtOrTrunc(DataLength, EVMIntTy);
+    Builder.CreateCall(Func_returnDataCopy, {DestOffset, Offset, Length});
+  } else if (isEWASM()) {
+    auto DestOffset = Builder.CreatePtrToInt(ResultOffset, Int8PtrTy);
+    auto Offset = Builder.CreateZExtOrTrunc(DataOffset, Int32Ty);
+    auto Length = Builder.CreateZExtOrTrunc(DataLength, Int32Ty);
+    Builder.CreateCall(Func_returnDataCopy, {DestOffset, Offset, Length});
+  } else {
+    __builtin_unreachable();
+  }
+  return;
+}
+
 llvm::Value *CodeGenModule::emitCallDataLoad(llvm::Value *DataOffset) {
   llvm::Value *CallDataVPtr =
       Builder.CreateAlloca(Int8Ty, Builder.getIntN(256, 32));
@@ -2319,6 +2352,23 @@ llvm::Value *CodeGenModule::emitGetReturnDataSize() {
     assert(false && "EEI getReturnDataSize not supported in EVM yet");
   } else if (isEWASM()) {
     return Builder.CreateCall(Func_getReturnDataSize, {});
+  } else {
+    __builtin_unreachable();
+  }
+}
+
+llvm::Value *CodeGenModule::emitExternalCodeCopy(llvm::Value *Address,
+                                                 llvm::Value *Result,
+                                                 llvm::Value *Code,
+                                                 llvm::Value *Length) {
+  if (isEVM()) {
+    assert(false && "EEI getReturnDataSize not supported in EVM yet");
+  } else if (isEWASM()) {
+    return Builder.CreateCall(Func_externalCodeCopy,
+                              {Builder.CreateIntToPtr(Address, Int32PtrTy),
+                               Builder.CreateIntToPtr(Result, Int32PtrTy),
+                               Builder.CreateZExtOrTrunc(Code, Int32Ty),
+                               Builder.CreateZExtOrTrunc(Length, Int32Ty)});
   } else {
     __builtin_unreachable();
   }
