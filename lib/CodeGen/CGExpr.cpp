@@ -1969,6 +1969,23 @@ void CodeGenFunction::emitAsmCallCodeCopy(const CallExpr *CE) {
   CGM.emitMemcpy(Ptr, Code, Builder.CreateZExtOrTrunc(Length, CGM.Int32Ty));
 }
 
+void CodeGenFunction::emitAsmCallDataCopy(const CallExpr *CE) {
+  auto Arguments = CE->getArguments();
+  llvm::Value *Pos = emitExpr(Arguments[0])->load(Builder, CGM);
+  llvm::Value *Code = emitExpr(Arguments[1])->load(Builder, CGM);
+  llvm::Value *Length = emitExpr(Arguments[2])->load(Builder, CGM);
+  CGM.emitCallDataCopy(Pos, Code, Length);
+}
+
+void CodeGenFunction::emitAsmExternalCallCodeCopy(const CallExpr *CE) {
+  auto Arguments = CE->getArguments();
+  llvm::Value *Address = emitExpr(Arguments[0])->load(Builder, CGM);
+  llvm::Value *Result = emitExpr(Arguments[1])->load(Builder, CGM);
+  llvm::Value *Code = emitExpr(Arguments[2])->load(Builder, CGM);
+  llvm::Value *Length = emitExpr(Arguments[3])->load(Builder, CGM);
+  CGM.emitExternalCodeCopy(Address, Result, Code, Length);
+}
+
 llvm::Value *CodeGenFunction::emitAsmExternalGetCodeSize(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
 
@@ -1996,6 +2013,14 @@ llvm::Value *CodeGenFunction::emitAsmGetBlockHash(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
   llvm::Value *Number = emitExpr(Arguments[0])->load(Builder, CGM);
   return CGM.emitGetBlockHash(Number);
+}
+
+void CodeGenFunction::emitAsmReturnDataCopy(const CallExpr *CE) {
+  auto Arguments = CE->getArguments();
+  llvm::Value *Pos = emitExpr(Arguments[0])->load(Builder, CGM);
+  llvm::Value *Ptr = emitExpr(Arguments[1])->load(Builder, CGM);
+  llvm::Value *Length = emitExpr(Arguments[2])->load(Builder, CGM);
+  CGM.emitReturnDataCopy(Pos, Ptr, Length);
 }
 
 ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
@@ -2119,6 +2144,9 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   case AsmIdentifier::SpecialIdentifier::calldatasize:
     return ExprValue::getRValue(
         CE, Builder.CreateZExtOrTrunc(CGM.emitGetCallDataSize(), CGM.Int256Ty));
+  case AsmIdentifier::SpecialIdentifier::calldatacopy:
+    emitAsmCallDataCopy(CE);
+    return std::make_shared<ExprValue>();
   case AsmIdentifier::SpecialIdentifier::address:
     return ExprValue::getRValue(
         CE, Builder.CreateZExtOrTrunc(CGM.emitGetAddress(), CGM.Int256Ty));
@@ -2131,6 +2159,9 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   case AsmIdentifier::SpecialIdentifier::codecopy:
     emitAsmCallCodeCopy(CE);
     return std::make_shared<ExprValue>();
+  case AsmIdentifier::SpecialIdentifier::extcodecopy:
+    emitAsmExternalCallCodeCopy(CE);
+    return std::make_shared<ExprValue>();
   case AsmIdentifier::SpecialIdentifier::codesize:
     return ExprValue::getRValue(
         CE, Builder.CreateZExtOrTrunc(CGM.emitGetCodeSize(), CGM.Int256Ty));
@@ -2142,6 +2173,9 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
     return ExprValue::getRValue(
         CE,
         Builder.CreateZExtOrTrunc(CGM.emitGetReturnDataSize(), CGM.Int256Ty));
+  case AsmIdentifier::SpecialIdentifier::returndatacopy:
+    emitAsmReturnDataCopy(CE);
+    return std::make_shared<ExprValue>();
   /// misc
   case AsmIdentifier::SpecialIdentifier::keccak256:
     return ExprValue::getRValue(CE, emitAsmCallkeccak256(CE));
@@ -2161,15 +2195,11 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   case AsmIdentifier::SpecialIdentifier::abort:
   case AsmIdentifier::SpecialIdentifier::selfdestruct:
   case AsmIdentifier::SpecialIdentifier::this_:
-  case AsmIdentifier::SpecialIdentifier::calldatacopy:
-  case AsmIdentifier::SpecialIdentifier::extcodecopy:
   case AsmIdentifier::SpecialIdentifier::extcodehash:
   case AsmIdentifier::SpecialIdentifier::discard:
   case AsmIdentifier::SpecialIdentifier::discardu256:
   case AsmIdentifier::SpecialIdentifier::splitu256tou64:
   case AsmIdentifier::SpecialIdentifier::combineu64tou256:
-  case AsmIdentifier::SpecialIdentifier::returndatacopy:
-
   default:
     assert(false && "special function not supported yet");
     __builtin_unreachable();
