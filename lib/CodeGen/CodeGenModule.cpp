@@ -693,7 +693,7 @@ void CodeGenModule::initEEIDeclaration() {
       llvm::Attribute::get(VMContext, "wasm-import-name", "getBlockHash"));
 
   // getExternalBalance
-  FT = llvm::FunctionType::get(VoidTy, {Int32PtrTy, Int128PtrTy}, false);
+  FT = llvm::FunctionType::get(VoidTy, {Int32PtrTy, Int32PtrTy}, false);
   Func_getExternalBalance =
       llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
                              "ethereum.getExternalBalance", TheModule);
@@ -2302,11 +2302,10 @@ llvm::Value *CodeGenModule::emitGetExternalBalance(llvm::Value *Address) {
     auto Addr = Builder.CreatePtrToInt(Address, EVMIntTy);
     return Builder.CreateCall(Func_getExternalBalance, {Addr});
   } else if (isEWASM()) {
-    llvm::Value *ValPtr = Builder.CreateAlloca(Int128Ty);
     llvm::Value *AddressPtr = Builder.CreateAlloca(Int256Ty);
-    Builder.CreateStore(Address, AddressPtr);
-    AddressPtr = Builder.CreateBitCast(AddressPtr, Int32PtrTy, "address.ptr");
-    Builder.CreateCall(Func_getExternalBalance, {AddressPtr, ValPtr});
+    llvm::Value *ValPtr = Builder.CreateAlloca(Int128Ty);
+    Builder.CreateStore(Builder.CreateZExtOrTrunc(Address, Int256Ty), AddressPtr);
+    Builder.CreateCall(Func_getExternalBalance, {Builder.CreateBitCast(AddressPtr, Int32PtrTy), Builder.CreateBitCast(ValPtr, Int32PtrTy)});
     return Builder.CreateLoad(ValPtr);
   } else {
     __builtin_unreachable();
