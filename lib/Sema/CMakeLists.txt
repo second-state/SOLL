@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 add_llvm_library(sollSema
+  STATIC
   Scope.cpp
   Sema.cpp
   SemaExprAsm.cpp

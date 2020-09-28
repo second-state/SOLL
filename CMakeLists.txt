@@ -57,6 +57,10 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     )
 endif()
 
+if (SOLL_BUILD_STATIC)
+  add_compile_options(-static)
+endif()
+
 option(SOLL_INCLUDE_TESTS
   "Generate build targets for the Soll unit tests."
   ${LLVM_INCLUDE_TESTS})
@@ -71,8 +75,8 @@ This feature depends on EVM_LLVM project."
   ${SOLL_ENABLE_EVM})
 
 if(SOLL_COVERAGE)
-include(CodeCoverage)
-append_coverage_compiler_flags()
+  include(CodeCoverage)
+  append_coverage_compiler_flags()
 endif()
 
 add_subdirectory(lib)

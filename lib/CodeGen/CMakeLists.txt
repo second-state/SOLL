@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 add_llvm_library(sollCodeGen
+  STATIC
   BackendUtil.cpp
   CGExpr.cpp
   CodeGenAction.cpp

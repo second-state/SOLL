@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 add_llvm_library(sollFrontend
+  STATIC
   ASTConsumers/ABIPrinter.cpp
   ASTConsumers/ASTPrinter.cpp
   ASTConsumers/FuncSigPrinter.cpp
