@@ -28,7 +28,7 @@ jobs:
         cmake -DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true ..
         make -j2
 
-    - name: Test SSVM
+    - name: Test SOLL
       run: |
         cd build
         ctest
@@ -52,7 +52,7 @@ jobs:
         cmake -DCMAKE_BUILD_TYPE=Release -DSOLL_INCLUDE_TESTS=true ..
         make -j2
 
-    - name: Test SSVM
+    - name: Test SOLL
       run: |
         cd build
         ctest
@@ -79,11 +79,13 @@ jobs:
       run: |
         cd build
         cmake -DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true -DSOLL_COVERAGE=true ..
-        make -j2
-
-    - name: Generate coverage report
-      run: |
-        cd build
         make -j2 codecov
-        wget https://codecov.io/bash -O codecov.bash
-        bash codecov.bash -t ${{ secrets.CODECOV_TOKEN }} -X gcov -X coveragepy -X search -X xcode -X gcovout -f codecov.xml
+
+    - name: Upload coverage report to Codecov
+      uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        file: ./build/codecov.xml
+        name: codecov-soll
+        fail_ci_if_error: true
+        path_to_write_report: ./build/codecov_report.gz
