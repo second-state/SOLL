@@ -2,6 +2,7 @@
 #include "CodeGenFunction.h"
 #include "CodeGenModule.h"
 #include <llvm/IR/CFG.h>
+#include <llvm/IR/Value.h>
 
 namespace soll::CodeGen {
 
@@ -2023,6 +2024,110 @@ void CodeGenFunction::emitAsmReturnDataCopy(const CallExpr *CE) {
   CGM.emitReturnDataCopy(Pos, Ptr, Length);
 }
 
+llvm::Value *CodeGenFunction::emitAsmCall(const CallExpr *CE) {
+  auto Arguments = CE->getArguments();
+
+  llvm::Value *Gas = emitExpr(Arguments[0])->load(Builder, CGM);
+
+  llvm::Value *Address = emitExpr(Arguments[1])->load(Builder, CGM);
+  llvm::Value *AddressPtr = Builder.CreateAlloca(AddressTy);
+  Builder.CreateStore(CGM.getEndianlessValue(Address), AddressPtr);
+
+  llvm::Value *Value = emitExpr(Arguments[2])->load(Builder, CGM);
+  llvm::Value *ValuePtr = Builder.CreateAlloca(Int256Ty);
+  Builder.CreateStore(CGM.getEndianlessValue(Value), ValuePtr);
+
+  llvm::Value *Ptr = emitExpr(Arguments[3])->load(Builder, CGM);
+  llvm::Value *Length = emitExpr(Arguments[4])->load(Builder, CGM);
+
+  llvm::Value *OutPtr = emitExpr(Arguments[5])->load(Builder, CGM);
+  llvm::Value *OutLength = emitExpr(Arguments[6])->load(Builder, CGM);
+
+  llvm::Value *Val = CGM.emitCall(Gas, AddressPtr, ValuePtr, Ptr, Length);
+
+  llvm::Value *RetDataSize = CGM.emitGetReturnDataSize();
+  // TODO: RetDataSize > OutLength cause overflow
+  CGM.emitReturnDataCopy(OutPtr, Builder.getInt32(0), RetDataSize);
+
+  return Builder.CreateTrunc(Val, BoolTy);
+}
+
+llvm::Value *CodeGenFunction::emitAsmCallCode(const CallExpr *CE) {
+  auto Arguments = CE->getArguments();
+
+  llvm::Value *Gas = emitExpr(Arguments[0])->load(Builder, CGM);
+
+  llvm::Value *Address = emitExpr(Arguments[1])->load(Builder, CGM);
+  llvm::Value *AddressPtr = Builder.CreateAlloca(AddressTy);
+  Builder.CreateStore(CGM.getEndianlessValue(Address), AddressPtr);
+
+  llvm::Value *Value = emitExpr(Arguments[2])->load(Builder, CGM);
+  llvm::Value *ValuePtr = Builder.CreateAlloca(Int256Ty);
+  Builder.CreateStore(CGM.getEndianlessValue(Value), ValuePtr);
+
+  llvm::Value *Ptr = emitExpr(Arguments[3])->load(Builder, CGM);
+  llvm::Value *Length = emitExpr(Arguments[4])->load(Builder, CGM);
+
+  llvm::Value *OutPtr = emitExpr(Arguments[5])->load(Builder, CGM);
+  llvm::Value *OutLength = emitExpr(Arguments[6])->load(Builder, CGM);
+
+  llvm::Value *Val = CGM.emitCallCode(Gas, AddressPtr, ValuePtr, Ptr, Length);
+
+  llvm::Value *RetDataSize = CGM.emitGetReturnDataSize();
+  // TODO: RetDataSize > OutLength cause overflow
+  CGM.emitReturnDataCopy(OutPtr, Builder.getInt32(0), RetDataSize);
+
+  return Builder.CreateTrunc(Val, BoolTy);
+}
+
+llvm::Value *CodeGenFunction::emitAsmDelegatecall(const CallExpr *CE) {
+  auto Arguments = CE->getArguments();
+
+  llvm::Value *Gas = emitExpr(Arguments[0])->load(Builder, CGM);
+
+  llvm::Value *Address = emitExpr(Arguments[1])->load(Builder, CGM);
+  llvm::Value *AddressPtr = Builder.CreateAlloca(AddressTy);
+  Builder.CreateStore(CGM.getEndianlessValue(Address), AddressPtr);
+
+  llvm::Value *Ptr = emitExpr(Arguments[3])->load(Builder, CGM);
+  llvm::Value *Length = emitExpr(Arguments[4])->load(Builder, CGM);
+
+  llvm::Value *OutPtr = emitExpr(Arguments[5])->load(Builder, CGM);
+  llvm::Value *OutLength = emitExpr(Arguments[6])->load(Builder, CGM);
+
+  llvm::Value *Val = CGM.emitCallDelegate(Gas, AddressPtr, Ptr, Length);
+
+  llvm::Value *RetDataSize = CGM.emitGetReturnDataSize();
+  // TODO: RetDataSize > OutLength cause overflow
+  CGM.emitReturnDataCopy(OutPtr, Builder.getInt32(0), RetDataSize);
+
+  return Builder.CreateTrunc(Val, BoolTy);
+}
+
+llvm::Value *CodeGenFunction::emitAsmCallStaticcall(const CallExpr *CE) {
+  auto Arguments = CE->getArguments();
+
+  llvm::Value *Gas = emitExpr(Arguments[0])->load(Builder, CGM);
+
+  llvm::Value *Address = emitExpr(Arguments[1])->load(Builder, CGM);
+  llvm::Value *AddressPtr = Builder.CreateAlloca(AddressTy);
+  Builder.CreateStore(CGM.getEndianlessValue(Address), AddressPtr);
+
+  llvm::Value *Ptr = emitExpr(Arguments[3])->load(Builder, CGM);
+  llvm::Value *Length = emitExpr(Arguments[4])->load(Builder, CGM);
+
+  llvm::Value *OutPtr = emitExpr(Arguments[5])->load(Builder, CGM);
+  llvm::Value *OutLength = emitExpr(Arguments[6])->load(Builder, CGM);
+
+  llvm::Value *Val = CGM.emitCallStatic(Gas, AddressPtr, Ptr, Length);
+
+  llvm::Value *RetDataSize = CGM.emitGetReturnDataSize();
+  // TODO: RetDataSize > OutLength cause overflow
+  CGM.emitReturnDataCopy(OutPtr, Builder.getInt32(0), RetDataSize);
+
+  return Builder.CreateTrunc(Val, BoolTy);
+}
+
 ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
                                                      const CallExpr *CE) {
   switch (SI->getSpecialIdentifier()) {
@@ -2179,6 +2284,20 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   /// misc
   case AsmIdentifier::SpecialIdentifier::keccak256:
     return ExprValue::getRValue(CE, emitAsmCallkeccak256(CE));
+  case AsmIdentifier::SpecialIdentifier::create:
+  case AsmIdentifier::SpecialIdentifier::create2:
+  case AsmIdentifier::SpecialIdentifier::call:
+    return ExprValue::getRValue(
+        CE, Builder.CreateZExtOrTrunc(emitAsmCall(CE), CGM.Int256Ty));
+  case AsmIdentifier::SpecialIdentifier::callcode:
+    return ExprValue::getRValue(
+        CE, Builder.CreateZExtOrTrunc(emitAsmCallCode(CE), CGM.Int256Ty));
+  case AsmIdentifier::SpecialIdentifier::delegatecall:
+    return ExprValue::getRValue(
+        CE, Builder.CreateZExtOrTrunc(emitAsmDelegatecall(CE), CGM.Int256Ty));
+  case AsmIdentifier::SpecialIdentifier::staticcall:
+    return ExprValue::getRValue(
+        CE, Builder.CreateZExtOrTrunc(emitAsmCallStaticcall(CE), CGM.Int256Ty));
   // TODO:
   // - implement special identifiers below and
   //   move implemented ones above this TODO.
@@ -2186,12 +2305,6 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   case AsmIdentifier::SpecialIdentifier::iszerou256:
   case AsmIdentifier::SpecialIdentifier::sars256:
   case AsmIdentifier::SpecialIdentifier::byte:
-  case AsmIdentifier::SpecialIdentifier::create:
-  case AsmIdentifier::SpecialIdentifier::create2:
-  case AsmIdentifier::SpecialIdentifier::call:
-  case AsmIdentifier::SpecialIdentifier::callcode:
-  case AsmIdentifier::SpecialIdentifier::delegatecall:
-  case AsmIdentifier::SpecialIdentifier::staticcall:
   case AsmIdentifier::SpecialIdentifier::abort:
   case AsmIdentifier::SpecialIdentifier::selfdestruct:
   case AsmIdentifier::SpecialIdentifier::this_:
