@@ -6,13 +6,13 @@
 #include "soll/AST/DeclYul.h"
 #include "soll/Basic/CodeGenOptions.h"
 #include "soll/Basic/TargetOptions.h"
+#include "llvm/Support/Alignment.h"
 #include <llvm/ADT/APInt.h>
 #include <llvm/IR/ConstantFolder.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Type.h>
-#include "llvm/Support/Alignment.h"
 
 namespace soll {
 
@@ -65,6 +65,7 @@ class CodeGenModule : public CodeGenTypeCache {
   std::size_t StateVarAddrCursor;
 
   llvm::Function *Func_call = nullptr;
+  llvm::Function *Func_callCode = nullptr;
   llvm::Function *Func_callDataCopy = nullptr;
   llvm::Function *Func_callStatic = nullptr;
   llvm::Function *Func_callDelegate = nullptr;
@@ -99,7 +100,6 @@ class CodeGenModule : public CodeGenTypeCache {
   llvm::Function *Func_getCodeSize = nullptr;
   llvm::Function *Func_getExternalCodeSize = nullptr;
   llvm::Function *Func_getReturnDataSize = nullptr;
-
 
   llvm::Function *Func_print32 = nullptr;
 
@@ -180,15 +180,19 @@ public:
   llvm::Value *emitReturnDataSize();
   llvm::Value *emitReturnDataCopyBytes(llvm::Value *DataOffset,
                                        llvm::Value *Length);
-  void emitReturnDataCopy(llvm::Value *ResultOffset,
-                          llvm::Value *DataOffset,
-                          llvm::Value *Length);                          
+  void emitReturnDataCopy(llvm::Value *ResultOffset, llvm::Value *DataOffset,
+                          llvm::Value *Length);
   llvm::Value *emitCallDataLoad(llvm::Value *DataOffset);
   llvm::Value *emitCall(llvm::Value *Gas, llvm::Value *AddressPtr,
                         llvm::Value *ValuePtr, llvm::Value *DataPtr,
                         llvm::Value *DataLength,
                         llvm::Value *RetOffset = nullptr,
                         llvm::Value *RetLength = nullptr);
+  llvm::Value *emitCallCode(llvm::Value *Gas, llvm::Value *AddressPtr,
+                            llvm::Value *ValuePtr, llvm::Value *DataPtr,
+                            llvm::Value *DataLength,
+                            llvm::Value *RetOffset = nullptr,
+                            llvm::Value *RetLength = nullptr);
   llvm::Value *emitCallStatic(llvm::Value *Gas, llvm::Value *AddressPtr,
                               llvm::Value *DataPtr, llvm::Value *DataLength,
                               llvm::Value *RetOffset = nullptr,
