@@ -456,6 +456,19 @@ void CodeGenModule::initEEIDeclaration() {
   Func_call->addParamAttr(2, llvm::Attribute::ReadOnly);
   Func_call->addParamAttr(3, llvm::Attribute::ReadOnly);
 
+  // callCode
+  FT = llvm::FunctionType::get(
+      Int32Ty, {Int64Ty, AddressPtrTy, Int128PtrTy, Int8PtrTy, Int32Ty}, false);
+  Func_callCode = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                         "ethereum.callCode", TheModule);
+  Func_callCode->addFnAttr(Ethereum);
+  Func_callCode->addFnAttr(
+      llvm::Attribute::get(VMContext, "wasm-import-name", "callCode"));
+  Func_callCode->addFnAttr(llvm::Attribute::NoUnwind);
+  Func_callCode->addParamAttr(1, llvm::Attribute::ReadOnly);
+  Func_callCode->addParamAttr(2, llvm::Attribute::ReadOnly);
+  Func_callCode->addParamAttr(3, llvm::Attribute::ReadOnly);
+
   // callStatic
   FT = llvm::FunctionType::get(
       Int32Ty, {Int64Ty, AddressPtrTy, Int8PtrTy, Int32Ty}, false);
@@ -2074,6 +2087,22 @@ llvm::Value *CodeGenModule::emitCall(llvm::Value *Gas, llvm::Value *AddressPtr,
   } else if (isEWASM()) {
     llvm::Value *Val = Builder.CreateCall(
         Func_call, {Gas, AddressPtr, ValuePtr, DataPtr, DataLength});
+    return Val;
+  } else {
+    __builtin_unreachable();
+  }
+}
+
+llvm::Value *
+CodeGenModule::emitCallCode(llvm::Value *Gas, llvm::Value *AddressPtr,
+                            llvm::Value *ValuePtr, llvm::Value *DataPtr,
+                            llvm::Value *DataLength, llvm::Value *RetOffset,
+                            llvm::Value *RetLength) {
+  if (isEVM()) {
+    assert(false && "EEI callCode not supported in EVM yet");
+  } else if (isEWASM()) {
+    llvm::Value *Val = Builder.CreateCall(
+        Func_callCode, {Gas, AddressPtr, ValuePtr, DataPtr, DataLength});
     return Val;
   } else {
     __builtin_unreachable();

@@ -131,6 +131,10 @@ private:
   llvm::Value *emitAsmCallkeccak256(const CallExpr *CE);
   llvm::Value *emitAsmGetBlockHash(const CallExpr *CE);
   void emitAsmReturnDataCopy(const CallExpr *CE);
+  llvm::Value *emitAsmCall(const CallExpr *CE);
+  llvm::Value *emitAsmCallCode(const CallExpr *CE);
+  llvm::Value *emitAsmDelegatecall(const CallExpr *CE);
+  llvm::Value *emitAsmCallStaticcall(const CallExpr *CE);
 
   ExprValuePtr emitCallExpr(const CallExpr *CE);
   ExprValuePtr emitSpecialCallExpr(const Identifier *SI, const CallExpr *CE,
