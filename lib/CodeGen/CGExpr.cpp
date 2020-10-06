@@ -615,57 +615,9 @@ private:
       return std::make_shared<ExprValue>(Ty, ValueKind::VK_SValue, AddressPtr);
     }
     if (const auto *ArrTy = dynamic_cast<const ArrayType *>(Base->getType())) {
-      // Array Type : Fixed Size Mem Array, Fixed Sized Storage Array, Dynamic
-      // Sized Storage Array
-      // Require Index to be unsigned 256-bit Int
-
-      llvm::Value *IndexValue = Index->load(Builder, CGM);
-      if (!IA->isStateVariable()) {
-        // TODO : Assume only Integer Array
-        llvm::Value *ArraySize = Builder.getInt(ArrTy->getLength());
-        emitCheckArrayOutOfBound(ArraySize, IndexValue);
-        llvm::Value *Address =
-            Builder.CreateInBoundsGEP(CGM.getLLVMType(ArrTy), Base->getValue(),
-                                      {Builder.getIntN(256, 0), IndexValue});
-        return std::make_shared<ExprValue>(Ty, ValueKind::VK_LValue, Address);
-      }
-
-      llvm::Value *Pos = Builder.CreateLoad(Base->getValue());
-      if (ArrTy->isDynamicSized()) {
-        // load array size and check
-        auto LengthTy = IntegerType::getIntN(256);
-        ExprValue BaseLength(&LengthTy, ValueKind::VK_SValue, Base->getValue());
-        llvm::Value *ArraySize = BaseLength.load(Builder, CGM);
-        emitCheckArrayOutOfBound(ArraySize, IndexValue);
-
-        // load array position
-        llvm::Value *Bytes = CGM.emitConcatBytes({CGM.getEndianlessValue(Pos)});
-        Pos = CGM.emitKeccak256(Bytes);
-      } else {
-        // Fixed Size Storage Array
-        llvm::Value *ArraySize = Builder.getInt(ArrTy->getLength());
-        emitCheckArrayOutOfBound(ArraySize, IndexValue);
-      }
-
-      unsigned BitPerElement = ArrTy->getElementType()->getBitNum();
-      unsigned ElementPerSlot = 256 / BitPerElement;
-
-      if (ElementPerSlot != 1) {
-        llvm::Value *StorageIndex = Builder.CreateUDiv(
-            IndexValue, Builder.getIntN(256, ElementPerSlot));
-        llvm::Value *Shift = Builder.CreateURem(
-            IndexValue, Builder.getIntN(256, ElementPerSlot));
-        llvm::Value *ElemAddress = Builder.CreateAdd(Pos, StorageIndex);
-        llvm::Value *Address = Builder.CreateAlloca(CGF.Int256Ty);
-        Builder.CreateStore(ElemAddress, Address);
-        return std::make_shared<ExprValue>(Ty, ValueKind::VK_SValue, Address,
-                                           Shift);
-      } else {
-        llvm::Value *ElemAddress = Builder.CreateAdd(Pos, IndexValue);
-        llvm::Value *Address = Builder.CreateAlloca(CGF.Int256Ty);
-        Builder.CreateStore(ElemAddress, Address);
-        return std::make_shared<ExprValue>(Ty, ValueKind::VK_SValue, Address);
-      }
+      return arrayIndexAccess(Base, Index->load(Builder, CGM),
+                              ArrTy->getElementType().get(), ArrTy,
+                              IA->isStateVariable());
     }
     assert(false && "unknown IndexAccess type");
     __builtin_unreachable();
