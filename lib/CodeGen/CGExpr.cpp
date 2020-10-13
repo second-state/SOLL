@@ -346,16 +346,36 @@ private:
       case BinaryOperatorKind::BO_NE:
         V = Builder.CreateICmpNE(LHS, RHS, "BO_NE");
         break;
-      case BinaryOperatorKind::BO_Shl:
-        V = Builder.CreateShl(LHS, RHS, "BO_Shl");
+      case BinaryOperatorKind::BO_Shl: {
+        auto LHSType = LHS->getType();
+        auto RHSType = RHS->getType();
+        auto returnType =
+            LHSType->getIntegerBitWidth() > RHSType->getIntegerBitWidth()
+                ? LHSType
+                : RHSType;
+        V = Builder.CreateShl(Builder.CreateZExtOrTrunc(LHS, returnType),
+                              Builder.CreateZExtOrTrunc(RHS, returnType),
+                              "BO_Shl");
         break;
-      case BinaryOperatorKind::BO_Shr:
+      }
+      case BinaryOperatorKind::BO_Shr: {
+        auto LHSType = LHS->getType();
+        auto RHSType = RHS->getType();
+        auto returnType =
+            LHSType->getIntegerBitWidth() > RHSType->getIntegerBitWidth()
+                ? LHSType
+                : RHSType;
         if (Signed) {
-          V = Builder.CreateAShr(LHS, RHS, "BO_Shr");
+          V = Builder.CreateAShr(Builder.CreateZExtOrTrunc(LHS, returnType),
+                                 Builder.CreateZExtOrTrunc(RHS, returnType),
+                                 "BO_Shr");
         } else {
-          V = Builder.CreateLShr(LHS, RHS, "BO_Shr");
+          V = Builder.CreateLShr(Builder.CreateZExtOrTrunc(LHS, returnType),
+                                 Builder.CreateZExtOrTrunc(RHS, returnType),
+                                 "BO_Shr");
         }
         break;
+      }
       case BinaryOperatorKind::BO_And:
       case BinaryOperatorKind::BO_AsmAnd:
         V = Builder.CreateAnd(LHS, RHS, "BO_And");
