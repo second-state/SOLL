@@ -134,6 +134,7 @@ private:
 
   std::string stringUnquote(llvm::StringRef Quoted);
   std::string hexUnquote(llvm::StringRef Quoted);
+  std::string simplifyIntegerLiteral(llvm::StringRef Literal);
   std::pair<bool, llvm::APInt> numericParse(llvm::StringRef Literal,
                                             uint64_t Unit = 1);
 

@@ -142,6 +142,45 @@ std::string Parser::hexUnquote(llvm::StringRef Quoted) {
   return Result;
 }
 
+std::string Parser::simplifyIntegerLiteral(llvm::StringRef Literal) {
+  std::string LiteralStr = Literal.str();
+  LiteralStr.erase(remove(LiteralStr.begin(), LiteralStr.end(), '_'),
+                   LiteralStr.end());
+  if (LiteralStr.size() > 2 && LiteralStr[0] == '0' && LiteralStr[1] == 'x')
+    return LiteralStr;
+  size_t e_id = 0, dot_id = 0;
+  int e_num = 0, dot_num = 0;
+  for (size_t i = 0; i < LiteralStr.size(); ++i) {
+    if (LiteralStr[i] == 'e') {
+      ++e_num;
+      e_id = i;
+    }
+    if (LiteralStr[i] == '.') {
+      ++dot_num;
+      dot_id = i;
+    }
+  }
+  if (e_num != 1 || LiteralStr.back() == 'e' || dot_num > 1 ||
+      (dot_num == 1 && e_id < dot_id))
+    return LiteralStr;
+
+  std::string L = LiteralStr.substr(0, e_id);
+  std::string R = LiteralStr.substr(e_id + 1);
+  size_t exponent = std::stoul(R);
+  if (dot_num) {
+    while (L.back() != '.' && exponent) {
+      std::swap(L[dot_id], L[dot_id + 1]);
+      ++dot_id;
+      --exponent;
+    }
+    if (L.back() == '.')
+      L.pop_back();
+  }
+  while (exponent--)
+    L += '0';
+  return L;
+}
+
 std::pair<bool, llvm::APInt> Parser::numericParse(llvm::StringRef Literal,
                                                   uint64_t Unit) {
   llvm::APInt Result = llvm::APInt::getNullValue(1);
@@ -151,7 +190,8 @@ std::pair<bool, llvm::APInt> Parser::numericParse(llvm::StringRef Literal,
       Signed = true;
       Literal = Literal.substr(1);
     }
-    if (Literal.getAsInteger(0, Result)) {
+    auto LiteralStr = simplifyIntegerLiteral(Literal);
+    if (llvm::StringRef(LiteralStr).getAsInteger(0, Result)) {
       Diag(diag::err_invalid_numeric_literal) << Literal;
     }
     if (Unit != 1) {
