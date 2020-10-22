@@ -63,6 +63,7 @@ config.available_features = [
     'callvalue',
     'calldataload',
     'calldatasize',
+    'calldatacopy',
     'codecopy',
     'datasize',
     'dataoffset',

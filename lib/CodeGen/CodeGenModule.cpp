@@ -2001,7 +2001,10 @@ void CodeGenModule::emitCallDataCopy(llvm::Value *ResultOffset,
                         Builder.CreateZExtOrTrunc(DataOffset, EVMIntTy),
                         Builder.CreateZExtOrTrunc(Length, EVMIntTy)});
   } else if (isEWASM()) {
-    Builder.CreateCall(Func_callDataCopy, {ResultOffset, DataOffset, Length});
+    Builder.CreateCall(Func_callDataCopy, 
+                       {Builder.CreateIntToPtr(ResultOffset, Int8PtrTy), 
+                        Builder.CreateZExtOrTrunc(DataOffset, Int32Ty), 
+                        Builder.CreateZExtOrTrunc(Length, Int32Ty)});
   } else {
     __builtin_unreachable();
   }
