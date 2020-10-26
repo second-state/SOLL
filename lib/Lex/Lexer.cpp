@@ -577,6 +577,8 @@ Token Lexer::LexIdentifier(const char *CurPtr) {
 Token Lexer::LexNumericConstant(const char *CurPtr) {
   unsigned Size;
   char C = getCharAndSize(CurPtr, Size);
+
+  // Valid cases: 1_234_567_89, 1.23
   while (isAlphanumeric(C) || C == '_' || C == '.') {
     CurPtr = ConsumeChar(CurPtr, Size);
     C = getCharAndSize(CurPtr, Size);

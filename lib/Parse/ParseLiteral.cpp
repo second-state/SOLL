@@ -146,37 +146,41 @@ std::string Parser::simplifyIntegerLiteral(llvm::StringRef Literal) {
   std::string LiteralStr = Literal.str();
   LiteralStr.erase(remove(LiteralStr.begin(), LiteralStr.end(), '_'),
                    LiteralStr.end());
+
+  // Hex format integer literal
   if (LiteralStr.size() > 2 && LiteralStr[0] == '0' && LiteralStr[1] == 'x')
     return LiteralStr;
-  size_t e_id = 0, dot_id = 0;
-  int e_num = 0, dot_num = 0;
+  size_t EIdx = 0, DotIdx = 0;
+  int ENum = 0, DotNum = 0;
   for (size_t i = 0; i < LiteralStr.size(); ++i) {
     if (LiteralStr[i] == 'e') {
-      ++e_num;
-      e_id = i;
+      ++ENum;
+      EIdx = i;
     }
     if (LiteralStr[i] == '.') {
-      ++dot_num;
-      dot_id = i;
+      ++DotNum;
+      DotIdx = i;
     }
   }
-  if (e_num != 1 || LiteralStr.back() == 'e' || dot_num > 1 ||
-      (dot_num == 1 && e_id < dot_id))
+
+  /* Invalid cases: 1e2e, 3e, 1.1.1, 1e2.1 */
+  if (ENum != 1 || LiteralStr.back() == 'e' || DotNum > 1 ||
+      (DotNum == 1 && EIdx < DotIdx))
     return LiteralStr;
 
-  std::string L = LiteralStr.substr(0, e_id);
-  std::string R = LiteralStr.substr(e_id + 1);
-  size_t exponent = std::stoul(R);
-  if (dot_num) {
-    while (L.back() != '.' && exponent) {
-      std::swap(L[dot_id], L[dot_id + 1]);
-      ++dot_id;
-      --exponent;
+  std::string L = LiteralStr.substr(0, EIdx);
+  std::string R = LiteralStr.substr(EIdx + 1);
+  size_t Exponent = std::stoul(R);
+  if (DotNum) {
+    while (L.back() != '.' && Exponent) {
+      std::swap(L[DotIdx], L[DotIdx + 1]);
+      ++DotIdx;
+      --Exponent;
     }
     if (L.back() == '.')
       L.pop_back();
   }
-  while (exponent--)
+  while (Exponent--)
     L += '0';
   return L;
 }
