@@ -222,9 +222,25 @@ private:
       ExprValuePtr LHSVar = visit(BO->getLHS());
       ExprValuePtr RHSVar = visit(BO->getRHS());
       llvm::Value *RHSVal =
-          RHSVar->isTuple() ? nullptr : RHSVar->load(Builder, CGM);
+          RHSVar->isTuple() ||
+                  (RHSVar->getType()->getCategory() == Type::Category::Struct)
+              ? nullptr
+              : RHSVar->load(Builder, CGM);
       if (BO->getOpcode() == BO_Assign) {
-        if (LHSVar->isTuple() && RHSVar->isTuple()) {
+        if (RHSVar->getType()->getCategory() == Type::Category::Struct &&
+            LHSVar->getType() == RHSVar->getType()) {
+          auto StructTy = dynamic_cast<const StructType *>(RHSVar->getType());
+          for (size_t i = 0; i < StructTy->getElementSize(); ++i) {
+            auto RHSVarI = structIndexAccess(RHSVar, i, StructTy);
+            assert(RHSVarI->getType()->getCategory() !=
+                       Type::Category::Struct &&
+                   "Recursive tuple is not yet supported");
+            auto LHSVarI = structIndexAccess(LHSVar, i, StructTy);
+            auto RHSValI = RHSVarI->load(Builder, CGM);
+            LHSVarI->store(Builder, CGM, RHSValI);
+          }
+          return RHSVar;
+        } else if (LHSVar->isTuple() && RHSVar->isTuple()) {
           assert(LHSVar->isTuple());
           assert(RHSVar->isTuple());
 
