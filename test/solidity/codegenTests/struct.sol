@@ -16,10 +16,16 @@ contract Struct {
     struct C{
       B b;
     }
+    struct D{
+      int x;
+      int y;
+    }
     B b;
     A a;
     C c;
     int32[] d;
+    D e;
+    D f;
     /*
     function Jinkela() public payable returns(A memory){
         A newA;
@@ -30,9 +36,10 @@ contract Struct {
     */
     function encode() public payable returns(int32){
         c.b.a.a = 6;
+        e = f;
         //b.m[71] = 22;
         //a.d[2] = 8;
-        //a.c[2] = 8;
-        //return a.c[2];
+        a.c[2] = 8;
+        return a.c[2];
     }
 }
