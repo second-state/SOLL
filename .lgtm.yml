@@ -1,0 +1,31 @@
+path_classifiers:
+  test:
+    - "test/**/*.cpp"
+extraction:
+  cpp:
+    prepare:
+      packages:
+        - binaryen
+        - libboost-all-dev
+        - libtbb-dev
+    after_prepare:
+      - wget -P debs https://apt.llvm.org/eoan/pool/main/l/llvm-toolchain-10/liblld-10-dev_10.0.1~%2b%2b20200708123514%2bef32c611aa2-1~exp1~20200707224111.189_amd64.deb
+      - dpkg-deb -x debs/liblld-10-dev_10.0.1~++20200708123514+ef32c611aa2-1~exp1~20200707224111.189_amd64.deb deps
+      - wget -P debs https://apt.llvm.org/eoan/pool/main/l/llvm-toolchain-10/liblld-10_10.0.1~%2b%2b20200708123514%2bef32c611aa2-1~exp1~20200707224111.189_amd64.deb
+      - dpkg-deb -x debs/liblld-10_10.0.1~++20200708123514+ef32c611aa2-1~exp1~20200707224111.189_amd64.deb deps
+      - wget -P debs https://apt.llvm.org/eoan/pool/main/l/llvm-toolchain-10/libllvm10_10.0.1~%2b%2b20200708123514%2bef32c611aa2-1~exp1~20200707224111.189_amd64.deb
+      - dpkg-deb -x debs/libllvm10_10.0.1~++20200708123514+ef32c611aa2-1~exp1~20200707224111.189_amd64.deb deps
+      - wget -P debs https://apt.llvm.org/eoan/pool/main/l/llvm-toolchain-10/llvm-10-dev_10.0.1~%2b%2b20200708123514%2bef32c611aa2-1~exp1~20200707224111.189_amd64.deb
+      - dpkg-deb -x debs/llvm-10-dev_10.0.1~++20200708123514+ef32c611aa2-1~exp1~20200707224111.189_amd64.deb deps
+      - wget -P debs https://apt.llvm.org/eoan/pool/main/l/llvm-toolchain-10/llvm-10-runtime_10.0.1~%2b%2b20200708123514%2bef32c611aa2-1~exp1~20200707224111.189_amd64.deb
+      - dpkg-deb -x debs/llvm-10-runtime_10.0.1~++20200708123514+ef32c611aa2-1~exp1~20200707224111.189_amd64.deb deps
+      - wget -P debs https://apt.llvm.org/eoan/pool/main/l/llvm-toolchain-10/llvm-10-tools_10.0.1~%2b%2b20200708123514%2bef32c611aa2-1~exp1~20200707224111.189_amd64.deb
+      - dpkg-deb -x debs/llvm-10-tools_10.0.1~++20200708123514+ef32c611aa2-1~exp1~20200707224111.189_amd64.deb deps
+      - wget -P debs https://apt.llvm.org/eoan/pool/main/l/llvm-toolchain-10/llvm-10_10.0.1~%2b%2b20200708123514%2bef32c611aa2-1~exp1~20200707224111.189_amd64.deb
+      - dpkg-deb -x debs/llvm-10_10.0.1~++20200708123514+ef32c611aa2-1~exp1~20200707224111.189_amd64.deb deps
+    configure:
+      command:
+        - cmake -GNinja -H. -Bbuild -DCMAKE_BUILD_TYPE=Debug -DLLVM_CMAKE_PATH="$(pwd)/deps/usr/lib/llvm-10"
+    index:
+      build_command:
+        - ninja -C build
