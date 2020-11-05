@@ -1548,8 +1548,7 @@ void CodeGenModule::emitStructDecl(const StructDecl *SD) {
     for (auto ET : STy->getElementTypes()) {
       LLVMTy.emplace_back(getLLVMType(ET.get()));
     }
-    llvm::ArrayRef<llvm::Type *> Elements(LLVMTy);
-    auto Tp = llvm::StructType::create(VMContext, {Elements}, "struct");
+    auto Tp = llvm::StructType::create(VMContext, LLVMTy, SD->getName());
     STy->setLLVMType(Tp);
   }
 }
