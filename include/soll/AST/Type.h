@@ -461,7 +461,7 @@ public:
 class StructType : public Type {
   std::vector<TypePtr> ElementTypes;
   std::vector<std::string> ElementNames;
-  llvm::StructType *Tp;
+  llvm::StructType *Tp = nullptr;
 
 public:
   StructType(const std::vector<TypePtr> &ET, const std::vector<std::string> &EN)
