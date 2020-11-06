@@ -172,6 +172,11 @@ std::unique_ptr<Identifier> Sema::CreateIdentifier(const Token &Tok) {
     CurrentScope()->addUnresolvedExternal(Unresolved.get());
     return Unresolved;
   }
+  if (auto SD = dynamic_cast<StructDecl *>(D)) {
+    auto Ty = SD->getConstructorType();
+    return std::make_unique<Identifier>(
+        Tok, Identifier::SpecialIdentifier::struct_constructor, Ty);
+  }
   return std::make_unique<Identifier>(Tok, D);
 }
 

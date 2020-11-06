@@ -1721,6 +1721,32 @@ ExprValuePtr CodeGenFunction::emitCallExpr(const CallExpr *CE) {
   __builtin_unreachable();
 }
 
+llvm::Value *CodeGenFunction::emitStructConstructor(const CallExpr *CE) {
+  auto Callee = CE->getCalleeExpr();
+  TypePtr ReturnType;
+  if (auto funTy =
+          dynamic_cast<const FunctionType *>(Callee->getType().get())) {
+    ReturnType = funTy->getReturnTypes()[0];
+  } else {
+    assert(false && "Can not find struct constructor.");
+    __builtin_unreachable();
+  }
+  const auto &Arguments = CE->getArguments();
+  auto ReturnStructType = dynamic_cast<const StructType *>(ReturnType.get());
+  llvm::Value *ReturnStruct =
+      llvm::ConstantAggregateZero::get(ReturnStructType->getLLVMType());
+  if (Arguments.size() != ReturnStructType->getElementSize()) {
+    assert(false && "Wrong argument count for struct constructor.");
+    __builtin_unreachable();
+  }
+  unsigned Index = 0;
+  for (auto Argument : Arguments) {
+    ReturnStruct = Builder.CreateInsertValue(
+        ReturnStruct, emitExpr(Argument)->load(Builder, CGM), {Index++});
+  }
+  return ReturnStruct;
+}
+
 ExprValuePtr CodeGenFunction::emitSpecialCallExpr(const Identifier *SI,
                                                   const CallExpr *CE,
                                                   const MemberExpr *ME) {
@@ -1766,6 +1792,8 @@ ExprValuePtr CodeGenFunction::emitSpecialCallExpr(const Identifier *SI,
     return ExprValue::getRValue(CE, emitAbiEncodePacked(CE));
   case Identifier::SpecialIdentifier::abi_encode:
     return ExprValue::getRValue(CE, emitAbiEncode(CE));
+  case Identifier::SpecialIdentifier::struct_constructor:
+    return ExprValue::getRValue(CE, emitStructConstructor(CE));
   default:
     assert(false && "special function not supported yet");
     __builtin_unreachable();
