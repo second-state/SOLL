@@ -245,17 +245,18 @@ public:
 class StructDecl : public Decl {
 private:
   TypePtr Ty;
+  TypePtr ConstructorTy;
 
 public:
   StructDecl(SourceRange L, llvm::StringRef Name,
-             const std::vector<TypePtr> &ET, const std::vector<std::string> &EN)
-      : Decl(L, Name, Visibility::Default),
-        Ty(std::make_shared<StructType>(ET, EN)) {}
+             const std::vector<TypePtr> &ET,
+             const std::vector<std::string> &EN);
 
   void accept(DeclVisitor &Visitor) override;
   void accept(ConstDeclVisitor &Visitor) const override;
 
   TypePtr getType() const { return Ty; }
+  TypePtr getConstructorType() const { return ConstructorTy; }
 };
 
 class ModifierInvocation {

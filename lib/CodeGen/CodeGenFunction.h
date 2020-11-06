@@ -109,6 +109,7 @@ private:
                                    bool NeedRevert);
   llvm::Value *emitAbiEncodePacked(const CallExpr *CE);
   llvm::Value *emitAbiEncode(const CallExpr *CE);
+  llvm::Value *emitStructConstructor(const CallExpr *CE);
 
   llvm::Value *emitAsmCallDataSize(const CallExpr *CE);
   llvm::Value *emitAsmCallDataOffset(const CallExpr *CE);
@@ -131,11 +132,11 @@ private:
   llvm::Value *emitAsmGetBlockHash(const CallExpr *CE);
   void emitAsmReturnDataCopy(const CallExpr *CE);
 
-
   ExprValuePtr emitCallExpr(const CallExpr *CE);
   ExprValuePtr emitSpecialCallExpr(const Identifier *SI, const CallExpr *CE,
-                                const MemberExpr *ME);
-  ExprValuePtr emitAsmSpecialCallExpr(const AsmIdentifier *SI, const CallExpr *CE);
+                                   const MemberExpr *ME);
+  ExprValuePtr emitAsmSpecialCallExpr(const AsmIdentifier *SI,
+                                      const CallExpr *CE);
 
   friend class ExprEmitter;
 };

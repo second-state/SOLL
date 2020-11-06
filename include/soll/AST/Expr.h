@@ -86,6 +86,7 @@ public:
     function_gas,
     function_value,
     this_,
+    struct_constructor,
   };
 
 private:

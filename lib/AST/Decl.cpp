@@ -190,4 +190,14 @@ EventDecl::EventDecl(SourceRange L, llvm::StringRef Name,
   FuncTy = std::make_shared<FunctionType>(std::move(PTys), std::move(RTys));
 }
 
+StructDecl::StructDecl(SourceRange L, llvm::StringRef Name,
+                       const std::vector<TypePtr> &ET,
+                       const std::vector<std::string> &EN)
+    : Decl(L, Name, Visibility::Default),
+      Ty(std::make_shared<StructType>(ET, EN)) {
+  auto STy = dynamic_cast<const StructType *>(Ty.get());
+  ConstructorTy = std::make_shared<FunctionType>(
+      std::vector<TypePtr>(STy->getElementTypes()), std::vector<TypePtr>{Ty});
+}
+
 } // namespace soll
