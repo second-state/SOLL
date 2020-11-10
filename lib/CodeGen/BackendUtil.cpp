@@ -62,8 +62,7 @@ public:
                     std::unique_ptr<llvm::raw_pwrite_stream> OS);
 };
 
-static llvm::CodeGenFileType
-getCodeGenFileType(BackendAction Action) {
+static llvm::CodeGenFileType getCodeGenFileType(BackendAction Action) {
   if (Action == BackendAction::EmitObj)
     return llvm::CGFT_ObjectFile;
   else if (Action == BackendAction::EmitMCNull)
