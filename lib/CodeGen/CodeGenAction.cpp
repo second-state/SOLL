@@ -4,11 +4,11 @@
 #include "soll/Basic/TargetOptions.h"
 #include "soll/CodeGen/ModuleBuilder.h"
 #include "soll/Frontend/CompilerInstance.h"
+#include "llvm/Support/Alignment.h"
 #include <lld/Common/Driver.h>
 #include <llvm/IR/ConstantFolder.h>
 #include <llvm/IR/DiagnosticInfo.h>
 #include <llvm/IR/IRBuilder.h>
-#include "llvm/Support/Alignment.h"
 #include <llvm/Support/ToolOutputFile.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 
@@ -171,7 +171,8 @@ private:
       "-o",
       Wasm->TmpName.c_str()
     };
-    lld::wasm::link(llvm::ArrayRef<const char*>(Args), false, llvm::outs(), llvm::errs());
+    lld::wasm::link(llvm::ArrayRef<const char *>(Args), false, llvm::outs(),
+                    llvm::errs());
 
     if (auto Error = removeExports(Wasm->TmpName)) {
       llvm::consumeError(Wasm->discard());
