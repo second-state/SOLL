@@ -6,3 +6,4 @@
 #include "soll/Basic/DiagnosticLex.h"
 #include "soll/Basic/DiagnosticParse.h"
 #include "soll/Basic/DiagnosticSema.h"
+#include "soll/Basic/DiagnosticCodeGen.h"
