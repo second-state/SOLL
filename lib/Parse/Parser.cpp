@@ -1701,8 +1701,14 @@ std::unique_ptr<Expr> Parser::parseLeftHandSideExpression(
         return nullptr;
       }
       // TODO: Fix passs arguments' name fail.
-      Expression = Actions.CreateCallExpr(
-          SourceRange(Begin, End), std::move(Expression), std::move(Arguments));
+      if (Names.empty())
+        Expression =
+            Actions.CreateCallExpr(SourceRange(Begin, End),
+                                   std::move(Expression), std::move(Arguments));
+      else
+        Expression = Actions.CreateNamedCallExpr(
+            SourceRange(Begin, End), std::move(Expression),
+            std::move(Arguments), std::move(Names));
       break;
     }
     default:
@@ -1880,8 +1886,6 @@ Parser::parseFunctionCallArguments() {
   std::pair<std::vector<std::unique_ptr<Expr>>, std::vector<llvm::StringRef>>
       Ret;
   if (Tok.is(tok::l_brace)) {
-    // TODO: Unverified function parameters case
-    // call({arg1 : 1, arg2 : 2 })
     ConsumeBrace();
     bool First = true;
     while (Tok.isNot(tok::r_brace)) {
@@ -1897,6 +1901,11 @@ Parser::parseFunctionCallArguments() {
       }
       Ret.second.emplace_back(Tok.getIdentifierInfo()->getName());
       ConsumeToken(); // identifier
+      if (Tok.isNot(tok::colon)) {
+        Diag(diag::err_expected) << tok::colon;
+        return Ret;
+      }
+      ConsumeToken(); // ':'
       Ret.first.emplace_back(parseExpression());
 
       if (Tok.is(tok::comma) && NextToken().is(tok::r_brace)) {
@@ -1905,7 +1914,7 @@ Parser::parseFunctionCallArguments() {
       }
       First = false;
     }
-    ConsumeToken(); // ')'
+    ConsumeBrace(); // '}'
   } else {
     Ret.first = parseFunctionCallListArguments();
   }

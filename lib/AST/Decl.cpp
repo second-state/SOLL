@@ -172,11 +172,15 @@ FunctionDecl::FunctionDecl(
       FunctionModifiers(std::move(Modifiers)), Body(std::move(Body)) {
   std::vector<TypePtr> PTys;
   std::vector<TypePtr> RTys;
-  for (auto VD : this->getParams()->getParams())
+  auto PNames = std::make_shared<std::vector<std::string>>();
+  for (auto VD : this->getParams()->getParams()) {
+    PNames->emplace_back(VD->getName().str());
     PTys.push_back(VD->GetType());
+  }
   for (auto VD : this->getReturnParams()->getParams())
     RTys.push_back(VD->GetType());
-  FuncTy = std::make_shared<FunctionType>(std::move(PTys), std::move(RTys));
+  FuncTy =
+      std::make_shared<FunctionType>(std::move(PTys), std::move(RTys), PNames);
 }
 
 EventDecl::EventDecl(SourceRange L, llvm::StringRef Name,
@@ -197,7 +201,8 @@ StructDecl::StructDecl(SourceRange L, llvm::StringRef Name,
       Ty(std::make_shared<StructType>(ET, EN)) {
   auto STy = dynamic_cast<const StructType *>(Ty.get());
   ConstructorTy = std::make_shared<FunctionType>(
-      std::vector<TypePtr>(STy->getElementTypes()), std::vector<TypePtr>{Ty});
+      std::vector<TypePtr>(STy->getElementTypes()), std::vector<TypePtr>{Ty},
+      std::make_shared<std::vector<std::string>>(EN));
 }
 
 } // namespace soll

@@ -41,6 +41,7 @@ contract Struct {
         //a.d[2] = 8;
         a.c[2] = 8;
         D memory D_constructor = D(7122, c.b.a.a);
+        D memory D_constructor2 = D({y: 7122, x: c.b.a.a});
         return a.c[2];
     }
 }

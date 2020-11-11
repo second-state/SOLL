@@ -352,13 +352,19 @@ public:
 class FunctionType : public Type {
   std::vector<TypePtr> ParamTypes;
   std::vector<TypePtr> ReturnTypes;
+  std::shared_ptr<const std::vector<std::string>> ParamNames;
 
 public:
-  FunctionType(std::vector<TypePtr> &&PTys, std::vector<TypePtr> &&RTys)
-      : ParamTypes(std::move(PTys)), ReturnTypes(std::move(RTys)) {}
+  FunctionType(std::vector<TypePtr> &&PTys, std::vector<TypePtr> &&RTys,
+               std::shared_ptr<std::vector<std::string>> PNames = nullptr)
+      : ParamTypes(std::move(PTys)), ReturnTypes(std::move(RTys)),
+        ParamNames(PNames) {}
 
   const std::vector<TypePtr> &getParamTypes() const { return ParamTypes; }
   const std::vector<TypePtr> &getReturnTypes() const { return ReturnTypes; }
+  std::shared_ptr<const std::vector<std::string>> getParamNames() const {
+    return ParamNames;
+  }
 
   Category getCategory() const override { return Category::Function; }
   std::string getName() const override { return "function"; }

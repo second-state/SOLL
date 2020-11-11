@@ -59,6 +59,10 @@ public:
   std::unique_ptr<CallExpr>
   CreateCallExpr(SourceRange L, ExprPtr &&Callee,
                  std::vector<std::unique_ptr<Expr>> &&Args);
+  std::unique_ptr<CallExpr>
+  CreateNamedCallExpr(SourceRange L, ExprPtr &&Callee,
+                      std::vector<std::unique_ptr<Expr>> &&Args,
+                      std::vector<llvm::StringRef> &&Names);
   std::unique_ptr<Identifier> CreateIdentifier(const Token &Tok);
   std::unique_ptr<MemberExpr> CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr,
                                                Token Tok);
