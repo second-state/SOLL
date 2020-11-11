@@ -67,6 +67,22 @@ std::unique_ptr<CallExpr> Sema::CreateCallExpr(SourceRange L, ExprPtr &&Callee,
   return std::make_unique<CallExpr>(L, std::move(Callee), std::move(Args));
 }
 
+std::unique_ptr<CallExpr>
+Sema::CreateNamedCallExpr(SourceRange L, ExprPtr &&Callee,
+                          std::vector<ExprPtr> &&Args,
+                          std::vector<llvm::StringRef> &&Names) {
+  for (ExprPtr &Arg : Args) {
+    Arg = CreateDummy(std::move(Arg));
+  }
+
+  std::vector<std::string> NamesStr;
+  for (auto Ref : Names)
+    NamesStr.emplace_back(Ref.str());
+
+  return std::make_unique<CallExpr>(L, std::move(Callee), std::move(Args),
+                                    std::move(NamesStr));
+}
+
 std::unique_ptr<Identifier> Sema::CreateIdentifier(const Token &Tok) {
   static const llvm::StringMap<Identifier::SpecialIdentifier> SpecialLookup{
       {"abi", Identifier::SpecialIdentifier::abi},
