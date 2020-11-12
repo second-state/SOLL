@@ -724,7 +724,7 @@ void CodeGenModule::initEEIDeclaration() {
   Func_print32->addFnAttr(llvm::Attribute::NoUnwind);
 
   // getAddress
-  FT = llvm::FunctionType::get(VoidTy, {Int32PtrTy}, false);
+  FT = llvm::FunctionType::get(VoidTy, {AddressPtrTy}, false);
   Func_getAddress = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
                                            "ethereum.getAddress", TheModule);
   Func_getAddress->addFnAttr(Ethereum);
@@ -2088,8 +2088,13 @@ llvm::Value *CodeGenModule::emitCall(llvm::Value *Gas, llvm::Value *AddressPtr,
     return Builder.CreateCall(Func_call, {Gas, Addr, Value, ArgOffset,
                                           ArgsLength, RetOffset, RetLength});
   } else if (isEWASM()) {
+    auto GasConv = Builder.CreateZExtOrTrunc(Gas, Int64Ty);
+    auto Addr = Builder.CreateBitCast(AddressPtr, AddressPtrTy);
+    auto Value = Builder.CreateBitCast(ValuePtr, Int128PtrTy);
+    auto ArgOffset = Builder.CreateBitCast(DataPtr, Int8PtrTy);
+    auto ArgsLength = Builder.CreateZExtOrTrunc(DataLength, Int32Ty);
     llvm::Value *Val = Builder.CreateCall(
-        Func_call, {Gas, AddressPtr, ValuePtr, DataPtr, DataLength});
+        Func_call, {GasConv, Addr, Value, ArgOffset, ArgsLength});
     return Val;
   } else {
     __builtin_unreachable();
@@ -2104,8 +2109,13 @@ CodeGenModule::emitCallCode(llvm::Value *Gas, llvm::Value *AddressPtr,
   if (isEVM()) {
     assert(false && "EEI callCode not supported in EVM yet");
   } else if (isEWASM()) {
+    auto GasConv = Builder.CreateZExtOrTrunc(Gas, Int64Ty);
+    auto Addr = Builder.CreateBitCast(AddressPtr, AddressPtrTy);
+    auto Value = Builder.CreateBitCast(ValuePtr, Int128PtrTy);
+    auto ArgOffset = Builder.CreateBitCast(DataPtr, Int8PtrTy);
+    auto ArgsLength = Builder.CreateZExtOrTrunc(DataLength, Int32Ty);
     llvm::Value *Val = Builder.CreateCall(
-        Func_callCode, {Gas, AddressPtr, ValuePtr, DataPtr, DataLength});
+        Func_callCode, {GasConv, Addr, Value, ArgOffset, ArgsLength});
     return Val;
   } else {
     __builtin_unreachable();
@@ -2155,8 +2165,12 @@ llvm::Value *CodeGenModule::emitCallDelegate(llvm::Value *Gas,
         Func_callDelegate,
         {Gas, Addr, ArgOffset, ArgsLength, ArgOffset, RetLength});
   } else if (isEWASM()) {
+    auto GasConv = Builder.CreateZExtOrTrunc(Gas, Int64Ty);
+    auto Addr = Builder.CreateBitCast(AddressPtr, AddressPtrTy);
+    auto ArgOffset = Builder.CreateBitCast(DataPtr, Int8PtrTy);
+    auto ArgsLength = Builder.CreateZExtOrTrunc(DataLength, Int32Ty);
     llvm::Value *Val = Builder.CreateCall(
-        Func_callDelegate, {Gas, AddressPtr, DataPtr, DataLength});
+        Func_callDelegate, {GasConv, Addr, ArgOffset, ArgsLength});
     return Val;
   } else {
     __builtin_unreachable();
@@ -2352,7 +2366,6 @@ llvm::Value *CodeGenModule::emitGetAddress() {
     return Builder.CreateZExtOrTrunc(Val, AddressTy);
   } else if (isEWASM()) {
     llvm::Value *ValPtr = Builder.CreateAlloca(AddressTy);
-    ValPtr = Builder.CreateBitCast(ValPtr, Int32PtrTy, "address.ptr");
     Builder.CreateCall(Func_getAddress, {ValPtr});
     return Builder.CreateLoad(ValPtr);
   } else {
