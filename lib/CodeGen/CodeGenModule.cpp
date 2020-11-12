@@ -2002,7 +2002,7 @@ void CodeGenModule::emitCallDataCopy(llvm::Value *ResultOffset,
                         Builder.CreateZExtOrTrunc(Length, EVMIntTy)});
   } else if (isEWASM()) {
     Builder.CreateCall(Func_callDataCopy, 
-                       {Builder.CreateIntToPtr(ResultOffset, Int8PtrTy), 
+                       {Builder.CreateBitCast(ResultOffset, Int8PtrTy), 
                         Builder.CreateZExtOrTrunc(DataOffset, Int32Ty), 
                         Builder.CreateZExtOrTrunc(Length, Int32Ty)});
   } else {
@@ -2143,8 +2143,12 @@ CodeGenModule::emitCallStatic(llvm::Value *Gas, llvm::Value *AddressPtr,
         Func_callStatic,
         {Gas, Addr, ArgOffset, ArgsLength, RetOffset, RetLength});
   } else if (isEWASM()) {
+    auto GasConv = Builder.CreateZExtOrTrunc(Gas, Int64Ty);
+    auto Addr = Builder.CreateBitCast(AddressPtr, AddressPtrTy);
+    auto ArgOffset = Builder.CreateBitCast(DataPtr, Int8PtrTy);
+    auto ArgsLength = Builder.CreateZExtOrTrunc(DataLength, Int32Ty);
     llvm::Value *Val = Builder.CreateCall(
-        Func_callStatic, {Gas, AddressPtr, DataPtr, DataLength});
+        Func_callStatic, {GasConv, Addr, ArgOffset, ArgsLength});
     return Val;
   } else {
     __builtin_unreachable();
@@ -2411,8 +2415,8 @@ llvm::Value *CodeGenModule::emitExternalCodeCopy(llvm::Value *Address,
     assert(false && "EEI getReturnDataSize not supported in EVM yet");
   } else if (isEWASM()) {
     return Builder.CreateCall(Func_externalCodeCopy,
-                              {Builder.CreateIntToPtr(Address, Int32PtrTy),
-                               Builder.CreateIntToPtr(Result, Int32PtrTy),
+                              {Builder.CreateBitCast(Address, Int32PtrTy),
+                               Builder.CreateBitCast(Result, Int32PtrTy),
                                Builder.CreateZExtOrTrunc(Code, Int32Ty),
                                Builder.CreateZExtOrTrunc(Length, Int32Ty)});
   } else {
