@@ -408,7 +408,7 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
     case AsmIdentifier::SpecialIdentifier::keccak256: ///< (u256, u256) -> u256
       Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
       Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty},
-                                          std::vector<TypePtr>{Ty});                           
+                                          std::vector<TypePtr>{Ty});
       break;
     // TODO: implement the rest identifiers
     default:
