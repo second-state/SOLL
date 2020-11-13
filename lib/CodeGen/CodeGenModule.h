@@ -213,7 +213,9 @@ public:
   llvm::Value *emitGetCodeSize();
   llvm::Value *emitGetExternalCodeSize(llvm::Value *Address);
   llvm::Value *emitGetReturnDataSize();
-  llvm::Value *emitExternalCodeCopy(llvm::Value *Address, llvm::Value *Result, llvm::Value *Code, llvm::Value *Length);
+  llvm::Value *emitExternalCodeCopy(llvm::Value *Address, llvm::Value *Result,
+                                    llvm::Value *Code, llvm::Value *Length);
+  void emitTrap();
 
 private:
   llvm::Function *emitNestedObjectGetter(llvm::StringRef Name);
