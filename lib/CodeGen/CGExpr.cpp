@@ -2202,6 +2202,11 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   /// misc
   case AsmIdentifier::SpecialIdentifier::keccak256:
     return ExprValue::getRValue(CE, emitAsmCallkeccak256(CE));
+  case AsmIdentifier::SpecialIdentifier::invalid:
+    CGM.emitTrap();
+    return std::make_shared<ExprValue>();
+  case AsmIdentifier::SpecialIdentifier::pop:
+    return std::make_shared<ExprValue>();
   // TODO:
   // - implement special identifiers below and
   //   move implemented ones above this TODO.

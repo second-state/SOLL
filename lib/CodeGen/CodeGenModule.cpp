@@ -2375,4 +2375,11 @@ llvm::Value *CodeGenModule::emitExternalCodeCopy(llvm::Value *Address,
   }
 }
 
+void CodeGenModule::emitTrap() {
+  llvm::Function *Trap =
+      llvm::Intrinsic::getDeclaration(&TheModule, llvm::Intrinsic::trap);
+
+  Builder.CreateCall(Trap, {});
+}
+
 } // namespace soll::CodeGen
