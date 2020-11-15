@@ -56,8 +56,7 @@ template <bool Const> void StmtVisitorBase<Const>::visit(ReturnStmtType &stmt) {
   }
 }
 
-template <bool Const>
-void StmtVisitorBase<Const>::visit(TupleExprType &op) {
+template <bool Const> void StmtVisitorBase<Const>::visit(TupleExprType &op) {
   for (auto Comps : op.getComponents())
     if (Comps)
       Comps->accept(*this);
