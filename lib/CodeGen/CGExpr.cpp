@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "CodeGenFunction.h"
 #include "CodeGenModule.h"
+#include "soll/Basic/Diagnostic.h"
+#include "soll/Basic/DiagnosticCodeGen.h"
 #include <llvm/IR/CFG.h>
 
 namespace soll::CodeGen {
@@ -1528,6 +1530,11 @@ llvm::Value *CodeGenFunction::emitCallAddressCall(const CallExpr *CE,
   llvm::Value *Address = emitExpr(ME->getBase())->load(Builder, CGM);
   llvm::Value *AddressPtr = Builder.CreateAlloca(AddressTy);
   Builder.CreateStore(CGM.getEndianlessValue(Address), AddressPtr);
+  if (Arguments.empty()) {
+    CGM.getDiags().Report(CE->getLocation().getBegin(),
+                          diag::err_address_call_without_payload);
+    assert(false && "address.call() should have a payload parameter.");
+  }
   llvm::Value *MemoryValue = emitExpr(Arguments[0])->load(Builder, CGM);
 
   llvm::Value *Length = Builder.CreateTrunc(

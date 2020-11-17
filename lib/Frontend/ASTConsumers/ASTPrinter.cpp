@@ -145,7 +145,7 @@ std::string ToString(soll::TypePtr type) {
     std::string Res = "tuple(";
 
     for (size_t i = 0; i < tu->getElementTypes().size(); i++) {
-      if (i > 0) 
+      if (i > 0)
         Res += ',';
       Res += ToString(tu->getElementTypes()[i]);
     }
@@ -333,7 +333,7 @@ void ASTPrinter::visit(ParamListType &param) {
   unindent();
 }
 
-void ASTPrinter::visit(CallableVarDeclType& param) {
+void ASTPrinter::visit(CallableVarDeclType &param) {
   // TODO
 }
 
@@ -433,7 +433,7 @@ void ASTPrinter::visit(CallExprType &call) {
 
 void ASTPrinter::visit(TupleExprType &tuple) {
   os() << indent() << "Tuple \n";
-  for (auto Comps:tuple.getComponents()) {
+  for (auto Comps : tuple.getComponents()) {
     if (Comps) {
       Comps->accept(*this);
     } else {

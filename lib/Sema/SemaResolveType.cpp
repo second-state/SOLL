@@ -59,7 +59,8 @@ bool isAllowedTypeForBinary(BinaryOperatorKind BOK, const Type::Category TyC) {
   }
 }
 
-bool isAllowedForTypecast(const Type *In, const Type *Out, bool IsLiteral, const Expr *SE) {
+bool isAllowedForTypecast(const Type *In, const Type *Out, bool IsLiteral,
+                          const Expr *SE) {
   const Type::Category InC = In->getCategory();
   const Type::Category OutC = Out->getCategory();
 
@@ -93,7 +94,7 @@ bool isAllowedForTypecast(const Type *In, const Type *Out, bool IsLiteral, const
     auto InT = dynamic_cast<const TupleType *>(In);
     auto OutT = dynamic_cast<const TupleType *>(Out);
     auto TupleE = dynamic_cast<const TupleExpr *>(SE);
-    assert (TupleE && "expect SE is a TupleExpr");
+    assert(TupleE && "expect SE is a TupleExpr");
     if (InT->getElementTypes().size() != OutT->getElementTypes().size()) {
       return false;
     }
@@ -103,14 +104,16 @@ bool isAllowedForTypecast(const Type *In, const Type *Out, bool IsLiteral, const
     for (size_t Idx = 0; Idx < Size; ++Idx) {
       if (InT->getElementTypes()[Idx]) {
         if (OutT->getElementTypes()[Idx]) {
-          auto ICExpr = dynamic_cast<const ImplicitCastExpr *>(TupleE->getComponents()[Idx]);
+          auto ICExpr = dynamic_cast<const ImplicitCastExpr *>(
+              TupleE->getComponents()[Idx]);
           assert(ICExpr);
           auto CompExpr = ICExpr->getSubExpr();
-          const bool IsLiteral = dynamic_cast<const NumberLiteral *>(CompExpr) ||
-                                 dynamic_cast<const StringLiteral *>(CompExpr);
-          Result &=
-              isAllowedForTypecast(InT->getElementTypes()[Idx].get(),
-                                   OutT->getElementTypes()[Idx].get(), IsLiteral, CompExpr);
+          const bool IsLiteral =
+              dynamic_cast<const NumberLiteral *>(CompExpr) ||
+              dynamic_cast<const StringLiteral *>(CompExpr);
+          Result &= isAllowedForTypecast(InT->getElementTypes()[Idx].get(),
+                                         OutT->getElementTypes()[Idx].get(),
+                                         IsLiteral, CompExpr);
         }
       } else {
         Result &= OutT->getElementTypes()[Idx] == nullptr;

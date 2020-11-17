@@ -61,6 +61,7 @@ static const StaticDiagInfoRec StaticDiagInfo[] = {
 #include "soll/Basic/DiagnosticLexKinds.inc"
 #include "soll/Basic/DiagnosticParseKinds.inc"
 #include "soll/Basic/DiagnosticSemaKinds.inc"
+#include "soll/Basic/DiagnosticCodeGenKinds.inc"
 #undef DIAG
 };
 
@@ -83,6 +84,7 @@ static const StaticDiagInfoRec *GetDiagInfo(unsigned DiagID) {
   CATEGORY(LEX, FRONTEND)
   CATEGORY(PARSE, LEX)
   CATEGORY(SEMA, PARSE)
+  CATEGORY(CODEGEN, SEMA)
 #undef CATEGORY
 
   if (ID + Offset >= StaticDiagInfoSize)

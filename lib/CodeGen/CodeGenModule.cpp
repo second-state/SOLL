@@ -2303,8 +2303,11 @@ llvm::Value *CodeGenModule::emitGetExternalBalance(llvm::Value *Address) {
   } else if (isEWASM()) {
     llvm::Value *AddressPtr = Builder.CreateAlloca(Int256Ty);
     llvm::Value *ValPtr = Builder.CreateAlloca(Int128Ty);
-    Builder.CreateStore(Builder.CreateZExtOrTrunc(Address, Int256Ty), AddressPtr);
-    Builder.CreateCall(Func_getExternalBalance, {Builder.CreateBitCast(AddressPtr, Int32PtrTy), Builder.CreateBitCast(ValPtr, Int32PtrTy)});
+    Builder.CreateStore(Builder.CreateZExtOrTrunc(Address, Int256Ty),
+                        AddressPtr);
+    Builder.CreateCall(Func_getExternalBalance,
+                       {Builder.CreateBitCast(AddressPtr, Int32PtrTy),
+                        Builder.CreateBitCast(ValPtr, Int32PtrTy)});
     return Builder.CreateLoad(ValPtr);
   } else {
     __builtin_unreachable();
