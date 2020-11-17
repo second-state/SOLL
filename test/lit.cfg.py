@@ -69,7 +69,8 @@ config.available_features = [
     'returndatasize',
     'objectInObject',
     'implicitCast',
-    'invalid'
+    'invalid',
+    'namedcall'
 ]
 
 # excludes: A list of directories to exclude from the testsuite.
