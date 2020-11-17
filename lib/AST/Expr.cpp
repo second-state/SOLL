@@ -49,15 +49,41 @@ std::vector<const Expr *> TupleExpr::getComponents() const {
 ///
 std::vector<Expr *> CallExpr::getArguments() {
   std::vector<Expr *> Args;
-  for (auto &Arg : Arguments)
-    Args.emplace_back(Arg.get());
+  if (isNamedCall()) {
+    auto FnTy = dynamic_cast<const FunctionType *>(CalleeExpr->getType().get());
+    std::unordered_map<std::string, size_t> ParamNamesIndex;
+    size_t ParamSize = 0;
+    for (const auto &ParamName : *FnTy->getParamNames()) {
+      ParamNamesIndex[ParamName] = ParamSize++;
+    }
+    Args.resize(ParamSize);
+    for (size_t i = 0; i < ParamSize; ++i) {
+      Args[ParamNamesIndex.at(Names->at(i))] = Arguments.at(i).get();
+    }
+  } else {
+    for (auto &Arg : Arguments)
+      Args.emplace_back(Arg.get());
+  }
   return Args;
 }
 
 std::vector<const Expr *> CallExpr::getArguments() const {
   std::vector<const Expr *> Args;
-  for (auto &Arg : Arguments)
-    Args.emplace_back(Arg.get());
+  if (isNamedCall()) {
+    auto FnTy = dynamic_cast<const FunctionType *>(CalleeExpr->getType().get());
+    std::unordered_map<std::string, size_t> ParamNamesIndex;
+    size_t ParamSize = 0;
+    for (const auto &ParamName : *FnTy->getParamNames()) {
+      ParamNamesIndex[ParamName] = ParamSize++;
+    }
+    Args.resize(ParamSize);
+    for (size_t i = 0; i < ParamSize; ++i) {
+      Args[ParamNamesIndex.at(Names->at(i))] = Arguments.at(i).get();
+    }
+  } else {
+    for (auto &Arg : Arguments)
+      Args.emplace_back(Arg.get());
+  }
   return Args;
 }
 
