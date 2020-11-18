@@ -403,9 +403,10 @@ void CodeGenFunction::emitAsmSwitchStmt(const AsmSwitchStmt *SS) {
   // - handle nested switch statements.
   // - handle large case range.
   llvm::Value *CondV = emitExpr(SS->getCond())->load(Builder, CGM);
+  llvm::Value *CondVconv = Builder.CreateIntCast(CondV, llvm::Type::getIntNTy(getLLVMContext(), 256), true);
   llvm::BasicBlock *DefaultBB = createBasicBlock("switch.default");
   llvm::BasicBlock *SwitchExit = createBasicBlock("switch.end");
-  llvm::SwitchInst *Switch = Builder.CreateSwitch(CondV, DefaultBB);
+  llvm::SwitchInst *Switch = Builder.CreateSwitch(CondVconv, DefaultBB);
 
   for (auto *Case : SS->getCases()) {
     emitAsmSwitchCase(Case, Switch, SwitchExit);

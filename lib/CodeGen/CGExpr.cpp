@@ -2164,7 +2164,6 @@ llvm::Value *CodeGenFunction::emitAsmCallStaticcall(const CallExpr *CE) {
   llvm::Value *OutPtr = emitExpr(Arguments[4])->load(Builder, CGM);
   llvm::Value *OutLength = emitExpr(Arguments[5])->load(Builder, CGM);
 
-
   llvm::Value *Val = CGM.emitCallStatic(Gas, AddressPtr, Ptr, Length);
 
   llvm::Value *RetDataSize = CGM.emitGetReturnDataSize();
@@ -2330,11 +2329,6 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   /// misc
   case AsmIdentifier::SpecialIdentifier::keccak256:
     return ExprValue::getRValue(CE, emitAsmCallkeccak256(CE));
-  case AsmIdentifier::SpecialIdentifier::invalid:
-    CGM.emitTrap();
-    return std::make_shared<ExprValue>();
-  case AsmIdentifier::SpecialIdentifier::pop:
-    return std::make_shared<ExprValue>();
   case AsmIdentifier::SpecialIdentifier::create:
   case AsmIdentifier::SpecialIdentifier::create2:
   case AsmIdentifier::SpecialIdentifier::call:
