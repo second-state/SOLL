@@ -765,7 +765,8 @@ std::unique_ptr<StructDecl> Parser::parseStructDeclaration() {
     ElementNames.emplace_back(ElementName);
   }
   auto SD = std::make_unique<StructDecl>(SourceRange(Begin, End), Name,
-                                         ElementTypes, ElementNames);
+                                         std::move(ElementTypes),
+                                         std::move(ElementNames));
   Actions.addDecl(SD.get());
   return SD;
 }

@@ -392,6 +392,7 @@ public:
 };
 
 class TupleType : public Type {
+protected:
   std::vector<TypePtr> ElementTypes;
 
 public:
@@ -464,31 +465,16 @@ public:
   }
 };
 
-class StructType : public Type {
-  std::vector<TypePtr> ElementTypes;
+class StructType : public TupleType {
   std::vector<std::string> ElementNames;
   llvm::StructType *Tp = nullptr;
 
 public:
-  StructType(const std::vector<TypePtr> &ET, const std::vector<std::string> &EN)
-      : ElementTypes(ET), ElementNames(EN) {}
+  StructType(std::vector<TypePtr> &&ET, std::vector<std::string> &&EN)
+      : TupleType(std::move(ET)), ElementNames(std::move(EN)) {}
   Category getCategory() const override { return Category::Struct; }
   std::string getName() const override { return "struct"; }
-  bool isDynamic() const override {
-    for (const auto &T : ElementTypes) {
-      if (T->isDynamic())
-        return true;
-    }
-    return false;
-  }
-  bool shouldEndianLess() const override { return false; }
-  unsigned getABIStaticSize() const override {
-    unsigned Res = 0;
-    for (const auto &T : ElementTypes) {
-      Res += T->getABIStaticSize();
-    }
-    return Res;
-  }
+
   unsigned getStorageSize() const override {
     return getStoragePos(getElementSize());
   }
@@ -514,7 +500,6 @@ public:
     return Pos;
   }
   size_t getElementSize() const { return ElementTypes.size(); }
-  const std::vector<TypePtr> &getElementTypes() const { return ElementTypes; }
   const std::vector<std::string> &getElementNames() const {
     return ElementNames;
   }
