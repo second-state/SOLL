@@ -72,7 +72,8 @@ public:
   ExprValuePtr structIndexAccess(const ExprValuePtr StructValue,
                                  unsigned ElementIndex, const StructType *STy) {
     auto ET = STy->getElementTypes()[ElementIndex];
-    if (StructValue->getValueKind() == ValueKind::VK_SValue) {
+    switch (StructValue->getValueKind()) {
+    case ValueKind::VK_SValue: {
       llvm::Value *Base = Builder.CreateLoad(StructValue->getValue());
       llvm::Value *Pos = Builder.getIntN(256, STy->getStoragePos(ElementIndex));
       llvm::Value *ElemAddress = Builder.CreateAdd(Base, Pos);
@@ -80,12 +81,28 @@ public:
       Builder.CreateStore(ElemAddress, Address);
       return std::make_shared<ExprValue>(ET.get(), ValueKind::VK_SValue,
                                          Address);
-    } else {
+    }
+    case ValueKind::VK_LValue: {
+      llvm::Value *Base = StructValue->getValue();
+
+      std::vector<llvm::Value *> Indices(2);
+      Indices[0] = llvm::ConstantInt::get(VMContext, llvm::APInt(32, 0, true));
+      Indices[1] = llvm::ConstantInt::get(VMContext,
+                                          llvm::APInt(32, ElementIndex, true));
+      llvm::Value *ElementPtr = Builder.CreateGEP(Base, Indices);
+      return std::make_shared<ExprValue>(ET.get(), ValueKind::VK_LValue,
+                                         ElementPtr);
+    }
+    case ValueKind::VK_RValue: {
       llvm::Value *Value = StructValue->load(Builder, CGM);
       llvm::Value *Element = Builder.CreateExtractValue(Value, {ElementIndex});
-      return std::make_shared<ExprValue>(ET.get(), ValueKind::VK_LValue,
+      return std::make_shared<ExprValue>(ET.get(), ValueKind::VK_RValue,
                                          Element);
     }
+    default:
+      assert(false && "Unknow ValueKind");
+    }
+    return nullptr;
   }
 
   ExprValuePtr arrayIndexAccess(const ExprValuePtr &Base,
@@ -236,7 +253,7 @@ private:
             auto RHSVarI = structIndexAccess(RHSVar, i, StructTy);
             assert(RHSVarI->getType()->getCategory() !=
                        Type::Category::Struct &&
-                   "Recursive tuple is not yet supported");
+                   "Recursive struct is not yet supported");
             auto LHSVarI = structIndexAccess(LHSVar, i, StructTy);
             auto RHSValI = RHSVarI->load(Builder, CGM);
             LHSVarI->store(Builder, CGM, RHSValI);

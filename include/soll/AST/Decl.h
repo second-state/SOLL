@@ -248,9 +248,8 @@ private:
   TypePtr ConstructorTy;
 
 public:
-  StructDecl(SourceRange L, llvm::StringRef Name,
-             const std::vector<TypePtr> &ET,
-             const std::vector<std::string> &EN);
+  StructDecl(SourceRange L, llvm::StringRef Name, std::vector<TypePtr> &&ET,
+             std::vector<std::string> &&EN);
 
   void accept(DeclVisitor &Visitor) override;
   void accept(ConstDeclVisitor &Visitor) const override;
