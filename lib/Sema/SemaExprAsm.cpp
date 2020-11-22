@@ -235,7 +235,11 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
       Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty},
                                           std::vector<TypePtr>{});
       break;
-    case AsmIdentifier::SpecialIdentifier::pop:
+    case AsmIdentifier::SpecialIdentifier::pop: ///< (u256) -> void
+      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty},
+                                          std::vector<TypePtr>{});
+      break;
     case AsmIdentifier::SpecialIdentifier::invalid:
     case AsmIdentifier::SpecialIdentifier::stop: ///< () -> void
       Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{},
