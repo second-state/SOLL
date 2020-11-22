@@ -1,4 +1,5 @@
 // RUN: %soll -lang=Yul %s
+// REQUIRES: create
 // REQUIRES: mstore
 // REQUIRES: pop
 // div is eliminated, but create has side-effects.
