@@ -75,6 +75,7 @@ config.available_features = [
     'objectInObject',
     'implicitCast',
     'invalid',
+    'pop',
     'namedcall'
 ]
 
