@@ -2224,6 +2224,8 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
     emitAsmCallSStore(CE);
     return std::make_shared<ExprValue>();
   /// execution control
+  case AsmIdentifier::SpecialIdentifier::pop:
+  case AsmIdentifier::SpecialIdentifier::invalid:
   case AsmIdentifier::SpecialIdentifier::stop:
     CGM.emitFinish(llvm::ConstantPointerNull::get(Int8PtrTy),
                    Builder.getInt32(0));
