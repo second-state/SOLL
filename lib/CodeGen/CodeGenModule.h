@@ -64,6 +64,7 @@ class CodeGenModule : public CodeGenTypeCache {
       LookupYulDataOrYulObject;
   std::size_t StateVarAddrCursor;
 
+  llvm::Function *Func_create = nullptr;
   llvm::Function *Func_call = nullptr;
   llvm::Function *Func_callCode = nullptr;
   llvm::Function *Func_callDataCopy = nullptr;
@@ -182,6 +183,8 @@ public:
                                        llvm::Value *Length);
   void emitReturnDataCopy(llvm::Value *ResultOffset, llvm::Value *DataOffset,
                           llvm::Value *Length);
+  void emitCreate(llvm::Value *ValueOffset, llvm::Value *DataOffset,
+                  llvm::Value *Length, llvm::Value *ResultOffset);
   llvm::Value *emitCallDataLoad(llvm::Value *DataOffset);
   llvm::Value *emitCall(llvm::Value *Gas, llvm::Value *AddressPtr,
                         llvm::Value *ValuePtr, llvm::Value *DataPtr,

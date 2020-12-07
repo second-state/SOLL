@@ -432,6 +432,16 @@ void CodeGenModule::initEEIDeclaration() {
   llvm::Attribute Debug =
       llvm::Attribute::get(VMContext, "wasm-import-module", "debug");
 
+  // create
+  FT = llvm::FunctionType::get(
+      Int32Ty, {Int128PtrTy, Int8PtrTy, Int32Ty, AddressPtrTy}, false);
+  Func_create = llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                                       "ethereum.create", TheModule);
+  Func_create->addFnAttr(Ethereum);
+  Func_create->addFnAttr(
+      llvm::Attribute::get(VMContext, "wasm-import-name", "create"));
+  Func_create->addFnAttr(llvm::Attribute::NoUnwind);
+
   // callDataCopy
   FT = llvm::FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty, Int32Ty}, false);
   Func_callDataCopy = llvm::Function::Create(
@@ -1987,6 +1997,22 @@ void CodeGenModule::emitFinish(llvm::Value *DataOffset, llvm::Value *Length) {
 
   } else if (isEWASM()) {
     Builder.CreateCall(Func_finish, {DataOffset, Length});
+  } else {
+    __builtin_unreachable();
+  }
+}
+
+void CodeGenModule::emitCreate(llvm::Value *ValueOffset,
+                               llvm::Value *DataOffset, llvm::Value *Length,
+                               llvm::Value *ResultOffset) {
+  if (isEVM()) {
+    assert(false && "EEI create not supported in EVM yet");
+  } else if (isEWASM()) {
+    Builder.CreateCall(Func_create,
+                       {Builder.CreateIntToPtr(ValueOffset, Int128PtrTy),
+                        Builder.CreateIntToPtr(DataOffset, Int8PtrTy),
+                        Builder.CreateZExtOrTrunc(Length, Int32Ty),
+                        Builder.CreateIntToPtr(ResultOffset, AddressPtrTy)});
   } else {
     __builtin_unreachable();
   }

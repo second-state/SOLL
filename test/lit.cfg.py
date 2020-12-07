@@ -57,6 +57,7 @@ config.available_features = [
     'gas',
     'call',
     'callcode',
+    'create',
     'delegatecall',
     'staticcall',
     'caller',
