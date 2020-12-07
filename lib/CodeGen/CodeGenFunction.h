@@ -135,6 +135,7 @@ private:
   llvm::Value *emitAsmCallCode(const CallExpr *CE);
   llvm::Value *emitAsmDelegatecall(const CallExpr *CE);
   llvm::Value *emitAsmCallStaticcall(const CallExpr *CE);
+  llvm::Value *emitAsmCreate(const CallExpr *CE);
 
   ExprValuePtr emitCallExpr(const CallExpr *CE);
   ExprValuePtr emitSpecialCallExpr(const Identifier *SI, const CallExpr *CE,
