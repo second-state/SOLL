@@ -64,6 +64,7 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
       {"shr", AsmIdentifier::SpecialIdentifier::shr},
       {"sars256", AsmIdentifier::SpecialIdentifier::sars256},
       {"sar", AsmIdentifier::SpecialIdentifier::sar},
+      {"byte", AsmIdentifier::SpecialIdentifier::byte},
       // TODO: implement the rest identifiers
       /// memory and storage
       {"mload", AsmIdentifier::SpecialIdentifier::mload},
@@ -201,6 +202,7 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
     case AsmIdentifier::SpecialIdentifier::shr:
     case AsmIdentifier::SpecialIdentifier::sars256:
     case AsmIdentifier::SpecialIdentifier::sar:
+    case AsmIdentifier::SpecialIdentifier::byte:
       Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
       Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty},
                                           std::vector<TypePtr>{Ty});

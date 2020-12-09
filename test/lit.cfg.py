@@ -77,6 +77,7 @@ config.available_features = [
     'implicitCast',
     'invalid',
     'pop',
+    'byte',
     'namedcall'
 ]
 

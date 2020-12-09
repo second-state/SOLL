@@ -2191,6 +2191,18 @@ llvm::Value *CodeGenFunction::emitAsmCreate(const CallExpr *CE) {
   return Builder.CreateLoad(AddressPtr, AddressTy);
 }
 
+llvm::Value *CodeGenFunction::emitAsmByte(const CallExpr *CE) {
+  auto Arguments = CE->getArguments();
+
+  llvm::Value *Offset = emitExpr(Arguments[0])->load(Builder, CGM);
+  llvm::Value *Value = emitExpr(Arguments[1])->load(Builder, CGM);
+  
+  return Builder.CreateAnd(Builder.getIntN(256, 0xFF), Builder.CreateLShr(Value, Offset));
+}
+
+
+
+
 ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
                                                      const CallExpr *CE) {
   switch (SI->getSpecialIdentifier()) {
@@ -2364,13 +2376,15 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   case AsmIdentifier::SpecialIdentifier::staticcall:
     return ExprValue::getRValue(
         CE, Builder.CreateZExtOrTrunc(emitAsmCallStaticcall(CE), CGM.Int256Ty));
+  case AsmIdentifier::SpecialIdentifier::byte:
+      return ExprValue::getRValue(
+        CE, Builder.CreateZExtOrTrunc(emitAsmByte(CE), CGM.Int256Ty));
   // TODO:
   // - implement special identifiers below and
   //   move implemented ones above this TODO.
   case AsmIdentifier::SpecialIdentifier::signextendu256:
   case AsmIdentifier::SpecialIdentifier::iszerou256:
   case AsmIdentifier::SpecialIdentifier::sars256:
-  case AsmIdentifier::SpecialIdentifier::byte:
   case AsmIdentifier::SpecialIdentifier::abort:
   case AsmIdentifier::SpecialIdentifier::selfdestruct:
   case AsmIdentifier::SpecialIdentifier::this_:
