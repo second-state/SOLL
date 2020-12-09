@@ -101,6 +101,7 @@ class CodeGenModule : public CodeGenTypeCache {
   llvm::Function *Func_getCodeSize = nullptr;
   llvm::Function *Func_getExternalCodeSize = nullptr;
   llvm::Function *Func_getReturnDataSize = nullptr;
+  llvm::Function *Func_selfDestruct = nullptr;
 
   llvm::Function *Func_print32 = nullptr;
 
@@ -222,6 +223,7 @@ public:
   llvm::Value *emitGetReturnDataSize();
   llvm::Value *emitExternalCodeCopy(llvm::Value *Address, llvm::Value *Result,
                                     llvm::Value *Code, llvm::Value *Length);
+  void emitSelfDestruct(llvm::Value *Address);
   void emitTrap();
 
 private:

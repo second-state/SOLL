@@ -77,6 +77,7 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
       {"stop", AsmIdentifier::SpecialIdentifier::stop},
       {"return", AsmIdentifier::SpecialIdentifier::return_},
       {"revert", AsmIdentifier::SpecialIdentifier::revert},
+      {"selfdestruct", AsmIdentifier::SpecialIdentifier::selfdestruct},
       {"log0", AsmIdentifier::SpecialIdentifier::log0},
       {"log1", AsmIdentifier::SpecialIdentifier::log1},
       {"log2", AsmIdentifier::SpecialIdentifier::log2},
@@ -117,6 +118,7 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
       {"codecopy", AsmIdentifier::SpecialIdentifier::codecopy},
       {"extcodecopy", AsmIdentifier::SpecialIdentifier::extcodecopy},
       {"extcodesize", AsmIdentifier::SpecialIdentifier::extcodesize},
+      {"extcodehash", AsmIdentifier::SpecialIdentifier::extcodehash},
       {"address", AsmIdentifier::SpecialIdentifier::address},
       {"returndatasize", AsmIdentifier::SpecialIdentifier::returndatasize},
       {"returndatacopy", AsmIdentifier::SpecialIdentifier::returndatacopy},
@@ -227,6 +229,8 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
       Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{},
                                           std::vector<TypePtr>{Ty});
       break;
+    case AsmIdentifier::SpecialIdentifier::extcodehash:
+    case AsmIdentifier::SpecialIdentifier::selfdestruct:
     case AsmIdentifier::SpecialIdentifier::sload: ///< (u256) -> u256
       Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
       Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty},
