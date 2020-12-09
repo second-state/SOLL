@@ -128,6 +128,7 @@ private:
   void emitAsmExternalCallCodeCopy(const CallExpr *CE);
   void emitAsmCallDataCopy(const CallExpr *CE);
   llvm::Value *emitAsmExternalGetCodeSize(const CallExpr *CE);
+  llvm::Value *emitAsmExternalCallCodeHash(const CallExpr *CE);
   llvm::Value *emitAsmCallkeccak256(const CallExpr *CE);
   llvm::Value *emitAsmGetBlockHash(const CallExpr *CE);
   void emitAsmReturnDataCopy(const CallExpr *CE);
@@ -137,7 +138,7 @@ private:
   llvm::Value *emitAsmCallStaticcall(const CallExpr *CE);
   llvm::Value *emitAsmCreate(const CallExpr *CE);
   llvm::Value *emitAsmByte(const CallExpr *CE);
-
+  void emitAsmSelfDestruct(const CallExpr *CE);
 
   ExprValuePtr emitCallExpr(const CallExpr *CE);
   ExprValuePtr emitSpecialCallExpr(const Identifier *SI, const CallExpr *CE,

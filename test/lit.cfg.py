@@ -78,6 +78,8 @@ config.available_features = [
     'invalid',
     'pop',
     'byte',
+    'extcodehash',
+    'selfdestruct',
     'namedcall'
 ]
 

@@ -766,6 +766,16 @@ void CodeGenModule::initEEIDeclaration() {
   Func_getReturnDataSize->addFnAttr(Ethereum);
   Func_getReturnDataSize->addFnAttr(
       llvm::Attribute::get(VMContext, "wasm-import-name", "getReturnDataSize"));
+
+
+  // selfDestruct
+  FT = llvm::FunctionType::get(VoidTy, {AddressPtrTy}, false);
+  Func_selfDestruct =
+      llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                             "ethereum.selfDestruct", TheModule);
+  Func_selfDestruct->addFnAttr(Ethereum);
+  Func_selfDestruct->addFnAttr(
+      llvm::Attribute::get(VMContext, "wasm-import-name", "selfDestruct"));
 }
 
 void CodeGenModule::initHelperDeclaration() {
@@ -2445,6 +2455,17 @@ llvm::Value *CodeGenModule::emitExternalCodeCopy(llvm::Value *Address,
                                Builder.CreateIntToPtr(Result, Int32PtrTy),
                                Builder.CreateZExtOrTrunc(Code, Int32Ty),
                                Builder.CreateZExtOrTrunc(Length, Int32Ty)});
+  } else {
+    __builtin_unreachable();
+  }
+}
+
+void CodeGenModule::emitSelfDestruct(llvm::Value *Address) {
+  if (isEVM()) {
+    assert(false && "EEI getReturnDataSize not supported in EVM yet");
+  } else if (isEWASM()) {
+    Builder.CreateCall(Func_selfDestruct,
+                              {Builder.CreateIntToPtr(Address, AddressPtrTy)});
   } else {
     __builtin_unreachable();
   }

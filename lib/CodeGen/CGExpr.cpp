@@ -1973,6 +1973,12 @@ void CodeGenFunction::emitAsmCallRevert(const CallExpr *CE) {
   CGM.emitRevert(Ptr, Builder.CreateZExtOrTrunc(Length, CGM.Int32Ty));
 }
 
+void CodeGenFunction::emitAsmSelfDestruct(const CallExpr *CE) {
+  auto Arguments = CE->getArguments();
+  llvm::Value *Address = emitExpr(Arguments[0])->load(Builder, CGM);
+  CGM.emitSelfDestruct(Address);
+}
+
 void CodeGenFunction::emitAsmCallLog(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
   llvm::Value *Pos = emitExpr(Arguments[0])->load(Builder, CGM);
@@ -2026,6 +2032,25 @@ void CodeGenFunction::emitAsmExternalCallCodeCopy(const CallExpr *CE) {
   llvm::Value *Length = emitExpr(Arguments[3])->load(Builder, CGM);
   CGM.emitExternalCodeCopy(Address, Result, Code, Length);
 }
+
+llvm::Value *CodeGenFunction::emitAsmExternalCallCodeHash(const CallExpr *CE) {
+  auto Arguments = CE->getArguments();
+  llvm::Value *Address = emitExpr(Arguments[0])->load(Builder, CGM);
+
+  llvm::Value *ValPtr = Builder.CreateAlloca(Int256Ty, nullptr);
+  Builder.CreateStore(
+      CGM.getEndianlessValue(Builder.CreateZExtOrTrunc(Address, CGM.Int256Ty)),
+      ValPtr);
+  ValPtr = Builder.CreateBitCast(ValPtr, CGM.Int32PtrTy);
+  llvm::Value *Length = Builder.CreateZExtOrTrunc(
+          CGM.emitGetExternalCodeSize(ValPtr), CGM.Int256Ty);
+
+  llvm::Value *CodePtr = Builder.CreateAlloca(Int8Ty, Length);
+  CGM.emitUpdateMemorySize(Builder.CreatePtrToInt(CodePtr, CGM.Int256Ty), Length);
+  CGM.emitExternalCodeCopy(Address, Builder.CreatePtrToInt(CodePtr, CGM.Int256Ty), Builder.getIntN(256, 0), Length);
+  return CGM.emitKeccak256(CodePtr, Length);
+}
+
 
 llvm::Value *CodeGenFunction::emitAsmExternalGetCodeSize(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
@@ -2203,6 +2228,7 @@ llvm::Value *CodeGenFunction::emitAsmByte(const CallExpr *CE) {
 
 
 
+
 ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
                                                      const CallExpr *CE) {
   switch (SI->getSpecialIdentifier()) {
@@ -2255,7 +2281,10 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
     return std::make_shared<ExprValue>();
   /// execution control
   case AsmIdentifier::SpecialIdentifier::pop:
+    return std::make_shared<ExprValue>();
   case AsmIdentifier::SpecialIdentifier::invalid:
+    CGM.emitTrap();
+    return std::make_shared<ExprValue>();
   case AsmIdentifier::SpecialIdentifier::stop:
     CGM.emitFinish(llvm::ConstantPointerNull::get(Int8PtrTy),
                    Builder.getInt32(0));
@@ -2351,6 +2380,9 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
     return ExprValue::getRValue(
         CE, Builder.CreateZExtOrTrunc(emitAsmExternalGetCodeSize(CE),
                                       CGM.Int256Ty));
+  case AsmIdentifier::SpecialIdentifier::extcodehash:
+      return ExprValue::getRValue(
+        CE, Builder.CreateZExtOrTrunc(emitAsmExternalCallCodeHash(CE), CGM.Int256Ty));
   case AsmIdentifier::SpecialIdentifier::returndatasize:
     return ExprValue::getRValue(
         CE,
@@ -2379,6 +2411,10 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   case AsmIdentifier::SpecialIdentifier::byte:
       return ExprValue::getRValue(
         CE, Builder.CreateZExtOrTrunc(emitAsmByte(CE), CGM.Int256Ty));
+  case AsmIdentifier::SpecialIdentifier::selfdestruct:
+      emitAsmSelfDestruct(CE);
+      return std::make_shared<ExprValue>();
+
   // TODO:
   // - implement special identifiers below and
   //   move implemented ones above this TODO.
@@ -2386,9 +2422,7 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   case AsmIdentifier::SpecialIdentifier::iszerou256:
   case AsmIdentifier::SpecialIdentifier::sars256:
   case AsmIdentifier::SpecialIdentifier::abort:
-  case AsmIdentifier::SpecialIdentifier::selfdestruct:
   case AsmIdentifier::SpecialIdentifier::this_:
-  case AsmIdentifier::SpecialIdentifier::extcodehash:
   case AsmIdentifier::SpecialIdentifier::discard:
   case AsmIdentifier::SpecialIdentifier::discardu256:
   case AsmIdentifier::SpecialIdentifier::splitu256tou64:
