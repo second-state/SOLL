@@ -80,6 +80,7 @@ config.available_features = [
     'byte',
     'extcodehash',
     'selfdestruct',
+    'selfbalance',
     'namedcall'
 ]
 
