@@ -54,7 +54,6 @@ public:
     msize,
     /// execution control
     create,
-    create2,
     call,
     callcode,
     delegatecall,
@@ -102,7 +101,6 @@ public:
     /// misc
     pop,
     invalid,
-    chainid,
     discard,
     discardu256,
     splitu256tou64,
@@ -110,7 +108,10 @@ public:
     keccak256,
     setimmutable,
     loadimmutable,
-    linkersymbol
+    linkersymbol,
+    // new defined EEI in EVMC
+    create2,
+    chainid
   };
 
 private:

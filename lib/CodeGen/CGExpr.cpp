@@ -2216,6 +2216,23 @@ llvm::Value *CodeGenFunction::emitAsmCreate(const CallExpr *CE) {
   return Builder.CreateLoad(AddressPtr, AddressTy);
 }
 
+llvm::Value *CodeGenFunction::emitAsmCreate2(const CallExpr *CE) {
+  auto Arguments = CE->getArguments();
+
+  llvm::Value *Wei = emitExpr(Arguments[0])->load(Builder, CGM);
+  llvm::Value *Weitrunc =
+      Builder.CreateZExtOrTrunc(CGM.getEndianlessValue(Wei), Int128Ty);
+  llvm::Value *ValuePtr = Builder.CreateAlloca(Int128Ty);
+  Builder.CreateStore(Weitrunc, ValuePtr);
+  llvm::Value *Ptr = emitExpr(Arguments[1])->load(Builder, CGM);
+  llvm::Value *Length = emitExpr(Arguments[2])->load(Builder, CGM);
+  llvm::Value *Salt = emitExpr(Arguments[3])->load(Builder, CGM);
+  llvm::Value *AddressPtr = Builder.CreateAlloca(AddressTy);
+
+  CGM.emitCreate2(ValuePtr, Ptr, Length, Salt, AddressPtr);
+  return Builder.CreateLoad(AddressPtr, AddressTy);
+}
+
 llvm::Value *CodeGenFunction::emitAsmByte(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
 
@@ -2226,6 +2243,11 @@ llvm::Value *CodeGenFunction::emitAsmByte(const CallExpr *CE) {
 }
 
 
+llvm::Value *CodeGenFunction::emitAsmChainId(const CallExpr *CE) {
+  llvm::Value *ValPtr = Builder.CreateAlloca(Int128Ty, nullptr);
+  CGM.emitGetChainId(ValPtr);
+  return Builder.CreateLoad(ValPtr, Int128Ty);
+}
 
 
 
@@ -2414,11 +2436,18 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   case AsmIdentifier::SpecialIdentifier::selfdestruct:
       emitAsmSelfDestruct(CE);
       return std::make_shared<ExprValue>();
-
+  case AsmIdentifier::SpecialIdentifier::signextendu256:
+    return ExprValue::getRValue(
+        CE, Builder.CreateSExtOrTrunc(emitExpr(CE->getArguments()[0])->load(Builder, CGM), CGM.Int256Ty));
+  case AsmIdentifier::SpecialIdentifier::create2:
+    return ExprValue::getRValue(
+        CE, Builder.CreateZExtOrTrunc(emitAsmCreate2(CE), CGM.Int256Ty));
+  case AsmIdentifier::SpecialIdentifier::chainid:
+    return ExprValue::getRValue(
+        CE, Builder.CreateZExtOrTrunc(emitAsmChainId(CE), CGM.Int256Ty));
   // TODO:
   // - implement special identifiers below and
   //   move implemented ones above this TODO.
-  case AsmIdentifier::SpecialIdentifier::signextendu256:
   case AsmIdentifier::SpecialIdentifier::iszerou256:
   case AsmIdentifier::SpecialIdentifier::sars256:
   case AsmIdentifier::SpecialIdentifier::abort:
@@ -2427,7 +2456,6 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   case AsmIdentifier::SpecialIdentifier::discardu256:
   case AsmIdentifier::SpecialIdentifier::splitu256tou64:
   case AsmIdentifier::SpecialIdentifier::combineu64tou256:
-  case AsmIdentifier::SpecialIdentifier::create2:
   default:
     assert(false && "special function not supported yet");
     __builtin_unreachable();

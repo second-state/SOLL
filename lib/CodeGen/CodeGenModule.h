@@ -102,6 +102,10 @@ class CodeGenModule : public CodeGenTypeCache {
   llvm::Function *Func_getExternalCodeSize = nullptr;
   llvm::Function *Func_getReturnDataSize = nullptr;
   llvm::Function *Func_selfDestruct = nullptr;
+    // new defined EEI in EVMC
+  llvm::Function *Func_create2 = nullptr;
+  llvm::Function *Func_getChainId = nullptr;
+
 
   llvm::Function *Func_print32 = nullptr;
 
@@ -186,6 +190,8 @@ public:
                           llvm::Value *Length);
   void emitCreate(llvm::Value *ValueOffset, llvm::Value *DataOffset,
                   llvm::Value *Length, llvm::Value *ResultOffset);
+  void emitCreate2(llvm::Value *ValueOffset, llvm::Value *DataOffset,
+                  llvm::Value *Length, llvm::Value *Salt, llvm::Value *ResultOffset);
   llvm::Value *emitCallDataLoad(llvm::Value *DataOffset);
   llvm::Value *emitCall(llvm::Value *Gas, llvm::Value *AddressPtr,
                         llvm::Value *ValuePtr, llvm::Value *DataPtr,
@@ -224,6 +230,7 @@ public:
   llvm::Value *emitExternalCodeCopy(llvm::Value *Address, llvm::Value *Result,
                                     llvm::Value *Code, llvm::Value *Length);
   void emitSelfDestruct(llvm::Value *Address);
+  void emitGetChainId(llvm::Value *Result);
   void emitTrap();
 
 private:

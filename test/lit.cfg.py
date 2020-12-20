@@ -81,6 +81,9 @@ config.available_features = [
     'extcodehash',
     'selfdestruct',
     'selfbalance',
+    'signextend',
+    'chainid',
+    'create2',
     'namedcall'
 ]
 
