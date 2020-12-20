@@ -137,8 +137,11 @@ private:
   llvm::Value *emitAsmDelegatecall(const CallExpr *CE);
   llvm::Value *emitAsmCallStaticcall(const CallExpr *CE);
   llvm::Value *emitAsmCreate(const CallExpr *CE);
+  llvm::Value *emitAsmCreate2(const CallExpr *CE);
   llvm::Value *emitAsmByte(const CallExpr *CE);
   void emitAsmSelfDestruct(const CallExpr *CE);
+  llvm::Value *emitAsmChainId(const CallExpr *CE);
+
 
   ExprValuePtr emitCallExpr(const CallExpr *CE);
   ExprValuePtr emitSpecialCallExpr(const Identifier *SI, const CallExpr *CE,

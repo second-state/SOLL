@@ -442,6 +442,15 @@ void CodeGenModule::initEEIDeclaration() {
       llvm::Attribute::get(VMContext, "wasm-import-name", "create"));
   Func_create->addFnAttr(llvm::Attribute::NoUnwind);
 
+  // create2
+  FT = llvm::FunctionType::get(Int32Ty, {Int128PtrTy, Int8PtrTy, Int32Ty, Int256PtrTy, AddressPtrTy}, false);
+  Func_create2 =
+      llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                             "ethereum.create2", TheModule);
+  Func_create2->addFnAttr(Ethereum);
+  Func_create2->addFnAttr(
+      llvm::Attribute::get(VMContext, "wasm-import-name", "create2"));
+
   // callDataCopy
   FT = llvm::FunctionType::get(VoidTy, {Int8PtrTy, Int32Ty, Int32Ty}, false);
   Func_callDataCopy = llvm::Function::Create(
@@ -776,6 +785,15 @@ void CodeGenModule::initEEIDeclaration() {
   Func_selfDestruct->addFnAttr(Ethereum);
   Func_selfDestruct->addFnAttr(
       llvm::Attribute::get(VMContext, "wasm-import-name", "selfDestruct"));
+
+  // getChainId
+  FT = llvm::FunctionType::get(VoidTy, {Int128PtrTy}, false);
+  Func_getChainId =
+      llvm::Function::Create(FT, llvm::Function::ExternalLinkage,
+                             "ethereum.getChainId", TheModule);
+  Func_getChainId->addFnAttr(Ethereum);
+  Func_getChainId->addFnAttr(
+      llvm::Attribute::get(VMContext, "wasm-import-name", "getChainId"));
 }
 
 void CodeGenModule::initHelperDeclaration() {
@@ -2028,6 +2046,24 @@ void CodeGenModule::emitCreate(llvm::Value *ValueOffset,
   }
 }
 
+void CodeGenModule::emitCreate2(llvm::Value *ValueOffset,
+                               llvm::Value *DataOffset, llvm::Value *Length,
+                               llvm::Value *Salt,
+                               llvm::Value *ResultOffset) {
+  if (isEVM()) {
+    assert(false && "EEI create not supported in EVM yet");
+  } else if (isEWASM()) {
+    Builder.CreateCall(Func_create2,
+                       {Builder.CreateIntToPtr(ValueOffset, Int128PtrTy),
+                        Builder.CreateIntToPtr(DataOffset, Int8PtrTy),
+                        Builder.CreateZExtOrTrunc(Length, Int32Ty),
+                        Builder.CreateIntToPtr(Salt, Int256PtrTy),
+                        Builder.CreateIntToPtr(ResultOffset, AddressPtrTy)});
+  } else {
+    __builtin_unreachable();
+  }
+}
+
 void CodeGenModule::emitCallDataCopy(llvm::Value *ResultOffset,
                                      llvm::Value *DataOffset,
                                      llvm::Value *Length) {
@@ -2476,6 +2512,17 @@ void CodeGenModule::emitTrap() {
       llvm::Intrinsic::getDeclaration(&TheModule, llvm::Intrinsic::trap);
 
   Builder.CreateCall(Trap, {});
+}
+
+void CodeGenModule::emitGetChainId(llvm::Value *Result) {
+  if (isEVM()) {
+    assert(false && "EEI getChainId not supported in EVM yet");
+  } else if (isEWASM()) {
+    Builder.CreateCall(Func_getChainId,
+                              {Builder.CreateIntToPtr(Result, Int128PtrTy)});
+  } else {
+    __builtin_unreachable();
+  }
 }
 
 } // namespace soll::CodeGen

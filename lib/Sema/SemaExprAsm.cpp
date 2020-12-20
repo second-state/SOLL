@@ -129,7 +129,11 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
       /// misc
       {"keccak256", AsmIdentifier::SpecialIdentifier::keccak256},
       {"invalid", AsmIdentifier::SpecialIdentifier::invalid},
-      {"pop", AsmIdentifier::SpecialIdentifier::pop}};
+      {"pop", AsmIdentifier::SpecialIdentifier::pop},
+      // new defined EEI in EVMC
+      {"create2", AsmIdentifier::SpecialIdentifier::create2},
+      {"chainid", AsmIdentifier::SpecialIdentifier::chainid}
+      };
   llvm::StringRef Name = Tok.getIdentifierInfo()->getName();
   if (auto Iter = SpecialLookup.find(Name); Iter != SpecialLookup.end()) {
     TypePtr Ty;
@@ -328,6 +332,7 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
     case AsmIdentifier::SpecialIdentifier::address:
     case AsmIdentifier::SpecialIdentifier::codesize:
     case AsmIdentifier::SpecialIdentifier::returndatasize:
+    case AsmIdentifier::SpecialIdentifier::chainid:
     case AsmIdentifier::SpecialIdentifier::gasleft: ///< () -> u256
       Ty = std::make_shared<FunctionType>(
           std::vector<TypePtr>{},
