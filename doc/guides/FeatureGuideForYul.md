@@ -120,26 +120,27 @@ Opcodes marked with `F`, `H`, `B`, `C` or `I` are present since Frontier, Homest
 | staticcall(g, a, in, insize, out, outsize)   |   | B | identical to call(g, a, 0, in, insize, out, outsize) but do not allow state modifications See more                                                                                                                                                                               |
 | selfdestruct(a)                              | - | F | end execution, destroy current contract and send funds to a                                                                                                                                                                                                                      |
 | invalid()                                    | - | F | end execution with invalid instruction                                                                                                                                                                                                                                           |
+| create2(v, p, n, s)                          |   | C | create new contract with code mem[p…(p+n)) at address keccak256(0xff . this . s . keccak256(mem[p…(p+n))) and send v wei and return the new address, where 0xff is a 1 byte value, this is the current contract’s address as a 20 byte value and s is a big-endian 256-bit value |
+| chainid()                                    |   | I | ID of the executing chain (EIP 1344)                                                                                                                                                                                                                                             |
 
 ### Future works
 
 Below will describe some under implement language features.
+
+
+#### Features
+
+These features are not supported yet.
++ calculate `dataoffset` to the object itself
++ calculate `datasize` to the object itself
++ directly convert string to bool or int
++ `Identifier : TypeName` (e.g. `var:u256`)
 
 #### Grammar
 |  feature  |           item             |         example         |
 |-----------|----------------------------|-------------------------|
 | Statement | Switch with string literal | case ""                 |
 
-#### EVM Dialect
-
-Opcodes marked with `-` do not return a result and all others return exactly one value.
-
-Opcodes marked with `F`, `H`, `B`, `C` or `I` are present since Frontier, Homestead, Byzantium, Constantinople or Istanbul, respectively.
-
-| Instruction                                  |   |   | Explanation                                                                                                                                                                                                                                                                      |
-|----------------------------------------------|---|---|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| create2(v, p, n, s)                          |   | C | create new contract with code mem[p…(p+n)) at address keccak256(0xff . this . s . keccak256(mem[p…(p+n))) and send v wei and return the new address, where 0xff is a 1 byte value, this is the current contract’s address as a 20 byte value and s is a big-endian 256-bit value |
-| chainid()                                    |   | I | ID of the executing chain (EIP 1344)                                                                                                                                                                                                                                             |
 
 
 #### Additional Functions
