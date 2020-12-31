@@ -53,17 +53,6 @@ bool FrontendAction::BeginSourceFile(CompilerInstance &CI,
 
     CI.createASTContext();
 
-    std::string PresumedInputFile = getCurrentFileOrBufferName();
-
-    std::unique_ptr<ASTConsumer> Consumer =
-        CreateASTConsumer(CI, PresumedInputFile);
-    if (!Consumer)
-      goto failure;
-
-    CI.setASTConsumer(std::move(Consumer));
-    if (!CI.hasASTConsumer())
-      goto failure;
-
     return true;
   }
 
@@ -89,7 +78,7 @@ void FrontendAction::EndSourceFile() {
 
   CI.setSema(nullptr);
   CI.setASTContext(nullptr);
-  CI.setASTConsumer(nullptr);
+  CI.clearASTConsumer();
 
   setCompilerInstance(nullptr);
   setCurrentInput(FrontendInputFile());
@@ -108,7 +97,19 @@ void ASTFrontendAction::ExecuteAction() {
   if (!CI.hasSema())
     CI.createSema();
 
-  ParseAST(CI.getSema(), CI.getASTConsumer(), CI.getASTContext(), true);
+  Sema &S = CI.getSema();
+  ASTContext &Ctx = CI.getASTContext();
+  auto SourceUnits = ParseAST(S, Ctx.getLang(), true);
+  std::string PresumedInputFile = getCurrentFileOrBufferName();
+
+  for (auto &SU : SourceUnits) {
+    std::unique_ptr<ASTConsumer> Consumer =
+        CreateASTConsumer(CI, PresumedInputFile);
+    assert(Consumer && "Cannot create ASTConsumer");
+    CI.addASTConsumer(std::move(Consumer));
+    ASTConsumer &C = CI.getASTConsumer();
+    C.HandleSourceUnit(Ctx, *SU);
+  }
 }
 
 } // namespace soll
