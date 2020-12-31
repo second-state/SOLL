@@ -3,16 +3,19 @@
 #include "soll/AST/ASTConsumer.h"
 #include "soll/AST/ASTContext.h"
 #include "soll/Basic/DiagnosticOptions.h"
+#include "soll/CodeGen/CodeGenAction.h"
 #include "soll/Frontend/CompilerInvocation.h"
 #include "soll/Frontend/DiagnosticRenderer.h"
 #include "soll/Lex/Lexer.h"
 #include "soll/Sema/Sema.h"
 #include <algorithm>
+#include <functional>
 #include <list>
 #include <llvm/ADT/IntrusiveRefCntPtr.h>
 #include <llvm/ADT/StringRef.h>
 #include <llvm/Support/VirtualFileSystem.h>
 #include <memory>
+#include <vector>
 
 namespace soll {
 
@@ -29,7 +32,7 @@ class CompilerInstance {
   llvm::IntrusiveRefCntPtr<SourceManager> SourceMgr;
   std::unique_ptr<Lexer> TheLexer;
   llvm::IntrusiveRefCntPtr<ASTContext> Context;
-  std::unique_ptr<ASTConsumer> Consumer;
+  std::vector<std::unique_ptr<ASTConsumer>> Consumer;
   std::unique_ptr<Sema> TheSema;
 
   struct OutputFile {
@@ -51,9 +54,11 @@ public:
   explicit CompilerInstance();
   CompilerInvocation &getInvocation();
 
-  CodeGenOptions &getCodeGenOpts() {
-    return Invocation->getCodeGenOpts();
-  }
+  std::function<std::unique_ptr<llvm::raw_pwrite_stream>(
+      llvm::StringRef, BackendAction, llvm::StringRef)>
+  GetOutputStreamFunc();
+
+  CodeGenOptions &getCodeGenOpts() { return Invocation->getCodeGenOpts(); }
   const CodeGenOptions &getCodeGenOpts() const {
     return Invocation->getCodeGenOpts();
   }
@@ -126,12 +131,13 @@ public:
   }
   void setASTContext(ASTContext *Value);
 
-  bool hasASTConsumer() const { return static_cast<bool>(Consumer); }
+  bool hasASTConsumer() const { return !Consumer.empty(); }
   ASTConsumer &getASTConsumer() const {
-    assert(Consumer && "Compiler instance has no AST consumer!");
-    return *Consumer;
+    assert(hasASTConsumer() && "Compiler instance has no AST consumer!");
+    return *Consumer.back();
   }
-  void setASTConsumer(std::unique_ptr<ASTConsumer> &&Value);
+  void clearASTConsumer() { Consumer.clear(); }
+  void addASTConsumer(std::unique_ptr<ASTConsumer> &&Value);
 
   bool hasSema() const { return static_cast<bool>(TheSema); }
   Sema &getSema() const {
@@ -156,21 +162,21 @@ public:
   void createSema();
 
   std::unique_ptr<llvm::raw_pwrite_stream>
-  createDefaultOutputFile(bool Binary = true, llvm::StringRef BaseInput = "",
-                          llvm::StringRef Extension = "");
+  createDefaultOutputFile(bool Binary = true, llvm::StringRef BaseInput = {},
+                          llvm::StringRef Extension = {},
+                          llvm::StringRef OutName = {});
 
-  std::unique_ptr<llvm::raw_pwrite_stream>
-  createOutputFile(llvm::StringRef OutputPath, bool Binary,
-                   bool RemoveFileOnSignal, llvm::StringRef BaseInput,
-                   llvm::StringRef Extension, bool UseTemporary,
-                   bool CreateMissingDirectories = false);
+  std::unique_ptr<llvm::raw_pwrite_stream> createOutputFile(
+      llvm::StringRef OutputPath, bool Binary, bool RemoveFileOnSignal,
+      llvm::StringRef BaseInput, llvm::StringRef Extension, bool UseTemporary,
+      bool CreateMissingDirectories = false, llvm::StringRef OutName = {});
 
   std::unique_ptr<llvm::raw_pwrite_stream>
   createOutputFile(llvm::StringRef OutputPath, std::error_code &Error,
                    bool Binary, bool RemoveFileOnSignal, llvm::StringRef InFile,
                    llvm::StringRef Extension, bool UseTemporary,
                    bool CreateMissingDirectories, std::string *ResultPathName,
-                   std::string *TempPathName);
+                   std::string *TempPathName, llvm::StringRef OutName);
 
   std::unique_ptr<llvm::raw_pwrite_stream> createNullOutputFile();
 
