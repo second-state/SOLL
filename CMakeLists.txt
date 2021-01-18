@@ -84,4 +84,21 @@ if(SOLL_INCLUDE_TESTS)
   include(Catch)
   add_subdirectory(unittests)
   add_subdirectory(test)
+  if(SOLL_RUNTIME_TESTS)
+    include(FetchContent)
+
+    FetchContent_Declare(
+      ssvm-evmc
+      GIT_REPOSITORY https://github.com/second-state/ssvm-evmc.git
+    )
+      
+    FetchContent_GetProperties(ssvm-evmc)
+    if (NOT ssvm-evmc_POPULATED)
+      FetchContent_Populate(ssvm-evmc)
+    endif ()
+      
+    add_subdirectory(${ssvm-evmc_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/utils/ssvm-evmc)
+    set(SSVM_EVMC_SRC_DIR ${ssvm-evmc_SOURCE_DIR})
+    set(BUILD_TESTS ON CACHE INTERNAL "")
+  endif()
 endif()
