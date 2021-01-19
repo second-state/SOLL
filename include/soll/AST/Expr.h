@@ -31,8 +31,8 @@ public:
   bool isSValue() const { return getValueKind() == ValueKind::VK_SValue; }
   bool isLValue() const { return getValueKind() == ValueKind::VK_LValue; }
   bool isRValue() const { return getValueKind() == ValueKind::VK_RValue; }
-  TypePtr getType() { return Ty; }
-  const TypePtr &getType() const { return Ty; }
+  virtual TypePtr getType() { return Ty; }
+  virtual const TypePtr &getType() const { return Ty; }
   void setType(TypePtr Ty) { this->Ty = Ty; }
   virtual bool isStateVariable() const { return false; };
 };
@@ -87,12 +87,12 @@ public:
     function_value,
     this_,
     struct_constructor,
+    external_call
   };
 
 private:
   Token T;
   std::variant<std::monostate, Decl *, SpecialIdentifier> D;
-  void updateTypeFromCurrentDecl();
 
 public:
   Identifier(const Token &T);
@@ -107,15 +107,23 @@ public:
   }
   const Token &getToken() const { return T; }
   llvm::StringRef getName() const { return T.getIdentifierInfo()->getName(); }
-  void setCorrespondDecl(Decl *D) {
-    this->D = D;
-    updateTypeFromCurrentDecl();
+  void setCorrespondDecl(Decl *D) { this->D = D; }
+  Decl *getCorrespondDecl() {
+    if (std::holds_alternative<Decl *>(D))
+      return std::get<Decl *>(D);
+    return nullptr;
   }
-  Decl *getCorrespondDecl() { return std::get<Decl *>(D); }
-  const Decl *getCorrespondDecl() const { return std::get<Decl *>(D); }
+  const Decl *getCorrespondDecl() const {
+    if (std::holds_alternative<Decl *>(D))
+      return std::get<Decl *>(D);
+    return nullptr;
+  }
   SpecialIdentifier getSpecialIdentifier() const {
     return std::get<SpecialIdentifier>(D);
   }
+
+  TypePtr getType() override;
+  const TypePtr &getType() const override;
 
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;

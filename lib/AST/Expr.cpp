@@ -107,9 +107,7 @@ Identifier::Identifier(const Token &T)
 Identifier::Identifier(const Token &T, Decl *D)
     : Expr(SourceRange(T.getLocation(), T.getEndLoc()), ValueKind::VK_LValue,
            nullptr),
-      T(T), D(D) {
-  updateTypeFromCurrentDecl();
-}
+      T(T), D(D) {}
 
 Identifier::Identifier(const Token &T, TypePtr Ty)
     : Expr(SourceRange(T.getLocation(), T.getEndLoc()), ValueKind::VK_LValue,
@@ -121,14 +119,31 @@ Identifier::Identifier(const Token &T, SpecialIdentifier D, TypePtr Ty)
            std::move(Ty)),
       T(T), D(D) {}
 
-void Identifier::updateTypeFromCurrentDecl() {
+TypePtr Identifier::getType() {
   Decl *D = getCorrespondDecl();
+  if (!D)
+    return Expr::getType();
   if (auto VD = dynamic_cast<const VarDecl *>(D)) {
-    setType(VD->GetType());
+    return VD->GetType();
   } else if (auto FD = dynamic_cast<const FunctionDecl *>(D)) {
-    setType(FD->getType());
+    return FD->getType();
   } else if (dynamic_cast<const EventDecl *>(D)) {
-    setType(nullptr);
+    return Expr::getType();
+  } else {
+    assert(false && "unknown decl");
+    __builtin_unreachable();
+  }
+}
+const TypePtr &Identifier::getType() const {
+  const Decl *D = getCorrespondDecl();
+  if (!D)
+    return Expr::getType();
+  if (auto VD = dynamic_cast<const VarDecl *>(D)) {
+    return VD->GetType();
+  } else if (auto FD = dynamic_cast<const FunctionDecl *>(D)) {
+    return FD->getType();
+  } else if (dynamic_cast<const EventDecl *>(D)) {
+    return Expr::getType();
   } else {
     assert(false && "unknown decl");
     __builtin_unreachable();

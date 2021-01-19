@@ -73,6 +73,7 @@ private:
   std::unique_ptr<FunctionDecl> Constructor;
   std::unique_ptr<FunctionDecl> Fallback;
   ContractKind Kind;
+  TypePtr Ty;
 
 public:
   ContractDecl(
@@ -81,11 +82,12 @@ public:
       std::vector<DeclPtr> &&subNodes,
       std::unique_ptr<FunctionDecl> &&constructor,
       std::unique_ptr<FunctionDecl> &&fallback,
-      ContractKind kind = ContractKind::Contract)
+      ContractKind kind = ContractKind::Contract, TypePtr Ty = nullptr)
       : Decl(L, Name), BaseContracts(std::move(baseContracts)),
         SubNodes(std::move(subNodes)), Constructor(std::move(constructor)),
-        Fallback(std::move(fallback)), Kind(kind) {}
-
+        Fallback(std::move(fallback)), Kind(kind), Ty(Ty) {}
+  TypePtr getType() { return Ty; }
+  void setContractType(TypePtr ContractTy) { Ty = ContractTy; }
   std::vector<Decl *> getSubNodes();
   std::vector<const Decl *> getSubNodes() const;
 
@@ -161,7 +163,7 @@ public:
   Block *getBody() { return Body.get(); }
   const Block *getBody() const { return Body.get(); }
   void setBody(std::unique_ptr<Block> &&B) { Body = std::move(B); }
-  TypePtr getType() const { return FuncTy; }
+  const TypePtr &getType() const { return FuncTy; }
   StateMutability getStateMutability() const { return SM; }
   bool isConstructor() const { return IsConstructor; }
   bool isFallback() const { return IsFallback; }
@@ -211,6 +213,7 @@ public:
 
   TypePtr GetType() { return TypeName; }
   const TypePtr &GetType() const { return TypeName; }
+  void setType(TypePtr Ty) { TypeName = Ty; }
   Expr *GetValue() { return Value.get(); }
   const Expr *GetValue() const { return Value.get(); }
 };
