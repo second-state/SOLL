@@ -1833,6 +1833,7 @@ ExprValuePtr CodeGenFunction::emitSpecialCallExpr(const Identifier *SI,
   }
   case Identifier::SpecialIdentifier::struct_constructor:
     return ExprValue::getRValue(CE, emitStructConstructor(CE));
+  case Identifier::SpecialIdentifier::external_call: // TODO
   default:
     assert(false && "special function not supported yet");
     __builtin_unreachable();

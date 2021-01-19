@@ -374,6 +374,19 @@ public:
         return;
       }
       break;
+    case Type::Category::Contract:
+      if (auto CT = dynamic_cast<const ContractType *>(
+              ME.getBase()->getType().get())) {
+        for (auto FD : CT->getDecl()->getFuncs()) {
+          if (FD->getName() == Name) {
+            auto Ty = FD->getType();
+            ME.setName(std::make_unique<Identifier>(
+                Tok, Identifier::SpecialIdentifier::external_call, Ty));
+            return;
+          }
+        }
+      }
+      break;
     default:
       break;
     }
@@ -416,9 +429,10 @@ public:
 
 class DeclTypeResolver : public DeclVisitor {
   TypeResolver TR;
+  Sema &Actions;
 
 public:
-  DeclTypeResolver(Sema &S) : TR(S) {}
+  DeclTypeResolver(Sema &S) : TR(S), Actions(S) {}
   void visit(FunctionDecl &FD) override {
     if (auto *Ty = dynamic_cast<FunctionType *>(FD.getType().get())) {
       if (Ty->getReturnTypes().empty()) {
@@ -435,6 +449,11 @@ public:
     DeclVisitor::visit(FD);
   }
   void visit(VarDecl &VD) override {
+    if (auto *UR = dynamic_cast<UnresolveType *>(VD.GetType().get())) {
+      ContractDecl *D = Actions.lookupContractDeclName(UR->getIdentifierName());
+      if (D)
+        VD.setType(D->getType());
+    }
     if (VD.GetValue()) {
       VD.GetValue()->accept(TR);
       if (auto *IC = dynamic_cast<ImplicitCastExpr *>(VD.GetValue())) {

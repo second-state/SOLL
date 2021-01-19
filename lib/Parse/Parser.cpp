@@ -619,7 +619,10 @@ std::unique_ptr<ContractDecl> Parser::parseContractDefinition() {
   auto CD = std::make_unique<ContractDecl>(
       SourceRange(Begin, End), Name, std::move(BaseContracts),
       std::move(SubNodes), std::move(Constructor), std::move(Fallback), CtKind);
+  auto CT = std::make_shared<ContractType>(CD.get());
+  CD->setContractType(CT);
   Actions.addDecl(CD.get());
+  Actions.addContractDecl(CD.get());
   return CD;
 }
 
@@ -831,7 +834,7 @@ bool Parser::ConsumeAndStoreUntil(tok::TokenKind T1, tok::TokenKind T2,
 
 std::unique_ptr<VarDecl>
 Parser::parseVariableDeclaration(VarDeclParserOptions const &Options,
-                                 TypePtr &&LookAheadArrayType) {
+                                 TypePtr &&LookAheadArrayType) { // TODO
   const SourceLocation Begin = Tok.getLocation();
   TypePtr T;
   if (LookAheadArrayType) {
@@ -1004,9 +1007,9 @@ TypePtr Parser::parseTypeName(bool AllowVar) {
       HaveType = true;
       ConsumeToken(); // identifier
     } else {
-      Diag(diag::err_unimplemented_token) << Kind;
+      T = std::make_shared<UnresolveType>(Name);
+      HaveType = true;
       ConsumeToken(); // identifier
-      return nullptr;
     }
   } else {
     assert(false && "Expected Type Name");

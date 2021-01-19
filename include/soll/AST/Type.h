@@ -14,6 +14,8 @@
 
 namespace soll {
 
+class ContractDecl;
+
 enum class DataLocation { Storage, CallData, Memory };
 
 class Type {
@@ -33,6 +35,7 @@ public:
     Enum,
     Tuple,
     Mapping,
+    Unknow,
   };
   virtual ~Type() noexcept {}
 
@@ -506,7 +509,12 @@ public:
 };
 
 class ContractType : public Type {
-  // TODO
+  ContractDecl *D;
+
+public:
+  ContractType(ContractDecl *D = nullptr) : D(D) {}
+  ContractDecl *getDecl() { return D; }
+  const ContractDecl *getDecl() const { return D; }
   Category getCategory() const override { return Category::Contract; }
   std::string getName() const override { return "contract"; }
   bool isDynamic() const override {
@@ -518,6 +526,26 @@ class ContractType : public Type {
     assert(false && "contract is not allowed here");
     __builtin_unreachable();
   }
+};
+
+class UnresolveType : public Type {
+  llvm::StringRef IdentifierName;
+
+public:
+  UnresolveType(llvm::StringRef IdentifierName)
+      : IdentifierName(IdentifierName) {}
+  Category getCategory() const override { return Category::Unknow; }
+  std::string getName() const override { return "Unknow"; }
+  bool isDynamic() const override {
+    assert(false && "UnresolveType is not allowed here");
+    __builtin_unreachable();
+  }
+  bool shouldEndianLess() const override { return false; }
+  unsigned getABIStaticSize() const override {
+    assert(false && "UnresolveType is not allowed here");
+    __builtin_unreachable();
+  }
+  llvm::StringRef getIdentifierName() const { return IdentifierName; }
 };
 
 } // namespace soll

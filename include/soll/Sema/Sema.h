@@ -22,6 +22,7 @@ class Sema {
   Sema(const Sema &) = delete;
   Sema &operator=(const Sema &) = delete;
 
+  llvm::StringMap<ContractDecl *> ContractDecls;
   std::vector<std::unique_ptr<Scope>> Scopes;
   std::vector<TypePtr> FunRtnTys;
 
@@ -88,8 +89,18 @@ public:
     return Scopes.empty() ? nullptr : Scopes.back().get();
   }
   void addDecl(Decl *D) { CurrentScope()->addDecl(D); }
+  bool addContractDecl(ContractDecl *D) {
+    return ContractDecls.try_emplace(D->getName(), D).second;
+  }
   Decl *lookupName(llvm::StringRef Name) const {
     return CurrentScope()->lookupName(Name);
+  }
+
+  ContractDecl *lookupContractDeclName(llvm::StringRef Name) const {
+    if (auto Iter = ContractDecls.find(Name); Iter != ContractDecls.end()) {
+      return Iter->second;
+    }
+    return nullptr;
   }
 
   void resolveType(SourceUnit &SU);
