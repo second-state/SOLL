@@ -158,8 +158,8 @@ jobs:
           always_pull: true
           build_args: BASE=secondstate/soll:ubuntu-gcc
 
-  Rebuild-SOLL-latset:
-    name: SOLL-compile
+  Rebuild-SOLL-latest:
+    name: SOLL-latest
     needs: Rebuild-SOLL-im-gcc-compile
     runs-on: ubuntu-latest
     steps:
@@ -178,3 +178,24 @@ jobs:
           dockerfile: utils/docker/ubuntu/Dockerfile.test
           always_pull: true
           build_args: BASE=secondstate/soll:im-gcc-compile
+
+  Rebuild-SOLL-runtime-test:
+    name: SOLL-runtime-test
+    needs: Rebuild-SOLL-latest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: "Rebuild secondstate/soll:runtime-test"
+        uses: docker/build-push-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
+          repository: secondstate/soll
+          tags: runtime-test
+          add_git_labels: true
+          path: utils/docker/ubuntu
+          dockerfile: utils/docker/ubuntu/Dockerfile.runtime-test
+          always_pull: true
+          build_args: BASE=secondstate/soll:latest

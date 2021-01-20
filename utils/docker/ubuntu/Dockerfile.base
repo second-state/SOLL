@@ -8,7 +8,6 @@ RUN apt update \
         llvm-10-dev \
         llvm-10-tools \
         liblld-10-dev \
-        git \
         cmake \
         make \
         wget \

@@ -40,6 +40,8 @@ docker_build Dockerfile.compile         im-gcc-compile      \
     --build-arg "BASE=${NAME}:ubuntu-gcc"
 docker_build Dockerfile.test            latest              \
     --build-arg "BASE=${NAME}:im-gcc-compile"
+docker_build Dockerfile.runtime-test    runtime-test        \
+    --build-arg "BASE=${NAME}:latest"
 
 # Remove intermediate images.
 for NAME_TAG in "${INTERMEDIATES[@]}"; do
