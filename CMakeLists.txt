@@ -99,6 +99,5 @@ if(SOLL_INCLUDE_TESTS)
       
     add_subdirectory(${ssvm-evmc_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/utils/ssvm-evmc)
     set(SSVM_EVMC_SRC_DIR ${ssvm-evmc_SOURCE_DIR})
-    set(BUILD_TESTS ON CACHE INTERNAL "")
   endif()
 endif()
