@@ -25,13 +25,18 @@ jobs:
     - name: Build SOLL using g++
       run: |
         cd build
-        cmake -DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true ..
+        cmake -DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true -DSOLL_RUNTIME_TESTS=true ..
         make -j2
 
     - name: Test SOLL
       run: |
         cd build
         ctest
+    
+    - name: SOLL Runtime Test
+      run: |
+        cd test/soll-runtime-test
+        bash runtest.sh
 
   build_and_test_gcc_release:
     runs-on: ubuntu-latest
