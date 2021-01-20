@@ -1,0 +1,17 @@
+ARG BASE=secondstate/soll:ubuntu-base
+FROM ${BASE}
+
+RUN apt update && apt install -y \
+	llvm-dev \
+	liblld-10-dev \
+	git \
+	libboost-all-dev
+
+RUN apt update && apt install -y \
+	gcc \
+	g++
+
+RUN rm -rf /var/lib/apt/lists/*
+
+ENV CC=gcc
+ENV CXX=g++
