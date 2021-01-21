@@ -12,6 +12,18 @@
 
 namespace soll::CodeGen {
 
+struct AbiEncodeFirstArgument {
+  virtual const Expr *operator()(const Expr *Arg) {
+    if (auto CE = dynamic_cast<const CastExpr *>(Arg))
+      Arg = CE->getSubExpr();
+    return Arg;
+  };
+};
+
+struct AbiEncodeFirstArgumentRaw : public AbiEncodeFirstArgument {
+  const Expr *operator()(const Expr *Arg) override { return Arg; };
+};
+
 class CodeGenFunction : public CodeGenTypeCache {
   struct BreakContinue {
     BreakContinue(llvm::BasicBlock *Break, llvm::BasicBlock *Continue)
@@ -108,7 +120,8 @@ private:
   llvm::Value *emitCallAddressSend(const CallExpr *CE, const MemberExpr *ME,
                                    bool NeedRevert);
   llvm::Value *emitAbiEncodePacked(const CallExpr *CE);
-  llvm::Value *emitAbiEncode(const CallExpr *CE);
+  llvm::Value *emitAbiEncode(const CallExpr *CE,
+                             AbiEncodeFirstArgument &FirstArgumentHandler);
   llvm::Value *emitStructConstructor(const CallExpr *CE);
 
   llvm::Value *emitAsmCallDataSize(const CallExpr *CE);
@@ -141,7 +154,6 @@ private:
   llvm::Value *emitAsmByte(const CallExpr *CE);
   void emitAsmSelfDestruct(const CallExpr *CE);
   llvm::Value *emitAsmChainId(const CallExpr *CE);
-
 
   ExprValuePtr emitCallExpr(const CallExpr *CE);
   ExprValuePtr emitSpecialCallExpr(const Identifier *SI, const CallExpr *CE,

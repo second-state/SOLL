@@ -487,9 +487,26 @@ void TypeResolver::visit(CallExprType &CE) {
         argTypes.at(0) =
             std::make_shared<FixedBytesType>(FixedBytesType::ByteKind::B4);
         break;
-      case Identifier::SpecialIdentifier::abi_encodeWithSignature:
-        argTypes.at(0) = std::make_shared<StringType>();
+      case Identifier::SpecialIdentifier::abi_encodeWithSignature: {
+        auto &Arg0 = CE.getRawArguments().at(0);
+        if (auto *IC = dynamic_cast<ImplicitCastExpr *>(Arg0.get())) {
+          Actions.resolveImplicitCast(*IC, std::make_shared<BytesType>(),
+                                      false);
+        }
+        std::vector<ExprPtr> Keccak256Arguments;
+        Keccak256Arguments.emplace_back(std::move(Arg0));
+        auto CallKeccak256 = std::make_unique<CallExpr>(
+            SourceRange(),
+            std::move(std::make_unique<Identifier>(
+                Token(), Identifier::SpecialIdentifier::keccak256, nullptr)),
+            std::move(Keccak256Arguments));
+        CallKeccak256->setType(
+            std::make_shared<FixedBytesType>(FixedBytesType::ByteKind::B32));
+        Arg0 = Actions.CreateDummy(std::move(CallKeccak256));
+        argTypes.at(0) =
+            std::make_shared<FixedBytesType>(FixedBytesType::ByteKind::B4);
         break;
+      }
       default:
         FTy = dynamic_cast<FunctionType *>(I->getType().get());
       }
@@ -605,6 +622,13 @@ void Sema::resolveImplicitCast(ImplicitCastExpr &IC, TypePtr DstTy,
           << SrcTy->getName() << DstTy->getName();
     }
     IC.setCastKind(CastKind::IntegralCast);
+  } else if (DstTy->getCategory() == Type::Category::FixedBytes &&
+             SrcTy->getCategory() == Type::Category::FixedBytes) {
+    if (!Lossless) {
+      Diag(IC.getLocation().getBegin(), diag::warn_impcast_integer_precision)
+          << SrcTy->getName() << DstTy->getName();
+    }
+    IC.setCastKind(CastKind::FixedBytesCast);
   } else {
     IC.setCastKind(CastKind::TypeCast);
   }
