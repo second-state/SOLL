@@ -121,7 +121,6 @@ public:
   void accept(ConstStmtVisitor &visitor) const override;
 };
 
-
 /// UnaryOperator: A unary operation such as "++a" or "!a",
 /// The operand should have the proper type already to construct this node.
 class UnaryOperator : public Expr {
@@ -304,6 +303,8 @@ public:
 
   std::vector<Expr *> getArguments();
   std::vector<const Expr *> getArguments() const;
+  std::vector<ExprPtr> &getRawArguments() { return Arguments; }
+  const std::vector<ExprPtr> &getRawArguments() const { return Arguments; }
 
   std::optional<std::vector<std::string>> &getNames() { return Names; }
   const std::optional<std::vector<std::string>> &getNames() const {
@@ -492,7 +493,6 @@ public:
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
 };
-
 
 /// TupleExpr: A type expression such as "(a, b)" or
 /// Note that "(a)" is not a TupleExpr, but a ParenExpr.

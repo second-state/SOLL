@@ -192,6 +192,8 @@ std::string ToString(soll::CastKind CK) {
     return "<None>";
   case soll::CastKind::IntegralCast:
     return "<IntegralCast>";
+  case soll::CastKind::FixedBytesCast:
+    return "<IntegralCast>";
   case soll::CastKind::LValueToRValue:
     return "<LValueToRValue>";
   case soll::CastKind::TypeCast:

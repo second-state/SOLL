@@ -79,6 +79,7 @@ enum BinaryOperatorKind {
 enum CastKind {
   None,
   IntegralCast,
+  FixedBytesCast,
   // only for ImplicitCast
   LValueToRValue,
   // [TODO] Rename

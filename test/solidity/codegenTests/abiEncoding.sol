@@ -12,7 +12,7 @@ contract ABI_encoding {
     string s2;
     bytes b1;
     bytes b2;
-    bytes8 e;
+    bytes4 e;
     int16[7][] Arr1;
     int32[][2] Arr2;
     int[][2][] Arr3;
@@ -56,5 +56,11 @@ contract ABI_encoding {
     ST st;
     function encodeStruct() public payable returns(bytes){
         return abi.encode(st);
+    }
+    function encodeWithSelector() public payable returns(bytes){
+        return abi.encodeWithSelector(e, st);
+    }
+    function encodeWithSignature() public payable returns(bytes){
+        return abi.encodeWithSignature("Jinkela", st);
     }
 }
