@@ -130,11 +130,20 @@ if __name__ == '__main__':
                 print(f"--- storage check: HAS NO TESTCASE")
             else:
                 print_red(f"{base}: FAIL")
+    
 
-    print("pass rate (can run):", 100 * num_run / num_test, "%")
-    print(
-        "pass rate (storage correct):",
+    print("\n\n\n========================================")
+    print("========================================")
+    print("Number of tested wasm :", num_test)
+    print("Number of EVMC_SUCCESS:", num_run)
+    print("pass rate (can run)   :", 100 * num_run / num_test, "%")
+    print()
+    print("Number of wasm with storage dump:", num_has_testcase)
+    print("Number of correct storage       :", num_pass)
+    print("pass rate (storage correct)     :",
         100 *
         num_pass /
         num_has_testcase,
         "%")
+    print("========================================")
+    print("========================================")

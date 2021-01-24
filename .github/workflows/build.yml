@@ -51,6 +51,11 @@ jobs:
         cd build
         cmake -DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true -DSOLL_RUNTIME_TESTS=true ..
         make -j2
+    
+    - name: SOLL Build Wasm
+      run: |
+        cd test/soll-runtime-test
+        bash compile.sh 2> /dev/null
 
     - name: SOLL Runtime Test
       run: |
