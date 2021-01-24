@@ -25,14 +25,33 @@ jobs:
     - name: Build SOLL using g++
       run: |
         cd build
-        cmake -DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true -DSOLL_RUNTIME_TESTS=true ..
+        cmake -DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true ..
         make -j2
 
     - name: Test SOLL
       run: |
         cd build
         ctest
+   
+  build_and_run_soll_runtime_test:
+    runs-on: ubuntu-latest
+    container:
+      image: secondstate/soll:runtime-test
+
+    steps:
+    - uses: actions/checkout@v2
     
+    - name: Setup build folder
+      run: |
+        rm -rf build
+        mkdir -p build
+
+    - name: Build SOLL using g++
+      run: |
+        cd build
+        cmake -DCMAKE_BUILD_TYPE=Debug -DSOLL_INCLUDE_TESTS=true -DSOLL_RUNTIME_TESTS=true ..
+        make -j2
+
     - name: SOLL Runtime Test
       run: |
         cd test/soll-runtime-test
