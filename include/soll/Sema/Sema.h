@@ -27,10 +27,12 @@ class Sema {
 
 public:
   Lexer &Lex;
+  ASTContext &Context;
+  ASTConsumer &Consumer;
   DiagnosticsEngine &Diags;
   SourceManager &SourceMgr;
 
-  Sema(Lexer &lexer);
+  Sema(Lexer &lexer, ASTContext &ctxt, ASTConsumer &consumer);
 
   DiagnosticBuilder Diag(SourceLocation Loc, unsigned DiagID);
 

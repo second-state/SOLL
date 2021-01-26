@@ -9,22 +9,24 @@
 
 namespace soll {
 
-std::vector<std::unique_ptr<SourceUnit>>
-ParseAST(Sema &S, const InputKind &Lang, bool PrintStats) {
+void ParseAST(Sema &S, ASTConsumer &C, ASTContext &Ctx, bool PrintStats) {
+
   auto P = std::make_unique<Parser>(S.Lex, S, S.Diags);
-  switch (Lang) {
-  case InputKind::Sol: {
-    return P->parse();
-  }
-  case InputKind::Yul: {
-    std::vector<std::unique_ptr<SourceUnit>> Ret;
-    Ret.emplace_back(P->parseYul());
-    return Ret;
-  }
+  std::unique_ptr<SourceUnit> root;
+
+  switch (Ctx.getLang()) {
+  case InputKind::Sol:
+    root = P->parse();
+    break;
+  case InputKind::Yul:
+    root = P->parseYul();
+    break;
   default:
     assert(false && "unsupported language");
     __builtin_unreachable();
   }
+
+  C.HandleSourceUnit(Ctx, *root);
 }
 
 } // namespace soll

@@ -35,7 +35,7 @@ class Parser {
 
 public:
   Parser(Lexer &TheLexer, Sema &Actions, DiagnosticsEngine &Diags);
-  std::vector<std::unique_ptr<SourceUnit>> parse();
+  std::unique_ptr<SourceUnit> parse();
   std::unique_ptr<SourceUnit> parseYul();
 
 private:
@@ -271,7 +271,7 @@ private:
 
   bool ExpectAndConsume(tok::TokenKind ExpectedTok,
                         unsigned Diag = diag::err_expected,
-                        llvm::StringRef DiagMsg = {});
+                        llvm::StringRef DiagMsg = "");
   bool ExpectAndConsumeSemi(unsigned DiagID = diag::err_expected);
 
 public:
