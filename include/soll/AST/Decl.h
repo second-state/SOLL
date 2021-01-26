@@ -69,11 +69,14 @@ public:
 
 private:
   std::vector<std::unique_ptr<InheritanceSpecifier>> BaseContracts;
+  std::vector<ContractDecl *> ResolvedBaseContracts;
   std::vector<DeclPtr> SubNodes;
+  std::vector<Decl *> InheritNodes;
   std::unique_ptr<FunctionDecl> Constructor;
   std::unique_ptr<FunctionDecl> Fallback;
-  ContractKind Kind;
   TypePtr ContractTy;
+  ContractKind Kind;
+  bool IsAbstract;
 
 public:
   ContractDecl(
@@ -81,15 +84,33 @@ public:
       std::vector<std::unique_ptr<InheritanceSpecifier>> &&baseContracts,
       std::vector<DeclPtr> &&subNodes,
       std::unique_ptr<FunctionDecl> &&constructor,
-      std::unique_ptr<FunctionDecl> &&fallback,
-      ContractKind kind = ContractKind::Contract, TypePtr ContractTy = nullptr)
+      std::unique_ptr<FunctionDecl> &&fallback, TypePtr ContractTy = nullptr,
+      ContractKind kind = ContractKind::Contract, bool isAbstract = false)
       : Decl(L, Name), BaseContracts(std::move(baseContracts)),
         SubNodes(std::move(subNodes)), Constructor(std::move(constructor)),
-        Fallback(std::move(fallback)), Kind(kind), ContractTy(ContractTy) {}
+        Fallback(std::move(fallback)), ContractTy(ContractTy), Kind(kind),
+        IsAbstract(isAbstract) {}
+
+  ContractKind getKind() const;
+  bool isImplemented();
   TypePtr getType() { return ContractTy; }
   void setType(TypePtr Ty) { ContractTy = Ty; }
+
+  std::vector<InheritanceSpecifier *> getBaseContracts();
+  std::vector<const InheritanceSpecifier *> getBaseContracts() const;
+
+  void setResolvedBaseContracts(const std::vector<ContractDecl *> &);
+  std::vector<ContractDecl *> getResolvedBaseContracts();
+  std::vector<const ContractDecl *> getResolvedBaseContracts() const;
+
   std::vector<Decl *> getSubNodes();
   std::vector<const Decl *> getSubNodes() const;
+
+  std::vector<Decl *> getInheritNodes();
+  std::vector<Decl *> &getInheritNodesRef();
+  std::vector<const Decl *> getInheritNodes() const;
+
+  void setInheritNodes(const std::vector<Decl *> &);
 
   std::vector<VarDecl *> getVars();
   std::vector<const VarDecl *> getVars() const;
@@ -110,32 +131,66 @@ public:
   void accept(ConstDeclVisitor &visitor) const override;
 };
 
+class IdentifierPath {
+  std::vector<std::string> Path;
+
+public:
+  IdentifierPath(std::vector<std::string> P) : Path(std::move(P)) {}
+};
+
 class InheritanceSpecifier {
-  std::string BaseName;
+  llvm::StringRef BaseName;
   std::vector<ExprPtr> Arguments;
+  ContractDecl *BaseCont;
 
 public:
   InheritanceSpecifier(llvm::StringRef baseName,
                        std::vector<ExprPtr> &&arguments)
-      : BaseName(baseName.str()), Arguments(std::move(arguments)) {}
+      : BaseName(baseName), Arguments(std::move(arguments)), BaseCont(nullptr) {
+  }
+
+  llvm::StringRef getBaseName() const { return BaseName; }
+
+  void setBaseCont(ContractDecl *Cont) { BaseCont = Cont; }
+  ContractDecl *getBaseCont() { return BaseCont; }
+  const ContractDecl *getBaseCont() const { return BaseCont; }
+};
+
+class OverrideSpecifier {
+  std::vector<IdentifierPath> Overrides;
+
+public:
+  OverrideSpecifier() {}
 };
 
 class CallableVarDecl : public Decl {
   std::unique_ptr<ParamList> Params;
   std::unique_ptr<ParamList> ReturnParams;
 
+protected:
+  bool IsVirtual;
+  std::unique_ptr<OverrideSpecifier> Overrides;
+
 public:
   CallableVarDecl(SourceRange L, llvm::StringRef Name, Visibility V,
                   std::unique_ptr<ParamList> &&Params,
-                  std::unique_ptr<ParamList> &&ReturnParams = nullptr)
+                  std::unique_ptr<ParamList> &&ReturnParams = nullptr,
+                  bool IsVirtual = false,
+                  std::unique_ptr<OverrideSpecifier> &&Overrides = nullptr)
       : Decl(L, Name, V), Params(std::move(Params)),
-        ReturnParams(std::move(ReturnParams)) {}
+        ReturnParams(std::move(ReturnParams)), IsVirtual(IsVirtual),
+        Overrides(std::move(Overrides)) {}
 
   ParamList *getParams() { return Params.get(); }
   const ParamList *getParams() const { return Params.get(); }
 
   ParamList *getReturnParams() { return ReturnParams.get(); }
   const ParamList *getReturnParams() const { return ReturnParams.get(); }
+
+  OverrideSpecifier *getOverrideSpecifier() { return Overrides.get(); }
+  const OverrideSpecifier *getOverrideSpecifier() const {
+    return Overrides.get();
+  }
 
   std::vector<unsigned char> getSignatureHash() const;
   std::uint32_t getSignatureHashUInt32() const;
@@ -158,7 +213,8 @@ public:
                std::unique_ptr<ParamList> &&Params,
                std::vector<std::unique_ptr<ModifierInvocation>> &&Modifiers,
                std::unique_ptr<ParamList> &&ReturnParams,
-               std::unique_ptr<Block> &&Body);
+               std::unique_ptr<Block> &&Body, bool IsVirtual,
+               std::unique_ptr<OverrideSpecifier> &&Overrides);
 
   Block *getBody() { return Body.get(); }
   const Block *getBody() const { return Body.get(); }
@@ -168,6 +224,15 @@ public:
   StateMutability getStateMutability() const { return SM; }
   bool isConstructor() const { return IsConstructor; }
   bool isFallback() const { return IsFallback; }
+  bool isIncomplete() const { return Body.get() == nullptr; }
+  // TODO: interface is virtual default.
+  // however AST do not have a link to current ContDecl
+  virtual bool isVirtual() const {
+    return IsVirtual; /* || is Interface Cont */
+  }
+  // XXX: function for hotfix above
+  void markVirtual() { IsVirtual = true; }
+  FunctionDecl *resolveVirtual(const ContractDecl &MostDerivedContract);
 
   void accept(DeclVisitor &Visitor) override;
   void accept(ConstDeclVisitor &Visitor) const override;

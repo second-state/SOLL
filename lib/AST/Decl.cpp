@@ -30,6 +30,45 @@ std::vector<const Decl *> SourceUnit::getNodes() const {
 ///
 /// ContractDecl
 ///
+ContractDecl::ContractKind ContractDecl::getKind() const { return Kind; }
+
+bool ContractDecl::isImplemented() {
+  for (auto F : getFuncs())
+    if (F->getBody() == nullptr)
+      return false;
+  return true;
+}
+
+std::vector<InheritanceSpecifier *> ContractDecl::getBaseContracts() {
+  std::vector<InheritanceSpecifier *> Bases;
+  for (auto &Cont : this->BaseContracts)
+    Bases.emplace_back(Cont.get());
+  return Bases;
+}
+
+std::vector<const InheritanceSpecifier *>
+ContractDecl::getBaseContracts() const {
+  std::vector<const InheritanceSpecifier *> Bases;
+  for (auto &Cont : this->BaseContracts)
+    Bases.emplace_back(Cont.get());
+  return Bases;
+}
+
+void ContractDecl::setResolvedBaseContracts(
+    const std::vector<ContractDecl *> &Contracts) {
+  ResolvedBaseContracts = Contracts;
+}
+
+std::vector<ContractDecl *> ContractDecl::getResolvedBaseContracts() {
+  return ResolvedBaseContracts;
+}
+
+std::vector<const ContractDecl *>
+ContractDecl::getResolvedBaseContracts() const {
+  return std::vector<const ContractDecl *>(ResolvedBaseContracts.begin(),
+                                           ResolvedBaseContracts.end());
+}
+
 std::vector<Decl *> ContractDecl::getSubNodes() {
   std::vector<Decl *> Decls;
   for (auto &Decl : this->SubNodes)
@@ -44,10 +83,34 @@ std::vector<const Decl *> ContractDecl::getSubNodes() const {
   return Decls;
 }
 
+std::vector<Decl *> ContractDecl::getInheritNodes() {
+  return this->InheritNodes;
+}
+
+std::vector<Decl *> &ContractDecl::getInheritNodesRef() {
+  return this->InheritNodes;
+}
+
+std::vector<const Decl *> ContractDecl::getInheritNodes() const {
+  std::vector<const Decl *> Decls;
+  for (auto &Decl : this->InheritNodes)
+    Decls.emplace_back(Decl);
+  return Decls;
+}
+
+void ContractDecl::setInheritNodes(const std::vector<Decl *> &Nodes) {
+  this->InheritNodes = Nodes;
+}
+
 std::vector<VarDecl *> ContractDecl::getVars() {
   std::vector<VarDecl *> Nodes;
   for (auto &Node : SubNodes) {
     if (auto VD = dynamic_cast<VarDecl *>(Node.get()))
+      Nodes.emplace_back(VD);
+  }
+
+  for (auto &Node : InheritNodes) {
+    if (auto VD = dynamic_cast<VarDecl *>(Node))
       Nodes.emplace_back(VD);
   }
   return Nodes;
@@ -57,6 +120,11 @@ std::vector<const VarDecl *> ContractDecl::getVars() const {
   std::vector<const VarDecl *> Nodes;
   for (auto &Node : SubNodes) {
     if (auto VD = dynamic_cast<const VarDecl *>(Node.get()))
+      Nodes.emplace_back(VD);
+  }
+
+  for (auto &Node : InheritNodes) {
+    if (auto VD = dynamic_cast<VarDecl *>(Node))
       Nodes.emplace_back(VD);
   }
   return Nodes;
@@ -69,6 +137,11 @@ std::vector<FunctionDecl *> ContractDecl::getFuncs() {
       Nodes.emplace_back(FD);
     }
   }
+
+  for (auto &Node : InheritNodes) {
+    if (auto VD = dynamic_cast<FunctionDecl *>(Node))
+      Nodes.emplace_back(VD);
+  }
   return Nodes;
 }
 
@@ -78,6 +151,11 @@ std::vector<const FunctionDecl *> ContractDecl::getFuncs() const {
     if (auto FD = dynamic_cast<const FunctionDecl *>(Node.get())) {
       Nodes.emplace_back(FD);
     }
+  }
+
+  for (auto &Node : InheritNodes) {
+    if (auto VD = dynamic_cast<FunctionDecl *>(Node))
+      Nodes.emplace_back(VD);
   }
   return Nodes;
 }
@@ -166,8 +244,10 @@ FunctionDecl::FunctionDecl(
     SourceRange L, llvm::StringRef Name, Visibility V, StateMutability SM,
     bool IsConstructor, bool IsFallback, std::unique_ptr<ParamList> &&Params,
     std::vector<std::unique_ptr<ModifierInvocation>> &&Modifiers,
-    std::unique_ptr<ParamList> &&ReturnParams, std::unique_ptr<Block> &&Body)
-    : CallableVarDecl(L, Name, V, std::move(Params), std::move(ReturnParams)),
+    std::unique_ptr<ParamList> &&ReturnParams, std::unique_ptr<Block> &&Body,
+    bool IsVirtual, std::unique_ptr<OverrideSpecifier> &&Overrides)
+    : CallableVarDecl(L, Name, V, std::move(Params), std::move(ReturnParams),
+                      IsVirtual, std::move(Overrides)),
       SM(SM), IsConstructor(IsConstructor), IsFallback(IsFallback),
       FunctionModifiers(std::move(Modifiers)), Body(std::move(Body)) {
   std::vector<TypePtr> PTys;
@@ -183,6 +263,11 @@ FunctionDecl::FunctionDecl(
       std::make_shared<FunctionType>(std::move(PTys), std::move(RTys), PNames);
 }
 
+FunctionDecl *
+FunctionDecl::resolveVirtual(const ContractDecl &MostDerivedContract) {
+  return this;
+}
+
 EventDecl::EventDecl(SourceRange L, llvm::StringRef Name,
                      std::unique_ptr<ParamList> &&Params, bool IsAnonymous)
     : CallableVarDecl(L, Name, Decl::Visibility::Default, std::move(Params)),
@@ -195,8 +280,7 @@ EventDecl::EventDecl(SourceRange L, llvm::StringRef Name,
 }
 
 StructDecl::StructDecl(SourceRange L, llvm::StringRef Name,
-                       std::vector<TypePtr> &&ET,
-                       std::vector<std::string> &&EN)
+                       std::vector<TypePtr> &&ET, std::vector<std::string> &&EN)
     : Decl(L, Name, Visibility::Default),
       Ty(std::make_shared<StructType>(std::move(ET), std::move(EN))) {
   auto STy = dynamic_cast<const StructType *>(Ty.get());

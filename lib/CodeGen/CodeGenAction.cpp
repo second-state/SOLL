@@ -104,7 +104,8 @@ private:
     llvm::BasicBlock *Entry =
         llvm::BasicBlock::Create(VMContext, "entry", MainFunc);
     Builder.SetInsertPoint(Entry);
-    Builder.CreateCall(Module.getFunction(EntryName));
+    if (Module.getFunction(EntryName))
+      Builder.CreateCall(Module.getFunction(EntryName));
     Builder.CreateRetVoid();
   }
 

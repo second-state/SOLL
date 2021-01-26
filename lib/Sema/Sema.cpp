@@ -17,13 +17,15 @@ std::unique_ptr<FunctionDecl> Sema::CreateFunctionDecl(
     StateMutability SM, bool IsConstructor, bool IsFallback,
     std::unique_ptr<ParamList> &&Params,
     std::vector<std::unique_ptr<ModifierInvocation>> &&Modifiers,
-    std::unique_ptr<ParamList> &&ReturnParams, std::unique_ptr<Block> &&Body) {
+    std::unique_ptr<ParamList> &&ReturnParams, std::unique_ptr<Block> &&Body,
+    bool IsVirtual, std::unique_ptr<OverrideSpecifier> &&Overrides) {
   if (IsConstructor and !Params->getParams().empty()) {
     Diag(L.getBegin(), diag::err_unimplemented_constructor_parameter);
   }
   return std::make_unique<FunctionDecl>(
       L, Name, Vis, SM, IsConstructor, IsFallback, std::move(Params),
-      std::move(Modifiers), std::move(ReturnParams), std::move(Body));
+      std::move(Modifiers), std::move(ReturnParams), std::move(Body), IsVirtual,
+      std::move(Overrides));
 }
 
 std::unique_ptr<EventDecl>

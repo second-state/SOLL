@@ -67,6 +67,11 @@ public:
     }
     if (dynamic_cast<PragmaDirective *>(D)) {
     } else if (auto *CD = dynamic_cast<ContractDecl *>(D)) {
+      if (CD->getKind() == ContractDecl::ContractKind::Interface)
+        return ;
+      // TODO : Should we make a warning ?
+      if (!CD->isImplemented())
+        return ;
       Builder->emitContractDecl(CD);
     } else if (auto *YO = dynamic_cast<YulObject *>(D)) {
       Builder->emitYulObject(YO);

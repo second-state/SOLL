@@ -7,7 +7,6 @@
 #include "soll/Lex/Lexer.h"
 #include "soll/Lex/Token.h"
 #include <llvm/Support/Compiler.h>
-
 namespace soll {
 
 static BinaryOperatorKind token2bop(const Token &Tok) {
@@ -366,6 +365,7 @@ std::unique_ptr<SourceUnit> Parser::parse() {
       case tok::kw_import:
         ConsumeToken();
         break;
+      case tok::kw_abstract:
       case tok::kw_interface:
       case tok::kw_library:
       case tok::kw_contract: {
@@ -374,13 +374,16 @@ std::unique_ptr<SourceUnit> Parser::parse() {
       }
       default:
         ConsumeAnyToken();
+        // TODO : fatalParserError
         break;
       }
     }
     SU = std::make_unique<SourceUnit>(SourceRange(Begin, Tok.getLocation()),
                                       std::move(Nodes));
   }
+  Actions.resolveInherit(*SU);
   Actions.resolveType(*SU);
+
   return SU;
 }
 
@@ -427,22 +430,50 @@ std::unique_ptr<PragmaDirective> Parser::parsePragmaDirective() {
   return std::make_unique<PragmaDirective>(SourceRange(Begin, End));
 }
 
-ContractDecl::ContractKind Parser::parseContractKind() {
+std::pair<ContractDecl::ContractKind, bool> Parser::parseContractKind() {
+  ContractDecl::ContractKind Kind;
+  bool Abstract = false;
+
+  if (Tok.getKind() == tok::kw_abstract) {
+    Abstract = true;
+    ConsumeAnyToken();
+  }
+
   switch (Tok.getKind()) {
   case tok::kw_interface:
-    ConsumeToken();
-    return ContractDecl::ContractKind::Interface;
+    Kind = ContractDecl::ContractKind::Interface;
+    break;
   case tok::kw_contract:
-    ConsumeToken();
-    return ContractDecl::ContractKind::Contract;
+    Kind = ContractDecl::ContractKind::Contract;
+    break;
   case tok::kw_library:
-    ConsumeToken();
-    return ContractDecl::ContractKind::Library;
+    Kind = ContractDecl::ContractKind::Library;
+    break;
   default:
     Diag(diag::err_expected_contract_kind);
-    ConsumeAnyToken();
-    return ContractDecl::ContractKind::Contract;
+    return std::make_pair(ContractDecl::ContractKind::Contract, false);
   }
+
+  ConsumeAnyToken();
+  return std::make_pair(Kind, Abstract);
+}
+
+std::unique_ptr<InheritanceSpecifier> Parser::parseInheritanceSpecifier() {
+  if (!Tok.isAnyIdentifier()) {
+    Diag(diag::err_expected) << tok::identifier;
+    return nullptr;
+  }
+  llvm::StringRef BaseName = Tok.getIdentifierInfo()->getName();
+  ConsumeToken(); // identifier
+
+  std::vector<std::unique_ptr<Expr>> Arguments;
+  if (isTokenParen()) {
+    ConsumeParen(); // (
+    // TODO : Constructor args is unimplement
+    Arguments = parseFunctionCallListArguments();
+    ConsumeParen(); // )
+  }
+  return std::make_unique<InheritanceSpecifier>(BaseName, std::move(Arguments));
 }
 
 Decl::Visibility Parser::parseVisibilitySpecifier() {
@@ -464,6 +495,27 @@ Decl::Visibility Parser::parseVisibilitySpecifier() {
     ConsumeAnyToken();
     return Decl::Visibility::Default;
   }
+}
+
+std::unique_ptr<OverrideSpecifier> Parser::parseOverrideSpecifier() {
+  assert(Tok.is(tok::kw_override));
+  ConsumeToken();
+
+  if (isTokenParen()) {
+    ExpectAndConsume(tok::l_paren);
+    while (true) {
+      Diag(diag::err_multiinherited_unsupport);
+      parseUserDefinedTypeName();
+
+      if (Tok.is(tok::r_paren))
+        break;
+
+      ExpectAndConsume(tok::comma);
+    }
+    ExpectAndConsume(tok::r_paren);
+  }
+
+  return std::make_unique<OverrideSpecifier>();
 }
 
 StateMutability Parser::parseStateMutability() {
@@ -510,7 +562,7 @@ DataLocation Parser::parseDataLocation() {
 std::unique_ptr<ContractDecl> Parser::parseContractDefinition() {
   const SourceLocation Begin = Tok.getLocation();
   ParseScope ContractScope{this, 0};
-  ContractDecl::ContractKind CtKind = parseContractKind();
+  std::pair<ContractDecl::ContractKind, bool> CtKind = parseContractKind();
   if (!Tok.isAnyIdentifier()) {
     Diag(diag::err_expected) << tok::identifier;
     return nullptr;
@@ -525,26 +577,7 @@ std::unique_ptr<ContractDecl> Parser::parseContractDefinition() {
 
   if (TryConsumeToken(tok::kw_is)) {
     do {
-      // TODO: Update vector<InheritanceSpecifier> baseContracts
-      if (!Tok.isAnyIdentifier()) {
-        Diag(diag::err_expected) << tok::identifier;
-        return nullptr;
-      }
-      std::string BaseName = Tok.getIdentifierInfo()->getName();
-      ConsumeToken(); // identifier
-
-      std::vector<std::unique_ptr<Expr>> Arguments;
-      if (isTokenParen()) {
-        ConsumeParen();
-        while (!isTokenParen()) {
-          if (ExpectAndConsume(tok::comma)) {
-            return nullptr;
-          }
-          Arguments.emplace_back(parseExpression());
-        }
-      }
-      BaseContracts.emplace_back(std::make_unique<InheritanceSpecifier>(
-          std::move(BaseName), std::move(Arguments)));
+      BaseContracts.emplace_back(parseInheritanceSpecifier());
     } while (TryConsumeToken(tok::comma));
   }
 
@@ -618,7 +651,8 @@ std::unique_ptr<ContractDecl> Parser::parseContractDefinition() {
   }
   auto CD = std::make_unique<ContractDecl>(
       SourceRange(Begin, End), Name, std::move(BaseContracts),
-      std::move(SubNodes), std::move(Constructor), std::move(Fallback), CtKind);
+      std::move(SubNodes), std::move(Constructor), std::move(Fallback), nullptr,
+      CtKind.first, CtKind.second);
   auto CT = std::make_shared<ContractType>(CD.get());
   CD->setType(CT);
   Actions.addDecl(CD.get());
@@ -685,6 +719,15 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
     } else if (Tok.isOneOf(tok::kw_constant, tok::kw_pure, tok::kw_view,
                            tok::kw_payable)) {
       Result.SM = parseStateMutability();
+    } else if (Tok.is(tok::kw_override)) { //!_isStateVariable
+      if (Result.Overrides)
+        Diag(diag::warn_override_already_specified);
+      Result.Overrides = parseOverrideSpecifier();
+    } else if (Tok.is(tok::kw_virtual)) {
+      if (Result.IsVirtual) //!_isStateVariable
+        Diag(diag::warn_virtual_already_specified);
+      Result.IsVirtual = true;
+      ConsumeToken();
     } else {
       break;
     }
@@ -729,7 +772,7 @@ Parser::parseFunctionDefinitionOrFunctionTypeStateVariable() {
         SourceRange(Begin, End), Header.Name, Header.Vsblty, Header.SM,
         Header.IsConstructor, Header.IsFallback, std::move(Header.Parameters),
         std::move(Header.Modifiers), std::move(Header.ReturnParameters),
-        std::move(B));
+        std::move(B), Header.IsVirtual, std::move(Header.Overrides));
     return FD;
   } else {
     // TODO: State Variable case.
@@ -930,6 +973,27 @@ std::unique_ptr<EventDecl> Parser::parseEventDefinition() {
                                     std::move(Parameters), Anonymous);
   Actions.addDecl(ED.get());
   return ED;
+}
+
+void Parser::parseUserDefinedTypeName() {
+  auto identifierPath = parseIdentifierPath();
+  // TODO
+  // return UserDefinedTypeName(identifierPath);
+}
+
+std::unique_ptr<IdentifierPath> Parser::parseIdentifierPath() {
+  assert(Tok.isAnyIdentifier());
+  std::vector<std::string> path{Tok.getIdentifierInfo()->getName()};
+  ConsumeToken(); // identifier
+
+  while (Tok.is(tok::period)) {
+    ConsumeToken(); // period
+    assert(Tok.isAnyIdentifier());
+    path.emplace_back(Tok.getIdentifierInfo()->getName());
+    ConsumeToken(); // identifier
+  }
+
+  return std::make_unique<IdentifierPath>(path);
 }
 
 TypePtr Parser::parseTypeNameSuffix(TypePtr T) {

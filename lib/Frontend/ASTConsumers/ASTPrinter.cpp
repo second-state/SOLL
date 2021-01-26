@@ -318,7 +318,8 @@ void ASTPrinter::visit(FunctionDeclType &decl) {
   os() << indent() << "FunctionDecl \"" << decl.getName() << "\" "
        << ToString(decl.getType()) << " \n";
   ConstDeclVisitor::visit(decl);
-  decl.getBody()->accept(*this);
+  if (decl.getBody() != nullptr)
+    decl.getBody()->accept(*this);
   unindent();
 }
 
