@@ -5,7 +5,6 @@
 #include "soll/Basic/DiagnosticIDs.h"
 #include "soll/Basic/FileManager.h"
 #include "soll/Basic/SourceManager.h"
-#include "soll/CodeGen/CodeGenAction.h"
 #include "soll/Frontend/ASTConsumers.h"
 #include "soll/Frontend/CompilerInvocation.h"
 #include "soll/Frontend/FrontendAction.h"
@@ -15,7 +14,6 @@
 #include "soll/Lex/Lexer.h"
 #include "soll/Sema/Sema.h"
 #include <cassert>
-#include <functional>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/Support/Errc.h>
@@ -23,33 +21,6 @@
 #include <memory>
 
 namespace soll {
-
-std::function<std::unique_ptr<llvm::raw_pwrite_stream>(
-    llvm::StringRef, BackendAction, llvm::StringRef)>
-CompilerInstance::GetOutputStreamFunc() {
-  return
-      [&](llvm::StringRef InFile, BackendAction Action,
-          llvm::StringRef OutName) -> std::unique_ptr<llvm::raw_pwrite_stream> {
-        switch (Action) {
-        case BackendAction::EmitAssembly:
-          return createDefaultOutputFile(false, InFile, "s", OutName);
-        case BackendAction::EmitLL:
-          return createDefaultOutputFile(false, InFile, "ll", OutName);
-        case BackendAction::EmitBC:
-          return createDefaultOutputFile(true, InFile, "bc", OutName);
-        case BackendAction::EmitNothing:
-          return nullptr;
-        case BackendAction::EmitMCNull:
-          return createNullOutputFile();
-        case BackendAction::EmitObj:
-          return createDefaultOutputFile(true, InFile, "o", OutName);
-        case BackendAction::EmitWasm:
-          return createDefaultOutputFile(true, InFile, "wasm", OutName);
-        }
-
-        llvm_unreachable("Invalid action!");
-      };
-}
 
 CompilerInstance::CompilerInstance()
     : Invocation(std::make_unique<CompilerInvocation>()) {}
@@ -68,7 +39,7 @@ void CompilerInstance::setSourceManager(SourceManager *Value) {
 void CompilerInstance::setASTContext(ASTContext *Value) {
   Context = Value;
 
-  if (Context && hasASTConsumer())
+  if (Context && Consumer)
     getASTConsumer().Initialize(getASTContext());
 }
 
@@ -80,12 +51,10 @@ void CompilerInstance::setSema(std::unique_ptr<Sema> &&S) {
   TheSema = std::move(S);
 }
 
-void CompilerInstance::addASTConsumer(std::unique_ptr<ASTConsumer> &&Value) {
-  if (!Value)
-    return;
-  Consumer.emplace_back(std::move(Value));
+void CompilerInstance::setASTConsumer(std::unique_ptr<ASTConsumer> &&Value) {
+  Consumer = std::move(Value);
 
-  if (Context && hasASTConsumer())
+  if (Context && Consumer)
     getASTConsumer().Initialize(getASTContext());
 }
 
@@ -161,16 +130,16 @@ void CompilerInstance::createASTContext() {
 }
 
 void CompilerInstance::createSema() {
-  TheSema = std::make_unique<Sema>(getLexer());
+  TheSema =
+      std::make_unique<Sema>(getLexer(), getASTContext(), getASTConsumer());
 }
 
 std::unique_ptr<llvm::raw_pwrite_stream>
 CompilerInstance::createDefaultOutputFile(bool Binary, llvm::StringRef InFile,
-                                          llvm::StringRef Extension,
-                                          llvm::StringRef OutName) {
+                                          llvm::StringRef Extension) {
   return createOutputFile(getFrontendOpts().OutputFile, Binary,
                           /*RemoveFileOnSignal=*/true, InFile, Extension,
-                          /*UseTemporary=*/false, false, OutName);
+                          /*UseTemporary=*/false);
 }
 
 std::unique_ptr<llvm::raw_pwrite_stream>
@@ -181,13 +150,12 @@ CompilerInstance::createNullOutputFile() {
 std::unique_ptr<llvm::raw_pwrite_stream> CompilerInstance::createOutputFile(
     llvm::StringRef OutputPath, bool Binary, bool RemoveFileOnSignal,
     llvm::StringRef InFile, llvm::StringRef Extension, bool UseTemporary,
-    bool CreateMissingDirectories, llvm::StringRef OutName) {
+    bool CreateMissingDirectories) {
   std::string OutputPathName, TempPathName;
   std::error_code EC;
-  std::unique_ptr<llvm::raw_pwrite_stream> OS =
-      createOutputFile(OutputPath, EC, Binary, RemoveFileOnSignal, InFile,
-                       Extension, UseTemporary, CreateMissingDirectories,
-                       &OutputPathName, &TempPathName, OutName);
+  std::unique_ptr<llvm::raw_pwrite_stream> OS = createOutputFile(
+      OutputPath, EC, Binary, RemoveFileOnSignal, InFile, Extension,
+      UseTemporary, CreateMissingDirectories, &OutputPathName, &TempPathName);
   if (!OS) {
     // getDiagnostics().Report(diag::err_fe_unable_to_open_output) << OutputPath
     // << EC.message();
@@ -205,8 +173,7 @@ std::unique_ptr<llvm::raw_pwrite_stream> CompilerInstance::createOutputFile(
     llvm::StringRef OutputPath, std::error_code &Error, bool Binary,
     bool RemoveFileOnSignal, llvm::StringRef InFile, llvm::StringRef Extension,
     bool UseTemporary, bool CreateMissingDirectories,
-    std::string *ResultPathName, std::string *TempPathName,
-    llvm::StringRef OutName) {
+    std::string *ResultPathName, std::string *TempPathName) {
   assert((!CreateMissingDirectories || UseTemporary) &&
          "CreateMissingDirectories is only allowed when using temporary files");
 
@@ -217,10 +184,6 @@ std::unique_ptr<llvm::raw_pwrite_stream> CompilerInstance::createOutputFile(
     OutFile = "-";
   } else if (!Extension.empty()) {
     llvm::SmallString<128> Path(InFile);
-    if (OutName != "") {
-      llvm::sys::path::remove_filename(Path);
-      llvm::sys::path::append(Path, OutName);
-    }
     llvm::sys::path::replace_extension(Path, Extension);
     OutFile = Path.str();
   } else {

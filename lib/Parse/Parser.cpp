@@ -351,18 +351,17 @@ Parser::Parser(Lexer &TheLexer, Sema &Actions, DiagnosticsEngine &Diags)
   Tok = *TheLexer.CachedLex();
 }
 
-std::vector<std::unique_ptr<SourceUnit>> Parser::parse() {
-  std::vector<std::unique_ptr<SourceUnit>> SUs;
+std::unique_ptr<SourceUnit> Parser::parse() {
+  std::unique_ptr<SourceUnit> SU;
   {
     ParseScope SourceUnitScope{this, 0};
     std::vector<std::unique_ptr<Decl>> Nodes;
-    std::vector<std::unique_ptr<PragmaDirective>> PDs;
     const SourceLocation Begin = Tok.getLocation();
 
     while (Tok.isNot(tok::eof)) {
       switch (Tok.getKind()) {
       case tok::kw_pragma:
-        PDs.emplace_back(parsePragmaDirective());
+        Nodes.push_back(parsePragmaDirective());
         break;
       case tok::kw_import:
         ConsumeToken();
@@ -371,10 +370,6 @@ std::vector<std::unique_ptr<SourceUnit>> Parser::parse() {
       case tok::kw_library:
       case tok::kw_contract: {
         Nodes.push_back(parseContractDefinition());
-        auto SU = std::make_unique<SourceUnit>(
-            SourceRange(Begin, Tok.getLocation()), std::move(Nodes));
-        Actions.resolveType(*SU);
-        SUs.emplace_back(std::move(SU));
         break;
       }
       default:
@@ -382,8 +377,11 @@ std::vector<std::unique_ptr<SourceUnit>> Parser::parse() {
         break;
       }
     }
+    SU = std::make_unique<SourceUnit>(SourceRange(Begin, Tok.getLocation()),
+                                      std::move(Nodes));
   }
-  return SUs;
+  Actions.resolveType(*SU);
+  return SU;
 }
 
 std::unique_ptr<PragmaDirective> Parser::parsePragmaDirective() {
@@ -889,7 +887,7 @@ Parser::parseVariableDeclaration(VarDeclParserOptions const &Options,
   }
 
   if (Options.AllowEmptyName && !Tok.isAnyIdentifier()) {
-    Name = llvm::StringRef();
+    Name = llvm::StringRef("");
   } else {
     Name = Tok.getIdentifierInfo()->getName();
     ConsumeToken();

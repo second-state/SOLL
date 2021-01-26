@@ -36,7 +36,7 @@ public:
 
   template <typename T>
   llvm::Value *load(T &Builder, CodeGenModule &CGM,
-                    llvm::StringRef Name = {}) const {
+                    llvm::StringRef Name = "") const {
     if (isTuple() || isSlot()) {
       return nullptr;
     }
