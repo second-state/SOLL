@@ -55,21 +55,25 @@ private:
   struct FunctionHeaderParserResult {
     bool IsConstructor;
     bool IsFallback;
+    bool IsVirtual;
     llvm::StringRef Name;
     Decl::Visibility Vsblty = Decl::Visibility::Default;
     StateMutability SM = StateMutability::NonPayable;
     std::unique_ptr<ParamList> Parameters;
     std::vector<std::unique_ptr<ModifierInvocation>> Modifiers;
     std::unique_ptr<ParamList> ReturnParameters;
+    std::unique_ptr<OverrideSpecifier> Overrides;
   };
 
   // void parsePragmaVersion(langutil::SourceLocation const& _location,
   // std::vector<Token> const& _tokens, std::vector<std::string> const&
   // _literals);
   std::unique_ptr<PragmaDirective> parsePragmaDirective();
-  ContractDecl::ContractKind parseContractKind();
+  std::pair<ContractDecl::ContractKind , bool> parseContractKind();
   std::unique_ptr<ContractDecl> parseContractDefinition();
+  std::unique_ptr<InheritanceSpecifier> parseInheritanceSpecifier();
   Decl::Visibility parseVisibilitySpecifier();
+  std::unique_ptr<OverrideSpecifier> parseOverrideSpecifier();
   StateMutability parseStateMutability();
   DataLocation parseDataLocation();
 
@@ -82,6 +86,8 @@ private:
   parseVariableDeclaration(VarDeclParserOptions const &Options = {},
                            TypePtr &&LookAheadArrayType = nullptr);
   std::unique_ptr<EventDecl> parseEventDefinition();
+  void parseUserDefinedTypeName();
+  std::unique_ptr<IdentifierPath> parseIdentifierPath();
   TypePtr parseTypeNameSuffix(TypePtr T);
   TypePtr parseTypeName(bool AllowVar);
   std::shared_ptr<MappingType> parseMapping();

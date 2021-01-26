@@ -28,3 +28,6 @@ DIAG(err_trailing_comma, CLASS_ERROR, (unsigned)diag::Severity::Error, "Unexpect
 DIAG(warn_constant_removed, CLASS_WARNING, (unsigned)diag::Severity::Warning, "The state mutability modifier 'constant' was removed in version 0.5.0. Use 'view' or 'pure' instead.", 0, false, 1)
 DIAG(err_multiple_constuctors, CLASS_ERROR, (unsigned)diag::Severity::Error, "multiple constructor defined", 0, false, 1)
 DIAG(err_multiple_fallbacks, CLASS_ERROR, (unsigned)diag::Severity::Error, "multiple fallback defined", 0, false, 1)
+DIAG(warn_virtual_already_specified, CLASS_WARNING, (unsigned)diag::Severity::Warning, "Virtual already specified.", 0, false, 1)
+DIAG(warn_override_already_specified, CLASS_WARNING, (unsigned)diag::Severity::Warning, "Override already specified.", 0, false, 1)
+DIAG(err_multiinherited_unsupport, CLASS_ERROR, (unsigned)diag::Severity::Error, "Multinherited overrided is not supported!", 0, false, 1)

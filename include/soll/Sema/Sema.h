@@ -46,7 +46,8 @@ public:
       StateMutability sm, bool isConstructor, bool isFallback,
       std::unique_ptr<ParamList> &&params,
       std::vector<std::unique_ptr<ModifierInvocation>> &&modifiers,
-      std::unique_ptr<ParamList> &&returnParams, std::unique_ptr<Block> &&body);
+      std::unique_ptr<ParamList> &&returnParams, std::unique_ptr<Block> &&body,
+      bool isVirtual, std::unique_ptr<OverrideSpecifier> &&overrides);
   std::unique_ptr<EventDecl>
   CreateEventDecl(SourceRange L, llvm::StringRef name,
                   std::unique_ptr<ParamList> &&Params, bool Anonymous);
@@ -102,8 +103,12 @@ public:
     }
     return nullptr;
   }
+  void InjectInheritContract(std::vector<Decl *> &BaseDecl,
+                             const std::vector<Decl *> &Child,
+                             bool AppendChild);
 
   void resolveType(SourceUnit &SU);
+  void resolveInherit(SourceUnit &SU);
   void resolveImplicitCast(ImplicitCastExpr &IC, TypePtr DstTy,
                            bool PrefereLValue);
 

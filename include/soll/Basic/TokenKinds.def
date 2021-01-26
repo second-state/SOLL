@@ -83,6 +83,7 @@ PUNCTUATOR(minusminus,          "--")
 
 // Flags allowed:
 //   KEYALL   - This is a keyword in all variants of solidity
+KEYWORD(abstract                , KEYALL)
 KEYWORD(anonymous               , KEYALL)
 KEYWORD(as                      , KEYALL)
 KEYWORD(assembly                , KEYALL)
@@ -117,6 +118,7 @@ KEYWORD(mapping                 , KEYALL)
 KEYWORD(memory                  , KEYALL)
 KEYWORD(modifier                , KEYALL)
 KEYWORD(new                     , KEYALL)
+KEYWORD(override                , KEYALL)
 KEYWORD(payable                 , KEYALL)
 KEYWORD(pragma                  , KEYALL)
 KEYWORD(private                 , KEYALL)
@@ -133,6 +135,7 @@ KEYWORD(true                    , KEYALL)
 KEYWORD(using                   , KEYALL)
 KEYWORD(var                     , KEYALL)
 KEYWORD(view                    , KEYALL)
+KEYWORD(virtual                 , KEYALL)
 KEYWORD(while                   , KEYALL)
 
 // type keywords

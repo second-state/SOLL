@@ -443,7 +443,8 @@ public:
                "multiple return type not implemented");
         TR.setReturnType(Ty->getReturnTypes().front());
       }
-      FD.getBody()->accept(TR);
+      if (FD.getBody() != nullptr)
+        FD.getBody()->accept(TR);
       TR.setReturnType(nullptr);
     }
     DeclVisitor::visit(FD);

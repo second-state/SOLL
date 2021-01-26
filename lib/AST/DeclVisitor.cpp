@@ -23,6 +23,9 @@ template <bool Const> void DeclVisitorBase<Const>::visit(ContractDeclType &CD) {
   if (CD.getFallback() != nullptr) {
     CD.getFallback()->accept(*this);
   }
+  for (auto F : CD.getInheritNodes()) {
+    F->accept(*this);
+  }
   for (auto F : CD.getSubNodes()) {
     F->accept(*this);
   }
