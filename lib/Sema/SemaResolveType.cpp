@@ -483,18 +483,16 @@ void TypeResolver::visit(CallExprType &CE) {
       case Identifier::SpecialIdentifier::abi_encodePacked:
       case Identifier::SpecialIdentifier::abi_encode:
         break;
-      case Identifier::SpecialIdentifier::abi_encodeWithSelector:
-        argTypes.at(0) =
-            std::make_shared<FixedBytesType>(FixedBytesType::ByteKind::B4);
-        break;
+      /* abi.encodeWithSignature(string signature, ...) ==
+       * abi.encodeWithSelector(bytes4(keccak256(bytes(signature))), ...) */
       case Identifier::SpecialIdentifier::abi_encodeWithSignature: {
-        auto &Arg0 = CE.getRawArguments().at(0);
-        if (auto *IC = dynamic_cast<ImplicitCastExpr *>(Arg0.get())) {
+        auto &Signature = CE.getRawArguments().at(0);
+        if (auto *IC = dynamic_cast<ImplicitCastExpr *>(Signature.get())) {
           Actions.resolveImplicitCast(*IC, std::make_shared<BytesType>(),
                                       false);
         }
         std::vector<ExprPtr> Keccak256Arguments;
-        Keccak256Arguments.emplace_back(std::move(Arg0));
+        Keccak256Arguments.emplace_back(std::move(Signature));
         auto CallKeccak256 = std::make_unique<CallExpr>(
             SourceRange(),
             std::move(std::make_unique<Identifier>(
@@ -502,9 +500,34 @@ void TypeResolver::visit(CallExprType &CE) {
             std::move(Keccak256Arguments));
         CallKeccak256->setType(
             std::make_shared<FixedBytesType>(FixedBytesType::ByteKind::B32));
-        Arg0 = Actions.CreateDummy(std::move(CallKeccak256));
+        Signature = Actions.CreateDummy(std::move(CallKeccak256));
+        [[fallthrough]];
+      }
+      /* abi.encodeWithSelector(bytes4 selector, ...) ==
+       * abi.encodePacked(selector, abi.encode(...)); */
+      case Identifier::SpecialIdentifier::abi_encodeWithSelector: {
+        argTypes.resize(2);
         argTypes.at(0) =
             std::make_shared<FixedBytesType>(FixedBytesType::ByteKind::B4);
+        argTypes.at(1) = std::make_shared<BytesType>();
+        auto &RawArguments = CE.getRawArguments();
+        auto &Selector = RawArguments.at(0);
+        if (auto *IC = dynamic_cast<ImplicitCastExpr *>(Selector.get())) {
+          Actions.resolveImplicitCast(*IC, argTypes.at(0), false);
+        }
+        Selector = Actions.CreateDummy(
+            std::move(Selector)); // this Dummy will be remove in AbiEmitter
+        std::vector<ExprPtr> AbiEncodeArguments;
+        std::move(RawArguments.begin() + 1, RawArguments.end(),
+                  std::back_inserter(AbiEncodeArguments));
+        RawArguments.resize(2);
+        auto CallAbiEncode = std::make_unique<CallExpr>(
+            SourceRange(),
+            std::move(std::make_unique<Identifier>(
+                Token(), Identifier::SpecialIdentifier::abi_encode, nullptr)),
+            std::move(AbiEncodeArguments));
+        CallAbiEncode->setType(argTypes.at(1));
+        RawArguments.at(1) = Actions.CreateDummy(std::move(CallAbiEncode));
         break;
       }
       default:
@@ -578,7 +601,7 @@ void TypeResolver::visit(CallExprType &CE) {
   if (auto ReturnTy = FTy->getReturnTypes(); ReturnTy.size() == 1) {
     CE.setType(ReturnTy[0]);
   }
-}
+} // namespace
 
 } // namespace
 
