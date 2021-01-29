@@ -1662,18 +1662,12 @@ llvm::Value *CodeGenFunction::emitAbiEncodePacked(const CallExpr *CE) {
   return Bytes;
 }
 
-llvm::Value *
-CodeGenFunction::emitAbiEncode(const CallExpr *CE,
-                               AbiEncodeFirstArgument &FirstArgumentHandler) {
+llvm::Value *CodeGenFunction::emitAbiEncode(const CallExpr *CE) {
   // abi_encode
   auto Arguments = CE->getArguments();
   std::vector<std::pair<ExprValuePtr, bool>> Args;
-  bool first = true;
   for (auto Arg : Arguments) {
-    if (first) {
-      Arg = FirstArgumentHandler(Arg);
-      first = false;
-    } else if (auto CE = dynamic_cast<const CastExpr *>(Arg))
+    if (auto CE = dynamic_cast<const CastExpr *>(Arg))
       Arg = CE->getSubExpr();
     bool IsStateVariable = Arg->isStateVariable(); // for array index access
     Args.emplace_back(emitExpr(Arg), IsStateVariable);
@@ -1829,19 +1823,13 @@ ExprValuePtr CodeGenFunction::emitSpecialCallExpr(const Identifier *SI,
     return std::make_shared<ExprValue>();
   case Identifier::SpecialIdentifier::address_send:
     return ExprValue::getRValue(CE, emitCallAddressSend(CE, ME, false));
-  case Identifier::SpecialIdentifier::abi_encodePacked:
-    return ExprValue::getRValue(CE, emitAbiEncodePacked(CE));
   case Identifier::SpecialIdentifier::abi_encode: {
-    auto Handler = std::make_unique<AbiEncodeFirstArgument>();
-    return ExprValue::getRValue(CE, emitAbiEncode(CE, *Handler.get()));
+    return ExprValue::getRValue(CE, emitAbiEncode(CE));
   }
-  case Identifier::SpecialIdentifier::abi_encodeWithSelector: {
-    auto Handler = std::make_unique<AbiEncodeFirstArgumentRaw>();
-    return ExprValue::getRValue(CE, emitAbiEncode(CE, *Handler.get()));
-  }
+  case Identifier::SpecialIdentifier::abi_encodePacked:
+  case Identifier::SpecialIdentifier::abi_encodeWithSelector:
   case Identifier::SpecialIdentifier::abi_encodeWithSignature: {
-    auto Handler = std::make_unique<AbiEncodeFirstArgumentRaw>();
-    return ExprValue::getRValue(CE, emitAbiEncode(CE, *Handler.get()));
+    return ExprValue::getRValue(CE, emitAbiEncodePacked(CE));
   }
   case Identifier::SpecialIdentifier::struct_constructor:
     return ExprValue::getRValue(CE, emitStructConstructor(CE));
