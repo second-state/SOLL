@@ -320,6 +320,7 @@ public:
   }
 
   bool isNamedCall() const { return Names.has_value(); }
+  void resolveNamedCall();
 
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;

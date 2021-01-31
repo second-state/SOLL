@@ -50,6 +50,7 @@ public:
   }
   virtual Category getCategory() const = 0;
   virtual std::string getName() const = 0;
+  virtual std::string getSignatureEncoding() const { return getName(); };
   virtual bool isDynamic() const = 0;
   virtual bool shouldEndianLess() const = 0;
   virtual unsigned getABIStaticSize() const = 0;
@@ -323,7 +324,12 @@ public:
     return *Length;
   }
   Category getCategory() const override { return Category::Array; }
-  std::string getName() const override { return ElementType->getName() + "[]"; }
+  std::string getName() const override {
+    std::string ArrLength;
+    if (!isDynamicSized())
+      ArrLength = std::to_string(getLength().getZExtValue());
+    return ElementType->getName() + "[" + ArrLength + "]";
+  }
   bool isDynamic() const override {
     if (isDynamicSized()) {
       return true;
@@ -407,6 +413,18 @@ public:
 
   Category getCategory() const override { return Category::Tuple; }
   std::string getName() const override { return "tuple"; }
+  std::string getSignatureEncoding() const override {
+    std::string Signature = "(";
+    bool first = true;
+    for (auto ET : ElementTypes) {
+      if (!first)
+        Signature += ",";
+      first = false;
+      Signature += ET->getSignatureEncoding();
+    }
+    Signature += ")";
+    return Signature;
+  };
   bool isDynamic() const override {
     for (const auto &ETys : ElementTypes) {
       if (ETys == nullptr || ETys->isDynamic()) {
@@ -516,7 +534,9 @@ public:
   ContractDecl *getDecl() { return D; }
   const ContractDecl *getDecl() const { return D; }
   Category getCategory() const override { return Category::Contract; }
+  unsigned int getBitNum() const override { return 160; }
   std::string getName() const override { return "contract"; }
+  std::string getSignatureEncoding() const override { return "address"; }
   bool isDynamic() const override {
     assert(false && "contract is not allowed here");
     __builtin_unreachable();

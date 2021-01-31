@@ -47,6 +47,24 @@ std::vector<const Expr *> TupleExpr::getComponents() const {
 ///
 /// CallExpr
 ///
+void CallExpr::resolveNamedCall() {
+  if (isNamedCall()) {
+    std::vector<ExprPtr> Args;
+    auto FnTy = dynamic_cast<const FunctionType *>(CalleeExpr->getType().get());
+    std::unordered_map<std::string, size_t> ParamNamesIndex;
+    size_t ParamSize = 0;
+    for (const auto &ParamName : *FnTy->getParamNames()) {
+      ParamNamesIndex[ParamName] = ParamSize++;
+    }
+    Args.resize(ParamSize);
+    for (size_t i = 0; i < ParamSize; ++i) {
+      Args[ParamNamesIndex.at(Names->at(i))] = std::move(Arguments.at(i));
+    }
+    Arguments = std::move(Args);
+    Names.reset();
+  }
+}
+
 std::vector<Expr *> CallExpr::getArguments() {
   std::vector<Expr *> Args;
   if (isNamedCall()) {
