@@ -57,7 +57,8 @@ public:
       case Type::Category::Bool:
       case Type::Category::FixedBytes:
       case Type::Category::Integer:
-      case Type::Category::RationalNumber: {
+      case Type::Category::RationalNumber:
+      case Type::Category::Contract: {
         llvm::Type *ValueTy = Builder.getIntNTy(Ty->getBitNum());
         Val = Builder.CreateZExtOrTrunc(CGM.getEndianlessValue(Val), ValueTy);
         if (Shift != nullptr) {

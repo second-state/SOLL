@@ -481,9 +481,27 @@ void TypeResolver::visit(CallExprType &CE) {
   StmtVisitor::visit(CE);
 
   Expr *E = CE.getCalleeExpr(), *Base = nullptr;
-  if (auto M = dynamic_cast<MemberExpr *>(E)) {
-    E = M->getName();
-    Base = M->getBase();
+  std::string FunctionSignature;
+  if (auto ME = dynamic_cast<MemberExpr *>(E)) {
+    E = ME->getName();
+    Base = ME->getBase();
+    // A ContractType without Decl is solidity reserved word.
+    if (auto CT = dynamic_cast<const ContractType *>(Base->getType().get());
+        CT && CT->getDecl()) {
+      FunctionSignature = ME->getName()->getName().str() + "(";
+      auto FTy = dynamic_cast<FunctionType *>(ME->getType().get());
+      assert(FTy->getReturnTypes().empty() &&
+             "Only support functions without return value now!");
+      auto ParamTypes = FTy->getParamTypes();
+      bool first = true;
+      for (auto PTy : ParamTypes) {
+        if (!first)
+          FunctionSignature += ",";
+        first = false;
+        FunctionSignature += PTy->getSignatureEncoding();
+      }
+      FunctionSignature += ")";
+    }
   }
 
   FunctionType *FTy = nullptr;
@@ -502,6 +520,20 @@ void TypeResolver::visit(CallExprType &CE) {
       case Identifier::SpecialIdentifier::abi_encodePacked:
       case Identifier::SpecialIdentifier::abi_encode:
         break;
+      /*<Contract>.func(...) ==
+       * address(<Contract>).call(abi.encodeWithSignature(signature(func),...))
+       */
+      case Identifier::SpecialIdentifier::external_call: {
+        auto SignatureStringLiteral = std::make_unique<StringLiteral>(
+            Token(), std::move(FunctionSignature));
+        argTypes.insert(argTypes.begin(), std::make_shared<StringType>());
+        SignatureStringLiteral->setType(argTypes.at(0));
+        auto Signature = Actions.CreateDummy(std::move(SignatureStringLiteral));
+        CE.resolveNamedCall();
+        auto &RawArguments = CE.getRawArguments();
+        RawArguments.insert(RawArguments.begin(), std::move(Signature));
+        [[fallthrough]];
+      }
       /* abi.encodeWithSignature(string signature, ...) ==
        * abi.encodeWithSelector(bytes4(keccak256(bytes(signature))), ...) */
       case Identifier::SpecialIdentifier::abi_encodeWithSignature: {
@@ -552,6 +584,21 @@ void TypeResolver::visit(CallExprType &CE) {
       default:
         FTy = dynamic_cast<FunctionType *>(I->getType().get());
       }
+      if (I->getSpecialIdentifier() ==
+          Identifier::SpecialIdentifier::external_call) {
+        auto &RawArguments = CE.getRawArguments();
+        auto CallAbiEncodeWithSelector = std::make_unique<CallExpr>(
+            SourceRange(),
+            std::move(std::make_unique<Identifier>(
+                Token(), Identifier::SpecialIdentifier::abi_encodeWithSelector,
+                nullptr)),
+            std::move(RawArguments));
+        CallAbiEncodeWithSelector->setType(argTypes.at(1));
+        argTypes.at(0) = argTypes.at(1);
+        argTypes.resize(1);
+        RawArguments.resize(1);
+        RawArguments.at(0) = std::move(CallAbiEncodeWithSelector);
+      }
       if (!FTy) {
         I->setType(std::make_shared<FunctionType>(
             std::vector<TypePtr>(argTypes),
@@ -562,9 +609,7 @@ void TypeResolver::visit(CallExprType &CE) {
       if (auto MI = dynamic_cast<Identifier *>(Base)) {
         if (MI && MI->getSpecialIdentifier() !=
                       Identifier::SpecialIdentifier::this_) {
-          // TODO: we need to support other type with member call
-          assert(false &&
-                 "only support SpecialIdentifier::this member call now!");
+          assert(false);
           __builtin_unreachable();
         }
       }

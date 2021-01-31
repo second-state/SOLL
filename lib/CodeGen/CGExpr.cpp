@@ -541,6 +541,7 @@ private:
         return ExprValue::getRValue(CE, In);
       }
       if (dynamic_cast<const AddressType *>(OrigInTy) ||
+          dynamic_cast<const ContractType *>(OrigInTy) ||
           dynamic_cast<const AddressType *>(OrigOutTy)) {
         return ExprValue::getRValue(
             CE, Builder.CreateZExtOrTrunc(
@@ -1816,6 +1817,7 @@ ExprValuePtr CodeGenFunction::emitSpecialCallExpr(const Identifier *SI,
     return ExprValue::getRValue(CE, emitCallAddressStaticcall(CE, ME));
   case Identifier::SpecialIdentifier::address_delegatecall:
     return ExprValue::getRValue(CE, emitCallAddressDelegatecall(CE, ME));
+  case Identifier::SpecialIdentifier::external_call:
   case Identifier::SpecialIdentifier::address_call:
     return ExprValue::getRValue(CE, emitCallAddressCall(CE, ME));
   case Identifier::SpecialIdentifier::address_transfer:
@@ -1833,7 +1835,6 @@ ExprValuePtr CodeGenFunction::emitSpecialCallExpr(const Identifier *SI,
   }
   case Identifier::SpecialIdentifier::struct_constructor:
     return ExprValue::getRValue(CE, emitStructConstructor(CE));
-  case Identifier::SpecialIdentifier::external_call: // TODO
   default:
     assert(false && "special function not supported yet");
     __builtin_unreachable();

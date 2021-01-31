@@ -1672,6 +1672,7 @@ llvm::Type *CodeGenModule::getLLVMType(const Type *Ty) {
   case Type::Category::Bool:
     return BoolTy;
   case Type::Category::Address:
+  case Type::Category::Contract:
     return AddressTy;
   case Type::Category::String:
     return StringTy;
