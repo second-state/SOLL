@@ -10,7 +10,7 @@ on:
     paths:
       - utils/docker/ubuntu/**
   schedule:
-    - cron: "0 0 * * *"
+    - cron: "0 0 1 * *"
 
 jobs:
   Rebuild-SOLL-ubuntu-base:
