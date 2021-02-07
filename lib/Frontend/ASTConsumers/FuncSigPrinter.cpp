@@ -71,7 +71,7 @@ void FuncSigPrinter::visit(ParamListType &PL) {
       first = false;
     else
       os() << ",";
-    os() << param->GetType()->getName();
+    os() << param->getType()->getName();
   }
 }
 

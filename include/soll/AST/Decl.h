@@ -73,7 +73,7 @@ private:
   std::unique_ptr<FunctionDecl> Constructor;
   std::unique_ptr<FunctionDecl> Fallback;
   ContractKind Kind;
-  TypePtr Ty;
+  TypePtr ContractTy;
 
 public:
   ContractDecl(
@@ -82,12 +82,12 @@ public:
       std::vector<DeclPtr> &&subNodes,
       std::unique_ptr<FunctionDecl> &&constructor,
       std::unique_ptr<FunctionDecl> &&fallback,
-      ContractKind kind = ContractKind::Contract, TypePtr Ty = nullptr)
+      ContractKind kind = ContractKind::Contract, TypePtr ContractTy = nullptr)
       : Decl(L, Name), BaseContracts(std::move(baseContracts)),
         SubNodes(std::move(subNodes)), Constructor(std::move(constructor)),
-        Fallback(std::move(fallback)), Kind(kind), Ty(Ty) {}
-  TypePtr getType() { return Ty; }
-  void setContractType(TypePtr ContractTy) { Ty = ContractTy; }
+        Fallback(std::move(fallback)), Kind(kind), ContractTy(ContractTy) {}
+  TypePtr getType() { return ContractTy; }
+  void setType(TypePtr Ty) { ContractTy = Ty; }
   std::vector<Decl *> getSubNodes();
   std::vector<const Decl *> getSubNodes() const;
 
@@ -163,6 +163,7 @@ public:
   Block *getBody() { return Body.get(); }
   const Block *getBody() const { return Body.get(); }
   void setBody(std::unique_ptr<Block> &&B) { Body = std::move(B); }
+  TypePtr &getType() { return FuncTy; }
   const TypePtr &getType() const { return FuncTy; }
   StateMutability getStateMutability() const { return SM; }
   bool isConstructor() const { return IsConstructor; }
@@ -211,11 +212,11 @@ public:
               ExprPtr &&V)
       : Decl(L, Name, Vi), TypeName(std::move(T)), Value(std::move(V)) {}
 
-  TypePtr GetType() { return TypeName; }
-  const TypePtr &GetType() const { return TypeName; }
+  TypePtr getType() { return TypeName; }
+  const TypePtr &getType() const { return TypeName; }
   void setType(TypePtr Ty) { TypeName = Ty; }
-  Expr *GetValue() { return Value.get(); }
-  const Expr *GetValue() const { return Value.get(); }
+  Expr *getValue() { return Value.get(); }
+  const Expr *getValue() const { return Value.get(); }
 };
 
 class VarDecl : public VarDeclBase {

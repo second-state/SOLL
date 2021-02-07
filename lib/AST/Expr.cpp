@@ -57,8 +57,8 @@ void CallExpr::resolveNamedCall() {
       ParamNamesIndex[ParamName] = ParamSize++;
     }
     Args.resize(ParamSize);
-    for (size_t i = 0; i < ParamSize; ++i) {
-      Args[ParamNamesIndex.at(Names->at(i))] = std::move(Arguments.at(i));
+    for (size_t I = 0; I < ParamSize; ++I) {
+      Args[ParamNamesIndex.at(Names->at(I))] = std::move(Arguments.at(I));
     }
     Arguments = std::move(Args);
     Names.reset();
@@ -142,7 +142,7 @@ TypePtr Identifier::getType() {
   if (!D)
     return Expr::getType();
   if (auto VD = dynamic_cast<const VarDecl *>(D)) {
-    return VD->GetType();
+    return VD->getType();
   } else if (auto FD = dynamic_cast<const FunctionDecl *>(D)) {
     return FD->getType();
   } else if (dynamic_cast<const EventDecl *>(D)) {
@@ -157,7 +157,7 @@ const TypePtr &Identifier::getType() const {
   if (!D)
     return Expr::getType();
   if (auto VD = dynamic_cast<const VarDecl *>(D)) {
-    return VD->GetType();
+    return VD->getType();
   } else if (auto FD = dynamic_cast<const FunctionDecl *>(D)) {
     return FD->getType();
   } else if (dynamic_cast<const EventDecl *>(D)) {

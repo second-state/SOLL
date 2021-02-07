@@ -403,7 +403,7 @@ public:
       DS.getValue()->accept(*this);
       if (auto *IC = dynamic_cast<ImplicitCastExpr *>(DS.getValue())) {
         IC->accept(*this);
-        Actions.resolveImplicitCast(*IC, DS.getVarDecls().front()->GetType(),
+        Actions.resolveImplicitCast(*IC, DS.getVarDecls().front()->getType(),
                                     false);
       }
     }
@@ -449,24 +449,24 @@ public:
     DeclVisitor::visit(FD);
   }
   void visit(VarDecl &VD) override {
-    if (auto *UR = dynamic_cast<UnresolveType *>(VD.GetType().get())) {
-      ContractDecl *D = Actions.lookupContractDeclName(UR->getIdentifierName());
+    if (auto *UT = dynamic_cast<UnresolveType *>(VD.getType().get())) {
+      ContractDecl *D = Actions.lookupContractDeclName(UT->getIdentifierName());
       if (D)
         VD.setType(D->getType());
     }
-    if (VD.GetValue()) {
-      VD.GetValue()->accept(TR);
-      if (auto *IC = dynamic_cast<ImplicitCastExpr *>(VD.GetValue())) {
-        TR.getSema().resolveImplicitCast(*IC, VD.GetType(), false);
+    if (VD.getValue()) {
+      VD.getValue()->accept(TR);
+      if (auto *IC = dynamic_cast<ImplicitCastExpr *>(VD.getValue())) {
+        TR.getSema().resolveImplicitCast(*IC, VD.getType(), false);
       }
     }
     DeclVisitor::visit(VD);
   }
   void visit(AsmVarDeclType &VD) override {
-    if (VD.GetValue()) {
-      VD.GetValue()->accept(TR);
-      if (auto *IC = dynamic_cast<ImplicitCastExpr *>(VD.GetValue())) {
-        TR.getSema().resolveImplicitCast(*IC, VD.GetType(), false);
+    if (VD.getValue()) {
+      VD.getValue()->accept(TR);
+      if (auto *IC = dynamic_cast<ImplicitCastExpr *>(VD.getValue())) {
+        TR.getSema().resolveImplicitCast(*IC, VD.getType(), false);
       }
     }
     DeclVisitor::visit(VD);
@@ -493,11 +493,11 @@ void TypeResolver::visit(CallExprType &CE) {
       assert(FTy->getReturnTypes().empty() &&
              "Only support functions without return value now!");
       auto ParamTypes = FTy->getParamTypes();
-      bool first = true;
+      bool First = true;
       for (auto PTy : ParamTypes) {
-        if (!first)
+        if (!First)
           FunctionSignature += ",";
-        first = false;
+        First = false;
         FunctionSignature += PTy->getSignatureEncoding();
       }
       FunctionSignature += ")";
@@ -510,10 +510,10 @@ void TypeResolver::visit(CallExprType &CE) {
       return;
     }
     if (I->isSpecialIdentifier()) {
-      std::vector<TypePtr> argTypes;
+      std::vector<TypePtr> ArgTypes;
       for (const auto &arg : CE.getArguments()) {
         if (auto *IC = dynamic_cast<ImplicitCastExpr *>(arg)) {
-          argTypes.emplace_back(IC->getSubExpr()->getType());
+          ArgTypes.emplace_back(IC->getSubExpr()->getType());
         }
       }
       switch (I->getSpecialIdentifier()) {
@@ -526,8 +526,8 @@ void TypeResolver::visit(CallExprType &CE) {
       case Identifier::SpecialIdentifier::external_call: {
         auto SignatureStringLiteral = std::make_unique<StringLiteral>(
             Token(), std::move(FunctionSignature));
-        argTypes.insert(argTypes.begin(), std::make_shared<StringType>());
-        SignatureStringLiteral->setType(argTypes.at(0));
+        ArgTypes.insert(ArgTypes.begin(), std::make_shared<StringType>());
+        SignatureStringLiteral->setType(ArgTypes.at(0));
         auto Signature = Actions.CreateDummy(std::move(SignatureStringLiteral));
         CE.resolveNamedCall();
         auto &RawArguments = CE.getRawArguments();
@@ -557,14 +557,14 @@ void TypeResolver::visit(CallExprType &CE) {
       /* abi.encodeWithSelector(bytes4 selector, ...) ==
        * abi.encodePacked(selector, abi.encode(...)); */
       case Identifier::SpecialIdentifier::abi_encodeWithSelector: {
-        argTypes.resize(2);
-        argTypes.at(0) =
+        ArgTypes.resize(2);
+        ArgTypes.at(0) =
             std::make_shared<FixedBytesType>(FixedBytesType::ByteKind::B4);
-        argTypes.at(1) = std::make_shared<BytesType>();
+        ArgTypes.at(1) = std::make_shared<BytesType>();
         auto &RawArguments = CE.getRawArguments();
         auto &Selector = RawArguments.at(0);
         if (auto *IC = dynamic_cast<ImplicitCastExpr *>(Selector.get())) {
-          Actions.resolveImplicitCast(*IC, argTypes.at(0), false);
+          Actions.resolveImplicitCast(*IC, ArgTypes.at(0), false);
         }
         Selector = Actions.CreateDummy(
             std::move(Selector)); // this Dummy will be remove in AbiEmitter
@@ -577,7 +577,7 @@ void TypeResolver::visit(CallExprType &CE) {
             std::move(std::make_unique<Identifier>(
                 Token(), Identifier::SpecialIdentifier::abi_encode, nullptr)),
             std::move(AbiEncodeArguments));
-        CallAbiEncode->setType(argTypes.at(1));
+        CallAbiEncode->setType(ArgTypes.at(1));
         RawArguments.at(1) = Actions.CreateDummy(std::move(CallAbiEncode));
         break;
       }
@@ -593,15 +593,15 @@ void TypeResolver::visit(CallExprType &CE) {
                 Token(), Identifier::SpecialIdentifier::abi_encodeWithSelector,
                 nullptr)),
             std::move(RawArguments));
-        CallAbiEncodeWithSelector->setType(argTypes.at(1));
-        argTypes.at(0) = argTypes.at(1);
-        argTypes.resize(1);
+        CallAbiEncodeWithSelector->setType(ArgTypes.at(1));
+        ArgTypes.at(0) = ArgTypes.at(1);
+        ArgTypes.resize(1);
         RawArguments.resize(1);
         RawArguments.at(0) = std::move(CallAbiEncodeWithSelector);
       }
       if (!FTy) {
         I->setType(std::make_shared<FunctionType>(
-            std::vector<TypePtr>(argTypes),
+            std::vector<TypePtr>(ArgTypes),
             std::vector<TypePtr>{std::make_shared<BytesType>()}));
         FTy = dynamic_cast<FunctionType *>(I->getType().get());
       }
@@ -609,7 +609,8 @@ void TypeResolver::visit(CallExprType &CE) {
       if (auto MI = dynamic_cast<Identifier *>(Base)) {
         if (MI && MI->getSpecialIdentifier() !=
                       Identifier::SpecialIdentifier::this_) {
-          assert(false);
+          assert(false && "only support external call and "
+                          "SpecialIdentifier::this member call!");
           __builtin_unreachable();
         }
       }

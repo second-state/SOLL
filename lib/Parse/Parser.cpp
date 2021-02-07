@@ -620,7 +620,7 @@ std::unique_ptr<ContractDecl> Parser::parseContractDefinition() {
       SourceRange(Begin, End), Name, std::move(BaseContracts),
       std::move(SubNodes), std::move(Constructor), std::move(Fallback), CtKind);
   auto CT = std::make_shared<ContractType>(CD.get());
-  CD->setContractType(CT);
+  CD->setType(CT);
   Actions.addDecl(CD.get());
   Actions.addContractDecl(CD.get());
   return CD;
@@ -696,7 +696,7 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
         parseParameterList(Options, PermitEmptyParameterList);
     std::vector<TypePtr> Tys;
     for (auto &&Return : Result.ReturnParameters->getParams())
-      Tys.push_back(Return->GetType());
+      Tys.push_back(Return->getType());
     Actions.SetFunRtnTys(std::move(Tys));
   } else {
     Result.ReturnParameters = std::make_unique<ParamList>(
@@ -834,7 +834,7 @@ bool Parser::ConsumeAndStoreUntil(tok::TokenKind T1, tok::TokenKind T2,
 
 std::unique_ptr<VarDecl>
 Parser::parseVariableDeclaration(VarDeclParserOptions const &Options,
-                                 TypePtr &&LookAheadArrayType) { // TODO
+                                 TypePtr &&LookAheadArrayType) {
   const SourceLocation Begin = Tok.getLocation();
   TypePtr T;
   if (LookAheadArrayType) {

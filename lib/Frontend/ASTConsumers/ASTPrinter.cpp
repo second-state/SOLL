@@ -343,7 +343,7 @@ void ASTPrinter::visit(VarDeclType &decl) {
   os() << indent() << "VarDecl "
        << "\"" << decl.getName() << "\""
        << (decl.isStateVariable() ? " (StateVar) " : " (NonStateVar) ")
-       << ToString(decl.getLoc()) << ", " << ToString(decl.GetType()) << " "
+       << ToString(decl.getLoc()) << ", " << ToString(decl.getType()) << " "
        << &decl << " \n";
   ConstDeclVisitor::visit(decl);
   unindent();
@@ -583,10 +583,10 @@ void ASTPrinter::visit(AsmFunctionDeclType &D) {
 
 void ASTPrinter::visit(AsmVarDeclType &decl) {
   os() << indent() << "AsmVarDecl "
-       << "\"" << decl.getName() << "\" " << ToString(decl.GetType()) << " "
+       << "\"" << decl.getName() << "\" " << ToString(decl.getType()) << " "
        << &decl << " \n";
 
-  if (auto V = decl.GetValue()) {
+  if (auto V = decl.getValue()) {
     V->accept(*this);
   }
   unindent();
