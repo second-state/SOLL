@@ -67,7 +67,7 @@ void ABIPrinter::visit(ContractDeclType &CD) {
     auto inputs = json::array();
     for (auto param : constructor->getParams()->getParams()) {
       inputs.push_back(
-          {{"name", param->getName()}, {"type", param->GetType()->getName()}});
+          {{"name", param->getName()}, {"type", param->getType()->getName()}});
     }
     abi.push_back({{"type", "constructor"},
                    {"stateMutability", stateMutability},
@@ -92,11 +92,11 @@ void ABIPrinter::visit(ContractDeclType &CD) {
       auto constant = GetConstant(func->getStateMutability());
       for (auto param : func->getParams()->getParams()) {
         inputs.push_back({{"name", param->getName()},
-                          {"type", param->GetType()->getName()}});
+                          {"type", param->getType()->getName()}});
       }
       for (auto param : func->getReturnParams()->getParams()) {
         outputs.push_back({{"name", param->getName()},
-                           {"type", param->GetType()->getName()}});
+                           {"type", param->getType()->getName()}});
       }
       abi.push_back({{"type", "function"},
                      {"name", name},
@@ -114,7 +114,7 @@ void ABIPrinter::visit(ContractDeclType &CD) {
     for (auto param : event->getParams()->getParams()) {
       if (auto VD = dynamic_cast<const VarDecl *>(param)) {
         inputs.push_back({{"name", VD->getName()},
-                          {"type", VD->GetType()->getName()},
+                          {"type", VD->getType()->getName()},
                           {"indexed", VD->isIndexed()}});
       }
     }

@@ -124,8 +124,8 @@ std::vector<unsigned char> CallableVarDecl::getSignatureHash() const {
     if (!first)
       h.addData(',');
     first = false;
-    assert(var->GetType() && "unsupported type!");
-    const std::string &name = var->GetType()->getName();
+    assert(var->getType() && "unsupported type!");
+    const std::string &name = var->getType()->getName();
     h.addData(reinterpret_cast<const uint8_t *>(name.data()), 0, name.size());
   }
   h.addData(')');
@@ -157,7 +157,7 @@ std::vector<VarDeclBase *> ParamList::getParams() {
 unsigned ParamList::getABIStaticSize() const {
   unsigned Result = 0;
   for (const auto &VD : Params) {
-    Result += VD->GetType()->getABIStaticSize();
+    Result += VD->getType()->getABIStaticSize();
   }
   return Result;
 }
@@ -175,10 +175,10 @@ FunctionDecl::FunctionDecl(
   auto PNames = std::make_shared<std::vector<std::string>>();
   for (auto VD : this->getParams()->getParams()) {
     PNames->emplace_back(VD->getName().str());
-    PTys.push_back(VD->GetType());
+    PTys.push_back(VD->getType());
   }
   for (auto VD : this->getReturnParams()->getParams())
-    RTys.push_back(VD->GetType());
+    RTys.push_back(VD->getType());
   FuncTy =
       std::make_shared<FunctionType>(std::move(PTys), std::move(RTys), PNames);
 }
@@ -190,7 +190,7 @@ EventDecl::EventDecl(SourceRange L, llvm::StringRef Name,
   std::vector<TypePtr> PTys;
   std::vector<TypePtr> RTys;
   for (auto VD : this->getParams()->getParams())
-    PTys.push_back(VD->GetType());
+    PTys.push_back(VD->getType());
   FuncTy = std::make_shared<FunctionType>(std::move(PTys), std::move(RTys));
 }
 

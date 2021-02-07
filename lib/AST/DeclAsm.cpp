@@ -13,9 +13,9 @@ AsmFunctionDecl::AsmFunctionDecl(SourceRange L, llvm::StringRef Name,
   std::vector<TypePtr> PTys;
   std::vector<TypePtr> RTys;
   for (auto VD : this->getParams()->getParams())
-    PTys.push_back(VD->GetType());
+    PTys.push_back(VD->getType());
   for (auto VD : this->getReturnParams()->getParams())
-    RTys.push_back(VD->GetType());
+    RTys.push_back(VD->getType());
   FuncTy = std::make_shared<FunctionType>(std::move(PTys), std::move(RTys));
 }
 

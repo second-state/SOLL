@@ -625,7 +625,7 @@ private:
     const Decl *D = ID->getCorrespondDecl();
 
     if (auto *VD = dynamic_cast<const VarDecl *>(D)) {
-      const Type *Ty = VD->GetType().get();
+      const Type *Ty = VD->getType().get();
       if (VD->isStateVariable()) {
         return std::make_shared<ExprValue>(Ty, ValueKind::VK_SValue,
                                            CGM.getStateVarAddr(VD));
@@ -798,7 +798,7 @@ private:
 
     if (auto *VD = dynamic_cast<const AsmVarDecl *>(D)) {
       return std::make_shared<ExprValue>(
-          VD->GetType().get(), ValueKind::VK_LValue, CGF.getAddrOfLocalVar(VD));
+          VD->getType().get(), ValueKind::VK_LValue, CGF.getAddrOfLocalVar(VD));
     }
     __builtin_unreachable();
   }

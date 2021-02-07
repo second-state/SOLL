@@ -109,14 +109,12 @@ public:
   llvm::StringRef getName() const { return T.getIdentifierInfo()->getName(); }
   void setCorrespondDecl(Decl *D) { this->D = D; }
   Decl *getCorrespondDecl() {
-    if (std::holds_alternative<Decl *>(D))
-      return std::get<Decl *>(D);
-    return nullptr;
+    auto Dptr = std::get_if<Decl *>(&D);
+    return Dptr ? *Dptr : nullptr;
   }
   const Decl *getCorrespondDecl() const {
-    if (std::holds_alternative<Decl *>(D))
-      return std::get<Decl *>(D);
-    return nullptr;
+    auto Dptr = std::get_if<Decl *>(&D);
+    return Dptr ? *Dptr : nullptr;
   }
   SpecialIdentifier getSpecialIdentifier() const {
     return std::get<SpecialIdentifier>(D);

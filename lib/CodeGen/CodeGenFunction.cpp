@@ -191,9 +191,9 @@ void CodeGenFunction::emitDeclStmt(const DeclStmt *DS) {
 llvm::Value *CodeGenFunction::emitVarDecl(const Decl *VD) {
   TypePtr Ty;
   if (auto D = dynamic_cast<const VarDecl *>(VD))
-    Ty = D->GetType();
+    Ty = D->getType();
   else if (auto D = dynamic_cast<const AsmVarDecl *>(VD))
-    Ty = D->GetType();
+    Ty = D->getType();
   auto *LLVMTy = CGM.getLLVMType(Ty.get());
 
   llvm::Value *Addr =

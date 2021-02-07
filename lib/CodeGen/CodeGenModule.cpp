@@ -1481,7 +1481,7 @@ void CodeGenModule::emitABILoad(const FunctionDecl *FD,
     std::uint32_t Offset = 0;
     std::vector<size_t> ArgsDynamic;
     for (std::size_t I = 0; I < Fparams.size(); I++) {
-      const Type *Ty = Fparams[I]->GetType().get();
+      const Type *Ty = Fparams[I]->getType().get();
       if (Ty->isDynamic()) {
         ArgsDynamic.push_back(I);
       }
@@ -1528,7 +1528,7 @@ void CodeGenModule::emitABILoad(const FunctionDecl *FD,
             Builder.CreateTrunc(DynamicSize, Int32Ty,
                                 DynamicSize->getName() + ".trunc"));
         llvm::Value *Arg =
-            emitABILoadParamDynamic(Fparams[I]->GetType().get(), DynamicSize,
+            emitABILoadParamDynamic(Fparams[I]->getType().get(), DynamicSize,
                                     Name, ArgDynPtr, Builder.getInt32(0));
         ArgsVal[I] = Arg;
       }
@@ -1543,7 +1543,7 @@ void CodeGenModule::emitABILoad(const FunctionDecl *FD,
     emitFinish(llvm::ConstantPointerNull::get(Int8PtrTy), Builder.getInt32(0));
   } else if (Returns.size() == 1) {
     llvm::Value *Result = Builder.CreateCall(F, ArgsVal, MangledName + ".ret");
-    emitABIStore(Returns.front()->GetType().get(), MangledName, Result);
+    emitABIStore(Returns.front()->getType().get(), MangledName, Result);
   } else {
     assert(false && "unsupported tuple return!");
   }
@@ -1587,7 +1587,7 @@ void CodeGenModule::emitVarDecl(const VarDecl *VD) {
   llvm::GlobalVariable *StateVarAddr = new llvm::GlobalVariable(
       TheModule, Int256Ty, true, llvm::GlobalVariable::InternalLinkage,
       Builder.getIntN(256, Index), VD->getName());
-  StateVarAddrCursor += VD->GetType()->getStorageSize() / 32;
+  StateVarAddrCursor += VD->getType()->getStorageSize() / 32;
   StateVarAddr->setUnnamedAddr(llvm::GlobalVariable::UnnamedAddr::Local);
   StateVarAddr->setAlignment(llvm::MaybeAlign(256));
   StateVarDeclMap.try_emplace(VD, StateVarAddr);
@@ -1656,7 +1656,7 @@ std::string CodeGenModule::getMangledName(const CallableVarDecl *CVD) {
   std::string Name = CVD->getName();
   for (auto Param : CVD->getParams()->getParams()) {
     Name += '.';
-    Name += Param->GetType()->getName();
+    Name += Param->getType()->getName();
   }
   return Name;
 }
@@ -1733,13 +1733,13 @@ llvm::Type *CodeGenModule::getStaticLLVMType(const Type *Ty) {
 llvm::FunctionType *CodeGenModule::getFunctionType(const CallableVarDecl *CVD) {
   llvm::SmallVector<llvm::Type *, 8> ArgTypes;
   for (const auto *Param : CVD->getParams()->getParams()) {
-    const Type *Ty = Param->GetType().get();
+    const Type *Ty = Param->getType().get();
     ArgTypes.push_back(getLLVMType(Ty));
   }
 
   llvm::SmallVector<llvm::Type *, 8> RetTypes;
   for (const auto *Param : CVD->getReturnParams()->getParams()) {
-    const Type *Ty = Param->GetType().get();
+    const Type *Ty = Param->getType().get();
     RetTypes.push_back(getLLVMType(Ty));
   }
 
