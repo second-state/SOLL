@@ -368,6 +368,10 @@ private:
         V = Builder.CreateICmp(Pred(Pred::ICMP_UGT + (Signed << 2)), LHS, RHS,
                                "BO_GT");
         break;
+      case BinaryOperatorKind::BO_SGT:
+        V = Builder.CreateICmp(Pred(Pred::ICMP_SGT + (Signed << 2)), LHS, RHS,
+                               "BO_SGT");
+        break;
       case BinaryOperatorKind::BO_LE:
         V = Builder.CreateICmp(Pred(Pred::ICMP_ULE + (Signed << 2)), LHS, RHS,
                                "BO_LE");
@@ -375,6 +379,10 @@ private:
       case BinaryOperatorKind::BO_LT:
         V = Builder.CreateICmp(Pred(Pred::ICMP_ULT + (Signed << 2)), LHS, RHS,
                                "BO_LT");
+        break;
+      case BinaryOperatorKind::BO_SLT:
+        V = Builder.CreateICmp(Pred(Pred::ICMP_SLT + (Signed << 2)), LHS, RHS,
+                               "BO_SLT");
         break;
       case BinaryOperatorKind::BO_EQ:
         V = Builder.CreateICmpEQ(LHS, RHS, "BO_EQ");

@@ -48,7 +48,9 @@ enum BinaryOperatorKind {
   BO_AsmOr,
   // Relational operators.
   BO_LT,
+  BO_SLT,
   BO_GT,
+  BO_SGT,
   BO_LE,
   BO_GE,
   // Equality operators.

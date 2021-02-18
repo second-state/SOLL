@@ -503,13 +503,17 @@ Sema::CreateAsmBuiltinCallExpr(SourceRange L, const AsmIdentifier &Callee,
     return std::make_unique<AsmBinaryOperator>(
         L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_Exp);
   case AsmIdentifier::SpecialIdentifier::ltu256:
+      return std::make_unique<AsmBinaryOperator>(
+        L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_LT);
   case AsmIdentifier::SpecialIdentifier::lts256:
     return std::make_unique<AsmBinaryOperator>(
-        L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_LT);
+        L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_SLT);
   case AsmIdentifier::SpecialIdentifier::gtu256:
+      return std::make_unique<AsmBinaryOperator>(
+        L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_GT);
   case AsmIdentifier::SpecialIdentifier::gts256:
     return std::make_unique<AsmBinaryOperator>(
-        L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_GT);
+        L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_SGT);
   case AsmIdentifier::SpecialIdentifier::equ256:
     return std::make_unique<AsmBinaryOperator>(
         L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_EQ);
