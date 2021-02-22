@@ -22,6 +22,7 @@ private:
   SourceRange Location;
   std::string Name;
   Visibility Vis;
+  std::string UniqueName;
 
 protected:
   friend class ASTReader;
@@ -37,6 +38,8 @@ public:
   virtual void accept(ConstDeclVisitor &visitor) const = 0;
   const SourceRange &getLocation() const { return Location; }
   llvm::StringRef getName() const { return Name; }
+  llvm::StringRef getUniqueName() const { return UniqueName; }
+  void setUniqueName(llvm::StringRef NewName) { UniqueName = NewName.str(); }
   Visibility getVisibility() const { return Vis; }
 };
 
@@ -77,6 +80,9 @@ private:
   TypePtr ContractTy;
   ContractKind Kind;
   bool IsAbstract;
+  std::string LLVMMainFuncName;
+  std::string LLVMContractFuncName;
+  std::string LLVMCtorFuncName;
 
 public:
   ContractDecl(
@@ -126,6 +132,13 @@ public:
 
   FunctionDecl *getFallback();
   const FunctionDecl *getFallback() const;
+
+  void resolveLLVMFuncName();
+  llvm::StringRef getLLVMMainFuncName() const { return LLVMMainFuncName; }
+  llvm::StringRef getLLVMContractFuncName() const {
+    return LLVMContractFuncName;
+  }
+  llvm::StringRef getLLVMCtorFuncName() const { return LLVMCtorFuncName; }
 
   void accept(DeclVisitor &visitor) override;
   void accept(ConstDeclVisitor &visitor) const override;

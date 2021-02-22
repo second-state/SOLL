@@ -383,7 +383,7 @@ std::unique_ptr<SourceUnit> Parser::parse() {
   }
   Actions.resolveInherit(*SU);
   Actions.resolveType(*SU);
-
+  Actions.resolveUniqueName(*SU);
   return SU;
 }
 
@@ -678,9 +678,9 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
   ConsumeToken();
 
   if (Result.IsConstructor) {
-    Result.Name = llvm::StringRef("solidity.constructor");
+    Result.Name = llvm::StringRef("<constructor>");
   } else if (Tok.is(tok::l_paren) || Result.IsFallback) {
-    Result.Name = llvm::StringRef("solidity.fallback");
+    Result.Name = llvm::StringRef("<fallback>");
     Result.IsFallback = true;
   } else if (Tok.isAnyIdentifier()) {
     Result.Name = Tok.getIdentifierInfo()->getName();

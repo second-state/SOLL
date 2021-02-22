@@ -180,6 +180,12 @@ std::vector<const EventDecl *> ContractDecl::getEvents() const {
   return Nodes;
 }
 
+void ContractDecl::resolveLLVMFuncName() {
+  LLVMMainFuncName = getUniqueName().str() + ".<main>";
+  LLVMContractFuncName = getUniqueName().str() + ".<contract>";
+  LLVMCtorFuncName = getUniqueName().str() + ".<ctor>";
+}
+
 FunctionDecl *ContractDecl::getConstructor() { return Constructor.get(); }
 
 const FunctionDecl *ContractDecl::getConstructor() const {
