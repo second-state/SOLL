@@ -109,6 +109,7 @@ public:
 
   void resolveType(SourceUnit &SU);
   void resolveInherit(SourceUnit &SU);
+  void resolveUniqueName(SourceUnit &SU);
   void resolveImplicitCast(ImplicitCastExpr &IC, TypePtr DstTy,
                            bool PrefereLValue);
 
