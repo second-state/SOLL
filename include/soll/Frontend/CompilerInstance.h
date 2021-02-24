@@ -3,11 +3,13 @@
 #include "soll/AST/ASTConsumer.h"
 #include "soll/AST/ASTContext.h"
 #include "soll/Basic/DiagnosticOptions.h"
+#include "soll/CodeGen/CodeGenAction.h"
 #include "soll/Frontend/CompilerInvocation.h"
 #include "soll/Frontend/DiagnosticRenderer.h"
 #include "soll/Lex/Lexer.h"
 #include "soll/Sema/Sema.h"
 #include <algorithm>
+#include <functional>
 #include <list>
 #include <llvm/ADT/IntrusiveRefCntPtr.h>
 #include <llvm/ADT/StringRef.h>
@@ -51,13 +53,14 @@ public:
   explicit CompilerInstance();
   CompilerInvocation &getInvocation();
 
-  CodeGenOptions &getCodeGenOpts() {
-    return Invocation->getCodeGenOpts();
-  }
+  CodeGenOptions &getCodeGenOpts() { return Invocation->getCodeGenOpts(); }
   const CodeGenOptions &getCodeGenOpts() const {
     return Invocation->getCodeGenOpts();
   }
 
+  std::function<std::unique_ptr<llvm::raw_pwrite_stream>(
+      llvm::StringRef, BackendAction, llvm::StringRef)>
+  GetOutputStreamFunc();
   FileSystemOptions &getFileSystemOpts() {
     return Invocation->getFileSystemOpts();
   }
