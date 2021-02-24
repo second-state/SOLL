@@ -89,8 +89,10 @@ class BackendConsumer : public ASTConsumer {
   const CodeGenOptions &CodeGenOpts;
   const TargetOptions &TargetOpts;
   std::string InFile;
-  std::unique_ptr<llvm::raw_pwrite_stream> AsmOutStream;
   ASTContext *Context;
+  std::function<std::unique_ptr<llvm::raw_pwrite_stream>(
+      llvm::StringRef, BackendAction, llvm::StringRef)>
+      GetOutputStreamCallback;
 
   std::unique_ptr<CodeGenerator> Gen;
 
@@ -192,11 +194,13 @@ public:
   BackendConsumer(BackendAction Action, DiagnosticsEngine &Diags,
                   const CodeGenOptions &CodeGenOpts,
                   const TargetOptions &TargetOpts, const std::string &InFile,
-                  std::unique_ptr<llvm::raw_pwrite_stream> OS,
-                  llvm::LLVMContext &C)
+                  llvm::LLVMContext &C,
+                  std::function<std::unique_ptr<llvm::raw_pwrite_stream>(
+                      llvm::StringRef, BackendAction, llvm::StringRef)>
+                      GetOutputStreamCallback)
       : Action(Action), Diags(Diags), CodeGenOpts(CodeGenOpts),
-        TargetOpts(TargetOpts), InFile(InFile), AsmOutStream(std::move(OS)),
-        Context(nullptr),
+        TargetOpts(TargetOpts), InFile(InFile), Context(nullptr),
+        GetOutputStreamCallback(GetOutputStreamCallback),
         Gen(CreateLLVMCodeGen(Diags, InFile, C, CodeGenOpts, TargetOpts)) {}
   llvm::Module *getModule() const { return Gen->getModule(); }
 
@@ -233,7 +237,10 @@ public:
       }
     }
 
+    // TODO: handle different entry for multi-contract
     emitEntry(*getModule(), Gen->getEntry());
+    std::unique_ptr<llvm::raw_pwrite_stream> AsmOutStream =
+        GetOutputStreamCallback(InFile, Action, {});
     if (Action == BackendAction::EmitWasm) {
       auto Binary = compileAndLink(*getModule());
       if (!Binary) {
@@ -261,41 +268,11 @@ CodeGenAction::CodeGenAction(BackendAction Action, llvm::LLVMContext *VMContext)
                                : std::make_unique<llvm::LLVMContext>()),
       VMContext(VMContext ? VMContext : OwnedVMContext.get()) {}
 
-static std::unique_ptr<llvm::raw_pwrite_stream>
-GetOutputStream(CompilerInstance &CI, llvm::StringRef InFile,
-                BackendAction Action) {
-  switch (Action) {
-  case BackendAction::EmitAssembly:
-    return CI.createDefaultOutputFile(false, InFile, "s");
-  case BackendAction::EmitLL:
-    return CI.createDefaultOutputFile(false, InFile, "ll");
-  case BackendAction::EmitBC:
-    return CI.createDefaultOutputFile(true, InFile, "bc");
-  case BackendAction::EmitNothing:
-    return nullptr;
-  case BackendAction::EmitMCNull:
-    return CI.createNullOutputFile();
-  case BackendAction::EmitObj:
-    return CI.createDefaultOutputFile(true, InFile, "o");
-  case BackendAction::EmitWasm:
-    return CI.createDefaultOutputFile(true, InFile, "wasm");
-  }
-
-  llvm_unreachable("Invalid action!");
-}
-
 std::unique_ptr<ASTConsumer>
 CodeGenAction::CreateASTConsumer(CompilerInstance &CI, llvm::StringRef InFile) {
-  std::unique_ptr<llvm::raw_pwrite_stream> OS =
-      GetOutputStream(CI, InFile, Action);
-
-  if (Action != BackendAction::EmitNothing && !OS) {
-    return nullptr;
-  }
-
   return std::make_unique<BackendConsumer>(
       Action, CI.getDiagnostics(), CI.getCodeGenOpts(), CI.getTargetOpts(),
-      InFile, std::move(OS), *VMContext);
+      InFile, *VMContext, CI.GetOutputStreamFunc());
 }
 
 EmitAssemblyAction::EmitAssemblyAction(llvm::LLVMContext *VMContext)

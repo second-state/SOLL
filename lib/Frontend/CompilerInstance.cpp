@@ -5,6 +5,7 @@
 #include "soll/Basic/DiagnosticIDs.h"
 #include "soll/Basic/FileManager.h"
 #include "soll/Basic/SourceManager.h"
+#include "soll/CodeGen/CodeGenAction.h"
 #include "soll/Frontend/ASTConsumers.h"
 #include "soll/Frontend/CompilerInvocation.h"
 #include "soll/Frontend/FrontendAction.h"
@@ -14,6 +15,7 @@
 #include "soll/Lex/Lexer.h"
 #include "soll/Sema/Sema.h"
 #include <cassert>
+#include <functional>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/Support/Errc.h>
@@ -24,6 +26,33 @@ namespace soll {
 
 CompilerInstance::CompilerInstance()
     : Invocation(std::make_unique<CompilerInvocation>()) {}
+
+std::function<std::unique_ptr<llvm::raw_pwrite_stream>(
+    llvm::StringRef, BackendAction, llvm::StringRef)>
+CompilerInstance::GetOutputStreamFunc() {
+  return
+      [&](llvm::StringRef InFile, BackendAction Action,
+          llvm::StringRef OutName) -> std::unique_ptr<llvm::raw_pwrite_stream> {
+        switch (Action) {
+        case BackendAction::EmitAssembly:
+          return createDefaultOutputFile(false, InFile, "s");
+        case BackendAction::EmitLL:
+          return createDefaultOutputFile(false, InFile, "ll");
+        case BackendAction::EmitBC:
+          return createDefaultOutputFile(true, InFile, "bc");
+        case BackendAction::EmitNothing:
+          return nullptr;
+        case BackendAction::EmitMCNull:
+          return createNullOutputFile();
+        case BackendAction::EmitObj:
+          return createDefaultOutputFile(true, InFile, "o");
+        case BackendAction::EmitWasm:
+          return createDefaultOutputFile(true, InFile, "wasm");
+        }
+
+        llvm_unreachable("Invalid action!");
+      };
+}
 
 CompilerInvocation &CompilerInstance::getInvocation() {
   assert(Invocation.get() != nullptr);
