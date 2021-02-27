@@ -277,7 +277,7 @@ private:
 
   bool ExpectAndConsume(tok::TokenKind ExpectedTok,
                         unsigned Diag = diag::err_expected,
-                        llvm::StringRef DiagMsg = "");
+                        llvm::StringRef DiagMsg = {});
   bool ExpectAndConsumeSemi(unsigned DiagID = diag::err_expected);
 
 public:

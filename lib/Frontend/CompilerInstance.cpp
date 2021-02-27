@@ -35,19 +35,19 @@ CompilerInstance::GetOutputStreamFunc() {
           llvm::StringRef OutName) -> std::unique_ptr<llvm::raw_pwrite_stream> {
         switch (Action) {
         case BackendAction::EmitAssembly:
-          return createDefaultOutputFile(false, InFile, "s");
+          return createDefaultOutputFile(false, InFile, "s", OutName);
         case BackendAction::EmitLL:
-          return createDefaultOutputFile(false, InFile, "ll");
+          return createDefaultOutputFile(false, InFile, "ll", OutName);
         case BackendAction::EmitBC:
-          return createDefaultOutputFile(true, InFile, "bc");
+          return createDefaultOutputFile(true, InFile, "bc", OutName);
         case BackendAction::EmitNothing:
           return nullptr;
         case BackendAction::EmitMCNull:
           return createNullOutputFile();
         case BackendAction::EmitObj:
-          return createDefaultOutputFile(true, InFile, "o");
+          return createDefaultOutputFile(true, InFile, "o", OutName);
         case BackendAction::EmitWasm:
-          return createDefaultOutputFile(true, InFile, "wasm");
+          return createDefaultOutputFile(true, InFile, "wasm", OutName);
         }
 
         llvm_unreachable("Invalid action!");
@@ -165,10 +165,11 @@ void CompilerInstance::createSema() {
 
 std::unique_ptr<llvm::raw_pwrite_stream>
 CompilerInstance::createDefaultOutputFile(bool Binary, llvm::StringRef InFile,
-                                          llvm::StringRef Extension) {
+                                          llvm::StringRef Extension,
+                                          llvm::StringRef OutName) {
   return createOutputFile(getFrontendOpts().OutputFile, Binary,
                           /*RemoveFileOnSignal=*/true, InFile, Extension,
-                          /*UseTemporary=*/false);
+                          /*UseTemporary=*/false, false, OutName);
 }
 
 std::unique_ptr<llvm::raw_pwrite_stream>
@@ -179,12 +180,13 @@ CompilerInstance::createNullOutputFile() {
 std::unique_ptr<llvm::raw_pwrite_stream> CompilerInstance::createOutputFile(
     llvm::StringRef OutputPath, bool Binary, bool RemoveFileOnSignal,
     llvm::StringRef InFile, llvm::StringRef Extension, bool UseTemporary,
-    bool CreateMissingDirectories) {
+    bool CreateMissingDirectories, llvm::StringRef OutName) {
   std::string OutputPathName, TempPathName;
   std::error_code EC;
-  std::unique_ptr<llvm::raw_pwrite_stream> OS = createOutputFile(
-      OutputPath, EC, Binary, RemoveFileOnSignal, InFile, Extension,
-      UseTemporary, CreateMissingDirectories, &OutputPathName, &TempPathName);
+  std::unique_ptr<llvm::raw_pwrite_stream> OS =
+      createOutputFile(OutputPath, EC, Binary, RemoveFileOnSignal, InFile,
+                       Extension, UseTemporary, CreateMissingDirectories,
+                       &OutputPathName, &TempPathName, OutName);
   if (!OS) {
     // getDiagnostics().Report(diag::err_fe_unable_to_open_output) << OutputPath
     // << EC.message();
@@ -202,7 +204,8 @@ std::unique_ptr<llvm::raw_pwrite_stream> CompilerInstance::createOutputFile(
     llvm::StringRef OutputPath, std::error_code &Error, bool Binary,
     bool RemoveFileOnSignal, llvm::StringRef InFile, llvm::StringRef Extension,
     bool UseTemporary, bool CreateMissingDirectories,
-    std::string *ResultPathName, std::string *TempPathName) {
+    std::string *ResultPathName, std::string *TempPathName,
+    llvm::StringRef OutName) {
   assert((!CreateMissingDirectories || UseTemporary) &&
          "CreateMissingDirectories is only allowed when using temporary files");
 
@@ -213,6 +216,10 @@ std::unique_ptr<llvm::raw_pwrite_stream> CompilerInstance::createOutputFile(
     OutFile = "-";
   } else if (!Extension.empty()) {
     llvm::SmallString<128> Path(InFile);
+    if (OutName != "") {
+      llvm::sys::path::remove_filename(Path);
+      llvm::sys::path::append(Path, OutName);
+    }
     llvm::sys::path::replace_extension(Path, Extension);
     OutFile = Path.str();
   } else {

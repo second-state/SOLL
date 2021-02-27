@@ -250,9 +250,13 @@ public:
 
     for (const auto &E : Gen->getEntry()) {
       auto Module = ClonedModuleMap.at(E.second);
+      std::string OutName = "";
+      if (auto *CD = dynamic_cast<const ContractDecl *>(E.second)) {
+        OutName = CD->getName();
+      }
       emitEntry(*Module, E.first);
       std::unique_ptr<llvm::raw_pwrite_stream> AsmOutStream =
-          GetOutputStreamCallback(InFile, Action, {});
+          GetOutputStreamCallback(InFile, Action, OutName);
       if (Action == BackendAction::EmitWasm) {
         auto Binary = compileAndLink(*Module);
         if (!Binary) {
