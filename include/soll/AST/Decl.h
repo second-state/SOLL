@@ -31,7 +31,7 @@ protected:
   Decl(SourceRange L,
        llvm::StringRef Name = llvm::StringRef::withNullAsEmpty(nullptr),
        Visibility vis = Visibility::Default)
-      : Location(L), Name(Name.str()), Vis(vis) {}
+      : Location(L), Name(Name.str()), Vis(vis), UniqueName(Name.str()) {}
 
 public:
   virtual void accept(DeclVisitor &visitor) = 0;
