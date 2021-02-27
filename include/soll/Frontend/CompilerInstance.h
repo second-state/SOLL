@@ -159,21 +159,21 @@ public:
   void createSema();
 
   std::unique_ptr<llvm::raw_pwrite_stream>
-  createDefaultOutputFile(bool Binary = true, llvm::StringRef BaseInput = "",
-                          llvm::StringRef Extension = "");
+  createDefaultOutputFile(bool Binary = true, llvm::StringRef BaseInput = {},
+                          llvm::StringRef Extension = {},
+                          llvm::StringRef OutName = {});
 
-  std::unique_ptr<llvm::raw_pwrite_stream>
-  createOutputFile(llvm::StringRef OutputPath, bool Binary,
-                   bool RemoveFileOnSignal, llvm::StringRef BaseInput,
-                   llvm::StringRef Extension, bool UseTemporary,
-                   bool CreateMissingDirectories = false);
+  std::unique_ptr<llvm::raw_pwrite_stream> createOutputFile(
+      llvm::StringRef OutputPath, bool Binary, bool RemoveFileOnSignal,
+      llvm::StringRef BaseInput, llvm::StringRef Extension, bool UseTemporary,
+      bool CreateMissingDirectories = false, llvm::StringRef OutName = {});
 
   std::unique_ptr<llvm::raw_pwrite_stream>
   createOutputFile(llvm::StringRef OutputPath, std::error_code &Error,
                    bool Binary, bool RemoveFileOnSignal, llvm::StringRef InFile,
                    llvm::StringRef Extension, bool UseTemporary,
                    bool CreateMissingDirectories, std::string *ResultPathName,
-                   std::string *TempPathName);
+                   std::string *TempPathName, llvm::StringRef OutName = {});
 
   std::unique_ptr<llvm::raw_pwrite_stream> createNullOutputFile();
 
