@@ -39,8 +39,9 @@ enum {
 namespace soll::CodeGen {
 
 CodeGenModule::CodeGenModule(
-    ASTContext &C, llvm::Module &M, std::string &E,
-    std::vector<std::pair<std::string, std::string>> &NE,
+    ASTContext &C, llvm::Module &M,
+    std::vector<std::pair<std::string, const Decl *>> &E,
+    std::vector<std::tuple<std::string, std::string, const Decl *>> &NE,
     DiagnosticsEngine &Diags, const CodeGenOptions &CodeGenOpts,
     const TargetOptions &TargetOpts)
     : Context(C), TheModule(M), Entry(E), NestedEntries(NE), Diags(Diags),
@@ -1207,14 +1208,14 @@ llvm::Function *CodeGenModule::emitNestedObjectGetter(llvm::StringRef Name) {
 void CodeGenModule::emitContractConstructorDecl(const ContractDecl *CD) {
   if (CodeGenOpts.Runtime) {
     // Generate runtime version only, no constructor.
-    getEntry() = CD->getLLVMMainFuncName().str();
+    getEntry().emplace_back(CD->getLLVMMainFuncName().str(), CD);
     return;
   }
 
   llvm::Function *Contract =
       emitNestedObjectGetter(CD->getLLVMContractFuncName());
   NestedEntries.emplace_back(CD->getLLVMMainFuncName().str(),
-                             CD->getLLVMContractFuncName().str());
+                             CD->getLLVMContractFuncName().str(), CD);
 
   llvm::Function *Ctor;
   {
@@ -1222,7 +1223,7 @@ void CodeGenModule::emitContractConstructorDecl(const ContractDecl *CD) {
 
     Ctor = llvm::Function::Create(FT, llvm::Function::InternalLinkage,
                                   CD->getLLVMCtorFuncName(), TheModule);
-    getEntry() = CD->getLLVMCtorFuncName().str();
+    getEntry().emplace_back(CD->getLLVMCtorFuncName().str(), CD);
   }
   Ctor->addFnAttr(
       llvm::Attribute::get(VMContext, llvm::Attribute::AlwaysInline));
@@ -1612,7 +1613,7 @@ void CodeGenModule::emitYulObject(const YulObject *YO) {
     {
       const std::string Name = O->getName();
       emitNestedObjectGetter(Name + ".object");
-      NestedEntries.emplace_back(Name + ".main", Name + ".object");
+      NestedEntries.emplace_back(Name + ".main", Name + ".object", nullptr);
       /*
       llvm::Function *DataSize = llvm::Function::Create(
           llvm::FunctionType::get(Int256Ty, false),
@@ -1624,6 +1625,7 @@ void CodeGenModule::emitYulObject(const YulObject *YO) {
       LookupYulDataOrYulObject.try_emplace(Name, O);
     }
     getEntry().clear();
+    getEntry().resize(1);
   }
   for (const auto *D : YO->getDataList()) {
     emitYulData(D);
@@ -1633,7 +1635,8 @@ void CodeGenModule::emitYulObject(const YulObject *YO) {
 
 void CodeGenModule::emitYulCode(const YulCode *YC, llvm::StringRef Name) {
   std::string FunctionName = Name.str() + ".main";
-  getEntry() = FunctionName;
+  getEntry().clear();
+  getEntry().emplace_back(FunctionName, nullptr);
   llvm::FunctionType *FT = llvm::FunctionType::get(VoidTy, {}, false);
   llvm::Function *Main = llvm::Function::Create(
       FT, llvm::Function::ExternalLinkage, FunctionName, TheModule);
