@@ -11,6 +11,7 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/Support/ToolOutputFile.h>
 #include <llvm/Transforms/Utils/Cloning.h>
+#include <unordered_map>
 
 extern "C" {
 typedef void *BinaryenModuleRef;
@@ -221,9 +222,20 @@ public:
       return;
     }
 
+    std::vector<std::unique_ptr<llvm::Module>> ClonedModules;
+    std::unordered_map<const Decl *, llvm::Module *> ClonedModuleMap(
+        {{nullptr, getModule()}});
+
+    for (const auto &E : Gen->getEntry()) {
+      ClonedModules.emplace_back(llvm::CloneModule(*getModule()));
+      ClonedModuleMap[E.second] = ClonedModules.back().get();
+    }
+
     if (TargetOpts.BackendTarget == EWASM) {
-      for (const auto &[EntryName, FuncName] : Gen->getNestedEntries()) {
-        auto ClonedModule = llvm::CloneModule(*getModule());
+      for (const auto &[EntryName, FuncName, DeclPtr] :
+           Gen->getNestedEntries()) {
+        auto Module = ClonedModuleMap.at(DeclPtr);
+        auto ClonedModule = llvm::CloneModule(*Module);
         emitEntry(*ClonedModule, EntryName);
 
         auto Binary = compileAndLink(*ClonedModule);
@@ -232,27 +244,28 @@ public:
           return;
         }
 
-        emitNestedBytecodeFunction(*getModule(), FuncName,
-                                   (*Binary)->getBuffer());
+        emitNestedBytecodeFunction(*Module, FuncName, (*Binary)->getBuffer());
       }
     }
 
-    // TODO: handle different entry for multi-contract
-    emitEntry(*getModule(), Gen->getEntry());
-    std::unique_ptr<llvm::raw_pwrite_stream> AsmOutStream =
-        GetOutputStreamCallback(InFile, Action, {});
-    if (Action == BackendAction::EmitWasm) {
-      auto Binary = compileAndLink(*getModule());
-      if (!Binary) {
-        llvm::errs() << Binary.takeError() << '\n';
-        return;
+    for (const auto &E : Gen->getEntry()) {
+      auto Module = ClonedModuleMap.at(E.second);
+      emitEntry(*Module, E.first);
+      std::unique_ptr<llvm::raw_pwrite_stream> AsmOutStream =
+          GetOutputStreamCallback(InFile, Action, {});
+      if (Action == BackendAction::EmitWasm) {
+        auto Binary = compileAndLink(*Module);
+        if (!Binary) {
+          llvm::errs() << Binary.takeError() << '\n';
+          return;
+        }
+        (*AsmOutStream) << (*Binary)->getBuffer();
+        AsmOutStream.reset();
+      } else {
+        EmitBackendOutput(Diags, CodeGenOpts, TargetOpts,
+                          Module->getDataLayout(), Module, Action,
+                          std::move(AsmOutStream));
       }
-      (*AsmOutStream) << (*Binary)->getBuffer();
-      AsmOutStream.reset();
-    } else {
-      EmitBackendOutput(Diags, CodeGenOpts, TargetOpts,
-                        getModule()->getDataLayout(), getModule(), Action,
-                        std::move(AsmOutStream));
     }
   }
 };

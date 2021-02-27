@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #pragma once
 #include "soll/AST/ASTConsumer.h"
+#include "soll/AST/Decl.h"
 #include "soll/Basic/CodeGenOptions.h"
 #include "soll/Basic/TargetOptions.h"
 #include <llvm/ADT/StringRef.h>
 #include <llvm/IR/LLVMContext.h>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -15,13 +17,16 @@ class DiagnosticsEngine;
 
 class CodeGenerator : public ASTConsumer {
 protected:
-  std::string Entry;
-  std::vector<std::pair<std::string, std::string>> NestedEntries;
+  std::vector<std::pair<std::string, const Decl *>> Entry;
+  std::vector<std::tuple<std::string, std::string, const Decl *>> NestedEntries;
 
 public:
   llvm::Module *getModule();
-  const std::string &getEntry() const { return Entry; }
-  const std::vector<std::pair<std::string, std::string>> &getNestedEntries() const {
+  const std::vector<std::pair<std::string, const Decl *>> &getEntry() const {
+    return Entry;
+  }
+  const std::vector<std::tuple<std::string, std::string, const Decl *>> &
+  getNestedEntries() const {
     return NestedEntries;
   }
   void HandleSourceUnit(ASTContext &C, SourceUnit &S) override;

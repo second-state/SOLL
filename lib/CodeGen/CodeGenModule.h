@@ -49,8 +49,9 @@ namespace CodeGen {
 class CodeGenModule : public CodeGenTypeCache {
   ASTContext &Context;
   llvm::Module &TheModule;
-  std::string &Entry;
-  std::vector<std::pair<std::string, std::string>> &NestedEntries;
+  std::vector<std::pair<std::string, const Decl *>> &Entry;
+  std::vector<std::tuple<std::string, std::string, const Decl *>>
+      &NestedEntries;
   DiagnosticsEngine &Diags;
   const CodeGenOptions &CodeGenOpts;
   const TargetOptions &TargetOpts;
@@ -102,10 +103,9 @@ class CodeGenModule : public CodeGenTypeCache {
   llvm::Function *Func_getExternalCodeSize = nullptr;
   llvm::Function *Func_getReturnDataSize = nullptr;
   llvm::Function *Func_selfDestruct = nullptr;
-    // new defined EEI in EVMC
+  // new defined EEI in EVMC
   llvm::Function *Func_create2 = nullptr;
   llvm::Function *Func_getChainId = nullptr;
-
 
   llvm::Function *Func_print32 = nullptr;
 
@@ -142,15 +142,20 @@ public:
   CodeGenModule(const CodeGenModule &) = delete;
   void operator=(const CodeGenModule &) = delete;
 
-  CodeGenModule(ASTContext &C, llvm::Module &Module, std::string &Entry,
-                std::vector<std::pair<std::string, std::string>> &NestedEntries,
+  CodeGenModule(ASTContext &C, llvm::Module &Module,
+                std::vector<std::pair<std::string, const Decl *>> &Entry,
+                std::vector<std::tuple<std::string, std::string, const Decl *>>
+                    &NestedEntries,
                 DiagnosticsEngine &Diags, const CodeGenOptions &CodeGenOpts,
                 const TargetOptions &TargetOpts);
   llvm::Function *getIntrinsic(unsigned IID,
                                llvm::ArrayRef<llvm::Type *> Typs = llvm::None);
   llvm::Module &getModule() const { return TheModule; }
-  std::string &getEntry() const { return Entry; }
-  std::vector<std::pair<std::string, std::string>> &getNestedEntries() const {
+  std::vector<std::pair<std::string, const Decl *>> &getEntry() const {
+    return Entry;
+  }
+  std::vector<std::tuple<std::string, std::string, const Decl *>> &
+  getNestedEntries() const {
     return NestedEntries;
   }
   llvm::LLVMContext &getLLVMContext() const { return VMContext; }
@@ -191,7 +196,8 @@ public:
   void emitCreate(llvm::Value *ValueOffset, llvm::Value *DataOffset,
                   llvm::Value *Length, llvm::Value *ResultOffset);
   void emitCreate2(llvm::Value *ValueOffset, llvm::Value *DataOffset,
-                  llvm::Value *Length, llvm::Value *Salt, llvm::Value *ResultOffset);
+                   llvm::Value *Length, llvm::Value *Salt,
+                   llvm::Value *ResultOffset);
   llvm::Value *emitCallDataLoad(llvm::Value *DataOffset);
   llvm::Value *emitCall(llvm::Value *Gas, llvm::Value *AddressPtr,
                         llvm::Value *ValuePtr, llvm::Value *DataPtr,
