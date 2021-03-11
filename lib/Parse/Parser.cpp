@@ -353,7 +353,6 @@ Parser::Parser(Lexer &TheLexer, Sema &Actions, DiagnosticsEngine &Diags)
 std::unique_ptr<SourceUnit> Parser::parse() {
   std::unique_ptr<SourceUnit> SU;
   {
-    ParseScope SourceUnitScope{this, 0};
     std::vector<std::unique_ptr<Decl>> Nodes;
     const SourceLocation Begin = Tok.getLocation();
 
@@ -381,6 +380,7 @@ std::unique_ptr<SourceUnit> Parser::parse() {
     SU = std::make_unique<SourceUnit>(SourceRange(Begin, Tok.getLocation()),
                                       std::move(Nodes));
   }
+  Actions.resolveIdentifierDecl(*SU);
   Actions.resolveInherit(*SU);
   Actions.resolveType(*SU);
   Actions.resolveUniqueName(*SU);
@@ -561,7 +561,6 @@ DataLocation Parser::parseDataLocation() {
 
 std::unique_ptr<ContractDecl> Parser::parseContractDefinition() {
   const SourceLocation Begin = Tok.getLocation();
-  ParseScope ContractScope{this, 0};
   std::pair<ContractDecl::ContractKind, bool> CtKind = parseContractKind();
   if (!Tok.isAnyIdentifier()) {
     Diag(diag::err_expected) << tok::identifier;
@@ -597,7 +596,6 @@ std::unique_ptr<ContractDecl> Parser::parseContractDefinition() {
     if (Tok.isOneOf(tok::kw_function, tok::kw_constructor, tok::kw_fallback)) {
       auto FD = parseFunctionDefinitionOrFunctionTypeStateVariable();
       if (FD) {
-        Actions.addDecl(FD.get());
         if (FD->isConstructor()) {
           if (Constructor) {
             Diag(FD->getLocation().getBegin(), diag::err_multiple_constuctors);
@@ -618,7 +616,6 @@ std::unique_ptr<ContractDecl> Parser::parseContractDefinition() {
           SubNodes.push_back(std::move(FD));
         }
       }
-      Actions.EraseFunRtnTys();
     } else if (Tok.is(tok::kw_struct)) {
       SubNodes.push_back(parseStructDeclaration());
     } else if (Tok.is(tok::kw_enum)) {
@@ -653,10 +650,6 @@ std::unique_ptr<ContractDecl> Parser::parseContractDefinition() {
       SourceRange(Begin, End), Name, std::move(BaseContracts),
       std::move(SubNodes), std::move(Constructor), std::move(Fallback), nullptr,
       CtKind.first, CtKind.second);
-  auto CT = std::make_shared<ContractType>(CD.get());
-  CD->setType(CT);
-  Actions.addDecl(CD.get());
-  Actions.addContractDecl(CD.get());
   return CD;
 }
 
@@ -737,10 +730,6 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
     bool const PermitEmptyParameterList = false;
     Result.ReturnParameters =
         parseParameterList(Options, PermitEmptyParameterList);
-    std::vector<TypePtr> Tys;
-    for (auto &&Return : Result.ReturnParameters->getParams())
-      Tys.push_back(Return->getType());
-    Actions.SetFunRtnTys(std::move(Tys));
   } else {
     Result.ReturnParameters = std::make_unique<ParamList>(
         std::vector<std::unique_ptr<VarDeclBase>>());
@@ -752,7 +741,6 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
 std::unique_ptr<FunctionDecl>
 Parser::parseFunctionDefinitionOrFunctionTypeStateVariable() {
   const SourceLocation Begin = Tok.getLocation();
-  ParseScope ArgumentScope{this, 0};
   FunctionHeaderParserResult Header = parseFunctionHeader(false, true);
   if (Header.IsConstructor || !Header.Modifiers.empty() ||
       !Header.Name.empty() || Tok.isOneOf(tok::semi, tok::l_brace)) {
@@ -761,7 +749,6 @@ Parser::parseFunctionDefinitionOrFunctionTypeStateVariable() {
     SourceLocation End = Tok.getEndLoc();
     std::unique_ptr<Block> B;
     if (Tok.is(tok::l_brace)) {
-      ParseScope FunctionScope{this, Scope::FunctionScope};
       B = parseBlock();
       End = B->getLocation().getEnd();
     } else if (ExpectAndConsumeSemi()) {
@@ -784,10 +771,7 @@ std::unique_ptr<StructDecl> Parser::parseStructDeclaration() {
   const SourceLocation Begin = Tok.getLocation();
   ConsumeToken(); // 'struct'
   llvm::StringRef Name = Tok.getIdentifierInfo()->getName();
-  if (Actions.lookupName(Name)) {
-    Diag(diag::err_duplicate_definition) << Name.str();
-    return nullptr;
-  }
+  auto NameTok = Tok;
   ConsumeToken(); // Name
   if (ExpectAndConsume(tok::l_brace)) {
     return nullptr;
@@ -810,10 +794,9 @@ std::unique_ptr<StructDecl> Parser::parseStructDeclaration() {
     ElementTypes.emplace_back(T);
     ElementNames.emplace_back(ElementName);
   }
-  auto SD = std::make_unique<StructDecl>(SourceRange(Begin, End), Name,
+  auto SD = std::make_unique<StructDecl>(NameTok, SourceRange(Begin, End), Name,
                                          std::move(ElementTypes),
                                          std::move(ElementNames));
-  Actions.addDecl(SD.get());
   return SD;
 }
 
@@ -951,7 +934,6 @@ Parser::parseVariableDeclaration(VarDeclParserOptions const &Options,
                                       Options.IsStateVariable, IsIndexed,
                                       IsDeclaredConst, Loc);
 
-  Actions.addDecl(VD.get());
   return VD;
 }
 
@@ -971,7 +953,6 @@ std::unique_ptr<EventDecl> Parser::parseEventDefinition() {
   }
   auto ED = Actions.CreateEventDecl(SourceRange(Begin, Tok.getEndLoc()), Name,
                                     std::move(Parameters), Anonymous);
-  Actions.addDecl(ED.get());
   return ED;
 }
 
@@ -1065,16 +1046,9 @@ TypePtr Parser::parseTypeName(bool AllowVar) {
   } else if (Kind == tok::identifier || Kind == tok::raw_identifier) {
     // TODO: parseTypeName tok::identifier
     llvm::StringRef Name = Tok.getIdentifierInfo()->getName();
-    Decl *D = Actions.lookupName(Name);
-    if (auto SD = dynamic_cast<StructDecl *>(D)) {
-      T = SD->getType();
-      HaveType = true;
-      ConsumeToken(); // identifier
-    } else {
-      T = std::make_shared<UnresolveType>(Name);
-      HaveType = true;
-      ConsumeToken(); // identifier
-    }
+    T = std::make_shared<UnresolveType>(Name);
+    HaveType = true;
+    ConsumeToken(); // identifier
   } else {
     assert(false && "Expected Type Name");
     return nullptr;
@@ -1136,7 +1110,6 @@ Parser::parseParameterList(VarDeclParserOptions const &_Options,
 
 std::unique_ptr<Block> Parser::parseBlock() {
   const SourceLocation Begin = Tok.getLocation();
-  ParseScope BlockScope{this, 0};
   std::vector<std::unique_ptr<Stmt>> Statements;
   if (ExpectAndConsume(tok::l_brace)) {
     return nullptr;
@@ -1260,10 +1233,7 @@ std::unique_ptr<WhileStmt> Parser::parseWhileStatement() {
     return nullptr;
   }
   std::unique_ptr<Stmt> Body;
-  {
-    ParseScope WhileScope{this, Scope::BreakScope | Scope::ContinueScope};
-    Body = parseStatement();
-  }
+  Body = parseStatement();
   const SourceLocation End = Body->getLocation().getEnd();
   return std::make_unique<WhileStmt>(
       SourceRange(Begin, End), std::move(Condition), std::move(Body), false);
@@ -1273,10 +1243,7 @@ std::unique_ptr<WhileStmt> Parser::parseDoWhileStatement() {
   const SourceLocation Begin = Tok.getLocation();
   ConsumeToken(); // 'do'
   std::unique_ptr<Stmt> Body;
-  {
-    ParseScope DoWhileScope{this, Scope::BreakScope | Scope::ContinueScope};
-    Body = parseStatement();
-  }
+  Body = parseStatement();
   if (ExpectAndConsume(tok::kw_while)) {
     return nullptr;
   }
@@ -1331,10 +1298,7 @@ std::unique_ptr<ForStmt> Parser::parseForStatement() {
   }
 
   std::unique_ptr<Stmt> Body;
-  {
-    ParseScope ForScope{this, Scope::BreakScope | Scope::ContinueScope};
-    Body = parseStatement();
-  }
+  Body = parseStatement();
   const SourceLocation End = Body->getLocation().getEnd();
   return std::make_unique<ForStmt>(SourceRange(Begin, End), std::move(Init),
                                    std::move(Condition), std::move(Loop),

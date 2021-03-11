@@ -132,8 +132,7 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
       {"pop", AsmIdentifier::SpecialIdentifier::pop},
       // new defined EEI in EVMC
       {"create2", AsmIdentifier::SpecialIdentifier::create2},
-      {"chainid", AsmIdentifier::SpecialIdentifier::chainid}
-      };
+      {"chainid", AsmIdentifier::SpecialIdentifier::chainid}};
   llvm::StringRef Name = Tok.getIdentifierInfo()->getName();
   if (auto Iter = SpecialLookup.find(Name); Iter != SpecialLookup.end()) {
     TypePtr Ty;
@@ -429,11 +428,11 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
       assert(false && "unknown special identifier");
       __builtin_unreachable();
     }
-    return std::make_unique<AsmIdentifier>(Tok, Iter->second, std::move(Ty));
+    return std::make_unique<AsmIdentifier>(Tok, Iter->second, std::move(Ty), IsCall);
   }
   Decl *D = lookupName(Name);
   if (D == nullptr) {
-    auto Unresolved = std::make_unique<AsmIdentifier>(Tok);
+    auto Unresolved = std::make_unique<AsmIdentifier>(Tok, IsCall);
     if (IsCall) {
       CurrentScope()->addUnresolved(Unresolved.get());
     } else {
@@ -441,7 +440,7 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
     }
     return Unresolved;
   }
-  return std::make_unique<AsmIdentifier>(Tok, D);
+  return std::make_unique<AsmIdentifier>(Tok, D, IsCall);
 }
 
 std::unique_ptr<Expr> Sema::CreateAsmCallExpr(SourceRange L, ExprPtr &&Callee,

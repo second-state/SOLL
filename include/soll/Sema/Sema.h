@@ -24,9 +24,26 @@ class Sema {
 
   llvm::StringMap<ContractDecl *> ContractDecls;
   std::vector<std::unique_ptr<Scope>> Scopes;
-  std::vector<TypePtr> FunRtnTys;
 
 public:
+  class SemaScope {
+    Sema *Self;
+    SemaScope(const SemaScope &) = delete;
+    SemaScope &operator=(const SemaScope &) = delete;
+
+  public:
+    SemaScope(Sema *Self, unsigned ScopeFlags) : Self(Self) {
+      Self->PushScope(ScopeFlags);
+    }
+    void Exit() {
+      if (Self) {
+        Self->PopScope();
+        Self = nullptr;
+      }
+    }
+    ~SemaScope() { Exit(); }
+  };
+
   Lexer &Lex;
   ASTContext &Context;
   ASTConsumer &Consumer;
@@ -36,9 +53,6 @@ public:
   Sema(Lexer &lexer, ASTContext &ctxt, ASTConsumer &consumer);
 
   DiagnosticBuilder Diag(SourceLocation Loc, unsigned DiagID);
-
-  void SetFunRtnTys(std::vector<TypePtr> &&Tys) { FunRtnTys = std::move(Tys); }
-  void EraseFunRtnTys() { FunRtnTys.clear(); }
 
   // Decl
   std::unique_ptr<FunctionDecl> CreateFunctionDecl(
@@ -110,6 +124,7 @@ public:
   void resolveType(SourceUnit &SU);
   void resolveInherit(SourceUnit &SU);
   void resolveUniqueName(SourceUnit &SU);
+  void resolveIdentifierDecl(SourceUnit &SU);
   void resolveImplicitCast(ImplicitCastExpr &IC, TypePtr DstTy,
                            bool PrefereLValue);
 

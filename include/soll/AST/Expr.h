@@ -116,6 +116,7 @@ public:
     auto Dptr = std::get_if<Decl *>(&D);
     return Dptr ? *Dptr : nullptr;
   }
+  void setSpecialIdentifier(SpecialIdentifier D) { this->D = D; }
   SpecialIdentifier getSpecialIdentifier() const {
     return std::get<SpecialIdentifier>(D);
   }

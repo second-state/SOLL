@@ -75,7 +75,7 @@ void StmtVisitorBase<Const>::visit(BinaryOperatorType &op) {
 
 template <bool Const> void StmtVisitorBase<Const>::visit(CallExprType &expr) {
   expr.getCalleeExpr()->accept(*this);
-  for (auto args : expr.getArguments())
+  for (auto &args : expr.getRawArguments())
     args->accept(*this);
 }
 

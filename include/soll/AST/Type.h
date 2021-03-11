@@ -407,6 +407,7 @@ protected:
 public:
   TupleType(std::vector<TypePtr> &&ETys) : ElementTypes(std::move(ETys)) {}
 
+  std::vector<TypePtr> &getElementTypes() { return ElementTypes; }
   const std::vector<TypePtr> &getElementTypes() const { return ElementTypes; }
   bool isImplicitlyConvertibleTo(Type const &_other) const override;
   bool isExplicitlyConvertibleTo(Type const &_convertTo) const override;

@@ -14,7 +14,6 @@ DIAG(err_unknown_escape, CLASS_ERROR, (unsigned)diag::Severity::Error, "Unknown 
 DIAG(err_invalid_numeric_literal, CLASS_ERROR, (unsigned)diag::Severity::Error, "Invalid numeric literal '%0'.", 0, false, 1)
 DIAG(err_negative_array_size, CLASS_ERROR, (unsigned)diag::Severity::Error, "Declare an array with a negative size.", 0, false, 1)
 DIAG(err_multiple_variable_location, CLASS_ERROR, (unsigned)diag::Severity::Error, "Location already specified.", 0, false, 1)
-DIAG(err_duplicate_definition, CLASS_ERROR, (unsigned)diag::Severity::Error, "'%0' duplicate definition.", 0, false, 1)
 DIAG(err_location_without_typename, CLASS_ERROR, (unsigned)diag::Severity::Error, "Location specifier needs explicit type name.", 0, false, 1)
 DIAG(err_switch_without_case, CLASS_ERROR, (unsigned)diag::Severity::Error, "Switch statement without any cases.", 0, false, 1)
 DIAG(err_unknown_pragma, CLASS_ERROR, (unsigned)diag::Severity::Error, "Token incompatible with Solidity parser as part of pragma directive.", 0, false, 1)

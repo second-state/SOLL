@@ -184,18 +184,7 @@ std::unique_ptr<Identifier> Sema::CreateIdentifier(const Token &Tok) {
     }
     return std::make_unique<Identifier>(Tok, Iter->second, Ty);
   }
-  Decl *D = lookupName(Name);
-  if (D == nullptr) {
-    auto Unresolved = std::make_unique<Identifier>(Tok);
-    CurrentScope()->addUnresolvedExternal(Unresolved.get());
-    return Unresolved;
-  }
-  if (auto SD = dynamic_cast<StructDecl *>(D)) {
-    auto Ty = SD->getConstructorType();
-    return std::make_unique<Identifier>(
-        Tok, Identifier::SpecialIdentifier::struct_constructor, Ty);
-  }
-  return std::make_unique<Identifier>(Tok, D);
+  return std::make_unique<Identifier>(Tok);
 }
 
 void Sema::resolveIdentifiers() {
@@ -238,9 +227,8 @@ Sema::CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr, Token Tok) {
   if (auto *I = dynamic_cast<const Identifier *>(Base)) {
     if (I->isSpecialIdentifier()) {
       if (I->getSpecialIdentifier() == Identifier::SpecialIdentifier::this_) {
-        return std::make_unique<MemberExpr>(
-            L, std::move(BaseExpr),
-            std::make_unique<Identifier>(Tok, lookupName(Name)));
+        return std::make_unique<MemberExpr>(L, std::move(BaseExpr),
+                                            std::make_unique<Identifier>(Tok));
       }
       if (auto Iter = Lookup.find(Name); Iter != Lookup.end()) {
         std::shared_ptr<Type> Ty;
@@ -321,8 +309,8 @@ Sema::CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr, Token Tok) {
     }
   }
   // unresolvable now
-  return std::make_unique<MemberExpr>(L, std::move(BaseExpr),
-                                      std::make_unique<Identifier>(Tok));
+  return std::make_unique<MemberExpr>(
+      L, std::move(BaseExpr), std::make_unique<Identifier>(Tok, nullptr));
 }
 
 DiagnosticBuilder Sema::Diag(SourceLocation Loc, unsigned DiagID) {

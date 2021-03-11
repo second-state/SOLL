@@ -16,7 +16,7 @@ void ParseAST(Sema &S, ASTConsumer &C, ASTContext &Ctx, bool PrintStats) {
 
   switch (Ctx.getLang()) {
   case InputKind::Sol:
-    root = P->parse();
+    root = P->parse(); // TODO
     break;
   case InputKind::Yul:
     root = P->parseYul();
