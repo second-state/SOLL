@@ -32,8 +32,8 @@ std::unique_ptr<Block> Parser::parseAsmBlock(bool HasScope) {
   }
   const SourceLocation End = Tok.getEndLoc();
   ExpectAndConsume(tok::r_brace);
-  return std::make_unique<Block>(SourceRange(Begin, End),
-                                 std::move(Statements));
+  return std::make_unique<Block>(SourceRange(Begin, End), std::move(Statements),
+                                 HasScope);
 }
 
 std::unique_ptr<Stmt> Parser::parseAsmStatement() {

@@ -59,10 +59,11 @@ public:
 
 class Block : public Stmt {
   std::vector<StmtPtr> Stmts;
+  const bool HasScope;
 
 public:
-  Block(SourceRange L, std::vector<StmtPtr> &&Stmts)
-      : Stmt(L), Stmts(std::move(Stmts)) {}
+  Block(SourceRange L, std::vector<StmtPtr> &&Stmts, bool HasScope = true)
+      : Stmt(L), Stmts(std::move(Stmts)), HasScope(HasScope) {}
 
   /// this setter transfers the ownerships of Stmt from function argument to
   /// class instance
@@ -70,6 +71,7 @@ public:
 
   std::vector<Stmt *> getStmts();
   std::vector<const Stmt *> getStmts() const;
+  bool hasScope() const { return HasScope; }
 
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;

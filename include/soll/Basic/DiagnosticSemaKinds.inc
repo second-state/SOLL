@@ -4,6 +4,7 @@ __SEMASTART = DIAG_START_SEMA,
 #undef SEMASTART
 #endif
 
+DIAG(err_duplicate_definition, CLASS_ERROR, (unsigned)diag::Severity::Error, "'%0' duplicate definition.", 0, false, 1)
 DIAG(err_undeclared_var_use, CLASS_ERROR, (unsigned)diag::Severity::Fatal, "Use of undeclared identifier '%0'", 0, false, 0)
 DIAG(err_unimplemented_identifier, CLASS_ERROR, (unsigned)diag::Severity::Error, "'%0' is not yet supported", 0, false, 1)
 DIAG(err_unimplemented_constructor_parameter, CLASS_ERROR, (unsigned)diag::Severity::Error, "Constructor with parameter is not yet supported", 0, false, 1)

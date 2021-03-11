@@ -7,6 +7,7 @@
 #include "soll/AST/Type.h"
 #include "soll/Basic/IdentifierTable.h"
 #include "soll/Basic/SourceLocation.h"
+#include "soll/Lex/Token.h"
 #include <vector>
 
 namespace soll {
@@ -326,16 +327,18 @@ public:
 
 class StructDecl : public Decl {
 private:
+  Token Tok;
   TypePtr Ty;
   TypePtr ConstructorTy;
 
 public:
-  StructDecl(SourceRange L, llvm::StringRef Name, std::vector<TypePtr> &&ET,
-             std::vector<std::string> &&EN);
+  StructDecl(Token NameTok, SourceRange L, llvm::StringRef Name,
+             std::vector<TypePtr> &&ET, std::vector<std::string> &&EN);
 
   void accept(DeclVisitor &Visitor) override;
   void accept(ConstDeclVisitor &Visitor) const override;
 
+  Token getToken() const { return Tok; }
   TypePtr getType() const { return Ty; }
   TypePtr getConstructorType() const { return ConstructorTy; }
 };

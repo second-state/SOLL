@@ -7,22 +7,23 @@ namespace soll {
 ///
 /// AsmIdentifier
 ///
-AsmIdentifier::AsmIdentifier(const Token &T)
+AsmIdentifier::AsmIdentifier(const Token &T, bool IsCall)
     : Expr(SourceRange(T.getLocation(), T.getEndLoc()), ValueKind::VK_LValue,
            nullptr),
-      T(T), D() {}
+      T(T), D(), IsCall(IsCall) {}
 
-AsmIdentifier::AsmIdentifier(const Token &T, Decl *D)
+AsmIdentifier::AsmIdentifier(const Token &T, Decl *D, bool IsCall)
     : Expr(SourceRange(T.getLocation(), T.getEndLoc()), ValueKind::VK_LValue,
            nullptr),
-      T(T), D(D) {
+      T(T), D(D), IsCall(IsCall) {
   updateTypeFromCurrentDecl();
 }
 
-AsmIdentifier::AsmIdentifier(const Token &T, SpecialIdentifier D, TypePtr Ty)
+AsmIdentifier::AsmIdentifier(const Token &T, SpecialIdentifier D, TypePtr Ty,
+                             bool IsCall)
     : Expr(SourceRange(T.getLocation(), T.getEndLoc()), ValueKind::VK_LValue,
            std::move(Ty)),
-      T(T), D(D) {}
+      T(T), D(D), IsCall(IsCall) {}
 
 void AsmIdentifier::updateTypeFromCurrentDecl() {
   Decl *D = getCorrespondDecl();

@@ -288,6 +288,7 @@ public:
   }
   void visit(MemberExprType &ME) override {
     StmtVisitor::visit(ME);
+    ME.setType(ME.getName()->getType());
     if (ME.getType()) {
       return;
     }

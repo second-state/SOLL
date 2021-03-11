@@ -117,13 +117,15 @@ public:
 private:
   Token T;
   std::variant<std::monostate, Decl *, SpecialIdentifier> D;
+  const bool IsCall;
   void updateTypeFromCurrentDecl();
 
 public:
-  AsmIdentifier(const Token &T);
-  AsmIdentifier(const Token &T, Decl *D);
-  AsmIdentifier(const Token &T, SpecialIdentifier D, TypePtr Ty);
+  AsmIdentifier(const Token &T, bool IsCall);
+  AsmIdentifier(const Token &T, Decl *D, bool IsCall);
+  AsmIdentifier(const Token &T, SpecialIdentifier D, TypePtr Ty, bool IsCall);
 
+  bool isCall() const { return IsCall; }
   bool isResolved() const { return !std::holds_alternative<std::monostate>(D); }
   bool isSpecialIdentifier() const {
     return std::holds_alternative<SpecialIdentifier>(D);

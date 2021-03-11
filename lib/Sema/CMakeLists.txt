@@ -6,6 +6,7 @@ add_llvm_library(sollSema
   SemaResolveType.cpp
   SemaResolveInherit.cpp
   SemaResolveUniqueName.cpp
+  SemaResolveIdentifier.cpp
   LINK_LIBS
   sollAST
   )
