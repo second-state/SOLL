@@ -178,6 +178,21 @@ public:
   void setReturnType(TypePtr Ty) { ReturnType = std::move(Ty); }
   Sema &getSema() { return Actions; }
 
+  void visit(TupleExprType &TE) override {
+    StmtVisitor::visit(TE);
+    std::vector<TypePtr> Types;
+    // Notes : All element are warpped by ImplicitCastExpr
+    for (const auto &Comp : TE.getComponents()) {
+      if (Comp) {
+        auto CastR = dynamic_cast<const ImplicitCastExpr *>(Comp);
+        Types.emplace_back(CastR->getSubExpr()->getType());
+      } else {
+        Types.emplace_back(nullptr);
+      }
+    }
+    TE.setType(std::make_shared<TupleType>(std::move(Types)));
+  }
+
   void visit(ImplicitCastExprType &ICE) override {
     StmtVisitor::visit(ICE);
     if (ICE.getCastKind() == CastKind::TypeCast) {
