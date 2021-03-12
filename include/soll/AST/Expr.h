@@ -519,20 +519,7 @@ class TupleExpr : public Expr {
 
 public:
   TupleExpr(SourceRange L, std::vector<ExprPtr> &&Comps, bool IsArr)
-      : Expr(L), Components(std::move(Comps)), IsArray(IsArr) {
-    std::vector<TypePtr> Types;
-    // Notes : All element are warpped by ImplicitCastExpr
-    for (const auto &Comp : Components) {
-      if (Comp) {
-        const Expr *A = Comp.get();
-        auto CastR = dynamic_cast<const ImplicitCastExpr *>(A);
-        Types.emplace_back(CastR->getSubExpr()->getType());
-      } else {
-        Types.emplace_back(nullptr);
-      }
-    }
-    setType(std::make_shared<TupleType>(std::move(Types)));
-  }
+      : Expr(L), Components(std::move(Comps)), IsArray(IsArr) {}
 
   std::vector<Expr *> getComponents();
   std::vector<const Expr *> getComponents() const;

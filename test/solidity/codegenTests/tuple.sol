@@ -13,7 +13,7 @@ contract Tuple {
         (a,b,c) = (1,tmp, "PPAP");
         (a, ,c) = (1,tmp, "PPAP");
         (a, ,c) = (1,   , "PPAP");
-        ( ,c, ) = (a,"C","A");
+        ( ,c, ) = (a,"C", "A");
         (a, , ) = (a,c  , );
 
         (a,b) = (b,a);
