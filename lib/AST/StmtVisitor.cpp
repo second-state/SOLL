@@ -137,6 +137,7 @@ void StmtVisitorBase<Const>::visit(AsmDefaultStmtType &C) {
 }
 
 template <bool Const> void StmtVisitorBase<Const>::visit(AsmSwitchStmtType &S) {
+  S.getCond()->accept(*this);
   for (auto Case : S.getCases()) {
     Case->accept(*this);
   }

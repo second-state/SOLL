@@ -20,10 +20,6 @@ namespace soll {
 
 std::unique_ptr<Block> Parser::parseAsmBlock(bool HasScope) {
   const SourceLocation Begin = Tok.getLocation();
-  std::unique_ptr<ParseScope> BlockScope;
-  if (!HasScope) {
-    BlockScope = std::make_unique<ParseScope>(this, 0);
-  }
 
   ExpectAndConsume(tok::l_brace);
   std::vector<std::unique_ptr<Stmt>> Statements;
@@ -123,7 +119,6 @@ std::unique_ptr<IfStmt> Parser::parseAsmIfStatement() {
 
 std::unique_ptr<AsmSwitchStmt> Parser::parseAsmSwitchStatement() {
   const SourceLocation Begin = Tok.getLocation();
-  ParseScope SwitchScope{this, 0};
 
   ConsumeToken(); // 'switch'
   std::unique_ptr<Expr> Condition = parseAsmExpression();
@@ -165,7 +160,6 @@ std::unique_ptr<AsmDefaultStmt> Parser::parseAsmDefaultStatement() {
 
 std::unique_ptr<AsmForStmt> Parser::parseAsmForStatement() {
   const SourceLocation Begin = Tok.getLocation();
-  ParseScope ForScope{this, 0};
 
   ConsumeToken(); // 'for'
   std::unique_ptr<Block> Init = parseAsmBlock(true);
@@ -174,10 +168,7 @@ std::unique_ptr<AsmForStmt> Parser::parseAsmForStatement() {
       std::make_shared<BooleanType>());
   std::unique_ptr<Block> Loop = parseAsmBlock(true);
   std::unique_ptr<Block> Body;
-  {
-    ParseScope ForScope{this, Scope::BreakScope | Scope::ContinueScope};
-    Body = parseAsmBlock(true);
-  }
+  Body = parseAsmBlock(true);
   return std::make_unique<AsmForStmt>(SourceRange(Begin, Tok.getEndLoc()),
                                       std::move(Init), std::move(Condition),
                                       std::move(Loop), std::move(Body));
@@ -261,7 +252,6 @@ std::unique_ptr<AsmVarDecl> Parser::parseAsmVariableDeclaration() {
   std::unique_ptr<Expr> Value;
   auto VD = std::make_unique<AsmVarDecl>(SourceRange(Begin, Tok.getEndLoc()),
                                          Name, std::move(T), std::move(Value));
-  Actions.addDecl(VD.get());
   return VD;
 }
 
@@ -295,7 +285,6 @@ Parser::parseAsmFunctionDefinitionStatement() {
   const SourceLocation Begin = Tok.getLocation();
   std::unique_ptr<AsmFunctionDecl> AFD;
   {
-    ParseScope ArgumentScope{this, 0};
     ConsumeToken(); // function
     auto Name = Tok.getIdentifierInfo()->getName();
     ConsumeToken();
@@ -308,17 +297,13 @@ Parser::parseAsmFunctionDefinitionStatement() {
       ReturnParams = parseAsmVariableDeclarationList();
     }
     std::unique_ptr<Block> Body;
-    {
-      ParseScope FunctionScope{this, Scope::FunctionScope};
-      Body = parseAsmBlock(true);
-    }
+    Body = parseAsmBlock(true);
     const SourceLocation End = Body->getLocation().getEnd();
     const SourceRange L(Begin, End);
     AFD = std::make_unique<AsmFunctionDecl>(
         L, Name, std::make_unique<ParamList>(std::move(Parameters)),
         std::make_unique<ParamList>(std::move(ReturnParams)), std::move(Body));
   }
-  Actions.addDecl(AFD.get());
   return std::make_unique<AsmFunctionDeclStmt>(AFD->getLocation(),
                                                std::move(AFD));
 }
