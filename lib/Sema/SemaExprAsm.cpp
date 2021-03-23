@@ -428,19 +428,10 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
       assert(false && "unknown special identifier");
       __builtin_unreachable();
     }
-    return std::make_unique<AsmIdentifier>(Tok, Iter->second, std::move(Ty), IsCall);
+    return std::make_unique<AsmIdentifier>(Tok, Iter->second, std::move(Ty),
+                                           IsCall);
   }
-  Decl *D = lookupName(Name);
-  if (D == nullptr) {
-    auto Unresolved = std::make_unique<AsmIdentifier>(Tok, IsCall);
-    if (IsCall) {
-      CurrentScope()->addUnresolved(Unresolved.get());
-    } else {
-      CurrentScope()->addUnresolvedExternal(Unresolved.get());
-    }
-    return Unresolved;
-  }
-  return std::make_unique<AsmIdentifier>(Tok, D, IsCall);
+  return std::make_unique<AsmIdentifier>(Tok, IsCall);
 }
 
 std::unique_ptr<Expr> Sema::CreateAsmCallExpr(SourceRange L, ExprPtr &&Callee,

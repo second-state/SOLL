@@ -90,16 +90,10 @@ public:
   // void visit(AsmDefaultStmtType &) override;
   void visit(AsmSwitchStmtType &AS) override {
     Sema::SemaScope SwitchScope{&Actions, 0};
+    StmtVisitor::visit(AS);
   }
   // void visit(AsmAssignmentStmtType &) override;
-  void visit(AsmFunctionDeclStmtType &FDS) override {
-    StmtVisitor::visit(FDS);
-    if (auto *D = FDS.getDecl()) {
-      if (auto *B = D->getBody()) {
-        B->accept(*this);
-      }
-    }
-  }
+  void visit(AsmFunctionDeclStmtType &FDS) override;
   // void visit(AsmLeaveStmtType &) override;
   void visit(AsmIdentifierType &AI) override {
     StmtVisitor::visit(AI);
@@ -200,7 +194,10 @@ public:
   }
   // void visit(ModifierInvocationType &) override;
 
-  // void visit(YulCodeType &) override;
+  void visit(YulCodeType &YC) override {
+    DeclVisitor::visit(YC);
+    YC.getBody()->accept(IR);
+  }
   // void visit(YulDataType &) override;
   // void visit(YulObjectType &) override;
   void visit(AsmFunctionDeclType &FD) override {
@@ -232,6 +229,11 @@ void IdentifierResolver::visit(DeclStmtType &DS) {
   if (DS.getValue()) {
     DS.getValue()->accept(*this);
   }
+}
+
+void IdentifierResolver::visit(AsmFunctionDeclStmtType &FDS) {
+  StmtVisitor::visit(FDS);
+  FDS.getDecl()->accept(DIR);
 }
 
 void Sema::resolveIdentifierDecl(SourceUnit &SU) {

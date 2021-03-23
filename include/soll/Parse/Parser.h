@@ -281,23 +281,6 @@ private:
   bool ExpectAndConsumeSemi(unsigned DiagID = diag::err_expected);
 
 public:
-  class ParseScope {
-    Parser *Self;
-    ParseScope(const ParseScope &) = delete;
-    ParseScope &operator=(const ParseScope &) = delete;
-
-  public:
-    ParseScope(Parser *Self, unsigned ScopeFlags) : Self(Self) {
-      Self->EnterScope(ScopeFlags);
-    }
-    void Exit() {
-      if (Self) {
-        Self->ExitScope();
-        Self = nullptr;
-      }
-    }
-    ~ParseScope() { Exit(); }
-  };
   void EnterScope(unsigned ScopeFlags);
   void ExitScope();
 
