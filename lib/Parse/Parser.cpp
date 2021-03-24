@@ -380,8 +380,8 @@ std::unique_ptr<SourceUnit> Parser::parse() {
     SU = std::make_unique<SourceUnit>(SourceRange(Begin, Tok.getLocation()),
                                       std::move(Nodes));
   }
-  Actions.resolveIdentifierDecl(*SU);
   Actions.resolveInherit(*SU);
+  Actions.resolveIdentifierDecl(*SU);
   Actions.resolveType(*SU);
   Actions.resolveUniqueName(*SU);
   return SU;
@@ -660,6 +660,7 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
 
   Result.IsConstructor = false;
   Result.IsFallback = false;
+  Result.IsVirtual = false;
 
   if (Tok.is(tok::kw_constructor)) {
     Result.IsConstructor = true;
