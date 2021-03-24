@@ -246,7 +246,8 @@ public:
   }
   // XXX: function for hotfix above
   void markVirtual() { IsVirtual = true; }
-  FunctionDecl *resolveVirtual(const ContractDecl &MostDerivedContract);
+  FunctionDecl const *resolveVirtual(const ContractDecl &MostDerivedContract,
+                                     const ContractDecl *SearchStart);
 
   void accept(DeclVisitor &Visitor) override;
   void accept(ConstDeclVisitor &Visitor) const override;

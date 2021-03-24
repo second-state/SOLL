@@ -353,6 +353,7 @@ void Sema::InjectInheritContract(std::vector<Decl *> &BaseDecl,
 
       BaseDecl.erase(ParentDeclIt);
     } else if (auto pDecl = dynamic_cast<VarDecl *>(*ParentDeclIt)) {
+      (void)!pDecl; // silence compiler warning
       Diag(ChildDecl->getLocation().getBegin(),
            diag::err_statevar_cannot_be_overrided)
           << ChildDecl->getName();
@@ -374,7 +375,7 @@ void Sema::resolveInherit(SourceUnit &SU) {
   SU.accept(DIRP);
 
   if (!IGS.solve()) {
-    // cerr << "resolveInherit error! abort" << endl;
+    Diag(SU.getLocation().getBegin(), diag::err_resolve_inherit_fail);
     return;
   }
 

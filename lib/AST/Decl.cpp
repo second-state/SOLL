@@ -269,8 +269,25 @@ FunctionDecl::FunctionDecl(
       std::make_shared<FunctionType>(std::move(PTys), std::move(RTys), PNames);
 }
 
-FunctionDecl *
-FunctionDecl::resolveVirtual(const ContractDecl &MostDerivedContract) {
+FunctionDecl const *
+FunctionDecl::resolveVirtual(const ContractDecl &MostDerivedContract,
+                             const ContractDecl *SearchStart) {
+  assert(!isConstructor());
+
+  // Shortcut if the function is not Virtual
+  if (SearchStart == nullptr && !isVirtual())
+    return this;
+
+  for (auto Cont : MostDerivedContract.getResolvedBaseContracts()) {
+    for (auto Func : Cont->getFuncs()) {
+      if (Func->getName() == getName()) {
+        return Func;
+      }
+    }
+  }
+
+  assert(false && "Virtual function not found.");
+  __builtin_unreachable();
   return this;
 }
 
