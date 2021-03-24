@@ -246,28 +246,6 @@ public:
     }
   }
 };
-
-class InheritStatusVarResolver : public StmtVisitor {
-  ContractDecl *Cont;
-  std::map<llvm::StringRef, Decl *> VarDecls;
-
-public:
-  InheritStatusVarResolver(ContractDecl *CD) : Cont(CD) {
-    for (auto Var : Cont->getVars())
-      VarDecls[Var->getName()] = Var;
-    for (auto Func : Cont->getFuncs())
-      VarDecls[Func->getName()] = Func;
-  }
-
-  void visit(Identifier &I) override {
-    if (I.getType() == nullptr) {
-      auto VarPtr = VarDecls.find(I.getName());
-      if (VarPtr != VarDecls.end()) {
-        I.setCorrespondDecl(VarPtr->second);
-      }
-    }
-  }
-};
 } // namespace
 
 void Sema::InjectInheritContract(std::vector<Decl *> &BaseDecl,
@@ -396,10 +374,6 @@ void Sema::resolveInherit(SourceUnit &SU) {
       InjectInheritContract(DeclResult, base->getSubNodes(), appendData);
     }
     cont->setInheritNodes(std::move(DeclResult));
-    InheritStatusVarResolver ISVR(cont);
-    for (auto func : cont->getFuncs())
-      if (func->getBody())
-        func->getBody()->accept(ISVR);
   }
 
   // check after inject

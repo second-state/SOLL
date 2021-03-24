@@ -155,7 +155,10 @@ public:
       DeclVisitor::visit(FD);
       {
         Sema::SemaScope FunctionScope{&Actions, Scope::FunctionScope};
-        FD.getBody()->accept(IR);
+
+        // abstract function do not have body
+        if (FD.getBody())
+          FD.getBody()->accept(IR);
       }
     }
   }
