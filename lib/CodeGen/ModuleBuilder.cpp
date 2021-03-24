@@ -3,6 +3,7 @@
 #include "CodeGenModule.h"
 #include "soll/AST/AST.h"
 #include "soll/Basic/Diagnostic.h"
+#include "soll/Basic/DiagnosticCodeGen.h"
 #include <memory>
 
 namespace {
@@ -67,11 +68,14 @@ public:
     }
     if (dynamic_cast<PragmaDirective *>(D)) {
     } else if (auto *CD = dynamic_cast<ContractDecl *>(D)) {
-      if (CD->getKind() == ContractDecl::ContractKind::Interface)
+      if (CD->getKind() == ContractDecl::ContractKind::Interface) {
+        Diags.Report(diag::err_can_not_emit_interface);
         return ;
-      // TODO : Should we make a warning ?
-      if (!CD->isImplemented())
+      }
+      if (!CD->isImplemented()) {
+        Diags.Report(diag::err_can_not_emit_contract_with_implemented_part);
         return ;
+      }
       Builder->emitContractDecl(CD);
     } else if (auto *YO = dynamic_cast<YulObject *>(D)) {
       Builder->emitYulObject(YO);
