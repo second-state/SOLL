@@ -685,6 +685,10 @@ void Lexer::SkipLineComment(const char *CurPtr) {
       // If there was space between the backslash and newline, warn about it.
       if (HasSpace)
         Diag(EscapePtr, diag::backslash_newline_space);
+    } else {
+      // EOF case
+      BufferPtr = CurPtr;
+      return;
     }
 
     // Otherwise, this is a hard case.  Fall back on getAndAdvanceChar to
