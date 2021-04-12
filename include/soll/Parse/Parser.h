@@ -76,6 +76,7 @@ private:
   std::unique_ptr<OverrideSpecifier> parseOverrideSpecifier();
   StateMutability parseStateMutability();
   DataLocation parseDataLocation();
+  std::unique_ptr<UsingFor> parseUsingFor();
 
   FunctionHeaderParserResult parseFunctionHeader(bool ForceEmptyName,
                                                  bool AllowModifiers);

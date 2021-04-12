@@ -16,6 +16,10 @@ void DeclVisitorBase<Const>::visit(PragmaDirectiveType &) {
   // leaf, do nothing
 }
 
+template <bool Const> void DeclVisitorBase<Const>::visit(UsingForType &) {
+  // leaf, do nothing
+}
+
 template <bool Const> void DeclVisitorBase<Const>::visit(ContractDeclType &CD) {
   if (CD.getConstructor() != nullptr) {
     CD.getConstructor()->accept(*this);

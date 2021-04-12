@@ -16,6 +16,9 @@ void PragmaDirective::accept(ConstDeclVisitor &visitor) const {
   visitor.visit(*this);
 }
 
+void UsingFor::accept(DeclVisitor &visitor) { visitor.visit(*this); }
+void UsingFor::accept(ConstDeclVisitor &visitor) const { visitor.visit(*this); }
+
 void ContractDecl::accept(DeclVisitor &visitor) { visitor.visit(*this); }
 void ContractDecl::accept(ConstDeclVisitor &visitor) const {
   visitor.visit(*this);

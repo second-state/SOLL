@@ -69,6 +69,20 @@ ContractDecl::getResolvedBaseContracts() const {
                                            ResolvedBaseContracts.end());
 }
 
+std::vector<UsingFor *> ContractDecl::getUsingForNodes() {
+  std::vector<UsingFor *> Decls;
+  for (auto &Decl : this->UsingForNodes)
+    Decls.emplace_back(Decl.get());
+  return Decls;
+}
+
+std::vector<const UsingFor *> ContractDecl::getUsingForNodes() const {
+  std::vector<const UsingFor *> Decls;
+  for (auto &Decl : this->UsingForNodes)
+    Decls.emplace_back(Decl.get());
+  return Decls;
+}
+
 std::vector<Decl *> ContractDecl::getSubNodes() {
   std::vector<Decl *> Decls;
   for (auto &Decl : this->SubNodes)

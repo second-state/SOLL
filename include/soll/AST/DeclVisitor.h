@@ -7,6 +7,7 @@ namespace soll {
 
 class SourceUnit;
 class PragmaDirective;
+class UsingFor;
 class ContractDecl;
 class FunctionDecl;
 class EventDecl;
@@ -26,6 +27,7 @@ template <bool Const> class DeclVisitorBase {
 protected:
   using SourceUnitType = typename cond_const<Const, SourceUnit>::type;
   using PragmaDirectiveType = typename cond_const<Const, PragmaDirective>::type;
+  using UsingForType = typename cond_const<Const, UsingFor>::type;
   using ContractDeclType = typename cond_const<Const, ContractDecl>::type;
   using FunctionDeclType = typename cond_const<Const, FunctionDecl>::type;
   using EventDeclType = typename cond_const<Const, EventDecl>::type;
@@ -46,6 +48,7 @@ public:
   virtual ~DeclVisitorBase() noexcept {}
   virtual void visit(SourceUnitType &);
   virtual void visit(PragmaDirectiveType &);
+  virtual void visit(UsingForType &);
   virtual void visit(ContractDeclType &);
   virtual void visit(FunctionDeclType &);
   virtual void visit(EventDeclType &);

@@ -67,6 +67,32 @@ public:
   void accept(ConstDeclVisitor &visitor) const override;
 };
 
+class IdentifierPath {
+  std::vector<std::string> Path;
+
+public:
+  IdentifierPath(std::vector<std::string> P) : Path(std::move(P)) {}
+};
+
+class UsingFor : public Decl {
+public:
+  UsingFor(SourceRange L, std::unique_ptr<IdentifierPath> &&LibraryName,
+           TypePtr TypeName)
+      : Decl(L), LibraryName(std::move(LibraryName)), TypeName(TypeName) {}
+
+  IdentifierPath const &getLibraryName() const { return *LibraryName; }
+  TypePtr getType() { return TypeName; }
+  const TypePtr &getType() const { return TypeName; }
+  void setType(TypePtr Ty) { TypeName = Ty; }
+
+  void accept(DeclVisitor &Visitor) override;
+  void accept(ConstDeclVisitor &Visitor) const override;
+
+private:
+  std::unique_ptr<IdentifierPath> LibraryName;
+  TypePtr TypeName;
+};
+
 class ContractDecl : public Decl {
 public:
   enum class ContractKind { Interface, Contract, Library };
@@ -74,6 +100,7 @@ public:
 private:
   std::vector<std::unique_ptr<InheritanceSpecifier>> BaseContracts;
   std::vector<ContractDecl *> ResolvedBaseContracts;
+  std::vector<std::unique_ptr<UsingFor>> UsingForNodes;
   std::vector<DeclPtr> SubNodes;
   std::vector<Decl *> InheritNodes;
   std::unique_ptr<FunctionDecl> Constructor;
@@ -89,14 +116,15 @@ public:
   ContractDecl(
       SourceRange L, llvm::StringRef Name,
       std::vector<std::unique_ptr<InheritanceSpecifier>> &&baseContracts,
+      std::vector<std::unique_ptr<UsingFor>> &&UsingForNodes,
       std::vector<DeclPtr> &&subNodes,
       std::unique_ptr<FunctionDecl> &&constructor,
       std::unique_ptr<FunctionDecl> &&fallback, TypePtr ContractTy = nullptr,
       ContractKind kind = ContractKind::Contract, bool isAbstract = false)
       : Decl(L, Name), BaseContracts(std::move(baseContracts)),
-        SubNodes(std::move(subNodes)), Constructor(std::move(constructor)),
-        Fallback(std::move(fallback)), ContractTy(ContractTy), Kind(kind),
-        IsAbstract(isAbstract) {}
+        UsingForNodes(std::move(UsingForNodes)), SubNodes(std::move(subNodes)),
+        Constructor(std::move(constructor)), Fallback(std::move(fallback)),
+        ContractTy(ContractTy), Kind(kind), IsAbstract(isAbstract) {}
 
   ContractKind getKind() const;
   bool isImplemented();
@@ -109,6 +137,9 @@ public:
   void setResolvedBaseContracts(const std::vector<ContractDecl *> &);
   std::vector<ContractDecl *> getResolvedBaseContracts();
   std::vector<const ContractDecl *> getResolvedBaseContracts() const;
+
+  std::vector<UsingFor *> getUsingForNodes();
+  std::vector<const UsingFor *> getUsingForNodes() const;
 
   std::vector<Decl *> getSubNodes();
   std::vector<const Decl *> getSubNodes() const;
@@ -143,13 +174,6 @@ public:
 
   void accept(DeclVisitor &visitor) override;
   void accept(ConstDeclVisitor &visitor) const override;
-};
-
-class IdentifierPath {
-  std::vector<std::string> Path;
-
-public:
-  IdentifierPath(std::vector<std::string> P) : Path(std::move(P)) {}
 };
 
 class InheritanceSpecifier {

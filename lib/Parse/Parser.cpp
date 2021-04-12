@@ -570,6 +570,7 @@ std::unique_ptr<ContractDecl> Parser::parseContractDefinition() {
   ConsumeToken();
 
   std::vector<std::unique_ptr<InheritanceSpecifier>> BaseContracts;
+  std::vector<std::unique_ptr<UsingFor>> UsingForNodes;
   std::vector<std::unique_ptr<Decl>> SubNodes;
   std::unique_ptr<FunctionDecl> Constructor;
   std::unique_ptr<FunctionDecl> Fallback;
@@ -638,9 +639,7 @@ std::unique_ptr<ContractDecl> Parser::parseContractDefinition() {
     } else if (TryConsumeToken(tok::kw_event)) {
       SubNodes.push_back(parseEventDefinition());
     } else if (Tok.is(tok::kw_using)) {
-      // TODO: contract tok::kw_using
-      Diag(diag::err_unimplemented_token) << tok::kw_using;
-      return nullptr;
+      UsingForNodes.push_back(parseUsingFor());
     } else {
       Diag(diag::err_expected_contract_part);
       return nullptr;
@@ -648,9 +647,27 @@ std::unique_ptr<ContractDecl> Parser::parseContractDefinition() {
   }
   auto CD = std::make_unique<ContractDecl>(
       SourceRange(Begin, End), Name, std::move(BaseContracts),
-      std::move(SubNodes), std::move(Constructor), std::move(Fallback), nullptr,
-      CtKind.first, CtKind.second);
+      std::move(UsingForNodes), std::move(SubNodes), std::move(Constructor),
+      std::move(Fallback), nullptr, CtKind.first, CtKind.second);
   return CD;
+}
+
+std::unique_ptr<UsingFor> Parser::parseUsingFor() {
+  const SourceLocation Begin = Tok.getLocation();
+  ConsumeToken(); // tok::kw_using
+  auto Library = parseIdentifierPath();
+  TypePtr TypeName = nullptr;
+  TryConsumeToken(tok::kw_for);
+  if (Tok.is(tok::star))
+    ConsumeToken();
+  else
+    TypeName = parseTypeName(false);
+  const SourceLocation End = Tok.getEndLoc();
+  if (ExpectAndConsumeSemi()) {
+    return nullptr;
+  }
+  return std::make_unique<UsingFor>(SourceRange(Begin, End), std::move(Library),
+                                    TypeName);
 }
 
 Parser::FunctionHeaderParserResult
