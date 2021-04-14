@@ -514,6 +514,11 @@ public:
     }
     return i;
   }
+
+  bool hasElement(std::string Name) const  {
+    return getElementIndex(Name) < ElementNames.size();
+  }
+  
   size_t getStoragePos(size_t ElementIndex) const {
     size_t Pos = 0;
     for (size_t i = 0; i < ElementIndex; ++i) {

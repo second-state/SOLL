@@ -764,6 +764,10 @@ private:
       ExprValuePtr StructValue = visit(ME->getBase());
       auto ST =
           dynamic_cast<const StructType *>(ME->getBase()->getType().get());
+
+      assert(ST && "StructType is expected here.");
+      assert(ST->hasElement(ME->getName()->getName().str()));
+
       unsigned ElementIndex =
           ST->getElementIndex(ME->getName()->getName().str());
       return structIndexAccess(StructValue, ElementIndex, ST);
