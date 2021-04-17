@@ -129,6 +129,9 @@ public:
     else if (auto *CD = dynamic_cast<ContractDecl *>(D)) {
       return CD->getType();
     }
+    if (auto *CD = Actions.lookupContractDeclName(UT->getIdentifierName())) {
+      return CD->getType();
+    }
     __builtin_unreachable();
   }
   void visit(SourceUnitType &SU) override {
@@ -136,11 +139,20 @@ public:
     DeclVisitor::visit(SU);
   }
   // void visit(PragmaDirectiveType &) override;
+  void visit(UsingForType &UF) {
+    auto IP = UF.getLibraryName();
+    for (auto Str : IP.getPath()) {
+      auto Lib = Actions.lookupContractDeclName(Str);
+      assert(Lib->getKind() == ContractDecl::ContractKind::Library &&
+             "Not a Library!");
+      UF.addLibrary(Lib);
+    }
+    if (auto *UT = dynamic_cast<UnresolveType *>(UF.getType().get())) {
+      UF.setType(handleUnresolveType(UT));
+    }
+  }
   void visit(ContractDeclType &CD) override {
-    auto CT = std::make_shared<ContractType>(&CD);
-    CD.setType(CT);
     Actions.addDecl(&CD);
-    Actions.addContractDecl(&CD);
     {
       Sema::SemaScope ContractScope{&Actions, 0};
       CurrentContract = &CD;

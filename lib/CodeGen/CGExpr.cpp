@@ -1819,6 +1819,7 @@ ExprValuePtr CodeGenFunction::emitSpecialCallExpr(const Identifier *SI,
     return ExprValue::getRValue(CE, emitCallBlockHash(CE));
   case Identifier::SpecialIdentifier::address_staticcall:
     return ExprValue::getRValue(CE, emitCallAddressStaticcall(CE, ME));
+  case Identifier::SpecialIdentifier::library_call:
   case Identifier::SpecialIdentifier::address_delegatecall:
     return ExprValue::getRValue(CE, emitCallAddressDelegatecall(CE, ME));
   case Identifier::SpecialIdentifier::external_call:

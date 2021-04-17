@@ -71,8 +71,12 @@ class IdentifierPath {
   std::vector<std::string> Path;
 
 public:
-  IdentifierPath(std::vector<std::string> P) : Path(std::move(P)) {}
+  IdentifierPath(std::vector<std::string> &&P) : Path(std::move(P)) {}
+  std::vector<std::string> &getPath() { return Path; }
+  const std::vector<std::string> &getPath() const { return Path; }
 };
+
+class ContractDecl;
 
 class UsingFor : public Decl {
 public:
@@ -81,15 +85,18 @@ public:
       : Decl(L), LibraryName(std::move(LibraryName)), TypeName(TypeName) {}
 
   IdentifierPath const &getLibraryName() const { return *LibraryName; }
+  const std::vector<ContractDecl *> &getLibraries() const { return Libraries; }
   TypePtr getType() { return TypeName; }
   const TypePtr &getType() const { return TypeName; }
   void setType(TypePtr Ty) { TypeName = Ty; }
+  void addLibrary(ContractDecl *Lib) { Libraries.emplace_back(Lib); }
 
   void accept(DeclVisitor &Visitor) override;
   void accept(ConstDeclVisitor &Visitor) const override;
 
 private:
   std::unique_ptr<IdentifierPath> LibraryName;
+  std::vector<ContractDecl *> Libraries;
   TypePtr TypeName;
 };
 
@@ -112,6 +119,9 @@ private:
   std::string LLVMContractFuncName;
   std::string LLVMCtorFuncName;
 
+  llvm::StringMap<llvm::StringMap<std::pair<ContractDecl *, FunctionDecl *>>>
+      TypeMemberMap;
+
 public:
   ContractDecl(
       SourceRange L, llvm::StringRef Name,
@@ -130,6 +140,10 @@ public:
   bool isImplemented();
   TypePtr getType() { return ContractTy; }
   void setType(TypePtr Ty) { ContractTy = Ty; }
+  llvm::StringMap<llvm::StringMap<std::pair<ContractDecl *, FunctionDecl *>>> &
+  getTypeMemberMap() {
+    return TypeMemberMap;
+  }
 
   std::vector<InheritanceSpecifier *> getBaseContracts();
   std::vector<const InheritanceSpecifier *> getBaseContracts() const;

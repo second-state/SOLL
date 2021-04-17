@@ -172,9 +172,11 @@ void setTypeForBinary(Sema &Actions, BinaryOperator &BO, ImplicitCastExpr *LHS,
 class TypeResolver : public StmtVisitor {
   TypePtr ReturnType;
   Sema &Actions;
+  ContractDecl *&CurrentContract;
 
 public:
-  TypeResolver(Sema &A) : Actions(A) {}
+  TypeResolver(Sema &A, ContractDecl *&CurrentContract)
+      : Actions(A), CurrentContract(CurrentContract) {}
   void setReturnType(TypePtr Ty) { ReturnType = std::move(Ty); }
   Sema &getSema() { return Actions; }
 
@@ -406,6 +408,25 @@ public:
     default:
       break;
     }
+    auto &Map = CurrentContract->getTypeMemberMap();
+    FunctionDecl *FD = nullptr;
+    if (Map.count(ME.getBase()->getType()->getName())) {
+      auto &MemberMap = Map[ME.getBase()->getType()->getName()];
+      if (MemberMap.count(Name)) {
+        FD = MemberMap.lookup(Name).second;
+      }
+    } else if (Map.count("")) {
+      auto &MemberMap = Map[""];
+      if (MemberMap.count(Name)) {
+        FD = MemberMap.lookup(Name).second;
+      }
+    }
+    if (FD) {
+      auto Ty = FD->getType();
+      ME.setName(std::make_unique<Identifier>(
+          Tok, Identifier::SpecialIdentifier::library_call, Ty));
+      return;
+    }
     Actions.Diag(ME.getName()->getLocation().getBegin(), diag::err_no_member)
         << Name << ME.getBase()->getType()->getName();
   }
@@ -446,9 +467,27 @@ public:
 class DeclTypeResolver : public DeclVisitor {
   TypeResolver TR;
   Sema &Actions;
+  ContractDecl *CurrentContract;
 
 public:
-  DeclTypeResolver(Sema &S) : TR(S), Actions(S) {}
+  DeclTypeResolver(Sema &S)
+      : TR(S, CurrentContract), Actions(S), CurrentContract(nullptr) {}
+  void visit(UsingForType &UF) {
+    auto &Map = CurrentContract->getTypeMemberMap();
+    std::string TypeName = "";
+    if (UF.getType())
+      TypeName = UF.getType()->getUniqueName();
+    for (auto Lib : UF.getLibraries()) {
+      for (auto Func : Lib->getFuncs()) {
+        Map[TypeName][Func->getName()] = {Lib, Func};
+      }
+    }
+  }
+  void visit(ContractDeclType &CD) override {
+    CurrentContract = &CD;
+    DeclVisitor::visit(CD);
+    CurrentContract = nullptr;
+  }
   void visit(FunctionDecl &FD) override {
     if (auto *Ty = dynamic_cast<FunctionType *>(FD.getType().get())) {
       if (Ty->getReturnTypes().empty()) {
@@ -466,11 +505,6 @@ public:
     DeclVisitor::visit(FD);
   }
   void visit(VarDecl &VD) override {
-    if (auto *UT = dynamic_cast<UnresolveType *>(VD.getType().get())) {
-      ContractDecl *D = Actions.lookupContractDeclName(UT->getIdentifierName());
-      if (D)
-        VD.setType(D->getType());
-    }
     if (VD.getValue()) {
       VD.getValue()->accept(TR);
       if (auto *IC = dynamic_cast<ImplicitCastExpr *>(VD.getValue())) {
@@ -498,18 +532,20 @@ void TypeResolver::visit(CallExprType &CE) {
   StmtVisitor::visit(CE);
 
   Expr *E = CE.getCalleeExpr(), *Base = nullptr;
+  MemberExpr *ME = nullptr;
   std::string FunctionSignature;
-  if (auto ME = dynamic_cast<MemberExpr *>(E)) {
-    E = ME->getName();
+  if (ME = dynamic_cast<MemberExpr *>(E)) {
+    auto Name = ME->getName();
+    E = Name;
     Base = ME->getBase();
-    // A ContractType without Decl is solidity reserved word.
-    if (auto CT = dynamic_cast<const ContractType *>(Base->getType().get());
-        CT && CT->getDecl()) {
+    switch (Name->getSpecialIdentifier()) {
+    case Identifier::SpecialIdentifier::external_call:
+    case Identifier::SpecialIdentifier::library_call: {
       FunctionSignature = ME->getName()->getName().str() + "(";
       auto FTy = dynamic_cast<FunctionType *>(ME->getType().get());
       assert(FTy->getReturnTypes().empty() &&
              "Only support functions without return value now!");
-      auto ParamTypes = FTy->getParamTypes();
+      auto &ParamTypes = FTy->getParamTypes();
       bool First = true;
       for (auto PTy : ParamTypes) {
         if (!First)
@@ -518,8 +554,15 @@ void TypeResolver::visit(CallExprType &CE) {
         FunctionSignature += PTy->getSignatureEncoding();
       }
       FunctionSignature += ")";
+      break;
+    }
+    default: {
+      break;
+    }
     }
   }
+
+  CE.resolveNamedCall();
 
   FunctionType *FTy = nullptr;
   if (auto I = dynamic_cast<Identifier *>(E)) {
@@ -537,6 +580,24 @@ void TypeResolver::visit(CallExprType &CE) {
       case Identifier::SpecialIdentifier::abi_encodePacked:
       case Identifier::SpecialIdentifier::abi_encode:
         break;
+      case Identifier::SpecialIdentifier::library_call: {
+        auto &RawArguments = CE.getRawArguments();
+        auto First = Actions.CreateDummy(ME->moveBase());
+        RawArguments.insert(RawArguments.begin(), std::move(First));
+        // TODO: ME->setBase(<Library Address>);
+        auto LibraryAddressLiteral = std::make_unique<NumberLiteral>(
+            SourceRange(), false, llvm::APInt(32, 0, true));
+        auto LibraryAddress =
+            Actions.CreateDummy(std::move(LibraryAddressLiteral));
+        if (auto *IC = dynamic_cast<ImplicitCastExpr *>(LibraryAddress.get())) {
+          Actions.resolveImplicitCast(
+              *IC, std::make_shared<AddressType>(StateMutability::Payable),
+              false);
+        }
+        ME->setBase(std::move(LibraryAddress));
+        Base = ME->getBase();
+        [[fallthrough]];
+      }
       /*<Contract>.func(...) ==
        * address(<Contract>).call(abi.encodeWithSignature(signature(func),...))
        */
@@ -546,7 +607,6 @@ void TypeResolver::visit(CallExprType &CE) {
         ArgTypes.insert(ArgTypes.begin(), std::make_shared<StringType>());
         SignatureStringLiteral->setType(ArgTypes.at(0));
         auto Signature = Actions.CreateDummy(std::move(SignatureStringLiteral));
-        CE.resolveNamedCall();
         auto &RawArguments = CE.getRawArguments();
         RawArguments.insert(RawArguments.begin(), std::move(Signature));
         [[fallthrough]];
@@ -601,8 +661,9 @@ void TypeResolver::visit(CallExprType &CE) {
       default:
         FTy = dynamic_cast<FunctionType *>(I->getType().get());
       }
-      if (I->getSpecialIdentifier() ==
-          Identifier::SpecialIdentifier::external_call) {
+      switch (I->getSpecialIdentifier()) {
+      case Identifier::SpecialIdentifier::external_call:
+      case Identifier::SpecialIdentifier::library_call: {
         auto &RawArguments = CE.getRawArguments();
         auto CallAbiEncodeWithSelector = std::make_unique<CallExpr>(
             SourceRange(),
@@ -615,6 +676,11 @@ void TypeResolver::visit(CallExprType &CE) {
         ArgTypes.resize(1);
         RawArguments.resize(1);
         RawArguments.at(0) = std::move(CallAbiEncodeWithSelector);
+        break;
+      }
+      default: {
+        break;
+      }
       }
       if (!FTy) {
         I->setType(std::make_shared<FunctionType>(

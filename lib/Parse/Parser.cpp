@@ -649,6 +649,9 @@ std::unique_ptr<ContractDecl> Parser::parseContractDefinition() {
       SourceRange(Begin, End), Name, std::move(BaseContracts),
       std::move(UsingForNodes), std::move(SubNodes), std::move(Constructor),
       std::move(Fallback), nullptr, CtKind.first, CtKind.second);
+  auto CT = std::make_shared<ContractType>(CD.get());
+  CD->setType(CT);
+  Actions.addContractDecl(CD.get());
   return CD;
 }
 
@@ -992,7 +995,7 @@ std::unique_ptr<IdentifierPath> Parser::parseIdentifierPath() {
     ConsumeToken(); // identifier
   }
 
-  return std::make_unique<IdentifierPath>(path);
+  return std::make_unique<IdentifierPath>(std::move(path));
 }
 
 TypePtr Parser::parseTypeNameSuffix(TypePtr T) {

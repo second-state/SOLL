@@ -87,7 +87,8 @@ public:
     function_value,
     this_,
     struct_constructor,
-    external_call
+    external_call,
+    library_call
   };
 
 private:
@@ -384,6 +385,11 @@ public:
   }
   bool isStateVariable() const override;
 
+  ExprPtr moveBase() {
+    auto MovedBase = std::move(Base);
+    Base = nullptr;
+    return MovedBase;
+  }
   Expr *getBase() { return Base.get(); }
   const Expr *getBase() const { return Base.get(); }
   Identifier *getName() { return Name.get(); }

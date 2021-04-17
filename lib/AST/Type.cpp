@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "soll/AST/Type.h"
+#include "soll/AST/Decl.h"
 
 namespace soll {
 
@@ -52,4 +53,13 @@ bool TupleType::isImplicitlyConvertibleTo(Type const &_other) const {
 bool TupleType::isExplicitlyConvertibleTo(Type const &_convertTo) const {
   return false;
 }
+
+std::string StructType::getUniqueName() const {
+  return D->getUniqueName().str();
+};
+
+std::string ContractType::getUniqueName() const {
+  return D->getUniqueName().str();
+};
+
 } // namespace soll

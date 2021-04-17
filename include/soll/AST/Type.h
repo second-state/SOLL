@@ -14,6 +14,7 @@
 
 namespace soll {
 
+class StructDecl;
 class ContractDecl;
 
 enum class DataLocation { Storage, CallData, Memory };
@@ -51,6 +52,7 @@ public:
   virtual Category getCategory() const = 0;
   virtual std::string getName() const = 0;
   virtual std::string getSignatureEncoding() const { return getName(); };
+  virtual std::string getUniqueName() const { return getName(); };
   virtual bool isDynamic() const = 0;
   virtual bool shouldEndianLess() const = 0;
   virtual unsigned getABIStaticSize() const = 0;
@@ -296,6 +298,10 @@ public:
 
   Category getCategory() const override { return Category::Mapping; }
   std::string getName() const override { return "mapping"; }
+  std::string getUniqueName() const override {
+    return getName() + "(" + KeyType->getUniqueName() + "=>" +
+           ValueType->getUniqueName() + ")";
+  };
   bool isDynamic() const override { return false; }
   bool shouldEndianLess() const override { return false; }
   unsigned getABIStaticSize() const override {
@@ -330,6 +336,12 @@ public:
       ArrLength = std::to_string(getLength().getZExtValue());
     return ElementType->getName() + "[" + ArrLength + "]";
   }
+  std::string getUniqueName() const override {
+    std::string ArrLength;
+    if (!isDynamicSized())
+      ArrLength = std::to_string(getLength().getZExtValue());
+    return ElementType->getUniqueName() + "[" + ArrLength + "]";
+  };
   bool isDynamic() const override {
     if (isDynamicSized()) {
       return true;
@@ -426,6 +438,18 @@ public:
     Signature += ")";
     return Signature;
   };
+  std::string getUniqueName() const override {
+    std::string UniqueName = "(";
+    bool first = true;
+    for (auto ET : ElementTypes) {
+      if (!first)
+        UniqueName += ",";
+      first = false;
+      UniqueName += ET->getUniqueName();
+    }
+    UniqueName += ")";
+    return UniqueName;
+  };
   bool isDynamic() const override {
     for (const auto &ETys : ElementTypes) {
       if (ETys == nullptr || ETys->isDynamic()) {
@@ -488,14 +512,17 @@ public:
 };
 
 class StructType : public TupleType {
+  StructDecl *D;
   std::vector<std::string> ElementNames;
   llvm::StructType *Tp = nullptr;
 
 public:
-  StructType(std::vector<TypePtr> &&ET, std::vector<std::string> &&EN)
-      : TupleType(std::move(ET)), ElementNames(std::move(EN)) {}
+  StructType(StructDecl *D, std::vector<TypePtr> &&ET,
+             std::vector<std::string> &&EN)
+      : TupleType(std::move(ET)), D(D), ElementNames(std::move(EN)) {}
   Category getCategory() const override { return Category::Struct; }
   std::string getName() const override { return "struct"; }
+  std::string getUniqueName() const override;
 
   unsigned getStorageSize() const override {
     return getStoragePos(getElementSize());
@@ -543,6 +570,7 @@ public:
   unsigned int getBitNum() const override { return 160; }
   std::string getName() const override { return "contract"; }
   std::string getSignatureEncoding() const override { return "address"; }
+  std::string getUniqueName() const override;
   bool isDynamic() const override {
     assert(false && "contract is not allowed here");
     __builtin_unreachable();
