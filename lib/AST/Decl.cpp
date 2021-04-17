@@ -319,7 +319,7 @@ EventDecl::EventDecl(SourceRange L, llvm::StringRef Name,
 StructDecl::StructDecl(Token NameTok, SourceRange L, llvm::StringRef Name,
                        std::vector<TypePtr> &&ET, std::vector<std::string> &&EN)
     : Decl(L, Name, Visibility::Default), Tok(NameTok),
-      Ty(std::make_shared<StructType>(std::move(ET), std::move(EN))) {
+      Ty(std::make_shared<StructType>(this, std::move(ET), std::move(EN))) {
   auto STy = dynamic_cast<const StructType *>(Ty.get());
   ConstructorTy = std::make_shared<FunctionType>(
       std::vector<TypePtr>(STy->getElementTypes()), std::vector<TypePtr>{Ty},
