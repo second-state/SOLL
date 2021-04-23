@@ -108,7 +108,8 @@ void ASTFrontendAction::ExecuteAction() {
   if (!CI.hasSema())
     CI.createSema();
 
-  ParseAST(CI.getSema(), CI.getASTConsumer(), CI.getASTContext(), true);
+  ParseAST(CI.getSema(), CI.getASTConsumer(), CI.getASTContext(),
+           CI.getFrontendOpts().LibrariesAddressMaps, true);
 }
 
 } // namespace soll

@@ -31,10 +31,12 @@ class Parser {
   Sema &Actions;
   DiagnosticsEngine &Diags;
   Token Tok;
+  const llvm::StringMap<llvm::APInt> LibrariesAddressMap;
   unsigned short ParenCount = 0, BracketCount = 0, BraceCount = 0;
 
 public:
-  Parser(Lexer &TheLexer, Sema &Actions, DiagnosticsEngine &Diags);
+  Parser(Lexer &TheLexer, Sema &Actions, DiagnosticsEngine &Diags,
+         const std::vector<std::string> &LibrariesAddressMaps);
   std::unique_ptr<SourceUnit> parse();
   std::unique_ptr<SourceUnit> parseYul();
 
@@ -69,7 +71,7 @@ private:
   // std::vector<Token> const& _tokens, std::vector<std::string> const&
   // _literals);
   std::unique_ptr<PragmaDirective> parsePragmaDirective();
-  std::pair<ContractDecl::ContractKind , bool> parseContractKind();
+  std::pair<ContractDecl::ContractKind, bool> parseContractKind();
   std::unique_ptr<ContractDecl> parseContractDefinition();
   std::unique_ptr<InheritanceSpecifier> parseInheritanceSpecifier();
   Decl::Visibility parseVisibilitySpecifier();
@@ -144,6 +146,8 @@ private:
   std::string simplifyIntegerLiteral(llvm::StringRef Literal);
   std::pair<bool, llvm::APInt> numericParse(llvm::StringRef Literal,
                                             uint64_t Unit = 1);
+  llvm::StringMap<llvm::APInt>
+  extractLibraries(const std::vector<std::string> &LibrariesAddressMaps);
 
   /// Used as return value of @see peekStatementType.
   enum class LookAheadInfo {

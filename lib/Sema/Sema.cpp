@@ -10,7 +10,8 @@ namespace soll {
 
 Sema::Sema(Lexer &lexer, ASTContext &ctxt, ASTConsumer &consumer)
     : Lex(lexer), Context(ctxt), Consumer(consumer),
-      Diags(Lex.getDiagnostics()), SourceMgr(Lex.getSourceManager()) {}
+      Diags(Lex.getDiagnostics()), SourceMgr(Lex.getSourceManager()),
+      LibrariesAddressMap(nullptr) {}
 
 std::unique_ptr<FunctionDecl> Sema::CreateFunctionDecl(
     SourceRange L, llvm::StringRef Name, FunctionDecl::Visibility Vis,

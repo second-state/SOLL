@@ -345,8 +345,30 @@ uint64_t token2UnitMultiplier(const Token &Tok) {
   LLVM_BUILTIN_UNREACHABLE;
 }
 
-Parser::Parser(Lexer &TheLexer, Sema &Actions, DiagnosticsEngine &Diags)
-    : TheLexer(TheLexer), Actions(Actions), Diags(Diags) {
+llvm::StringMap<llvm::APInt>
+Parser::extractLibraries(const std::vector<std::string> &LibrariesAddressMaps) {
+  llvm::StringMap<llvm::APInt> Map;
+  for (auto &Libs : LibrariesAddressMaps) {
+    std::stringstream SS(Libs);
+    std::string Buff;
+    while (SS >> Buff) {
+      std::string LibName, Address;
+      size_t I = 0;
+      for (; Buff.at(I) != ':'; ++I)
+        LibName += Buff.at(I);
+      for (++I; I < Buff.size(); ++I)
+        Address += Buff.at(I);
+      auto NumericAddress = numericParse(Address);
+      Map[LibName] = NumericAddress.second;
+    }
+  }
+  return Map;
+}
+
+Parser::Parser(Lexer &TheLexer, Sema &Actions, DiagnosticsEngine &Diags,
+               const std::vector<std::string> &LibrariesAddressMaps)
+    : TheLexer(TheLexer), Actions(Actions), Diags(Diags),
+      LibrariesAddressMap(extractLibraries(LibrariesAddressMaps)) {
   Tok = *TheLexer.CachedLex();
 }
 
@@ -380,6 +402,7 @@ std::unique_ptr<SourceUnit> Parser::parse() {
     SU = std::make_unique<SourceUnit>(SourceRange(Begin, Tok.getLocation()),
                                       std::move(Nodes));
   }
+  Actions.setLibrariesAddressMap(&LibrariesAddressMap);
   Actions.resolveInherit(*SU);
   Actions.resolveIdentifierDecl(*SU);
   Actions.resolveType(*SU);

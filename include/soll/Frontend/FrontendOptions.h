@@ -75,6 +75,7 @@ public:
   bool ShowHelp;
   bool ShowVersion;
   std::vector<FrontendInputFile> Inputs;
+  std::vector<std::string> LibrariesAddressMaps;
   InputKind Language = Sol;
 
   /// The output file, if any.
