@@ -372,6 +372,7 @@ public:
 class MemberExpr : public Expr {
   ExprPtr Base;
   std::unique_ptr<Identifier> Name;
+  llvm::APInt LibraryAddress;
 
 public:
   MemberExpr(SourceRange L, ExprPtr &&Base, std::unique_ptr<Identifier> &&Name)
@@ -383,6 +384,7 @@ public:
     this->setType(Name->getType());
     this->Name = std::move(Name);
   }
+  void setLibraryAddress(llvm::APInt LA) { LibraryAddress = LA; }
   bool isStateVariable() const override;
 
   ExprPtr moveBase() {
@@ -394,6 +396,7 @@ public:
   const Expr *getBase() const { return Base.get(); }
   Identifier *getName() { return Name.get(); }
   const Identifier *getName() const { return Name.get(); }
+  const llvm::APInt &getLibraryAddress() const { return LibraryAddress; }
 
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;

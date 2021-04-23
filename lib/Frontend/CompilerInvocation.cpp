@@ -11,6 +11,8 @@
 #include <llvm/Support/Process.h>
 #include <llvm/Support/raw_ostream.h>
 
+#include <sstream>
+
 namespace cl = llvm::cl;
 
 namespace soll {
@@ -22,6 +24,14 @@ static cl::OptionCategory SollCategory("SOLL options");
 static cl::list<std::string> InputFilenames(cl::Positional,
                                             cl::desc("[<file> ...]"),
                                             cl::cat(SollCategory));
+
+static cl::list<std::string> Libraries(
+    "libraries", cl::Optional,
+    cl::desc(
+        "Direct string containing library addresses. "
+        "Syntax: <libraryName>:<address> [whitespace] ...\n"
+        "Address is interpreted as a hex string optionally prefixed by 0x."),
+    cl::cat(SollCategory));
 
 static cl::opt<InputKind> Language("lang", cl::Optional, cl::ValueRequired,
                                    cl::init(Sol),
@@ -81,6 +91,9 @@ bool CompilerInvocation::ParseCommandLineOptions(
 
   for (auto &Filename : InputFilenames) {
     FrontendOpts.Inputs.emplace_back(Filename);
+  }
+  for (auto &Libs : Libraries) {
+    FrontendOpts.LibrariesAddressMaps.emplace_back(Libs);
   }
   FrontendOpts.ProgramAction = Action;
   FrontendOpts.Language = Language;

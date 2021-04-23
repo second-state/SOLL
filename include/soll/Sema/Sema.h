@@ -49,10 +49,20 @@ public:
   ASTConsumer &Consumer;
   DiagnosticsEngine &Diags;
   SourceManager &SourceMgr;
+  const llvm::StringMap<llvm::APInt> *LibrariesAddressMap;
 
   Sema(Lexer &lexer, ASTContext &ctxt, ASTConsumer &consumer);
 
   DiagnosticBuilder Diag(SourceLocation Loc, unsigned DiagID);
+
+  void setLibrariesAddressMap(
+      const llvm::StringMap<llvm::APInt> *LibrariesAddressMap) {
+    this->LibrariesAddressMap = LibrariesAddressMap;
+  }
+
+  const llvm::StringMap<llvm::APInt> *getLibrariesAddressMap() const {
+    return LibrariesAddressMap;
+  }
 
   // Decl
   std::unique_ptr<FunctionDecl> CreateFunctionDecl(

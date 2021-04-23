@@ -410,21 +410,28 @@ public:
     }
     auto &Map = CurrentContract->getTypeMemberMap();
     FunctionDecl *FD = nullptr;
+    ContractDecl *CD = nullptr;
     if (Map.count(ME.getBase()->getType()->getName())) {
       auto &MemberMap = Map[ME.getBase()->getType()->getName()];
       if (MemberMap.count(Name)) {
-        FD = MemberMap.lookup(Name).second;
+        std::tie(CD, FD) = MemberMap.lookup(Name);
       }
     } else if (Map.count("")) {
       auto &MemberMap = Map[""];
       if (MemberMap.count(Name)) {
-        FD = MemberMap.lookup(Name).second;
+        std::tie(CD, FD) = MemberMap.lookup(Name);
       }
     }
-    if (FD) {
+    if (FD && CD) {
       auto Ty = FD->getType();
       ME.setName(std::make_unique<Identifier>(
           Tok, Identifier::SpecialIdentifier::library_call, Ty));
+      auto &Map = *Actions.getLibrariesAddressMap();
+      auto Address = llvm::APInt(160, 0);
+      if (Map.count(CD->getName())) {
+        Address = Map.lookup(CD->getName());
+      }
+      ME.setLibraryAddress(Address);
       return;
     }
     Actions.Diag(ME.getName()->getLocation().getBegin(), diag::err_no_member)
@@ -584,9 +591,8 @@ void TypeResolver::visit(CallExprType &CE) {
         auto &RawArguments = CE.getRawArguments();
         auto First = Actions.CreateDummy(ME->moveBase());
         RawArguments.insert(RawArguments.begin(), std::move(First));
-        // TODO: ME->setBase(<Library Address>);
         auto LibraryAddressLiteral = std::make_unique<NumberLiteral>(
-            SourceRange(), false, llvm::APInt(32, 0, true));
+            SourceRange(), false, ME->getLibraryAddress());
         auto LibraryAddress =
             Actions.CreateDummy(std::move(LibraryAddressLiteral));
         if (auto *IC = dynamic_cast<ImplicitCastExpr *>(LibraryAddress.get())) {

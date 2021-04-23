@@ -9,9 +9,11 @@
 
 namespace soll {
 
-void ParseAST(Sema &S, ASTConsumer &C, ASTContext &Ctx, bool PrintStats) {
+void ParseAST(Sema &S, ASTConsumer &C, ASTContext &Ctx,
+              const std::vector<std::string> &LibrariesAddressMaps,
+              bool PrintStats) {
 
-  auto P = std::make_unique<Parser>(S.Lex, S, S.Diags);
+  auto P = std::make_unique<Parser>(S.Lex, S, S.Diags, LibrariesAddressMaps);
   std::unique_ptr<SourceUnit> root;
 
   switch (Ctx.getLang()) {
