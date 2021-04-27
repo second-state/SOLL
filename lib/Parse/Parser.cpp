@@ -681,7 +681,7 @@ std::unique_ptr<ContractDecl> Parser::parseContractDefinition() {
 std::unique_ptr<UsingFor> Parser::parseUsingFor() {
   const SourceLocation Begin = Tok.getLocation();
   ConsumeToken(); // tok::kw_using
-  auto Library = parseIdentifierPath();
+  auto Library = parseIdentifierPath(tok::comma);
   TypePtr TypeName = nullptr;
   TryConsumeToken(tok::kw_for);
   if (Tok.is(tok::star))
@@ -1006,13 +1006,14 @@ void Parser::parseUserDefinedTypeName() {
   // return UserDefinedTypeName(identifierPath);
 }
 
-std::unique_ptr<IdentifierPath> Parser::parseIdentifierPath() {
+std::unique_ptr<IdentifierPath>
+Parser::parseIdentifierPath(tok::TokenKind SplitTok) {
   assert(Tok.isAnyIdentifier());
   std::vector<std::string> path{Tok.getIdentifierInfo()->getName()};
   ConsumeToken(); // identifier
 
-  while (Tok.is(tok::period)) {
-    ConsumeToken(); // period
+  while (Tok.is(SplitTok)) {
+    ConsumeToken(); // SplitTok
     assert(Tok.isAnyIdentifier());
     path.emplace_back(Tok.getIdentifierInfo()->getName());
     ConsumeToken(); // identifier

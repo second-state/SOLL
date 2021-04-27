@@ -416,7 +416,8 @@ public:
       if (MemberMap.count(Name)) {
         std::tie(CD, FD) = MemberMap.lookup(Name);
       }
-    } else if (Map.count("")) {
+    }
+    if (Map.count("")) {
       auto &MemberMap = Map[""];
       if (MemberMap.count(Name)) {
         std::tie(CD, FD) = MemberMap.lookup(Name);
