@@ -29,7 +29,7 @@ static cl::list<std::string> Libraries(
     "libraries", cl::Optional,
     cl::desc(
         "Direct string containing library addresses. "
-        "Syntax: <libraryName>:<address> [whitespace] ...\n"
+        "Syntax: \"<libraryName>:<address> [whitespace] ...\"\n"
         "Address is interpreted as a hex string optionally prefixed by 0x."),
     cl::cat(SollCategory));
 

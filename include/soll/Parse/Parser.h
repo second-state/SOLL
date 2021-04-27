@@ -90,7 +90,8 @@ private:
                            TypePtr &&LookAheadArrayType = nullptr);
   std::unique_ptr<EventDecl> parseEventDefinition();
   void parseUserDefinedTypeName();
-  std::unique_ptr<IdentifierPath> parseIdentifierPath();
+  std::unique_ptr<IdentifierPath>
+  parseIdentifierPath(tok::TokenKind SplitTok = tok::period);
   TypePtr parseTypeNameSuffix(TypePtr T);
   TypePtr parseTypeName(bool AllowVar);
   std::shared_ptr<MappingType> parseMapping();
