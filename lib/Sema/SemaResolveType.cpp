@@ -546,9 +546,7 @@ void TypeResolver::visit(CallExprType &CE) {
     auto Name = ME->getName();
     E = Name;
     Base = ME->getBase();
-    switch (Name->getSpecialIdentifier()) {
-    case Identifier::SpecialIdentifier::external_call:
-    case Identifier::SpecialIdentifier::library_call: {
+    auto calculateFunctionSignature = [&]() {
       FunctionSignature = ME->getName()->getName().str() + "(";
       auto FTy = dynamic_cast<FunctionType *>(ME->getType().get());
       assert(FTy->getReturnTypes().empty() &&
@@ -562,11 +560,22 @@ void TypeResolver::visit(CallExprType &CE) {
         FunctionSignature += PTy->getSignatureEncoding();
       }
       FunctionSignature += ")";
-      break;
-    }
-    default: {
-      break;
-    }
+    };
+    if (auto CT = dynamic_cast<const ContractType *>(Base->getType().get());
+        CT && CT->getDecl()) {
+      // A ContractType without Decl is solidity reserved word.
+      calculateFunctionSignature();
+    } else if (Name->isSpecialIdentifier()) {
+      switch (Name->getSpecialIdentifier()) {
+      case Identifier::SpecialIdentifier::external_call:
+      case Identifier::SpecialIdentifier::library_call: {
+        calculateFunctionSignature();
+        break;
+      }
+      default: {
+        break;
+      }
+      }
     }
   }
 
