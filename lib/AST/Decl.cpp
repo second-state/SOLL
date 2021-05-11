@@ -217,11 +217,11 @@ std::vector<unsigned char> CallableVarDecl::getSignatureHash() const {
   Keccak h(256);
   h.addData(getName().bytes_begin(), 0, getName().size());
   h.addData('(');
-  bool first = true;
+  bool First = true;
   for (const VarDeclBase *var : getParams()->getParams()) {
-    if (!first)
+    if (!First)
       h.addData(',');
-    first = false;
+    First = false;
     assert(var->getType() && "unsupported type!");
     const std::string &name = var->getType()->getName();
     h.addData(reinterpret_cast<const uint8_t *>(name.data()), 0, name.size());

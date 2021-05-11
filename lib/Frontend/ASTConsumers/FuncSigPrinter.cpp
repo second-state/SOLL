@@ -65,10 +65,10 @@ void FuncSigPrinter::visit(FunctionDeclType &F) {
 }
 
 void FuncSigPrinter::visit(ParamListType &PL) {
-  bool first = true;
+  bool First = true;
   for (auto param : PL.getParams()) {
-    if (first)
-      first = false;
+    if (First)
+      First = false;
     else
       os() << ",";
     os() << param->getType()->getName();

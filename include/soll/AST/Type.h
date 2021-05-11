@@ -428,11 +428,11 @@ public:
   std::string getName() const override { return "tuple"; }
   std::string getSignatureEncoding() const override {
     std::string Signature = "(";
-    bool first = true;
+    bool First = true;
     for (auto ET : ElementTypes) {
-      if (!first)
+      if (!First)
         Signature += ",";
-      first = false;
+      First = false;
       Signature += ET->getSignatureEncoding();
     }
     Signature += ")";
@@ -440,11 +440,11 @@ public:
   };
   std::string getUniqueName() const override {
     std::string UniqueName = "(";
-    bool first = true;
+    bool First = true;
     for (auto ET : ElementTypes) {
-      if (!first)
+      if (!First)
         UniqueName += ",";
-      first = false;
+      First = false;
       UniqueName += ET->getUniqueName();
     }
     UniqueName += ")";
@@ -542,10 +542,10 @@ public:
     return i;
   }
 
-  bool hasElement(std::string Name) const  {
+  bool hasElement(std::string Name) const {
     return getElementIndex(Name) < ElementNames.size();
   }
-  
+
   size_t getStoragePos(size_t ElementIndex) const {
     size_t Pos = 0;
     for (size_t i = 0; i < ElementIndex; ++i) {

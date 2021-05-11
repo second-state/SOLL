@@ -36,7 +36,7 @@ class Parser {
 
 public:
   Parser(Lexer &TheLexer, Sema &Actions, DiagnosticsEngine &Diags,
-         const std::vector<std::string> &LibrariesAddressMaps);
+         const llvm::StringMap<llvm::APInt> &LibrariesAddressMap);
   std::unique_ptr<SourceUnit> parse();
   std::unique_ptr<SourceUnit> parseYul();
 
@@ -147,8 +147,6 @@ private:
   std::string simplifyIntegerLiteral(llvm::StringRef Literal);
   std::pair<bool, llvm::APInt> numericParse(llvm::StringRef Literal,
                                             uint64_t Unit = 1);
-  llvm::StringMap<llvm::APInt>
-  extractLibraries(const std::vector<std::string> &LibrariesAddressMaps);
 
   /// Used as return value of @see peekStatementType.
   enum class LookAheadInfo {
