@@ -140,9 +140,9 @@ public:
   }
   // void visit(PragmaDirectiveType &) override;
   void visit(UsingForType &UF) {
-    auto IP = UF.getLibraryName();
-    for (auto Str : IP.getPath()) {
-      auto Lib = Actions.lookupContractDeclName(Str);
+    auto LibraryIdentifierPath = UF.getLibraryName();
+    for (auto LibraryIdentifier : LibraryIdentifierPath.getPath()) {
+      auto Lib = Actions.lookupContractDeclName(LibraryIdentifier);
       assert(Lib->getKind() == ContractDecl::ContractKind::Library &&
              "Not a Library!");
       UF.addLibrary(Lib);

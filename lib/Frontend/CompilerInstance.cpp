@@ -154,7 +154,8 @@ void CompilerInstance::createSourceManager(FileManager &FileMgr) {
 }
 
 void CompilerInstance::createASTContext() {
-  auto *Context = new ASTContext(getFrontendOpts().Language);
+  auto *Context = new ASTContext(getFrontendOpts().Language,
+                                 getFrontendOpts().LibrariesAddressMaps);
   setASTContext(Context);
 }
 
