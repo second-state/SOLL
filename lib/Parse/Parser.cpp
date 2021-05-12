@@ -1665,8 +1665,9 @@ std::unique_ptr<Expr> Parser::parseBinaryExpression(
     while (getBinOpPrecedence(Tok.getKind()) == Precedence) {
       const BinaryOperatorKind Op = token2bop(Tok);
       ConsumeToken(); // binary op
-      std::unique_ptr<Expr> RightHandSide =
-          parseBinaryExpression(Precedence + 1);
+      // Parse a**b**c as a**(b**c)
+      const bool IsRightAssoc = Op == BinaryOperatorKind::BO_Exp;
+      std::unique_ptr<Expr> RightHandSide = parseBinaryExpression(Precedence + !IsRightAssoc);
       const SourceLocation End = RightHandSide->getLocation().getEnd();
       Expression =
           Actions.CreateBinOp(SourceRange(Begin, End), Op,
