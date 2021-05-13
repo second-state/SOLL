@@ -2391,7 +2391,8 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
                 CGM.getEndianlessValue(CGM.emitGetTxOrigin()), CGM.Int256Ty));
   case AsmIdentifier::SpecialIdentifier::txgasprice:
     return ExprValue::getRValue(
-        CE, Builder.CreateZExtOrTrunc(CGM.emitGetTxGasPrice(), CGM.Int256Ty));
+        CE, CGM.getEndianlessValue(Builder.CreateZExtOrTrunc(
+                CGM.emitGetTxGasPrice(), CGM.Int256Ty)));
   case AsmIdentifier::SpecialIdentifier::gasleft:
     return ExprValue::getRValue(
         CE, Builder.CreateZExtOrTrunc(CGM.emitGetGasLeft(), CGM.Int256Ty));
@@ -2409,8 +2410,8 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
                 CGM.getEndianlessValue(CGM.emitGetCaller()), CGM.Int256Ty));
   case AsmIdentifier::SpecialIdentifier::callvalue:
     return ExprValue::getRValue(
-        CE, Builder.CreateZExtOrTrunc(
-                CGM.getEndianlessValue(CGM.emitGetCallValue()), CGM.Int256Ty));
+        CE, CGM.getEndianlessValue(Builder.CreateZExtOrTrunc(
+                CGM.emitGetCallValue(), CGM.Int256Ty)));
   case AsmIdentifier::SpecialIdentifier::calldataload:
     return ExprValue::getRValue(CE, emitAsmCallCallDataLoad(CE));
   case AsmIdentifier::SpecialIdentifier::calldatasize:
@@ -2421,7 +2422,8 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
     return std::make_shared<ExprValue>();
   case AsmIdentifier::SpecialIdentifier::address:
     return ExprValue::getRValue(
-        CE, Builder.CreateZExtOrTrunc(CGM.emitGetAddress(), CGM.Int256Ty));
+        CE, Builder.CreateZExtOrTrunc(
+                CGM.getEndianlessValue(CGM.emitGetAddress()), CGM.Int256Ty));
   /// object
   case AsmIdentifier::SpecialIdentifier::dataoffset:
     return ExprValue::getRValue(CE, emitAsmCallDataOffset(CE));

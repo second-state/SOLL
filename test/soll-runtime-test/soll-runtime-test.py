@@ -5,6 +5,8 @@ from utils import *
 import os
 import signal
 import glob
+import re
+
 
 handle = ctypes.cdll.LoadLibrary('./libsoll_runtime_test.so')
 
@@ -58,17 +60,24 @@ def evmc_get_storage(address: int, key: int):
     return bytes(result.raw)
 
 
-def testing(testbase):
+def runtime_test(testbase):
     basic_sstore = open(f'{testbase}.wasm', 'rb').read()
 
-    calldata = unhexlify("")
-    sender = 0x0
-    destination = 0x7ffffffff
-    result_str, result = evmc_vm_execute(
-        calldata, 0, destination, basic_sstore)
+    calldata = unhexlify("FF" * 32)
+    sender = 0x33333333
+    destination = 0x11111111
+    result_str, result = evmc_vm_execute(calldata, sender, destination, basic_sstore)
     if result_str == 'EVMC_SUCCESS':
         print_green(f"--- evmc vm execute result: {result_str}")
     else:
+        with open(f'{testbase}.yul', 'r') as f:
+            yul = f.read()
+            if (yul.find('INVALID') != -1 and result_str == 'EVMC_FAILURE') or \
+                    (yul.find('SELFDESTRUCT') != -1 and result_str == 'EVMC_FAILURE') or \
+                    yul.find('REVERT') != -1 and result_str == 'EVMC_REVERT':
+                        print_green(f"--- evmc vm execute result: EXPECTED {result_str}")
+                        return 1, True
+ 
         print_red(f"--- evmc vm execute result: {result_str}")
         return -1, False
 
@@ -77,14 +86,16 @@ def testing(testbase):
         storage_dump_flag = False
         for line in f:
             if storage_dump_flag:
-                _, key, value = line.split()
-                key, value = int(key[:-1], 16), int(value, 16)
+                m = re.match(r"^//\s*([0-9a-fA-F]+):\s*([0-9a-fA-F]+)", line)
+                key, value = m.group(1), m.group(2)
+                key, value = int(key, 16), int(value, 16)
                 storage_dump[key] = value
             if line.find('Storage dump:') != -1:
                 storage_dump_flag = True
 
     num_testcase = len(storage_dump)
-
+    
+    tohex32 = lambda x: hex(x)[2:].rjust(64, '0')
     result = True
     for i, p in enumerate(storage_dump.items()):
         k, v = p
@@ -101,7 +112,6 @@ def testing(testbase):
 if __name__ == '__main__':
     files = []
     files.extend(glob.glob('./libyul/*/*.yul'))
-    files.extend(glob.glob('./yul/*/*.yul'))
     files.extend(glob.glob('./yul/*.yul'))
 
     num_test = 0
@@ -114,7 +124,7 @@ if __name__ == '__main__':
         base = file[:-4]
         print(base)
         if os.path.isfile(base + '.yul') and os.path.isfile(base + '.wasm'):
-            num_testcase, result = testing(base)
+            num_testcase, result = runtime_test(base)
             num_test += 1
             if num_testcase > 0:
                 num_run += 1
