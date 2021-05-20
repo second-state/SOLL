@@ -90,6 +90,7 @@ if(SOLL_INCLUDE_TESTS)
     FetchContent_Declare(
       ssvm-evmc
       GIT_REPOSITORY https://github.com/second-state/ssvm-evmc.git
+      GIT_TAG evmc6-0.1.1
     )
       
     FetchContent_GetProperties(ssvm-evmc)
