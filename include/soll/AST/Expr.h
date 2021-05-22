@@ -542,4 +542,14 @@ public:
   bool isInlineArray() const { return IsArray; }
 };
 
+class TypesTupleExpr : public Expr {
+
+public:
+  TypesTupleExpr(SourceRange L, TypePtr TupleTy)
+      : Expr(L, ValueKind::VK_Unknown, TupleTy) {}
+
+  void accept(StmtVisitor &visitor) override;
+  void accept(ConstStmtVisitor &visitor) const override;
+};
+
 } // namespace soll

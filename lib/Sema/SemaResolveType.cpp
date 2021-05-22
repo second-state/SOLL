@@ -305,7 +305,8 @@ public:
   }
   void visit(MemberExprType &ME) override {
     StmtVisitor::visit(ME);
-    ME.setType(ME.getName()->getType());
+    auto MemberName = ME.getName();
+    ME.setType(MemberName->getType());
     if (ME.getType()) {
       return;
     }
@@ -323,8 +324,8 @@ public:
         {"delegatecall", Identifier::SpecialIdentifier::address_delegatecall},
         {"staticcall", Identifier::SpecialIdentifier::address_staticcall}};
 
-    Token Tok = ME.getName()->getToken();
-    llvm::StringRef Name = ME.getName()->getName();
+    Token Tok = MemberName->getToken();
+    llvm::StringRef Name = MemberName->getName();
     switch (ME.getBase()->getType()->getCategory()) {
     case Type::Category::Array:
       if (auto Iter = ArrayLookup.find(Name); Iter != ArrayLookup.end()) {
@@ -435,7 +436,7 @@ public:
       ME.setLibraryAddress(Address);
       return;
     }
-    Actions.Diag(ME.getName()->getLocation().getBegin(), diag::err_no_member)
+    Actions.Diag(MemberName->getLocation().getBegin(), diag::err_no_member)
         << Name << ME.getBase()->getType()->getName();
   }
   void visit(ParenExprType &PE) override {
@@ -539,10 +540,10 @@ public:
 void TypeResolver::visit(CallExprType &CE) {
   StmtVisitor::visit(CE);
 
-  Expr *E = CE.getCalleeExpr(), *Base = nullptr;
-  MemberExpr *ME = nullptr;
+  Expr *CalleeExpr = CE.getCalleeExpr(), *E = nullptr, *Base = nullptr;
+  MemberExpr *ME = dynamic_cast<MemberExpr *>(CalleeExpr);
   std::string FunctionSignature;
-  if (ME = dynamic_cast<MemberExpr *>(E)) {
+  if (ME) {
     auto Name = ME->getName();
     E = Name;
     Base = ME->getBase();
@@ -577,6 +578,8 @@ void TypeResolver::visit(CallExprType &CE) {
       }
       }
     }
+  } else {
+    E = CalleeExpr;
   }
 
   CE.resolveNamedCall();
@@ -587,6 +590,7 @@ void TypeResolver::visit(CallExprType &CE) {
       return;
     }
     if (I->isSpecialIdentifier()) {
+      TypePtr ReturnTy = std::make_shared<BytesType>();
       std::vector<TypePtr> ArgTypes;
       for (const auto &arg : CE.getArguments()) {
         if (auto *IC = dynamic_cast<ImplicitCastExpr *>(arg)) {
@@ -594,6 +598,17 @@ void TypeResolver::visit(CallExprType &CE) {
         }
       }
       switch (I->getSpecialIdentifier()) {
+      case Identifier::SpecialIdentifier::abi_decode: {
+        if (ME) {
+          if (auto I = dynamic_cast<Identifier *>(ME->getName())) {
+            I->setType(ArgTypes.at(1));
+            ME->setType(ArgTypes.at(1));
+            ReturnTy = ArgTypes.at(1);
+          }
+        }
+        ArgTypes.at(0) = std::make_shared<BytesType>();
+        [[fallthrough]];
+      }
       case Identifier::SpecialIdentifier::abi_encodePacked:
       case Identifier::SpecialIdentifier::abi_encode:
         break;
@@ -700,8 +715,7 @@ void TypeResolver::visit(CallExprType &CE) {
       }
       if (!FTy) {
         I->setType(std::make_shared<FunctionType>(
-            std::vector<TypePtr>(ArgTypes),
-            std::vector<TypePtr>{std::make_shared<BytesType>()}));
+            std::vector<TypePtr>(ArgTypes), std::vector<TypePtr>{ReturnTy}));
         FTy = dynamic_cast<FunctionType *>(I->getType().get());
       }
     } else {
@@ -781,9 +795,9 @@ void Sema::resolveImplicitCast(ImplicitCastExpr &IC, TypePtr DstTy,
   if (!SrcTy) {
     return;
   }
-  if (SrcTy->getCategory() == Type::Category::Tuple) {
+  if (auto SrcTup = dynamic_cast<TupleExpr *>(IC.getSubExpr())) {
+    assert(SrcTy->getCategory() == Type::Category::Tuple);
     assert(DstTy->getCategory() == Type::Category::Tuple);
-    auto SrcTup = dynamic_cast<TupleExpr *>(IC.getSubExpr());
     auto DstTupTy = dynamic_cast<const TupleType *>(DstTy.get());
     std::size_t Num = SrcTup->getComponents().size();
     for (std::size_t Idx = 0; Idx < Num; ++Idx) {

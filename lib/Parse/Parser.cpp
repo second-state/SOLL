@@ -1789,9 +1789,16 @@ std::unique_ptr<Expr> Parser::parseLeftHandSideExpression(
     }
     case tok::l_paren: {
       ConsumeParen(); // '('
+      bool IsAbiDecode = false;
+      if (auto ME = dynamic_cast<MemberExpr *>(Expression.get())) {
+        auto Name = ME->getName();
+        IsAbiDecode = Name->isSpecialIdentifier() &&
+                      Name->getSpecialIdentifier() ==
+                          Identifier::SpecialIdentifier::abi_decode;
+      }
       std::vector<std::unique_ptr<Expr>> Arguments;
       std::vector<llvm::StringRef> Names;
-      std::tie(Arguments, Names) = parseFunctionCallArguments();
+      std::tie(Arguments, Names) = parseFunctionCallArguments(IsAbiDecode);
       const SourceLocation End = Tok.getEndLoc();
       if (ExpectAndConsume(tok::r_paren)) {
         return nullptr;
@@ -1990,11 +1997,36 @@ std::vector<std::unique_ptr<Expr>> Parser::parseFunctionCallListArguments() {
   return Arguments;
 }
 
+std::unique_ptr<Expr> Parser::parseTypesTupleExpr() {
+  const SourceLocation Begin = Tok.getLocation();
+  std::vector<TypePtr> ElementTypes;
+  ConsumeParen(); // (
+  bool First = true;
+  while ((Tok.isNot(tok::r_paren))) {
+    if (!First)
+      ExpectAndConsume(tok::comma);
+    First = false;
+    if (Tok.isNot(tok::l_paren)) {
+      ElementTypes.emplace_back(parseTypeName(false));
+    } else {
+      ElementTypes.emplace_back(parseTypesTupleExpr()->getType());
+    }
+  }
+  const SourceLocation End = Tok.getEndLoc();
+  ConsumeParen(); // )
+  auto Ty = std::make_shared<TupleType>(std::move(ElementTypes));
+  return std::make_unique<TypesTupleExpr>(SourceRange(Begin, End), Ty);
+}
+
 std::pair<std::vector<std::unique_ptr<Expr>>, std::vector<llvm::StringRef>>
-Parser::parseFunctionCallArguments() {
+Parser::parseFunctionCallArguments(bool IsAbiDecode) {
   std::pair<std::vector<std::unique_ptr<Expr>>, std::vector<llvm::StringRef>>
       Ret;
-  if (Tok.is(tok::l_brace)) {
+  if (IsAbiDecode) {
+    Ret.first.emplace_back(parseExpression());
+    ExpectAndConsume(tok::comma);
+    Ret.first.emplace_back(parseTypesTupleExpr());
+  } else if (Tok.is(tok::l_brace)) {
     ConsumeBrace();
     Ret = parseNamedArguments();
     ConsumeBrace(); // '}'
