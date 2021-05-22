@@ -2,9 +2,21 @@
 #include "soll/AST/Decl.h"
 #include "soll/Basic/DiagnosticSema.h"
 #include "soll/Sema/Sema.h"
+#include <functional>
 
 namespace soll {
 class DeclIdentifierResolver;
+
+TypePtr handleUnresolveType(Sema &Actions, UnresolveType *UT) {
+  Decl *D = Actions.lookupName(UT->getIdentifierName());
+  if (auto *SD = dynamic_cast<StructDecl *>(D))
+    return SD->getType();
+  else if (auto *CD = dynamic_cast<ContractDecl *>(D)) {
+    return CD->getType();
+  }
+  __builtin_unreachable();
+}
+
 class IdentifierResolver : public StmtVisitor {
   Sema &Actions;
   DeclIdentifierResolver &DIR;
@@ -47,6 +59,20 @@ public:
   // void visit(ReturnStmtType &) override;
   void visit(DeclStmtType &DS) override;
   // void visit(TupleExprType &) override;
+  void visit(TypesTupleExprType &TE) override {
+    StmtVisitor::visit(TE);
+    std::function<void(TupleType *)> handleUnresolveTupleType;
+    handleUnresolveTupleType = [&](TupleType *TupleTy) {
+      for (auto &Ty : TupleTy->getElementTypes()) {
+        if (auto *UT = dynamic_cast<UnresolveType *>(Ty.get())) {
+          Ty = handleUnresolveType(Actions, UT);
+        } else if (auto TP = dynamic_cast<TupleType *>(Ty.get())) {
+          handleUnresolveTupleType(TP);
+        }
+      }
+    };
+    handleUnresolveTupleType(dynamic_cast<TupleType *>(TE.getType().get()));
+  }
   // void visit(UnaryOperatorType &) override;
   // void visit(BinaryOperatorType &) override;
   // void visit(CallExprType &) override;
@@ -122,18 +148,6 @@ public:
   DeclIdentifierResolver(Sema &Actions)
       : IR(Actions, *this), Actions(Actions), CurrentContract(nullptr) {}
   ContractDeclType *getCurrentContract() const { return CurrentContract; }
-  TypePtr handleUnresolveType(UnresolveType *UT) {
-    Decl *D = Actions.lookupName(UT->getIdentifierName());
-    if (auto *SD = dynamic_cast<StructDecl *>(D))
-      return SD->getType();
-    else if (auto *CD = dynamic_cast<ContractDecl *>(D)) {
-      return CD->getType();
-    }
-    if (auto *CD = Actions.lookupContractDeclName(UT->getIdentifierName())) {
-      return CD->getType();
-    }
-    __builtin_unreachable();
-  }
   void visit(SourceUnitType &SU) override {
     Sema::SemaScope SourceUnitScope{&Actions, 0};
     DeclVisitor::visit(SU);
@@ -148,7 +162,7 @@ public:
       UF.addLibrary(Lib);
     }
     if (auto *UT = dynamic_cast<UnresolveType *>(UF.getType().get())) {
-      UF.setType(handleUnresolveType(UT));
+      UF.setType(handleUnresolveType(Actions, UT));
     }
   }
   void visit(ContractDeclType &CD) override {
@@ -184,7 +198,7 @@ public:
     Actions.addDecl(&VD);
     // TODO: handle ArrayType of UnresolveType
     if (auto *UT = dynamic_cast<UnresolveType *>(VD.getType().get())) {
-      VD.setType(handleUnresolveType(UT));
+      VD.setType(handleUnresolveType(Actions, UT));
     }
     DeclVisitor::visit(VD);
     if (VD.getValue()) {
@@ -202,7 +216,7 @@ public:
     if (auto STy = dynamic_cast<StructType *>(SD.getType().get())) {
       for (auto &Ty : STy->getElementTypes()) {
         if (auto *UT = dynamic_cast<UnresolveType *>(Ty.get())) {
-          Ty = handleUnresolveType(UT);
+          Ty = handleUnresolveType(Actions, UT);
         }
       }
     }

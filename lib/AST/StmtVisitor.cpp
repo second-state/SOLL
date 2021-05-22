@@ -63,6 +63,11 @@ template <bool Const> void StmtVisitorBase<Const>::visit(TupleExprType &op) {
 }
 
 template <bool Const>
+void StmtVisitorBase<Const>::visit(TypesTupleExprType &op) {
+  // leaf, do nothing
+}
+
+template <bool Const>
 void StmtVisitorBase<Const>::visit(UnaryOperatorType &op) {
   op.getSubExpr()->accept(*this);
 }

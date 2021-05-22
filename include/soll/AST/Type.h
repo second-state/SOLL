@@ -586,6 +586,7 @@ class UnresolveType : public Type {
   llvm::StringRef IdentifierName;
 
 public:
+  UnresolveType() = default;
   UnresolveType(llvm::StringRef IdentifierName)
       : IdentifierName(IdentifierName) {}
   Category getCategory() const override { return Category::Unknow; }

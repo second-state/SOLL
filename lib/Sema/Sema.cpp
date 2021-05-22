@@ -243,9 +243,7 @@ Sema::CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr, Token Tok) {
             Ty = std::make_shared<BytesType>();
             break;
           case Identifier::SpecialIdentifier::abi_decode:
-            Diag(Tok.getLocation(), diag::err_unimplemented_identifier)
-                << Tok.getIdentifierInfo();
-            return nullptr;
+            Ty = std::make_shared<UnresolveType>();
             break;
           default:
             assert(false && "unknown member");

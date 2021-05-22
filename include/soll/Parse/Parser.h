@@ -94,6 +94,7 @@ private:
   parseIdentifierPath(tok::TokenKind SplitTok = tok::period);
   TypePtr parseTypeNameSuffix(TypePtr T);
   TypePtr parseTypeName(bool AllowVar);
+  std::unique_ptr<Expr> parseTypesTupleExpr();
   std::shared_ptr<MappingType> parseMapping();
   std::unique_ptr<ParamList>
   parseParameterList(VarDeclParserOptions const &Options = {},
@@ -121,7 +122,7 @@ private:
   std::unique_ptr<Expr> parsePrimaryExpression();
   std::vector<std::unique_ptr<Expr>> parseFunctionCallListArguments();
   std::pair<std::vector<std::unique_ptr<Expr>>, std::vector<llvm::StringRef>>
-  parseFunctionCallArguments();
+  parseFunctionCallArguments(bool IsAbiDecode = false);
   std::pair<std::vector<std::unique_ptr<Expr>>, std::vector<llvm::StringRef>>
   parseNamedArguments();
 
