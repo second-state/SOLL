@@ -10,12 +10,12 @@ AsmFunctionDecl::AsmFunctionDecl(SourceRange L, llvm::StringRef Name,
     : CallableVarDecl(L, Name, Visibility::Internal, std::move(Params),
                       std::move(ReturnParams)),
       Body(std::move(Body)) {
-  std::vector<TypePtr> PTys;
-  std::vector<TypePtr> RTys;
+  std::vector<std::reference_wrapper<const TypePtr>> PTys;
+  std::vector<std::reference_wrapper<const TypePtr>> RTys;
   for (auto VD : this->getParams()->getParams())
-    PTys.push_back(VD->getType());
+    PTys.emplace_back(std::cref(VD->getType()));
   for (auto VD : this->getReturnParams()->getParams())
-    RTys.push_back(VD->getType());
+    RTys.emplace_back(std::cref(VD->getType()));
   FuncTy = std::make_shared<FunctionType>(std::move(PTys), std::move(RTys));
 }
 

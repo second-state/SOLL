@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "soll/AST/AST.h"
+#include "soll/AST/TypePtr.h"
 #include "soll/Basic/DiagnosticSema.h"
 #include "soll/Sema/Sema.h"
 #include <unordered_set>
@@ -167,7 +168,7 @@ void setTypeForBinary(Sema &Actions, BinaryOperator &BO, ImplicitCastExpr *LHS,
     RHS->setType(Ty);
     Actions.resolveImplicitCast(*RHS, Ty, false);
   }
-  BO.setType(BO.isComparisonOp() ? std::make_shared<BooleanType>() : Ty);
+  BO.setType(BO.isComparisonOp() ? BooleanTypePtr : Ty);
 }
 
 class TypeResolver : public StmtVisitor {
@@ -249,8 +250,7 @@ public:
       return;
     }
 
-    UO.setType(UO.getOpcode() == UO_IsZero ? std::make_shared<BooleanType>()
-                                           : Ty);
+    UO.setType(UO.getOpcode() == UO_IsZero ? BooleanTypePtr : Ty);
   }
   void visit(BinaryOperatorType &BO) override {
     StmtVisitor::visit(BO); // This is Strange.
@@ -293,8 +293,7 @@ public:
       IA.setType(AT->getElementType());
     } else if (dynamic_cast<const StringType *>(BaseTy) ||
                dynamic_cast<const BytesType *>(BaseTy)) {
-      IA.setType(
-          std::make_shared<FixedBytesType>(FixedBytesType::ByteKind::B1));
+      IA.setType(FixedBytesTypeB1Ptr);
     } else {
       Actions.Diag(IA.getBase()->getLocation().getBegin(),
                    diag::err_typecheck_subscript_value);
@@ -333,7 +332,7 @@ public:
         std::shared_ptr<Type> Ty;
         switch (Iter->second) {
         case Identifier::SpecialIdentifier::array_length:
-          Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+          Ty = IntegerTypeU256Ptr;
           break;
         case Identifier::SpecialIdentifier::array_push:
           Actions.Diag(Tok.getLocation(), diag::err_unimplemented_identifier)
@@ -356,27 +355,28 @@ public:
         std::shared_ptr<Type> Ty;
         switch (Iter->second) {
         case Identifier::SpecialIdentifier::address_balance:
-          Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+          Ty = IntegerTypeU256Ptr;
           break;
         case Identifier::SpecialIdentifier::address_transfer:
           Ty = std::make_shared<FunctionType>(
-              std::vector<TypePtr>{
-                  std::make_shared<IntegerType>(IntegerType::IntKind::U256)},
-              std::vector<TypePtr>{});
+              std::vector<std::reference_wrapper<const TypePtr>>{
+                  IntegerTypeU256Ptr},
+              std::vector<std::reference_wrapper<const TypePtr>>{});
           break;
         case Identifier::SpecialIdentifier::address_send:
           Ty = std::make_shared<FunctionType>(
-              std::vector<TypePtr>{
-                  std::make_shared<IntegerType>(IntegerType::IntKind::U256)},
-              std::vector<TypePtr>{std::make_shared<BooleanType>()});
+              std::vector<std::reference_wrapper<const TypePtr>>{
+                  IntegerTypeU256Ptr},
+              std::vector<std::reference_wrapper<const TypePtr>>{
+                  BooleanTypePtr});
           break;
         case Identifier::SpecialIdentifier::address_call:
         case Identifier::SpecialIdentifier::address_delegatecall:
         case Identifier::SpecialIdentifier::address_staticcall:
           Ty = std::make_shared<FunctionType>(
-              std::vector<TypePtr>{std::make_shared<BytesType>()},
-              std::vector<TypePtr>{std::make_shared<BooleanType>(),
-                                   std::make_shared<BytesType>()});
+              std::vector<std::reference_wrapper<const TypePtr>>{BytesTypePtr},
+              std::vector<std::reference_wrapper<const TypePtr>>{BooleanTypePtr,
+                                                                 BytesTypePtr});
           break;
         default:
           assert(false && "unknown member");
@@ -547,7 +547,7 @@ void TypeResolver::visit(CallExprType &CE) {
   Expr *CalleeExpr = CE.getCalleeExpr(), *E = nullptr, *Base = nullptr;
   MemberExpr *ME = dynamic_cast<MemberExpr *>(CalleeExpr);
   std::string FunctionSignature;
-  TypePtr ReturnTy = std::make_shared<BytesType>();
+  TypePtr ReturnTy = BytesTypePtr;
   if (ME) {
     auto Name = ME->getName();
     E = Name;
@@ -568,7 +568,7 @@ void TypeResolver::visit(CallExprType &CE) {
         if (!First)
           FunctionSignature += ",";
         First = false;
-        FunctionSignature += PTy->getSignatureEncoding();
+        FunctionSignature += PTy.get()->getSignatureEncoding();
       }
       FunctionSignature += ")";
     };
@@ -600,10 +600,10 @@ void TypeResolver::visit(CallExprType &CE) {
       return;
     }
     if (I->isSpecialIdentifier()) {
-      std::vector<TypePtr> ArgTypes;
+      std::vector<std::reference_wrapper<const TypePtr>> ArgTypes;
       for (const auto &arg : CE.getArguments()) {
         if (auto *IC = dynamic_cast<ImplicitCastExpr *>(arg)) {
-          ArgTypes.emplace_back(IC->getSubExpr()->getType());
+          ArgTypes.emplace_back(std::cref(IC->getSubExpr()->getType()));
         }
       }
       switch (I->getSpecialIdentifier()) {
@@ -620,7 +620,7 @@ void TypeResolver::visit(CallExprType &CE) {
             }
           }
         }
-        ArgTypes.at(0) = std::make_shared<BytesType>();
+        ArgTypes.at(0) = BytesTypePtr;
         [[fallthrough]];
       }
       case Identifier::SpecialIdentifier::abi_encodePacked:
@@ -635,9 +635,7 @@ void TypeResolver::visit(CallExprType &CE) {
         auto LibraryAddress =
             Actions.CreateDummy(std::move(LibraryAddressLiteral));
         if (auto *IC = dynamic_cast<ImplicitCastExpr *>(LibraryAddress.get())) {
-          Actions.resolveImplicitCast(
-              *IC, std::make_shared<AddressType>(StateMutability::Payable),
-              false);
+          Actions.resolveImplicitCast(*IC, AddressTypePayablePtr, false);
         }
         ME->setBase(std::move(LibraryAddress));
         Base = ME->getBase();
@@ -649,11 +647,11 @@ void TypeResolver::visit(CallExprType &CE) {
       case Identifier::SpecialIdentifier::external_call: {
         auto SignatureStringLiteral = std::make_unique<StringLiteral>(
             Token(), std::move(FunctionSignature));
-        ArgTypes.insert(ArgTypes.begin(), std::make_shared<StringType>());
+        ArgTypes.emplace(ArgTypes.begin(), std::cref(StringTypePtr));
         SignatureStringLiteral->setType(ArgTypes.at(0));
         auto Signature = Actions.CreateDummy(std::move(SignatureStringLiteral));
         auto &RawArguments = CE.getRawArguments();
-        RawArguments.insert(RawArguments.begin(), std::move(Signature));
+        RawArguments.emplace(RawArguments.begin(), std::move(Signature));
         [[fallthrough]];
       }
       /* abi.encodeWithSignature(string signature, ...) ==
@@ -661,12 +659,11 @@ void TypeResolver::visit(CallExprType &CE) {
       case Identifier::SpecialIdentifier::abi_encodeWithSignature: {
         auto &Signature = CE.getRawArguments().at(0);
         if (auto *IC = dynamic_cast<ImplicitCastExpr *>(Signature.get())) {
-          Actions.resolveImplicitCast(*IC, std::make_shared<StringType>(),
-                                      false);
+          Actions.resolveImplicitCast(*IC, StringTypePtr, false);
         }
         auto SignatureBytes = std::make_unique<ExplicitCastExpr>(
             SourceRange(), std::move(Signature), CastKind::TypeCast,
-            std::make_shared<BytesType>());
+            BytesTypePtr);
         std::vector<ExprPtr> Keccak256Arguments;
         Signature = Actions.CreateDummy(std::move(SignatureBytes));
         Keccak256Arguments.emplace_back(std::move(Signature));
@@ -675,18 +672,16 @@ void TypeResolver::visit(CallExprType &CE) {
             std::move(std::make_unique<Identifier>(
                 Token(), Identifier::SpecialIdentifier::keccak256, nullptr)),
             std::move(Keccak256Arguments));
-        CallKeccak256->setType(
-            std::make_shared<FixedBytesType>(FixedBytesType::ByteKind::B32));
+        CallKeccak256->setType(FixedBytesTypeB32Ptr);
         Signature = Actions.CreateDummy(std::move(CallKeccak256));
         [[fallthrough]];
       }
       /* abi.encodeWithSelector(bytes4 selector, ...) ==
        * abi.encodePacked(selector, abi.encode(...)); */
       case Identifier::SpecialIdentifier::abi_encodeWithSelector: {
-        ArgTypes.resize(2);
-        ArgTypes.at(0) =
-            std::make_shared<FixedBytesType>(FixedBytesType::ByteKind::B4);
-        ArgTypes.at(1) = std::make_shared<BytesType>();
+        ArgTypes.clear();
+        ArgTypes.emplace_back(std::cref(FixedBytesTypeB4Ptr));
+        ArgTypes.emplace_back(std::cref(BytesTypePtr));
         auto &RawArguments = CE.getRawArguments();
         auto &Selector = RawArguments.at(0);
         if (auto *IC = dynamic_cast<ImplicitCastExpr *>(Selector.get())) {
@@ -721,8 +716,9 @@ void TypeResolver::visit(CallExprType &CE) {
                 nullptr)),
             std::move(RawArguments));
         CallAbiEncodeWithSelector->setType(ArgTypes.at(1));
-        ArgTypes.at(0) = ArgTypes.at(1);
-        ArgTypes.resize(1);
+        auto ArgTypesAt1 = std::move(ArgTypes.at(1));
+        ArgTypes.clear();
+        ArgTypes.emplace_back(std::move(ArgTypesAt1));
         RawArguments.resize(1);
         RawArguments.at(0) = std::move(CallAbiEncodeWithSelector);
         break;
@@ -733,7 +729,8 @@ void TypeResolver::visit(CallExprType &CE) {
       }
       if (!FTy) {
         I->setType(std::make_shared<FunctionType>(
-            std::vector<TypePtr>(ArgTypes), std::vector<TypePtr>{ReturnTy}));
+            std::vector<std::reference_wrapper<const TypePtr>>(ArgTypes),
+            std::vector<std::reference_wrapper<const TypePtr>>{ReturnTy}));
         FTy = dynamic_cast<FunctionType *>(I->getType().get());
       }
     } else {

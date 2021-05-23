@@ -13,6 +13,7 @@ add_llvm_library(sollAST
   StmtAsm.cpp
   StmtVisitor.cpp
   Type.cpp
+  TypePtr.cpp
   LINK_LIBS
   SHA3
   )
