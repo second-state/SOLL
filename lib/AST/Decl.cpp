@@ -270,15 +270,16 @@ FunctionDecl::FunctionDecl(
                       IsVirtual, std::move(Overrides)),
       SM(SM), IsConstructor(IsConstructor), IsFallback(IsFallback),
       FunctionModifiers(std::move(Modifiers)), Body(std::move(Body)) {
-  std::vector<TypePtr> PTys;
-  std::vector<TypePtr> RTys;
+  // TODO
+  std::vector<std::reference_wrapper<const TypePtr>> PTys;
+  std::vector<std::reference_wrapper<const TypePtr>> RTys;
   auto PNames = std::make_shared<std::vector<std::string>>();
   for (auto VD : this->getParams()->getParams()) {
     PNames->emplace_back(VD->getName().str());
-    PTys.push_back(VD->getType());
+    PTys.emplace_back(std::cref(VD->getType()));
   }
   for (auto VD : this->getReturnParams()->getParams())
-    RTys.push_back(VD->getType());
+    RTys.emplace_back(std::cref(VD->getType()));
   FuncTy =
       std::make_shared<FunctionType>(std::move(PTys), std::move(RTys), PNames);
 }
@@ -309,10 +310,10 @@ EventDecl::EventDecl(SourceRange L, llvm::StringRef Name,
                      std::unique_ptr<ParamList> &&Params, bool IsAnonymous)
     : CallableVarDecl(L, Name, Decl::Visibility::Default, std::move(Params)),
       IsAnonymous(IsAnonymous) {
-  std::vector<TypePtr> PTys;
-  std::vector<TypePtr> RTys;
+  std::vector<std::reference_wrapper<const TypePtr>> PTys;
+  std::vector<std::reference_wrapper<const TypePtr>> RTys;
   for (auto VD : this->getParams()->getParams())
-    PTys.push_back(VD->getType());
+    PTys.emplace_back(std::cref(VD->getType()));
   FuncTy = std::make_shared<FunctionType>(std::move(PTys), std::move(RTys));
 }
 
@@ -321,8 +322,13 @@ StructDecl::StructDecl(Token NameTok, SourceRange L, llvm::StringRef Name,
     : Decl(L, Name, Visibility::Default), Tok(NameTok),
       Ty(std::make_shared<StructType>(this, std::move(ET), std::move(EN))) {
   auto STy = dynamic_cast<const StructType *>(Ty.get());
+  std::vector<std::reference_wrapper<const TypePtr>> ElementTypes;
+  for (const auto &ETy : STy->getElementTypes()) {
+    ElementTypes.emplace_back(std::cref(ETy));
+  }
   ConstructorTy = std::make_shared<FunctionType>(
-      std::vector<TypePtr>(STy->getElementTypes()), std::vector<TypePtr>{Ty},
+      std::move(ElementTypes),
+      std::vector<std::reference_wrapper<const TypePtr>>{std::cref(Ty)},
       std::make_shared<std::vector<std::string>>(STy->getElementNames()));
 }
 

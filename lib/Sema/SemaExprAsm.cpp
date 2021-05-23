@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "soll/AST/AST.h"
+#include "soll/AST/TypePtr.h"
 #include "soll/Sema/Sema.h"
 
 namespace soll {
@@ -138,16 +139,20 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
     TypePtr Ty;
     switch (Iter->second) {
     case AsmIdentifier::SpecialIdentifier::not_: ///< (bool) -> bool
-      Ty = std::make_shared<BooleanType>();
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty},
-                                          std::vector<TypePtr>{Ty});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(BooleanTypePtr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(BooleanTypePtr)});
       break;
     case AsmIdentifier::SpecialIdentifier::and_: ///< (bool, bool) -> bool
     case AsmIdentifier::SpecialIdentifier::or_:
     case AsmIdentifier::SpecialIdentifier::xor_:
-      Ty = std::make_shared<BooleanType>();
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty},
-                                          std::vector<TypePtr>{Ty});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(BooleanTypePtr), std::cref(BooleanTypePtr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(BooleanTypePtr)});
       break;
     case AsmIdentifier::SpecialIdentifier::addu256: ///< (u256, u256) -> u256
     case AsmIdentifier::SpecialIdentifier::subu256:
@@ -156,47 +161,59 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
     case AsmIdentifier::SpecialIdentifier::modu256:
     case AsmIdentifier::SpecialIdentifier::expu256:
     case AsmIdentifier::SpecialIdentifier::signextendu256:
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty},
-                                          std::vector<TypePtr>{Ty});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)});
       break;
     case AsmIdentifier::SpecialIdentifier::divs256: ///< (s256, s256) -> s256
     case AsmIdentifier::SpecialIdentifier::mods256:
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::I256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty},
-                                          std::vector<TypePtr>{Ty});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeI256Ptr), std::cref(IntegerTypeI256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeI256Ptr)});
       break;
     case AsmIdentifier::SpecialIdentifier::addmodu256: ///< (u256, u256, u256)
     case AsmIdentifier::SpecialIdentifier::mulmodu256: ///< -> u256
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty, Ty},
-                                          std::vector<TypePtr>{Ty});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr),
+              std::cref(IntegerTypeU256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)});
       break;
     case AsmIdentifier::SpecialIdentifier::ltu256: ///< (u256, u256) -> bool
     case AsmIdentifier::SpecialIdentifier::gtu256:
     case AsmIdentifier::SpecialIdentifier::equ256:
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
       Ty = std::make_shared<FunctionType>(
-          std::vector<TypePtr>{Ty, Ty},
-          std::vector<TypePtr>{std::make_shared<BooleanType>()});
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(BooleanTypePtr)});
       break;
     case AsmIdentifier::SpecialIdentifier::lts256: ///< (s256, s256) -> bool
     case AsmIdentifier::SpecialIdentifier::gts256:
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::I256);
       Ty = std::make_shared<FunctionType>(
-          std::vector<TypePtr>{Ty, Ty},
-          std::vector<TypePtr>{std::make_shared<BooleanType>()});
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeI256Ptr), std::cref(IntegerTypeI256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(BooleanTypePtr)});
       break;
     case AsmIdentifier::SpecialIdentifier::iszerou256: ///< (u256) -> bool
       Ty = std::make_shared<FunctionType>(
-          std::vector<TypePtr>{
-              std::make_shared<IntegerType>(IntegerType::IntKind::U256)},
-          std::vector<TypePtr>{std::make_shared<BooleanType>()});
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(BooleanTypePtr)});
       break;
     case AsmIdentifier::SpecialIdentifier::notu256: ///< (u256) -> u256
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty},
-                                          std::vector<TypePtr>{Ty});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)});
       break;
     case AsmIdentifier::SpecialIdentifier::andu256: ///< (u256, u256) -> u256
     case AsmIdentifier::SpecialIdentifier::oru256:
@@ -208,124 +225,156 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
     case AsmIdentifier::SpecialIdentifier::sars256:
     case AsmIdentifier::SpecialIdentifier::sar:
     case AsmIdentifier::SpecialIdentifier::byte:
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty},
-                                          std::vector<TypePtr>{Ty});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)});
       break;
     case AsmIdentifier::SpecialIdentifier::mload: ///< (u256) -> u256
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty},
-                                          std::vector<TypePtr>{Ty});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)});
       break;
     case AsmIdentifier::SpecialIdentifier::mstore: ///< (u256, u256) -> void
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty},
-                                          std::vector<TypePtr>{});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{});
       break;
     case AsmIdentifier::SpecialIdentifier::mstore8: ///< (u256, u256) -> void
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty},
-                                          std::vector<TypePtr>{});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{});
       break;
     case AsmIdentifier::SpecialIdentifier::msize: ///< () -> u256
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{},
-                                          std::vector<TypePtr>{Ty});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)});
       break;
     case AsmIdentifier::SpecialIdentifier::extcodehash:
     case AsmIdentifier::SpecialIdentifier::selfdestruct:
     case AsmIdentifier::SpecialIdentifier::sload: ///< (u256) -> u256
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty},
-                                          std::vector<TypePtr>{Ty});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)});
       break;
     case AsmIdentifier::SpecialIdentifier::sstore: ///< (u256, u256) -> void
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty},
-                                          std::vector<TypePtr>{});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{});
       break;
     case AsmIdentifier::SpecialIdentifier::pop: ///< (u256) -> void
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty},
-                                          std::vector<TypePtr>{});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{});
       break;
     case AsmIdentifier::SpecialIdentifier::invalid:
     case AsmIdentifier::SpecialIdentifier::stop: ///< () -> void
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{},
-                                          std::vector<TypePtr>{});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{},
+          std::vector<std::reference_wrapper<const TypePtr>>{});
       break;
     case AsmIdentifier::SpecialIdentifier::return_: ///< (u256, u256) -> void
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty},
-                                          std::vector<TypePtr>{});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{});
       break;
     case AsmIdentifier::SpecialIdentifier::revert: ///< (u256, u256) -> void
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty},
-                                          std::vector<TypePtr>{});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{});
       break;
     case AsmIdentifier::SpecialIdentifier::log0: ///< (u256, u256) -> void
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty},
-                                          std::vector<TypePtr>{});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{});
       break;
     case AsmIdentifier::SpecialIdentifier::log1: ///< (u256, u256, u256) -> void
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty, Ty},
-                                          std::vector<TypePtr>{});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr),
+              std::cref(IntegerTypeU256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{});
       break;
     case AsmIdentifier::SpecialIdentifier::log2: ///< (u256, u256, u256, u256)
                                                  ///< -> void
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty, Ty, Ty},
-                                          std::vector<TypePtr>{});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr),
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{});
       break;
     case AsmIdentifier::SpecialIdentifier::log3: ///< (u256, u256, u256, u256,
                                                  ///< u256) -> void
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
       Ty = std::make_shared<FunctionType>(
-          std::vector<TypePtr>{Ty, Ty, Ty, Ty, Ty}, std::vector<TypePtr>{});
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr),
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr),
+              std::cref(IntegerTypeU256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{});
       break;
     case AsmIdentifier::SpecialIdentifier::log4: ///< (u256, u256, u256, u256,
                                                  ///< u256, u256) -> void
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
       Ty = std::make_shared<FunctionType>(
-          std::vector<TypePtr>{Ty, Ty, Ty, Ty, Ty, Ty}, std::vector<TypePtr>{});
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr),
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr),
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{});
       break;
     case AsmIdentifier::SpecialIdentifier::blockcoinbase: ///< () -> u256
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{},
-                                          std::vector<TypePtr>{Ty});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)});
       break;
     case AsmIdentifier::SpecialIdentifier::blockdifficulty: ///< () -> u256
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{},
-                                          std::vector<TypePtr>{Ty});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)});
       break;
     case AsmIdentifier::SpecialIdentifier::blockgaslimit: ///< () -> u256
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{},
-                                          std::vector<TypePtr>{Ty});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)});
       break;
     case AsmIdentifier::SpecialIdentifier::blocknumber: ///< () -> u256
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{},
-                                          std::vector<TypePtr>{Ty});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)});
       break;
     case AsmIdentifier::SpecialIdentifier::blocktimestamp: ///< () -> u256
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{},
-                                          std::vector<TypePtr>{Ty});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)});
       break;
     case AsmIdentifier::SpecialIdentifier::txorigin: ///< () -> u256
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{},
-                                          std::vector<TypePtr>{Ty});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)});
       break;
     case AsmIdentifier::SpecialIdentifier::txgasprice: ///< () -> u256
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{},
-                                          std::vector<TypePtr>{Ty});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)});
       break;
     case AsmIdentifier::SpecialIdentifier::selfbalance:
     case AsmIdentifier::SpecialIdentifier::address:
@@ -334,94 +383,116 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
     case AsmIdentifier::SpecialIdentifier::chainid:
     case AsmIdentifier::SpecialIdentifier::gasleft: ///< () -> u256
       Ty = std::make_shared<FunctionType>(
-          std::vector<TypePtr>{},
-          std::vector<TypePtr>{
-              std::make_shared<IntegerType>(IntegerType::IntKind::U256)});
+          std::vector<std::reference_wrapper<const TypePtr>>{},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)});
       break;
     case AsmIdentifier::SpecialIdentifier::create: ///< (u256, u256, u256) ->
                                                    ///< u256
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty, Ty},
-                                          std::vector<TypePtr>{Ty});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr),
+              std::cref(IntegerTypeU256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)});
       break;
     case AsmIdentifier::SpecialIdentifier::create2: ///< (u256, u256, u256,
                                                     ///< u256) -> u256
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty, Ty, Ty},
-                                          std::vector<TypePtr>{Ty});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr),
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)});
       break;
     case AsmIdentifier::SpecialIdentifier::call:
     case AsmIdentifier::SpecialIdentifier::callcode:
     case AsmIdentifier::SpecialIdentifier::delegatecall:
     case AsmIdentifier::SpecialIdentifier::
         staticcall: ///< (u256, u256, u256, u256, u256, u256, u256) -> u256
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
       Ty = std::make_shared<FunctionType>(
-          std::vector<TypePtr>{Ty, Ty, Ty, Ty, Ty, Ty, Ty},
-          std::vector<TypePtr>{Ty});
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr),
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr),
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr),
+              std::cref(IntegerTypeU256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)});
       break;
     case AsmIdentifier::SpecialIdentifier::caller: ///< () -> u256
       Ty = std::make_shared<FunctionType>(
-          std::vector<TypePtr>{},
-          std::vector<TypePtr>{
-              std::make_shared<IntegerType>(IntegerType::IntKind::U256)});
+          std::vector<std::reference_wrapper<const TypePtr>>{},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)});
       break;
     case AsmIdentifier::SpecialIdentifier::callvalue: ///< () -> u256
       Ty = std::make_shared<FunctionType>(
-          std::vector<TypePtr>{},
-          std::vector<TypePtr>{
-              std::make_shared<IntegerType>(IntegerType::IntKind::U256)});
+          std::vector<std::reference_wrapper<const TypePtr>>{},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)});
       break;
     case AsmIdentifier::SpecialIdentifier::balance:
     case AsmIdentifier::SpecialIdentifier::extcodesize:
     case AsmIdentifier::SpecialIdentifier::blockhash:
     case AsmIdentifier::SpecialIdentifier::calldataload: ///< (u256) -> u256
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty},
-                                          std::vector<TypePtr>{Ty});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)});
       break;
     case AsmIdentifier::SpecialIdentifier::calldatasize: ///< () -> u256
       Ty = std::make_shared<FunctionType>(
-          std::vector<TypePtr>{},
-          std::vector<TypePtr>{
-              std::make_shared<IntegerType>(IntegerType::IntKind::U256)});
+          std::vector<std::reference_wrapper<const TypePtr>>{},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)});
       break;
     case AsmIdentifier::SpecialIdentifier::calldatacopy: ///< (u256, u256, u256)
                                                          ///< -> void
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty, Ty},
-                                          std::vector<TypePtr>{});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr),
+              std::cref(IntegerTypeU256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{});
       break;
     case AsmIdentifier::SpecialIdentifier::datasize: ///< (string) -> u256
       Ty = std::make_shared<FunctionType>(
-          std::vector<TypePtr>{std::make_shared<StringType>()},
-          std::vector<TypePtr>{
-              std::make_shared<IntegerType>(IntegerType::IntKind::U256)});
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(StringTypePtr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)});
       break;
     case AsmIdentifier::SpecialIdentifier::dataoffset: ///< (string) -> u256
       Ty = std::make_shared<FunctionType>(
-          std::vector<TypePtr>{std::make_shared<StringType>()},
-          std::vector<TypePtr>{
-              std::make_shared<IntegerType>(IntegerType::IntKind::U256)});
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(StringTypePtr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)});
       break;
     case AsmIdentifier::SpecialIdentifier::datacopy:
     case AsmIdentifier::SpecialIdentifier::returndatacopy:
     case AsmIdentifier::SpecialIdentifier::codecopy: ///< (u256, u256, u256) ->
                                                      ///< void
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty, Ty},
-                                          std::vector<TypePtr>{});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr),
+              std::cref(IntegerTypeU256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{});
       break;
     case AsmIdentifier::SpecialIdentifier::extcodecopy: ///< (u256, u256, u256,
                                                         ///< u256) -> void
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty, Ty, Ty},
-                                          std::vector<TypePtr>{});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr),
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{});
       break;
     case AsmIdentifier::SpecialIdentifier::keccak256: ///< (u256, u256) -> u256
-      Ty = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
-      Ty = std::make_shared<FunctionType>(std::vector<TypePtr>{Ty, Ty},
-                                          std::vector<TypePtr>{Ty});
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(IntegerTypeU256Ptr)});
       break;
     // TODO: implement the rest identifiers
     default:

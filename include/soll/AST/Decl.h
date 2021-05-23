@@ -331,7 +331,6 @@ public:
               ExprPtr &&V)
       : Decl(L, Name, Vi), TypeName(std::move(T)), Value(std::move(V)) {}
 
-  TypePtr getType() { return TypeName; }
   const TypePtr &getType() const { return TypeName; }
   void setType(TypePtr Ty) { TypeName = Ty; }
   Expr *getValue() { return Value.get(); }

@@ -137,23 +137,6 @@ Identifier::Identifier(const Token &T, SpecialIdentifier D, TypePtr Ty)
            std::move(Ty)),
       T(T), D(D) {}
 
-TypePtr Identifier::getType() {
-  Decl *D = getCorrespondDecl();
-  if (!D)
-    return Expr::getType();
-  if (auto VD = dynamic_cast<const VarDecl *>(D)) {
-    return VD->getType();
-  } else if (auto FD = dynamic_cast<const FunctionDecl *>(D)) {
-    return FD->getType();
-  } else if (auto CD = dynamic_cast<const ContractDecl *>(D)) {
-    return CD->getType();
-  } else if (dynamic_cast<const EventDecl *>(D)) {
-    return Expr::getType();
-  } else {
-    assert(false && "unknown decl");
-    __builtin_unreachable();
-  }
-}
 const TypePtr &Identifier::getType() const {
   const Decl *D = getCorrespondDecl();
   if (!D)

@@ -31,7 +31,6 @@ public:
   bool isSValue() const { return getValueKind() == ValueKind::VK_SValue; }
   bool isLValue() const { return getValueKind() == ValueKind::VK_LValue; }
   bool isRValue() const { return getValueKind() == ValueKind::VK_RValue; }
-  virtual TypePtr getType() { return Ty; }
   virtual const TypePtr &getType() const { return Ty; }
   void setType(TypePtr Ty) { this->Ty = Ty; }
   virtual bool isStateVariable() const { return false; };
@@ -125,7 +124,6 @@ public:
     return std::get<SpecialIdentifier>(D);
   }
 
-  TypePtr getType() override;
   const TypePtr &getType() const override;
 
   void accept(StmtVisitor &visitor) override;
