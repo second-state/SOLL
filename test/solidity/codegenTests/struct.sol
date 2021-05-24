@@ -47,10 +47,8 @@ contract Struct {
         return a.c[2];
     }
 
-    /*
-    function ReturnStruct() public payable returns(A memory){
-        A newA;
-        return newA;
+    function ReturnStruct() public payable returns(D memory){
+        D newD;
+        return newD;
     }
-    */
 }
