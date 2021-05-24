@@ -491,7 +491,17 @@ public:
     }
     return Size;
   }
-  virtual unsigned getStorageSize() const override { return 32; }
+  unsigned getStorageSize() const override {
+    return getStoragePos(getElementSize());
+  }
+  size_t getStoragePos(size_t ElementIndex) const {
+    size_t Pos = 0;
+    for (size_t i = 0; i < ElementIndex; ++i) {
+      Pos += ElementTypes[i]->getStorageSize() / 32;
+    }
+    return Pos;
+  }
+  size_t getElementSize() const { return ElementTypes.size(); }
   bool isEqual(Type const &Ty) const override {
     if (!Type::isEqual(Ty)) {
       return false;
@@ -533,9 +543,6 @@ public:
   std::string getName() const override { return "struct"; }
   std::string getUniqueName() const override;
 
-  unsigned getStorageSize() const override {
-    return getStoragePos(getElementSize());
-  }
   void setLLVMType(llvm::StructType *T) {
     if (!Tp)
       Tp = T;
@@ -550,19 +557,9 @@ public:
     }
     return i;
   }
-
   bool hasElement(std::string Name) const {
     return getElementIndex(Name) < ElementNames.size();
   }
-
-  size_t getStoragePos(size_t ElementIndex) const {
-    size_t Pos = 0;
-    for (size_t i = 0; i < ElementIndex; ++i) {
-      Pos += ElementTypes[i]->getStorageSize() / 32;
-    }
-    return Pos;
-  }
-  size_t getElementSize() const { return ElementTypes.size(); }
   const std::vector<std::string> &getElementNames() const {
     return ElementNames;
   }

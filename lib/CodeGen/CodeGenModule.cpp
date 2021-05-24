@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "CodeGenModule.h"
+#include "ABICodec.h"
 #include "CodeGenFunction.h"
 #include <llvm/IR/Attributes.h>
 #include <llvm/IR/Constants.h>
@@ -1406,59 +1407,19 @@ llvm::Value *CodeGenModule::emitABILoadParamDynamic(const Type *Ty,
 
 void CodeGenModule::emitABIStore(const Type *Ty, llvm::StringRef Name,
                                  llvm::Value *Result) {
-  switch (Ty->getCategory()) {
-  case Type::Category::Address:
-  case Type::Category::Bool:
-  case Type::Category::FixedBytes:
-  case Type::Category::Integer: {
-    // XXX: check signed
-    llvm::Value *RetB =
-        getEndianlessValue(Builder.CreateZExtOrTrunc(Result, Int256Ty));
-
-    // put return value to returndata
-    llvm::Value *RetPtr =
-        Builder.CreateAlloca(Int256Ty, nullptr, Name + ".ret.ptr");
-    Builder.CreateStore(RetB, RetPtr);
-    llvm::Value *RetVPtr =
-        Builder.CreateBitCast(RetPtr, ReturnElemPtrTy, Name + ".ret.vptr");
-    emitFinish(RetVPtr, Builder.getInt32(32));
-    break;
-  }
-  case Type::Category::Bytes:
-  case Type::Category::String: {
-    llvm::Value *RetLen =
-        Builder.CreateExtractValue(Result, {0}, Name + ".ret.len");
-    llvm::Value *RetLenTrunc =
-        Builder.CreateTrunc(RetLen, Int32Ty, Name + ".ret.len.trunc");
-    llvm::Value *RetLenB = getEndianlessValue(RetLen);
-    llvm::Value *RetData =
-        Builder.CreateExtractValue(Result, {1}, Name + ".ret.data");
-
-    // put return value to returndata
-    llvm::Value *RetSize = Builder.CreateAdd(RetLenTrunc, Builder.getInt32(32),
-                                             Name + ".ret.size");
-    llvm::Value *RetPtr =
-        Builder.CreateAlloca(BytesElemTy, RetSize, Name + ".ret.ptr");
-    llvm::Value *RetLenVPtr =
-        Builder.CreateInBoundsGEP(RetPtr, {Builder.getInt32(0)});
-    llvm::Value *RetLenPtr =
-        Builder.CreateBitCast(RetLenVPtr, Int256PtrTy, Name + ".ret.len.ptr");
-    Builder.CreateStore(RetLenB, RetLenPtr);
-    llvm::Value *RetDataPtr = Builder.CreateInBoundsGEP(
-        RetPtr, Builder.getInt32(32), Name + ".ret.data.ptr");
-
-    Builder.CreateStore(RetLenB, RetLenPtr);
-
-    Builder.CreateCall(Func_memcpy, {RetDataPtr, RetData, RetLenTrunc});
-
-    llvm::Value *RetVPtr =
-        Builder.CreateBitCast(RetPtr, ReturnElemPtrTy, Name + ".ret.vptr");
-    emitFinish(RetVPtr, Builder.CreateTrunc(RetSize, Int32Ty));
-    break;
-  }
-  default:
-    assert(false && "unsupported type!");
-  }
+  auto ResultValue =
+      std::make_shared<ExprValue>(Ty, ValueKind::VK_RValue, Result);
+  std::vector<std::pair<ExprValuePtr, bool>> Args(1, {ResultValue, false});
+  CodeGenFunction CGF(*this);
+  AbiEmitter Emitter(CGF);
+  llvm::Value *RetSize = Emitter.getEncodeTupleSize(Args);
+  // TODO: use memory allocate and memset
+  llvm::Value *RetPtr =
+      Builder.CreateAlloca(Int8Ty, RetSize, Name + ".ret.ptr");
+  Emitter.emitEncodeTuple(RetPtr, Args);
+  llvm::Value *RetVPtr =
+      Builder.CreateBitCast(RetPtr, ReturnElemPtrTy, Name + ".ret.vptr");
+  emitFinish(RetVPtr, Builder.CreateTrunc(RetSize, Int32Ty));
 }
 
 void CodeGenModule::emitABILoad(const FunctionDecl *FD,
