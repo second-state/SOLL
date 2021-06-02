@@ -1170,9 +1170,6 @@ std::unique_ptr<Stmt> Parser::parseStatement() {
     const SourceLocation Begin = Tok.getLocation();
     ConsumeToken(); // 'continue'
     const SourceLocation End = Tok.getEndLoc();
-    if (ExpectAndConsumeSemi()) {
-      return nullptr;
-    }
     S = std::make_unique<ContinueStmt>(SourceRange(Begin, End));
     break;
   }
@@ -1180,9 +1177,6 @@ std::unique_ptr<Stmt> Parser::parseStatement() {
     const SourceLocation Begin = Tok.getLocation();
     ConsumeToken(); // 'break'
     const SourceLocation End = Tok.getEndLoc();
-    if (ExpectAndConsumeSemi()) {
-      return nullptr;
-    }
     S = std::make_unique<BreakStmt>(SourceRange(Begin, End));
     break;
   }
@@ -1194,12 +1188,17 @@ std::unique_ptr<Stmt> Parser::parseStatement() {
       E = Actions.CreateDummy(parseExpression());
     }
     const SourceLocation End = Tok.getEndLoc();
-    if (ExpectAndConsumeSemi()) {
-      return nullptr;
-    }
     S = std::make_unique<ReturnStmt>(SourceRange(Begin, End), std::move(E));
     break;
   }
+  case tok::kw_throw:
+    Diag(diag::err_unimplemented_token) << tok::kw_throw;
+    ConsumeToken(); // 'throw'
+    break;
+  case tok::kw_try:
+    Diag(diag::err_unimplemented_token) << tok::kw_try;
+    ConsumeToken(); // 'try'
+    break;
   case tok::kw_assembly:
     // TODO: parseStatement kw_assembly
     Diag(diag::err_unimplemented_token) << tok::kw_assembly;
@@ -1207,18 +1206,26 @@ std::unique_ptr<Stmt> Parser::parseStatement() {
     break;
   case tok::kw_emit:
     S = parseEmitStatement();
-    if (ExpectAndConsumeSemi()) {
-      return nullptr;
-    }
     break;
   case tok::identifier:
-  case tok::raw_identifier:
-  default:
-    S = parseSimpleStatement();
-    if (ExpectAndConsumeSemi()) {
-      return nullptr;
+  case tok::raw_identifier: {
+    // 'revert' is not a keyword
+    if (Tok.getIdentifierInfo()->getName() == "revert" &&
+        NextToken().isAnyIdentifier()) {
+      S = parseRevertStatement();
+    } else if (false && Tok.getIdentifierInfo()->getName() == "_") {
+      // TODO: PlaceholderStatement
+    } else {
+      S = parseSimpleStatement();
     }
     break;
+  }
+  default:
+    S = parseSimpleStatement();
+    break;
+  }
+  if (ExpectAndConsumeSemi()) {
+    return nullptr;
   }
   return S;
 }
@@ -1363,6 +1370,12 @@ std::unique_ptr<EmitStmt> Parser::parseEmitStatement() {
   std::unique_ptr<CallExpr> Call = Actions.CreateCallExpr(
       SourceRange(CallBegin, End), std::move(EventName), std::move(Arguments));
   return std::make_unique<EmitStmt>(SourceRange(Begin, End), std::move(Call));
+}
+
+std::unique_ptr<Stmt> Parser::parseRevertStatement() {
+  Diag(diag::err_unimplemented_revert_statment);
+  ConsumeToken(); // identifier 'revert'
+  return nullptr;
 }
 
 std::unique_ptr<Stmt> Parser::parseSimpleStatement() {
@@ -1667,7 +1680,8 @@ std::unique_ptr<Expr> Parser::parseBinaryExpression(
       ConsumeToken(); // binary op
       // Parse a**b**c as a**(b**c)
       const bool IsRightAssoc = Op == BinaryOperatorKind::BO_Exp;
-      std::unique_ptr<Expr> RightHandSide = parseBinaryExpression(Precedence + !IsRightAssoc);
+      std::unique_ptr<Expr> RightHandSide =
+          parseBinaryExpression(Precedence + !IsRightAssoc);
       const SourceLocation End = RightHandSide->getLocation().getEnd();
       Expression =
           Actions.CreateBinOp(SourceRange(Begin, End), Op,
@@ -1718,6 +1732,9 @@ std::unique_ptr<Expr> Parser::parseLeftHandSideExpression(
   } else if (TryConsumeToken(tok::kw_new)) {
     TypePtr typeName = parseTypeName(false);
     // [AST] create NewExpression
+  } else if (TryConsumeToken(tok::kw_payable)) {
+    Diag(diag::err_unimplemented_payable_type);
+    ConsumeBracket(); // ')'
   } else {
     Expression = parsePrimaryExpression();
   }
@@ -1727,19 +1744,25 @@ std::unique_ptr<Expr> Parser::parseLeftHandSideExpression(
     case tok::l_square: {
       ConsumeBracket(); // '['
       std::unique_ptr<Expr> Index;
-      if (Tok.isNot(tok::r_square)) {
+      if (Tok.isNot(tok::r_square) && Tok.isNot(tok::colon)) {
         Index = parseExpression();
       }
-      if (ExpectAndConsume(tok::r_square)) {
-        return nullptr;
+      if (TryConsumeToken(tok::colon)) {
+        // TODO: IndexRangeAccess
+        Diag(diag::err_unimplemented_token) << tok::colon;
+        if (Tok.isNot(tok::r_square))
+          parseExpression(); // endIndex
+        // Expression = IndexRangeAccess
+      } else {
+        ExpectAndConsume(tok::r_square);
+        Expression = Actions.CreateIndexAccess(
+            Tok.getEndLoc(), std::move(Expression), std::move(Index));
       }
-      Expression = Actions.CreateIndexAccess(
-          Tok.getEndLoc(), std::move(Expression), std::move(Index));
       break;
     }
     case tok::period: {
-      ConsumeToken(); // '.'
-      if (!Tok.isAnyIdentifier()) {
+      ConsumeToken();               // '.'
+      if (!Tok.isAnyIdentifier()) { // TODO:  OR Address
         Diag(diag::err_expected) << tok::identifier;
       }
       Expression = Actions.CreateMemberExpr(std::move(Expression), Tok);
@@ -1767,6 +1790,19 @@ std::unique_ptr<Expr> Parser::parseLeftHandSideExpression(
         Expression = Actions.CreateNamedCallExpr(
             SourceRange(Begin, End), std::move(Expression),
             std::move(Arguments), std::move(Names));
+      break;
+    }
+    case tok::l_brace: {
+      if (NextToken().isNot(tok::identifier) ||
+          NextNextToken().isNot(tok::colon)) {
+        return Expression;
+      }
+      Diag(diag::err_unimplemented_function_call_options);
+      // TODO: FunctionCallOptions
+      ConsumeBrace();
+      auto optionList = parseNamedArguments();
+      ConsumeBrace();
+      // Expr = FunctionCallOptions
       break;
     }
     default:
@@ -1945,33 +1981,7 @@ Parser::parseFunctionCallArguments() {
       Ret;
   if (Tok.is(tok::l_brace)) {
     ConsumeBrace();
-    bool First = true;
-    while (Tok.isNot(tok::r_brace)) {
-      if (!First) {
-        if (ExpectAndConsume(tok::comma)) {
-          return Ret;
-        }
-      }
-
-      if (Tok.isNot(tok::identifier)) {
-        Diag(diag::err_expected) << tok::identifier;
-        return Ret;
-      }
-      Ret.second.emplace_back(Tok.getIdentifierInfo()->getName());
-      ConsumeToken(); // identifier
-      if (Tok.isNot(tok::colon)) {
-        Diag(diag::err_expected) << tok::colon;
-        return Ret;
-      }
-      ConsumeToken(); // ':'
-      Ret.first.emplace_back(parseExpression());
-
-      if (Tok.is(tok::comma) && NextToken().is(tok::r_brace)) {
-        Diag(diag::err_trailing_comma);
-        ConsumeToken(); // ','
-      }
-      First = false;
-    }
+    Ret = parseNamedArguments();
     ConsumeBrace(); // '}'
   } else {
     Ret.first = parseFunctionCallListArguments();
@@ -1979,9 +1989,37 @@ Parser::parseFunctionCallArguments() {
   return Ret;
 }
 
+std::pair<std::vector<std::unique_ptr<Expr>>, std::vector<llvm::StringRef>>
+Parser::parseNamedArguments() {
+  std::pair<std::vector<std::unique_ptr<Expr>>, std::vector<llvm::StringRef>>
+      Ret;
+
+  bool First = true;
+  while (Tok.isNot(tok::r_brace)) {
+    if (!First)
+      ExpectAndConsume(tok::comma);
+
+    ExpectToken(tok::identifier);
+
+    Ret.second.emplace_back(Tok.getIdentifierInfo()->getName());
+    ConsumeToken(); // identifier
+    ExpectAndConsume(tok::colon);
+    Ret.first.emplace_back(parseExpression());
+
+    if (Tok.is(tok::comma) && NextToken().is(tok::r_brace)) {
+      Diag(diag::err_trailing_comma);
+      ConsumeAnyToken(); // ','
+    }
+
+    First = false;
+  }
+  return Ret;
+}
+
 void Parser::EnterScope(unsigned ScopeFlags) { Actions.PushScope(ScopeFlags); }
 
 void Parser::ExitScope() { Actions.PopScope(); }
+//
 
 bool Parser::ExpectAndConsumeSemi(unsigned DiagID) {
   if (TryConsumeToken(tok::semi))
@@ -1998,10 +2036,19 @@ bool Parser::ExpectAndConsumeSemi(unsigned DiagID) {
   return ExpectAndConsume(tok::semi, DiagID);
 }
 
-bool Parser::ExpectAndConsume(tok::TokenKind ExpectedTok, unsigned DiagID,
-                              llvm::StringRef Msg) {
+/*
+  ExpectAndConsume - The parser expects that 'ExpectedTok' is next in the
+  input.  If so, it is consumed and false is returned.
+
+  If a trivial punctuator misspelling is encountered, a FixIt error
+  diagnostic is issued and false is returned after recovery.
+
+  If the input is malformed, this emits the specified diagnostic and true is
+  returned.
+*/
+bool Parser::ExpectToken(tok::TokenKind ExpectedTok, unsigned DiagID,
+                         llvm::StringRef Msg) {
   if (Tok.is(ExpectedTok)) {
-    ConsumeAnyToken();
     return false;
   }
 
@@ -2015,6 +2062,15 @@ bool Parser::ExpectAndConsume(tok::TokenKind ExpectedTok, unsigned DiagID,
     DB << Msg;
 
   return true;
+}
+
+bool Parser::ExpectAndConsume(tok::TokenKind ExpectedTok, unsigned DiagID,
+                              llvm::StringRef Msg) {
+  if (ExpectToken(ExpectedTok)) {
+    return true;
+  }
+  ConsumeAnyToken();
+  return false;
 }
 
 DiagnosticBuilder Parser::Diag(SourceLocation Loc, unsigned DiagID) {
