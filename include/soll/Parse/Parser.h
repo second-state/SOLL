@@ -106,6 +106,7 @@ private:
   std::unique_ptr<ForStmt> parseForStatement();
   std::unique_ptr<EmitStmt> parseEmitStatement();
   std::unique_ptr<Stmt> parseSimpleStatement();
+  std::unique_ptr<Stmt> parseRevertStatement();
   std::unique_ptr<DeclStmt>
   parseVariableDeclarationStatement(TypePtr &&LookAheadArrayType = nullptr);
   std::unique_ptr<Expr>
@@ -121,6 +122,8 @@ private:
   std::vector<std::unique_ptr<Expr>> parseFunctionCallListArguments();
   std::pair<std::vector<std::unique_ptr<Expr>>, std::vector<llvm::StringRef>>
   parseFunctionCallArguments();
+  std::pair<std::vector<std::unique_ptr<Expr>>, std::vector<llvm::StringRef>>
+  parseNamedArguments();
 
   std::unique_ptr<YulObject> parseYulObject();
   std::unique_ptr<YulCode> parseYulCode();
@@ -192,6 +195,7 @@ private:
   }
 
   Token NextToken() const { return *TheLexer.LookAhead(0); }
+  Token NextNextToken() const { return *TheLexer.LookAhead(1); }
 
   bool isTokenParen() const { return Tok.isOneOf(tok::l_paren, tok::r_paren); }
   bool isTokenBracket() const {
@@ -278,6 +282,10 @@ private:
       return ConsumeStringToken();
     return ConsumeToken();
   }
+
+  bool ExpectToken(tok::TokenKind ExpectedTok,
+                   unsigned Diag = diag::err_expected,
+                   llvm::StringRef DiagMsg = {});
 
   bool ExpectAndConsume(tok::TokenKind ExpectedTok,
                         unsigned Diag = diag::err_expected,
