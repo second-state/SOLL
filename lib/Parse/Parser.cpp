@@ -1385,64 +1385,79 @@ std::unique_ptr<Stmt> Parser::parseSimpleStatement() {
   std::unique_ptr<Expr> Expression;
   size_t EmptyComponents = 0;
 
-  bool IsParenExpr = false;
   if (isTokenParen()) {
     ConsumeParen();
-    IsParenExpr = true;
-
-    while (Tok.getKind() == tok::comma) {
-      ExpectAndConsume(tok::comma);
+    while (Tok.is(tok::comma)) {
+      ConsumeToken(); // ','
       EmptyComponents++;
     }
-  }
+    std::tie(StatementType, Iap) = tryParseIndexAccessedPath();
+    switch (StatementType) {
+    case LookAheadInfo::VariableDeclaration: {
+      std::vector<soll::VarDeclBasePtr> Variables(EmptyComponents);
+      soll::ExprPtr Value;
 
-  std::tie(StatementType, Iap) = tryParseIndexAccessedPath();
-  switch (StatementType) {
-  case LookAheadInfo::VariableDeclaration:
-    return parseVariableDeclarationStatement(
-        typeNameFromIndexAccessStructure(Iap));
-  case LookAheadInfo::Expression:
-    Expression = parseExpression(expressionFromIndexAccessStructure(Iap));
-    break;
-  default:
-    assert(false && "Unhandle statement.");
-  }
-  if (IsParenExpr) {
-    std::vector<ExprPtr> Comps(EmptyComponents);
-    bool ReachComma = false;
-    Comps.emplace_back(std::move(Expression));
+      // We have already parsed something like `(,,,,a.b.c[2][3]`
+      VarDeclParserOptions Options;
+      Options.AllowLocationSpecifier = true;
+      Variables.emplace_back(parseVariableDeclaration(
+          Options, typeNameFromIndexAccessStructure(Iap)));
 
-    if (EmptyComponents != 0) { // already meet
-      ReachComma = true;
-    }
-
-    while (Tok.getKind() != tok::r_paren) {
-      ExpectAndConsume(tok::comma);
-      ReachComma = true;
-      if (Tok.getKind() == tok::comma || Tok.getKind() == tok::r_paren) {
-        Comps.emplace_back(ExprPtr());
-      } else {
-        Comps.emplace_back(parseExpression());
+      while (Tok.isNot(tok::r_paren)) {
+        ExpectAndConsume(tok::comma);
+        if (Tok.is(tok::comma) || Tok.is(tok::r_paren))
+          Variables.emplace_back(nullptr);
+        else
+          Variables.emplace_back(parseVariableDeclaration(Options));
       }
+
+      ConsumeParen();
+      ExpectAndConsume(tok::equal);
+      Value = parseExpression();
+
+      SourceLocation End = Value->getLocation().getEnd();
+      return std::make_unique<DeclStmt>(SourceRange(Begin, End),
+                                        std::move(Variables), std::move(Value));
     }
+    case LookAheadInfo::Expression: {
+      std::vector<soll::ExprPtr> Components(EmptyComponents);
 
-    ExpectAndConsume(tok::r_paren);
+      Components.emplace_back(
+          parseExpression(expressionFromIndexAccessStructure(Iap)));
+      while (Tok.isNot(tok::r_paren)) {
+        ExpectAndConsume(tok::comma);
+        if (Tok.is(tok::comma) || Tok.is(tok::r_paren))
+          Components.emplace_back(nullptr);
+        else
+          Components.emplace_back(parseExpression());
+      }
 
-    const SourceLocation End = Tok.getEndLoc();
-    bool IsArray = false;
+      ConsumeParen();
 
-    if (!ReachComma) {
-      return parseExpression(std::make_unique<ParenExpr>(
-          SourceRange(Begin, End), std::move(Comps.back())));
+      const SourceLocation End = Tok.getEndLoc();
+
+      for (auto &Comp : Components) {
+        if (Comp)
+          Comp = Actions.CreateDummy(std::move(Comp));
+      }
+
+      return parseExpression(std::make_unique<TupleExpr>(
+          SourceRange(Begin, End), std::move(Components), false));
     }
-
-    for (auto &Comp : Comps) {
-      if (Comp)
-        Comp = Actions.CreateDummy(std::move(Comp));
+    default:
+      assert(false && "Unhandle statement.");
     }
-
-    return parseExpression(std::make_unique<TupleExpr>(
-        SourceRange(Begin, End), std::move(Comps), IsArray));
+  } else {
+    std::tie(StatementType, Iap) = tryParseIndexAccessedPath();
+    switch (StatementType) {
+    case LookAheadInfo::VariableDeclaration:
+      return parseVariableDeclarationStatement(
+          typeNameFromIndexAccessStructure(Iap));
+    case LookAheadInfo::Expression:
+      return parseExpression(expressionFromIndexAccessStructure(Iap));
+    default:
+      assert(false && "Unhandle statement.");
+    }
   }
   return Expression;
 }
@@ -1454,7 +1469,7 @@ Parser::parseVariableDeclarationStatement(TypePtr &&LookAheadArrayType) {
   // `(`, they are parsed in parseSimpleStatement, because they are hard to
   // distinguish from tuple expressions.
   const SourceLocation Begin = Tok.getLocation();
-  std::vector<std::unique_ptr<VarDeclBase>> Variables;
+  std::vector<soll::VarDeclBasePtr> Variables;
   std::unique_ptr<Expr> Value;
   if (!LookAheadArrayType && Tok.is(tok::kw_var) &&
       NextToken().is(tok::l_paren)) {

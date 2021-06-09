@@ -145,6 +145,8 @@ TypePtr Identifier::getType() {
     return VD->getType();
   } else if (auto FD = dynamic_cast<const FunctionDecl *>(D)) {
     return FD->getType();
+  } else if (auto CD = dynamic_cast<const ContractDecl *>(D)) {
+    return CD->getType();
   } else if (dynamic_cast<const EventDecl *>(D)) {
     return Expr::getType();
   } else {
@@ -160,6 +162,8 @@ const TypePtr &Identifier::getType() const {
     return VD->getType();
   } else if (auto FD = dynamic_cast<const FunctionDecl *>(D)) {
     return FD->getType();
+  } else if (auto CD = dynamic_cast<const ContractDecl *>(D)) {
+    return CD->getType();
   } else if (dynamic_cast<const EventDecl *>(D)) {
     return Expr::getType();
   } else {

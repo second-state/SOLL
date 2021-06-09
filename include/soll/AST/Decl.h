@@ -139,6 +139,7 @@ public:
   ContractKind getKind() const;
   bool isImplemented();
   TypePtr getType() { return ContractTy; }
+  const TypePtr &getType() const { return ContractTy; }
   void setType(TypePtr Ty) { ContractTy = Ty; }
   llvm::StringMap<llvm::StringMap<std::pair<ContractDecl *, FunctionDecl *>>> &
   getTypeMemberMap() {
