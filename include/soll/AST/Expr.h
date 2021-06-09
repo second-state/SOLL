@@ -107,7 +107,10 @@ public:
     return std::holds_alternative<SpecialIdentifier>(D);
   }
   const Token &getToken() const { return T; }
-  llvm::StringRef getName() const { return T.getIdentifierInfo()->getName(); }
+  llvm::StringRef getName() const {
+    return (T.getIdentifierInfo()) ? T.getIdentifierInfo()->getName()
+                                   : llvm::StringRef();
+  }
   void setCorrespondDecl(Decl *D) { this->D = D; }
   Decl *getCorrespondDecl() {
     auto Dptr = std::get_if<Decl *>(&D);
