@@ -1697,6 +1697,8 @@ llvm::Type *CodeGenModule::getLLVMType(const Type *Ty) {
                                   ArrayTy->getLength().getLimitedValue());
     }
   }
+  case Type::Category::Tuple:
+    return nullptr;
   case Type::Category::Struct:
     return dynamic_cast<const StructType *>(Ty)->getLLVMType();
   case Type::Category::Mapping:

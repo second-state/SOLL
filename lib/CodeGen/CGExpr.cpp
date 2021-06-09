@@ -900,7 +900,112 @@ public:
     return Int8Ptr;
   }
 
+  std::pair<llvm::Value *, llvm::Value *> getDecode(llvm::Value *Int8Ptr,
+                                                    const Type *Ty) {
+    auto Int32Ty = IntegerType::getIntN(32);
+    llvm::Type *ValueTy = CGM.getLLVMType(Ty);
+    switch (Ty->getCategory()) {
+    case Type::Category::String:
+    case Type::Category::Bytes: {
+      llvm::Value *Length;
+      std::tie(Length, Int8Ptr) = getDecode(Int8Ptr, &Int32Ty);
+
+      llvm::Value *Array = Builder.CreateAlloca(CGF.Int8Ty, Length, "decode");
+      llvm::Function *Memcpy = CGM.getModule().getFunction("solidity.memcpy");
+      Builder.CreateCall(Memcpy, {Builder.CreateBitCast(Array, CGM.Int8PtrTy),
+                                  Int8Ptr, Length});
+      llvm::Value *Val = llvm::ConstantAggregateZero::get(ValueTy);
+      Val = Builder.CreateInsertValue(
+          Val, Builder.CreateZExtOrTrunc(Length, CGF.Int256Ty), {0});
+      Val = Builder.CreateInsertValue(Val, Array, {1});
+
+      llvm::Value *EncodeLength = Builder.CreateMul(
+          Builder.CreateUDiv(Builder.CreateAdd(Length, Builder.getIntN(32, 31)),
+                             Builder.getIntN(32, 32)),
+          Builder.getIntN(32, 32));
+      llvm::Value *NextInt8Ptr =
+          Builder.CreateInBoundsGEP(Int8Ptr, {EncodeLength});
+      return {Val, NextInt8Ptr};
+    }
+    case Type::Category::Array: {
+      assert(false && "This type is not available currently for abi.decode");
+      __builtin_unreachable();
+    }
+    case Type::Category::Tuple: {
+      const auto *TupleTy = dynamic_cast<const TupleType *>(Ty);
+      std::vector<llvm::Value *> Vals;
+      llvm::Value *NextInt8Ptr;
+      std::tie(Vals, NextInt8Ptr) = getDecodeTuple(Int8Ptr, TupleTy);
+      // TODO: return tuple type
+      return {nullptr, NextInt8Ptr};
+    }
+    case Type::Category::Struct: {
+      const auto *TupleTy = dynamic_cast<const TupleType *>(Ty);
+      std::vector<llvm::Value *> Vals;
+      llvm::Value *NextInt8Ptr;
+      std::tie(Vals, NextInt8Ptr) = getDecodeTuple(Int8Ptr, TupleTy);
+      const auto *StructTy = dynamic_cast<const StructType *>(Ty);
+      llvm::Value *ReturnStruct =
+          llvm::ConstantAggregateZero::get(StructTy->getLLVMType());
+      unsigned Index = 0;
+      for (auto Val : Vals) {
+        ReturnStruct = Builder.CreateInsertValue(ReturnStruct, Val, {Index++});
+      }
+      return {ReturnStruct, NextInt8Ptr};
+    }
+    case Type::Category::Contract:
+    case Type::Category::Function:
+    case Type::Category::Mapping:
+      assert(false && "This type is not available currently for abi.decode");
+      __builtin_unreachable();
+    case Type::Category::FixedBytes: {
+      const auto *FixedBytesTy = dynamic_cast<const FixedBytesType *>(Ty);
+      llvm::Value *ValPtr = Builder.CreatePointerCast(
+          Int8Ptr, llvm::PointerType::getUnqual(ValueTy));
+      llvm::Value *Val = Builder.CreateLoad(ValPtr, ValueTy);
+      llvm::Value *NextInt8Ptr =
+          Builder.CreateInBoundsGEP(Int8Ptr, {Builder.getInt32(32)});
+      return {Val, NextInt8Ptr};
+    }
+    default: {
+      llvm::Value *ValPtr = Builder.CreatePointerCast(
+          Int8Ptr, llvm::PointerType::getUnqual(CGM.Int256Ty));
+      llvm::Value *Val = Builder.CreateLoad(ValPtr, CGM.Int256Ty);
+      Val = CGM.getEndianlessValue(Val);
+      Val = Builder.CreateZExtOrTrunc(Val, ValueTy);
+      llvm::Value *NextInt8Ptr = Builder.CreateInBoundsGEP(
+          Int8Ptr, {Builder.getInt32(ValueTy->getIntegerBitWidth() / 8)});
+      return {Val, NextInt8Ptr};
+    }
+    }
+  }
+
 private:
+  std::pair<std::vector<llvm::Value *>, llvm::Value *>
+  getDecodeTuple(llvm::Value *Int8Ptr, const TupleType *Ty) {
+    auto Int32Ty = IntegerType::getIntN(32);
+    const auto &ElementTypes = Ty->getElementTypes();
+    std::vector<std::pair<llvm::Value *, size_t>> DynamicPos;
+    std::vector<llvm::Value *> Vals(ElementTypes.size());
+    llvm::Value *NextInt8Ptr = Int8Ptr;
+    for (size_t i = 0; i < ElementTypes.size(); ++i) {
+      if (ElementTypes[i]->isDynamic()) {
+        llvm::Value *Pos;
+        std::tie(Pos, NextInt8Ptr) = getDecode(NextInt8Ptr, &Int32Ty);
+        DynamicPos.emplace_back(Builder.CreateInBoundsGEP(Int8Ptr, {Pos}), i);
+      } else {
+        std::tie(Vals[i], NextInt8Ptr) =
+            getDecode(NextInt8Ptr, ElementTypes[i].get());
+      }
+    }
+    for (auto &DP : DynamicPos) {
+      llvm::Value *Pos;
+      size_t i;
+      std::tie(Pos, i) = DP;
+      std::tie(Vals[i], NextInt8Ptr) = getDecode(Pos, ElementTypes[i].get());
+    }
+    return {Vals, NextInt8Ptr};
+  }
   llvm::Value *getArrayLength(const ExprValuePtr &Base,
                               const ArrayType *ArrTy) {
     if (ArrTy->isDynamicSized()) {
