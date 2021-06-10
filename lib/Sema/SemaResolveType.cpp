@@ -806,6 +806,9 @@ void Sema::resolveImplicitCast(ImplicitCastExpr &IC, TypePtr DstTy,
           resolveImplicitCast(*TIC, DstTupTy->getElementTypes()[Idx],
                               PrefereLValue);
       }
+    } else {
+      assert(dynamic_cast<TypesTupleExpr *>(IC.getSubExpr()));
+      // do nothing for TypesTupleExpr.
     }
   }
   if (DstTy->isEqual(*SrcTy)) {
