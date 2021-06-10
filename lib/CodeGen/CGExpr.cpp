@@ -987,27 +987,27 @@ private:
     std::vector<std::pair<llvm::Value *, size_t>> DynamicPos;
     std::vector<llvm::Value *> Vals(ElementTypes.size());
     llvm::Value *NextInt8Ptr = Int8Ptr;
-    for (size_t i = 0; i < ElementTypes.size(); ++i) {
-      if (ElementTypes[i]->isDynamic()) {
+    for (size_t I = 0; I < ElementTypes.size(); ++I) {
+      if (ElementTypes[I]->isDynamic()) {
         ExprValuePtr PosExprValue;
         std::tie(PosExprValue, NextInt8Ptr) = getDecode(NextInt8Ptr, &Int32Ty);
         llvm::Value *Pos = PosExprValue->load(Builder, CGM);
-        DynamicPos.emplace_back(Builder.CreateInBoundsGEP(Int8Ptr, {Pos}), i);
+        DynamicPos.emplace_back(Builder.CreateInBoundsGEP(Int8Ptr, {Pos}), I);
       } else {
         ExprValuePtr ValExprValue;
         std::tie(ValExprValue, NextInt8Ptr) =
-            getDecode(NextInt8Ptr, ElementTypes[i].get());
-        Vals[i] = ValExprValue->load(Builder, CGM);
+            getDecode(NextInt8Ptr, ElementTypes[I].get());
+        Vals[I] = ValExprValue->load(Builder, CGM);
       }
     }
     for (auto &DP : DynamicPos) {
       ExprValuePtr ValExprValue;
       llvm::Value *Pos;
-      size_t i;
-      std::tie(Pos, i) = DP;
+      size_t I;
+      std::tie(Pos, I) = DP;
       std::tie(ValExprValue, NextInt8Ptr) =
-          getDecode(Pos, ElementTypes[i].get());
-      Vals[i] = ValExprValue->load(Builder, CGM);
+          getDecode(Pos, ElementTypes[I].get());
+      Vals[I] = ValExprValue->load(Builder, CGM);
     }
     return {Vals, NextInt8Ptr};
   }
@@ -1767,8 +1767,8 @@ llvm::Value *CodeGenFunction::emitAbiEncodePacked(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
   std::vector<std::pair<ExprValuePtr, bool>> Args;
   for (auto Arg : Arguments) {
-    if (auto CE = dynamic_cast<const CastExpr *>(Arg))
-      Arg = CE->getSubExpr();
+    if (auto CastExprPtr = dynamic_cast<const CastExpr *>(Arg))
+      Arg = CastExprPtr->getSubExpr();
     bool IsStateVariable = Arg->isStateVariable(); // for array index access
     Args.emplace_back(emitExpr(Arg), IsStateVariable);
   }
@@ -1790,8 +1790,8 @@ llvm::Value *CodeGenFunction::emitAbiEncode(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
   std::vector<std::pair<ExprValuePtr, bool>> Args;
   for (auto Arg : Arguments) {
-    if (auto CE = dynamic_cast<const CastExpr *>(Arg))
-      Arg = CE->getSubExpr();
+    if (auto CastExprPtr = dynamic_cast<const CastExpr *>(Arg))
+      Arg = CastExprPtr->getSubExpr();
     bool IsStateVariable = Arg->isStateVariable(); // for array index access
     Args.emplace_back(emitExpr(Arg), IsStateVariable);
   }
@@ -1812,8 +1812,8 @@ ExprValuePtr CodeGenFunction::emitAbiDecode(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
   assert(Arguments.size() == 2);
   auto Arg = Arguments.at(0);
-  if (auto CE = dynamic_cast<const CastExpr *>(Arg))
-    Arg = CE->getSubExpr();
+  if (auto CastExprPtr = dynamic_cast<const CastExpr *>(Arg))
+    Arg = CastExprPtr->getSubExpr();
   auto BytesExprValue = emitExpr(Arg);
   auto Bytes = BytesExprValue->load(Builder, CGM);
 
