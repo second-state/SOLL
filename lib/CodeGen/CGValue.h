@@ -21,9 +21,11 @@ public:
   ExprValue(const Type *Ty, ValueKind Kind, llvm::Value *V,
             llvm::Value *Shift = nullptr)
       : Ty(Ty), Kind(Kind), V(V), Shift(Shift) {}
+  static ExprValuePtr getRValue(const Type *Ty, llvm::Value *V) {
+    return std::make_shared<ExprValue>(Ty, ValueKind::VK_RValue, V);
+  }
   static ExprValuePtr getRValue(const Expr *E, llvm::Value *V) {
-    return std::make_shared<ExprValue>(E->getType().get(), ValueKind::VK_RValue,
-                                       V);
+    return getRValue(E->getType().get(), V);
   }
 
   const Type *getType() const { return Ty; }
@@ -425,15 +427,11 @@ public:
 
   virtual bool isTuple() const override { return true; }
 
-  static ExprValuePtr getRValue(const Expr *E, std::vector<llvm::Value *> VT) {
-    std::vector<ExprValuePtr> Exprs;
+  static ExprValuePtr getRValue(const TupleType *TupleTy,
+                                const std::vector<llvm::Value *> &VT) {
     size_t Size = VT.size();
-
-    auto TupleTy = dynamic_cast<const TupleType *>(E->getType().get());
-
-    assert(TupleTy && E->getType()->getCategory() == Type::Category::Tuple);
-    assert(TupleTy->getElementTypes().size() == VT.size());
-
+    assert(TupleTy->getElementTypes().size() == Size);
+    std::vector<ExprValuePtr> Exprs;
     for (size_t Idx = 0; Idx < Size; ++Idx) {
       Exprs.emplace_back(
           std::make_shared<ExprValue>(TupleTy->getElementTypes()[Idx].get(),
@@ -442,6 +440,12 @@ public:
 
     return std::make_shared<ExprValueTuple>(TupleTy, ValueKind::VK_RValue,
                                             std::move(Exprs));
+  }
+
+  static ExprValuePtr getRValue(const Expr *E, std::vector<llvm::Value *> VT) {
+    auto TupleTy = dynamic_cast<const TupleType *>(E->getType().get());
+    assert(TupleTy && E->getType()->getCategory() == Type::Category::Tuple);
+    return getRValue(TupleTy, VT);
   }
 
   template <typename T>

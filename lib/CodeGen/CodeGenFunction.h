@@ -109,6 +109,7 @@ private:
                                    bool NeedRevert);
   llvm::Value *emitAbiEncodePacked(const CallExpr *CE);
   llvm::Value *emitAbiEncode(const CallExpr *CE);
+  ExprValuePtr emitAbiDecode(const CallExpr *CE);
   llvm::Value *emitStructConstructor(const CallExpr *CE);
 
   llvm::Value *emitAsmCallDataSize(const CallExpr *CE);

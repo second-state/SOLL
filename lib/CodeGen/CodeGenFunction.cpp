@@ -203,6 +203,7 @@ llvm::Value *CodeGenFunction::emitVarDecl(const Decl *VD) {
   case Type::Category::Bool:
   case Type::Category::Integer:
   case Type::Category::Address:
+  case Type::Category::FixedBytes:
     Builder.CreateStore(llvm::ConstantInt::get(LLVMTy, 0), Addr);
     break;
   case Type::Category::String:
@@ -403,7 +404,8 @@ void CodeGenFunction::emitAsmSwitchStmt(const AsmSwitchStmt *SS) {
   // - handle nested switch statements.
   // - handle large case range.
   llvm::Value *CondV = emitExpr(SS->getCond())->load(Builder, CGM);
-  llvm::Value *CondVconv = Builder.CreateIntCast(CondV, llvm::Type::getIntNTy(getLLVMContext(), 256), true);
+  llvm::Value *CondVconv = Builder.CreateIntCast(
+      CondV, llvm::Type::getIntNTy(getLLVMContext(), 256), true);
   llvm::BasicBlock *DefaultBB = createBasicBlock("switch.default");
   llvm::BasicBlock *SwitchExit = createBasicBlock("switch.end");
   llvm::SwitchInst *Switch = Builder.CreateSwitch(CondVconv, DefaultBB);
