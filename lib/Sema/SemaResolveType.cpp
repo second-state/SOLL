@@ -305,8 +305,7 @@ public:
   }
   void visit(MemberExprType &ME) override {
     StmtVisitor::visit(ME);
-    auto MemberName = ME.getName();
-    ME.setType(MemberName->getType());
+    ME.setType(ME.getName()->getType());
     if (ME.getType()) {
       return;
     }
@@ -324,8 +323,8 @@ public:
         {"delegatecall", Identifier::SpecialIdentifier::address_delegatecall},
         {"staticcall", Identifier::SpecialIdentifier::address_staticcall}};
 
-    Token Tok = MemberName->getToken();
-    llvm::StringRef Name = MemberName->getName();
+    Token Tok = ME.getName()->getToken();
+    llvm::StringRef Name = ME.getName()->getName();
     switch (ME.getBase()->getType()->getCategory()) {
     case Type::Category::Array:
       if (auto Iter = ArrayLookup.find(Name); Iter != ArrayLookup.end()) {
@@ -436,7 +435,7 @@ public:
       ME.setLibraryAddress(Address);
       return;
     }
-    Actions.Diag(MemberName->getLocation().getBegin(), diag::err_no_member)
+    Actions.Diag(ME.getName()->getLocation().getBegin(), diag::err_no_member)
         << Name << ME.getBase()->getType()->getName();
   }
   void visit(ParenExprType &PE) override {
@@ -795,16 +794,18 @@ void Sema::resolveImplicitCast(ImplicitCastExpr &IC, TypePtr DstTy,
   if (!SrcTy) {
     return;
   }
-  if (auto SrcTup = dynamic_cast<TupleExpr *>(IC.getSubExpr())) {
-    assert(SrcTy->getCategory() == Type::Category::Tuple);
+  if (SrcTy->getCategory() == Type::Category::Tuple) {
     assert(DstTy->getCategory() == Type::Category::Tuple);
-    auto DstTupTy = dynamic_cast<const TupleType *>(DstTy.get());
-    std::size_t Num = SrcTup->getComponents().size();
-    for (std::size_t Idx = 0; Idx < Num; ++Idx) {
-      auto TIC = dynamic_cast<ImplicitCastExpr *>(SrcTup->getComponents()[Idx]);
-      if (TIC)
-        resolveImplicitCast(*TIC, DstTupTy->getElementTypes()[Idx],
-                            PrefereLValue);
+    if (auto SrcTup = dynamic_cast<TupleExpr *>(IC.getSubExpr())) {
+      auto DstTupTy = dynamic_cast<const TupleType *>(DstTy.get());
+      std::size_t Num = SrcTup->getComponents().size();
+      for (std::size_t Idx = 0; Idx < Num; ++Idx) {
+        auto TIC =
+            dynamic_cast<ImplicitCastExpr *>(SrcTup->getComponents()[Idx]);
+        if (TIC)
+          resolveImplicitCast(*TIC, DstTupTy->getElementTypes()[Idx],
+                              PrefereLValue);
+      }
     }
   }
   if (DstTy->isEqual(*SrcTy)) {

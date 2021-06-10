@@ -900,15 +900,16 @@ public:
     return Int8Ptr;
   }
 
-  std::pair<llvm::Value *, llvm::Value *> getDecode(llvm::Value *Int8Ptr,
-                                                    const Type *Ty) {
+  std::pair<ExprValuePtr, llvm::Value *> getDecode(llvm::Value *Int8Ptr,
+                                                   const Type *Ty) {
     auto Int32Ty = IntegerType::getIntN(32);
     llvm::Type *ValueTy = CGM.getLLVMType(Ty);
     switch (Ty->getCategory()) {
     case Type::Category::String:
     case Type::Category::Bytes: {
-      llvm::Value *Length;
-      std::tie(Length, Int8Ptr) = getDecode(Int8Ptr, &Int32Ty);
+      ExprValuePtr LengthExprValue;
+      std::tie(LengthExprValue, Int8Ptr) = getDecode(Int8Ptr, &Int32Ty);
+      llvm::Value *Length = LengthExprValue->load(Builder, CGM);
 
       llvm::Value *Array = Builder.CreateAlloca(CGF.Int8Ty, Length, "decode");
       llvm::Function *Memcpy = CGM.getModule().getFunction("solidity.memcpy");
@@ -925,7 +926,7 @@ public:
           Builder.getIntN(32, 32));
       llvm::Value *NextInt8Ptr =
           Builder.CreateInBoundsGEP(Int8Ptr, {EncodeLength});
-      return {Val, NextInt8Ptr};
+      return {ExprValue::getRValue(Ty, Val), NextInt8Ptr};
     }
     case Type::Category::Array: {
       assert(false && "This type is not available currently for abi.decode");
@@ -936,8 +937,7 @@ public:
       std::vector<llvm::Value *> Vals;
       llvm::Value *NextInt8Ptr;
       std::tie(Vals, NextInt8Ptr) = getDecodeTuple(Int8Ptr, TupleTy);
-      // TODO: return tuple type
-      return {nullptr, NextInt8Ptr};
+      return {ExprValueTuple::getRValue(TupleTy, Vals), NextInt8Ptr};
     }
     case Type::Category::Struct: {
       const auto *TupleTy = dynamic_cast<const TupleType *>(Ty);
@@ -951,7 +951,7 @@ public:
       for (auto Val : Vals) {
         ReturnStruct = Builder.CreateInsertValue(ReturnStruct, Val, {Index++});
       }
-      return {ReturnStruct, NextInt8Ptr};
+      return {ExprValue::getRValue(Ty, ReturnStruct), NextInt8Ptr};
     }
     case Type::Category::Contract:
     case Type::Category::Function:
@@ -959,13 +959,12 @@ public:
       assert(false && "This type is not available currently for abi.decode");
       __builtin_unreachable();
     case Type::Category::FixedBytes: {
-      const auto *FixedBytesTy = dynamic_cast<const FixedBytesType *>(Ty);
       llvm::Value *ValPtr = Builder.CreatePointerCast(
           Int8Ptr, llvm::PointerType::getUnqual(ValueTy));
       llvm::Value *Val = Builder.CreateLoad(ValPtr, ValueTy);
       llvm::Value *NextInt8Ptr =
           Builder.CreateInBoundsGEP(Int8Ptr, {Builder.getInt32(32)});
-      return {Val, NextInt8Ptr};
+      return {ExprValue::getRValue(Ty, Val), NextInt8Ptr};
     }
     default: {
       llvm::Value *ValPtr = Builder.CreatePointerCast(
@@ -975,7 +974,7 @@ public:
       Val = Builder.CreateZExtOrTrunc(Val, ValueTy);
       llvm::Value *NextInt8Ptr = Builder.CreateInBoundsGEP(
           Int8Ptr, {Builder.getInt32(ValueTy->getIntegerBitWidth() / 8)});
-      return {Val, NextInt8Ptr};
+      return {ExprValue::getRValue(Ty, Val), NextInt8Ptr};
     }
     }
   }
@@ -990,19 +989,25 @@ private:
     llvm::Value *NextInt8Ptr = Int8Ptr;
     for (size_t i = 0; i < ElementTypes.size(); ++i) {
       if (ElementTypes[i]->isDynamic()) {
-        llvm::Value *Pos;
-        std::tie(Pos, NextInt8Ptr) = getDecode(NextInt8Ptr, &Int32Ty);
+        ExprValuePtr PosExprValue;
+        std::tie(PosExprValue, NextInt8Ptr) = getDecode(NextInt8Ptr, &Int32Ty);
+        llvm::Value *Pos = PosExprValue->load(Builder, CGM);
         DynamicPos.emplace_back(Builder.CreateInBoundsGEP(Int8Ptr, {Pos}), i);
       } else {
-        std::tie(Vals[i], NextInt8Ptr) =
+        ExprValuePtr ValExprValue;
+        std::tie(ValExprValue, NextInt8Ptr) =
             getDecode(NextInt8Ptr, ElementTypes[i].get());
+        Vals[i] = ValExprValue->load(Builder, CGM);
       }
     }
     for (auto &DP : DynamicPos) {
+      ExprValuePtr ValExprValue;
       llvm::Value *Pos;
       size_t i;
       std::tie(Pos, i) = DP;
-      std::tie(Vals[i], NextInt8Ptr) = getDecode(Pos, ElementTypes[i].get());
+      std::tie(ValExprValue, NextInt8Ptr) =
+          getDecode(Pos, ElementTypes[i].get());
+      Vals[i] = ValExprValue->load(Builder, CGM);
     }
     return {Vals, NextInt8Ptr};
   }
@@ -1802,6 +1807,24 @@ llvm::Value *CodeGenFunction::emitAbiEncode(const CallExpr *CE) {
   return Bytes;
 }
 
+ExprValuePtr CodeGenFunction::emitAbiDecode(const CallExpr *CE) {
+  // abi_encode
+  auto Arguments = CE->getArguments();
+  assert(Arguments.size() == 2);
+  auto Arg = Arguments.at(0);
+  if (auto CE = dynamic_cast<const CastExpr *>(Arg))
+    Arg = CE->getSubExpr();
+  auto BytesExprValue = emitExpr(Arg);
+  auto Bytes = BytesExprValue->load(Builder, CGM);
+
+  llvm::Value *Length = Builder.CreateZExtOrTrunc(
+      Builder.CreateExtractValue(Bytes, {0}), CGM.Int32Ty);
+  llvm::Value *SrcBytes = Builder.CreateExtractValue(Bytes, {1});
+
+  AbiEmitter Emitter(*this);
+  return Emitter.getDecode(SrcBytes, CE->getType().get()).first;
+}
+
 ExprValuePtr CodeGenFunction::emitCallExpr(const CallExpr *CE) {
   auto Expr = CE->getCalleeExpr();
   auto ME = dynamic_cast<const MemberExpr *>(Expr);
@@ -1950,6 +1973,9 @@ ExprValuePtr CodeGenFunction::emitSpecialCallExpr(const Identifier *SI,
   case Identifier::SpecialIdentifier::abi_encodeWithSelector:
   case Identifier::SpecialIdentifier::abi_encodeWithSignature: {
     return ExprValue::getRValue(CE, emitAbiEncodePacked(CE));
+  }
+  case Identifier::SpecialIdentifier::abi_decode: {
+    return emitAbiDecode(CE);
   }
   case Identifier::SpecialIdentifier::struct_constructor:
     return ExprValue::getRValue(CE, emitStructConstructor(CE));
