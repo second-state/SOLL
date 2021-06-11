@@ -75,8 +75,8 @@ std::vector<Expr *> CallExpr::getArguments() {
       ParamNamesIndex[ParamName] = ParamSize++;
     }
     Args.resize(ParamSize);
-    for (size_t i = 0; i < ParamSize; ++i) {
-      Args[ParamNamesIndex.at(Names->at(i))] = Arguments.at(i).get();
+    for (size_t I = 0; I < ParamSize; ++I) {
+      Args[ParamNamesIndex.at(Names->at(I))] = Arguments.at(I).get();
     }
   } else {
     for (auto &Arg : Arguments)
@@ -95,8 +95,8 @@ std::vector<const Expr *> CallExpr::getArguments() const {
       ParamNamesIndex[ParamName] = ParamSize++;
     }
     Args.resize(ParamSize);
-    for (size_t i = 0; i < ParamSize; ++i) {
-      Args[ParamNamesIndex.at(Names->at(i))] = Arguments.at(i).get();
+    for (size_t I = 0; I < ParamSize; ++I) {
+      Args[ParamNamesIndex.at(Names->at(I))] = Arguments.at(I).get();
     }
   } else {
     for (auto &Arg : Arguments)

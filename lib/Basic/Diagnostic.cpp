@@ -270,9 +270,9 @@ void Diagnostic::FormatDiagnostic(const char *DiagStr, const char *DiagEnd,
   llvm::SmallVector<intptr_t, 2> QualTypeVals;
   llvm::SmallVector<char, 64> Tree;
 
-  for (unsigned i = 0, e = getNumArgs(); i < e; ++i)
-    if (getArgKind(i) == DiagnosticsEngine::ArgumentKind::ak_qualtype)
-      QualTypeVals.push_back(getRawArg(i));
+  for (unsigned I = 0, e = getNumArgs(); I < e; ++I)
+    if (getArgKind(I) == DiagnosticsEngine::ArgumentKind::ak_qualtype)
+      QualTypeVals.push_back(getRawArg(I));
 
   while (DiagStr != DiagEnd) {
     if (DiagStr[0] != '%') {

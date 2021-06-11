@@ -8,6 +8,8 @@ add_llvm_library(sollCodeGen
   CodeGenModule.cpp
   LoweringInteger.cpp
   ModuleBuilder.cpp
+  ABICodec.cpp
+  ExprEmitter.cpp
   LINK_LIBS
   sollAST
   sollFrontend

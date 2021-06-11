@@ -1631,9 +1631,9 @@ Parser::expressionFromIndexAccessStructure(Parser::IndexAccessedPath &Iap) {
   if (!Expression) {
     return nullptr;
   }
-  for (size_t i = 1; i < Iap.Path.size(); ++i) {
+  for (size_t I = 1; I < Iap.Path.size(); ++I) {
     Expression =
-        Actions.CreateMemberExpr(std::move(Expression), std::move(Iap.Path[i]));
+        Actions.CreateMemberExpr(std::move(Expression), std::move(Iap.Path[I]));
     if (!Expression) {
       return nullptr;
     }
