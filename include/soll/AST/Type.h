@@ -496,8 +496,8 @@ public:
   }
   size_t getStoragePos(size_t ElementIndex) const {
     size_t Pos = 0;
-    for (size_t i = 0; i < ElementIndex; ++i) {
-      Pos += ElementTypes[i]->getStorageSize() / 32;
+    for (size_t I = 0; I < ElementIndex; ++I) {
+      Pos += ElementTypes[I]->getStorageSize() / 32;
     }
     return Pos;
   }
@@ -549,13 +549,13 @@ public:
   }
   llvm::Type *getLLVMType() const { return Tp; }
   size_t getElementIndex(std::string Name) const {
-    size_t i = 0;
-    for (; i < ElementNames.size(); ++i) {
-      if (ElementNames[i] == Name) {
+    size_t I = 0;
+    for (; I < ElementNames.size(); ++I) {
+      if (ElementNames[I] == Name) {
         break;
       }
     }
-    return i;
+    return I;
   }
   bool hasElement(std::string Name) const {
     return getElementIndex(Name) < ElementNames.size();

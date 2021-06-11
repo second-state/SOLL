@@ -270,7 +270,7 @@ FunctionDecl::FunctionDecl(
                       IsVirtual, std::move(Overrides)),
       SM(SM), IsConstructor(IsConstructor), IsFallback(IsFallback),
       FunctionModifiers(std::move(Modifiers)), Body(std::move(Body)) {
-  // TODO
+
   std::vector<std::reference_wrapper<const TypePtr>> PTys;
   std::vector<std::reference_wrapper<const TypePtr>> RTys;
   auto PNames = std::make_shared<std::vector<std::string>>();

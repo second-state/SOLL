@@ -144,10 +144,10 @@ std::string ToString(soll::TypePtr type) {
     auto tu = static_cast<const soll::TupleType *>(type.get());
     std::string Res = "tuple(";
 
-    for (size_t i = 0; i < tu->getElementTypes().size(); i++) {
-      if (i > 0)
+    for (size_t I = 0; I < tu->getElementTypes().size(); I++) {
+      if (I > 0)
         Res += ',';
-      Res += ToString(tu->getElementTypes()[i]);
+      Res += ToString(tu->getElementTypes()[I]);
     }
     Res += ")";
     return Res;
@@ -164,18 +164,18 @@ std::string ToString(soll::TypePtr type) {
     auto &RTys = FT->getReturnTypes();
 
     std::string Res;
-    for (size_t i = 0; i < RTys.size(); i++) {
-      if (i > 0)
+    for (size_t I = 0; I < RTys.size(); I++) {
+      if (I > 0)
         Res += ',';
-      Res += ToString(RTys[i]);
+      Res += ToString(RTys[I]);
     }
     if (RTys.size() > 1)
       Res = "(" + Res + ")";
     Res += "(";
-    for (size_t i = 0; i < PTys.size(); i++) {
-      if (i > 0)
+    for (size_t I = 0; I < PTys.size(); I++) {
+      if (I > 0)
         Res += ',';
-      Res += ToString(PTys[i]);
+      Res += ToString(PTys[I]);
     }
     Res += ")";
     return Res;

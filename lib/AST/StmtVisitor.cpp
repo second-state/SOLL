@@ -169,8 +169,8 @@ template <bool Const> void StmtVisitorBase<Const>::visit(AsmIdentifierType &) {
 
 template <bool Const>
 void StmtVisitorBase<Const>::visit(AsmIdentifierListType &L) {
-  for (auto i : L.getIdentifiers())
-    i->accept(*this);
+  for (auto I : L.getIdentifiers())
+    I->accept(*this);
 }
 
 } // namespace soll

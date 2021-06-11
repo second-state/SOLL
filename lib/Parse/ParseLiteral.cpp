@@ -152,14 +152,14 @@ std::string Parser::simplifyIntegerLiteral(llvm::StringRef Literal) {
     return LiteralStr;
   size_t EIdx = 0, DotIdx = 0;
   int ENum = 0, DotNum = 0;
-  for (size_t i = 0; i < LiteralStr.size(); ++i) {
-    if (LiteralStr[i] == 'e') {
+  for (size_t I = 0; I < LiteralStr.size(); ++I) {
+    if (LiteralStr[I] == 'e') {
       ++ENum;
-      EIdx = i;
+      EIdx = I;
     }
-    if (LiteralStr[i] == '.') {
+    if (LiteralStr[I] == '.') {
       ++DotNum;
-      DotIdx = i;
+      DotIdx = I;
     }
   }
 
