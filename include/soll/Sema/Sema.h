@@ -64,6 +64,8 @@ public:
     return LibrariesAddressMap;
   }
 
+  ASTContext &getContext() { return Context; }
+
   // Decl
   std::unique_ptr<FunctionDecl> CreateFunctionDecl(
       SourceRange L, llvm::StringRef name, FunctionDecl::Visibility visibility,

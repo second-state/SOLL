@@ -2,7 +2,6 @@
 #include "soll/Sema/Sema.h"
 #include "soll/AST/AST.h"
 #include "soll/AST/ASTConsumer.h"
-#include "soll/AST/TypePtr.h"
 #include "soll/Basic/DiagnosticSema.h"
 #include "soll/Lex/Lexer.h"
 #include "soll/Sema/Scope.h"
@@ -115,76 +114,80 @@ std::unique_ptr<Identifier> Sema::CreateIdentifier(const Token &Tok) {
     case Identifier::SpecialIdentifier::msg:
     case Identifier::SpecialIdentifier::tx:
     case Identifier::SpecialIdentifier::abi:
-      Ty = ContractTypePtr;
+      Ty = Context.ContractTypePtr;
       break;
     case Identifier::SpecialIdentifier::now:
-      Ty = IntegerTypeU256Ptr;
+      Ty = Context.IntegerTypeU256Ptr;
       break;
     case Identifier::SpecialIdentifier::blockhash:
       Ty = std::make_shared<FunctionType>(
           std::vector<std::reference_wrapper<const TypePtr>>{
-              std::cref(IntegerTypeU256Ptr)},
+              std::cref(Context.IntegerTypeU256Ptr)},
           std::vector<std::reference_wrapper<const TypePtr>>{
-              std::cref(FixedBytesTypeB32Ptr)});
+              std::cref(Context.FixedBytesTypeB32Ptr)});
       break;
     case Identifier::SpecialIdentifier::gasleft:
       Ty = std::make_shared<FunctionType>(
           std::vector<std::reference_wrapper<const TypePtr>>{},
           std::vector<std::reference_wrapper<const TypePtr>>{
-              std::cref(IntegerTypeU256Ptr)});
+              std::cref(Context.IntegerTypeU256Ptr)});
       break;
     case Identifier::SpecialIdentifier::assert_:
       Ty = std::make_shared<FunctionType>(
           std::vector<std::reference_wrapper<const TypePtr>>{
-              std::cref(BooleanTypePtr)},
+              std::cref(Context.BooleanTypePtr)},
           std::vector<std::reference_wrapper<const TypePtr>>{});
       break;
     case Identifier::SpecialIdentifier::require:
       Ty = std::make_shared<FunctionType>(
           std::vector<std::reference_wrapper<const TypePtr>>{
-              std::cref(BooleanTypePtr), std::cref(StringTypePtr)},
+              std::cref(Context.BooleanTypePtr),
+              std::cref(Context.StringTypePtr)},
           std::vector<std::reference_wrapper<const TypePtr>>{});
       break;
     case Identifier::SpecialIdentifier::revert:
       Ty = std::make_shared<FunctionType>(
           std::vector<std::reference_wrapper<const TypePtr>>{
-              std::cref(StringTypePtr)},
+              std::cref(Context.StringTypePtr)},
           std::vector<std::reference_wrapper<const TypePtr>>{});
       break;
     case Identifier::SpecialIdentifier::addmod:
     case Identifier::SpecialIdentifier::mulmod:
       Ty = std::make_shared<FunctionType>(
           std::vector<std::reference_wrapper<const TypePtr>>{
-              std::cref(IntegerTypeU256Ptr), std::cref(IntegerTypeU256Ptr),
-              std::cref(IntegerTypeU256Ptr)},
+              std::cref(Context.IntegerTypeU256Ptr),
+              std::cref(Context.IntegerTypeU256Ptr),
+              std::cref(Context.IntegerTypeU256Ptr)},
           std::vector<std::reference_wrapper<const TypePtr>>{
-              std::cref(IntegerTypeU256Ptr)});
+              std::cref(Context.IntegerTypeU256Ptr)});
       break;
     case Identifier::SpecialIdentifier::keccak256:
     case Identifier::SpecialIdentifier::sha256:
       Ty = std::make_shared<FunctionType>(
           std::vector<std::reference_wrapper<const TypePtr>>{
-              std::cref(BytesTypePtr)},
+              std::cref(Context.BytesTypePtr)},
           std::vector<std::reference_wrapper<const TypePtr>>{
-              std::cref(FixedBytesTypeB32Ptr)});
+              std::cref(Context.FixedBytesTypeB32Ptr)});
       break;
     case Identifier::SpecialIdentifier::ripemd160:
       Ty = std::make_shared<FunctionType>(
           std::vector<std::reference_wrapper<const TypePtr>>{
-              std::cref(BytesTypePtr)},
+              std::cref(Context.BytesTypePtr)},
           std::vector<std::reference_wrapper<const TypePtr>>{
-              std::cref(FixedBytesTypeB20Ptr)});
+              std::cref(Context.FixedBytesTypeB20Ptr)});
       break;
     case Identifier::SpecialIdentifier::ecrecover:
       Ty = std::make_shared<FunctionType>(
           std::vector<std::reference_wrapper<const TypePtr>>{
-              std::cref(FixedBytesTypeB32Ptr), std::cref(IntegerTypeU256Ptr),
-              std::cref(FixedBytesTypeB32Ptr), std::cref(FixedBytesTypeB32Ptr)},
+              std::cref(Context.FixedBytesTypeB32Ptr),
+              std::cref(Context.IntegerTypeU256Ptr),
+              std::cref(Context.FixedBytesTypeB32Ptr),
+              std::cref(Context.FixedBytesTypeB32Ptr)},
           std::vector<std::reference_wrapper<const TypePtr>>{
-              std::cref(AddressTypeNonPayablePtr)});
+              std::cref(Context.AddressTypeNonPayablePtr)});
       break;
     case Identifier::SpecialIdentifier::this_:
-      Ty = ContractTypePtr;
+      Ty = Context.ContractTypePtr;
       break;
     default:
       assert(false && "unknown special identifier");
@@ -247,7 +250,7 @@ Sema::CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr, Token Tok) {
           case Identifier::SpecialIdentifier::abi_encode:
           case Identifier::SpecialIdentifier::abi_encodeWithSelector:
           case Identifier::SpecialIdentifier::abi_encodeWithSignature:
-            Ty = BytesTypePtr;
+            Ty = Context.BytesTypePtr;
             break;
           case Identifier::SpecialIdentifier::abi_decode:
             Ty = std::make_shared<UnresolveType>();
@@ -260,13 +263,13 @@ Sema::CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr, Token Tok) {
         case Identifier::SpecialIdentifier::block:
           switch (Iter->second) {
           case Identifier::SpecialIdentifier::block_coinbase:
-            Ty = AddressTypePayablePtr;
+            Ty = Context.AddressTypePayablePtr;
             break;
           case Identifier::SpecialIdentifier::block_difficulty:
           case Identifier::SpecialIdentifier::block_gaslimit:
           case Identifier::SpecialIdentifier::block_number:
           case Identifier::SpecialIdentifier::block_timestamp:
-            Ty = IntegerTypeU256Ptr;
+            Ty = Context.IntegerTypeU256Ptr;
             break;
           default:
             assert(false && "unknown member");
@@ -276,16 +279,16 @@ Sema::CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr, Token Tok) {
         case Identifier::SpecialIdentifier::msg:
           switch (Iter->second) {
           case Identifier::SpecialIdentifier::msg_data:
-            Ty = BytesTypePtr;
+            Ty = Context.BytesTypePtr;
             break;
           case Identifier::SpecialIdentifier::msg_sender:
-            Ty = AddressTypePayablePtr;
+            Ty = Context.AddressTypePayablePtr;
             break;
           case Identifier::SpecialIdentifier::msg_sig:
-            Ty = FixedBytesTypeB4Ptr;
+            Ty = Context.FixedBytesTypeB4Ptr;
             break;
           case Identifier::SpecialIdentifier::msg_value:
-            Ty = IntegerTypeU256Ptr;
+            Ty = Context.IntegerTypeU256Ptr;
             break;
           default:
             assert(false && "unknown member");
@@ -295,10 +298,10 @@ Sema::CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr, Token Tok) {
         case Identifier::SpecialIdentifier::tx:
           switch (Iter->second) {
           case Identifier::SpecialIdentifier::tx_gasprice:
-            Ty = IntegerTypeU256Ptr;
+            Ty = Context.IntegerTypeU256Ptr;
             break;
           case Identifier::SpecialIdentifier::tx_origin:
-            Ty = AddressTypePayablePtr;
+            Ty = Context.AddressTypePayablePtr;
             break;
           default:
             assert(false && "unknown member");
