@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #pragma once
+#include "soll/AST/Type.h"
 #include "soll/Frontend/FrontendOptions.h"
 #include <llvm/ADT/APInt.h>
 #include <llvm/ADT/IntrusiveRefCntPtr.h>
@@ -12,6 +13,19 @@ class ASTContext : public llvm::RefCountedBase<ASTContext> {
   const llvm::StringMap<llvm::APInt> LibrariesAddressMap;
 
 public:
+  const TypePtr IntegerTypeU256Ptr;
+  const TypePtr IntegerTypeI256Ptr;
+  const TypePtr ContractTypePtr;
+  const TypePtr FixedBytesTypeB32Ptr;
+  const TypePtr FixedBytesTypeB20Ptr;
+  const TypePtr FixedBytesTypeB4Ptr;
+  const TypePtr FixedBytesTypeB1Ptr;
+  const TypePtr BooleanTypePtr;
+  const TypePtr StringTypePtr;
+  const TypePtr BytesTypePtr;
+  const TypePtr AddressTypeNonPayablePtr;
+  const TypePtr AddressTypePayablePtr;
+  const TypePtr NullPtr;
   ASTContext(InputKind Language,
              const std::vector<std::string> &LibrariesAddressInfo);
 

@@ -35,5 +35,26 @@ extractLibraries(const std::vector<std::string> &LibrariesAddressInfo) {
 ASTContext::ASTContext(InputKind Language,
                        const std::vector<std::string> &LibrariesAddressInfo)
     : Language(Language),
-      LibrariesAddressMap(extractLibraries(LibrariesAddressInfo)) {}
+      LibrariesAddressMap(extractLibraries(LibrariesAddressInfo)),
+      IntegerTypeU256Ptr(
+          std::make_shared<IntegerType>(IntegerType::IntKind::U256)),
+      IntegerTypeI256Ptr(
+          std::make_shared<IntegerType>(IntegerType::IntKind::I256)),
+      ContractTypePtr(std::make_shared<ContractType>()),
+      FixedBytesTypeB32Ptr(
+          std::make_shared<FixedBytesType>(FixedBytesType::ByteKind::B32)),
+      FixedBytesTypeB20Ptr(
+          std::make_shared<FixedBytesType>(FixedBytesType::ByteKind::B20)),
+      FixedBytesTypeB4Ptr(
+          std::make_shared<FixedBytesType>(FixedBytesType::ByteKind::B4)),
+      FixedBytesTypeB1Ptr(
+          std::make_shared<FixedBytesType>(FixedBytesType::ByteKind::B1)),
+      BooleanTypePtr(std::make_shared<BooleanType>()),
+      StringTypePtr(std::make_shared<StringType>()),
+      BytesTypePtr(std::make_shared<BytesType>()),
+      AddressTypeNonPayablePtr(
+          std::make_shared<AddressType>(StateMutability::NonPayable)),
+      AddressTypePayablePtr(
+          std::make_shared<AddressType>(StateMutability::Payable)),
+      NullPtr(nullptr) {}
 } // namespace soll
