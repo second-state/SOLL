@@ -1822,7 +1822,13 @@ ExprValuePtr CodeGenFunction::emitAbiDecode(const CallExpr *CE) {
   llvm::Value *SrcBytes = Builder.CreateExtractValue(Bytes, {1});
 
   AbiEmitter Emitter(*this);
-  return Emitter.getDecode(SrcBytes, CE->getType().get()).first;
+  auto ReturnValue = Emitter.getDecode(SrcBytes, CE->getType().get()).first;
+  if (auto TP = dynamic_cast<ExprValueTuple *>(ReturnValue.get())) {
+    const auto &Values = TP->getValues();
+    if (Values.size() == 1)
+      ReturnValue = Values.front();
+  }
+  return ReturnValue;
 }
 
 ExprValuePtr CodeGenFunction::emitCallExpr(const CallExpr *CE) {
