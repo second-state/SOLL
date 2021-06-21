@@ -2,6 +2,7 @@
 #include "soll/AST/AST.h"
 #include "soll/Basic/DiagnosticSema.h"
 #include "soll/Sema/Sema.h"
+#include <unordered_set>
 #include <vector>
 
 namespace soll {
@@ -173,6 +174,7 @@ class TypeResolver : public StmtVisitor {
   TypePtr ReturnType;
   Sema &Actions;
   ContractDecl *&CurrentContract;
+  std::unordered_set<Expr *> Visited;
 
 public:
   TypeResolver(Sema &A, ContractDecl *&CurrentContract)
@@ -251,7 +253,7 @@ public:
                                            : Ty);
   }
   void visit(BinaryOperatorType &BO) override {
-    StmtVisitor::visit(BO);
+    StmtVisitor::visit(BO); // This is Strange.
     if (auto *LHS = dynamic_cast<ImplicitCastExpr *>(BO.getLHS())) {
       if (auto *RHS = dynamic_cast<ImplicitCastExpr *>(BO.getRHS())) {
         auto LHSTy = LHS->getSubExpr()->getType();
@@ -537,11 +539,15 @@ public:
 };
 
 void TypeResolver::visit(CallExprType &CE) {
+  if (Visited.count(&CE))
+    return;
+  Visited.emplace(&CE);
   StmtVisitor::visit(CE);
 
   Expr *CalleeExpr = CE.getCalleeExpr(), *E = nullptr, *Base = nullptr;
   MemberExpr *ME = dynamic_cast<MemberExpr *>(CalleeExpr);
   std::string FunctionSignature;
+  TypePtr ReturnTy = std::make_shared<BytesType>();
   if (ME) {
     auto Name = ME->getName();
     E = Name;
@@ -549,9 +555,14 @@ void TypeResolver::visit(CallExprType &CE) {
     auto calculateFunctionSignature = [&]() {
       FunctionSignature = ME->getName()->getName().str() + "(";
       auto FTy = dynamic_cast<FunctionType *>(ME->getType().get());
-      assert(FTy->getReturnTypes().empty() &&
-             "Only support functions without return value now!");
       auto &ParamTypes = FTy->getParamTypes();
+      if (FTy->getReturnTypes().size() == 1) {
+        ReturnTy = FTy->getReturnTypes().at(0);
+      } else if (FTy->getReturnTypes().size() == 0) {
+        ReturnTy = nullptr;
+      } else {
+        assert(false && "multiple return value is not support yet!");
+      }
       bool First = true;
       for (auto PTy : ParamTypes) {
         if (!First)
@@ -589,7 +600,6 @@ void TypeResolver::visit(CallExprType &CE) {
       return;
     }
     if (I->isSpecialIdentifier()) {
-      TypePtr ReturnTy = std::make_shared<BytesType>();
       std::vector<TypePtr> ArgTypes;
       for (const auto &arg : CE.getArguments()) {
         if (auto *IC = dynamic_cast<ImplicitCastExpr *>(arg)) {
@@ -651,10 +661,14 @@ void TypeResolver::visit(CallExprType &CE) {
       case Identifier::SpecialIdentifier::abi_encodeWithSignature: {
         auto &Signature = CE.getRawArguments().at(0);
         if (auto *IC = dynamic_cast<ImplicitCastExpr *>(Signature.get())) {
-          Actions.resolveImplicitCast(*IC, std::make_shared<BytesType>(),
+          Actions.resolveImplicitCast(*IC, std::make_shared<StringType>(),
                                       false);
         }
+        auto SignatureBytes = std::make_unique<ExplicitCastExpr>(
+            SourceRange(), std::move(Signature), CastKind::TypeCast,
+            std::make_shared<BytesType>());
         std::vector<ExprPtr> Keccak256Arguments;
+        Signature = Actions.CreateDummy(std::move(SignatureBytes));
         Keccak256Arguments.emplace_back(std::move(Signature));
         auto CallKeccak256 = std::make_unique<CallExpr>(
             SourceRange(),

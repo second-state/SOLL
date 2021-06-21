@@ -6,9 +6,9 @@ library LA {
     function ADD(uint self, uint value)
         public
         pure
-        //returns (uint)
+        returns (uint)
     {
-        //return self+value;
+        return self+value;
     }
 }
 
@@ -16,21 +16,21 @@ library LB {
     function SUB(uint self, uint value)
         public
         pure
-        //returns (uint)
+        returns (uint)
     {
-        //return self-value;
+        return self-value;
     }
 }
 
 contract C {
     using LA, LB for uint;
     function get() public pure 
-    // returns (uint)
+    returns (uint)
     {
         uint A = 123;
-        A.ADD(2217);
-        A.SUB(124);
-        //return A;
+        A = A.ADD(2217);
+        A = A.SUB(124);
+        return A;
     }
 }
 
@@ -38,11 +38,11 @@ contract D {
     using LA for uint;
     using LB for *;
     function get() public pure 
-    // returns (uint)
+    returns (uint)
     {
         uint A = 123;
-        A.ADD(2217);
-        A.SUB(124);
-        //return A;
+        A = A.ADD(2217);
+        A = A.SUB(124);
+        return A;
     }
 }

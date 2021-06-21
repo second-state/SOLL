@@ -105,6 +105,8 @@ private:
                                          const MemberExpr *ME);
   ExprValuePtr emitCallAddressDelegatecall(const CallExpr *CE,
                                            const MemberExpr *ME);
+  ExprValuePtr emitLibraryCall(const CallExpr *CE, const MemberExpr *ME);
+  ExprValuePtr emitExternalCall(const CallExpr *CE, const MemberExpr *ME);
   llvm::Value *emitCallAddressSend(const CallExpr *CE, const MemberExpr *ME,
                                    bool NeedRevert);
   llvm::Value *emitAbiEncodePacked(const CallExpr *CE);
