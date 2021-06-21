@@ -53,7 +53,7 @@ public:
   // void visit(ImplicitCastExprType &) override;
   // void visit(ExplicitCastExprType &) override;
   // void visit(ParenExprType &) override;
-  // void visit(MemberExprType &) override;
+  void visit(MemberExprType &M) override;
   // void visit(IndexAccessType &) override;
   void visit(IdentifierType &I) override {
     if (I.isResolved())
@@ -249,6 +249,114 @@ void IdentifierResolver::visit(DeclStmtType &DS) {
 void IdentifierResolver::visit(AsmFunctionDeclStmtType &FDS) {
   StmtVisitor::visit(FDS);
   FDS.getDecl()->accept(DIR);
+}
+
+void IdentifierResolver::visit(MemberExprType &M) {
+  // NameCheckByPass prevent raise a alert when M.name() is unsolved
+  // It is usually used when M.base is special case.
+  bool NameCheckByPass = false;
+  bool BaseCheckByPass = false;
+
+  auto Base = M.getBase();
+  Base->accept(*this);
+
+  {
+    Sema::SemaScope MemberAccessScope{&Actions, 0, false};
+
+    if (Base->getType() == nullptr) {
+      if (auto I = dynamic_cast<Identifier *>(Base)) {
+        auto BaseName = I->getName().str();
+        const std::vector<std::string> GlobalPassList{"block", "msg", "tx"};
+
+        if (std::find(GlobalPassList.begin(), GlobalPassList.end(), BaseName) !=
+            GlobalPassList.end()) {
+          BaseCheckByPass = true;
+        } else {
+          // TODO: we should handle `address` type as base.
+          BaseCheckByPass = true;
+        }
+      }
+      if (!BaseCheckByPass) {
+        assert(false && "Base can not be unsolved!");
+      }
+      return;
+    }
+
+    switch (Base->getType()->getCategory()) {
+    case Type::Category::Contract: {
+      auto I = dynamic_cast<Identifier *>(Base);
+      assert(I && "Contract name must be a Identifier");
+
+      if (I->isSpecialIdentifier()) {
+        switch (I->getSpecialIdentifier()) {
+        case Identifier::SpecialIdentifier::this_:
+          for (auto F : DIR.getCurrentContract()->getFuncs())
+            Actions.addDecl(F);
+          break;
+        case Identifier::SpecialIdentifier::super_: {
+          auto Bases = DIR.getCurrentContract()->getResolvedBaseContracts();
+          if (Bases.size() > 1) {
+            Actions.Diag(Base->getLocation().getBegin(),
+                         diag::err_super_in_noninheritance_contract);
+          }
+          for (auto F : Bases[1]->getFuncs())
+            Actions.addDecl(F);
+        } break;
+        default:
+          assert(I && "Unimplement SpecialIdentifier Base");
+        }
+      } else if (auto C =
+                     dynamic_cast<ContractDecl *>(I->getCorrespondDecl())) {
+        // Inheritance call with Contract name
+        for (auto F : C->getFuncs())
+          Actions.addDecl(F);
+      } else if (auto CT = dynamic_cast<ContractType *>(I->getType().get())) {
+        // Contract external call
+        if (CT->getDecl()) {
+          for (auto F : CT->getDecl()->getFuncs())
+            Actions.addDecl(F);
+        } else if (I->getName() == "this") {
+          for (auto F : DIR.getCurrentContract()->getFuncs())
+            Actions.addDecl(F);
+        }
+      }
+    } break;
+    case Type::Category::Struct: {
+      if (auto ST = dynamic_cast<StructType *>(Base->getType().get())) {
+        auto Types = ST->getElementTypes();
+        auto ElementName = M.getName()->getName().str();
+
+        if (ST->hasElement(ElementName)) {
+          // Note: struct do not have sub-decl yet. check name only.
+          M.setType(Types[ST->getElementIndex(ElementName)]);
+          NameCheckByPass = true;
+          return;
+        } else {
+          Actions.Diag(M.getName()->getLocation().getBegin(),
+                       diag::err_no_member)
+              << ElementName << M.getBase()->getType()->getName();
+        }
+      }
+    } break;
+    case Type::Category::Address: {
+      // TODO: Handle Address case
+      // TODO: Address.send(x), should bypass send and check x.
+      NameCheckByPass = true;
+      // XXX: Fix alert for a.send()
+      return;
+    } break;
+    default:
+      assert(false && "Unimplement MemberExpr case");
+      break;
+    }
+    if (!NameCheckByPass)
+      M.getName()->accept(*this);
+  }
+
+  if (!NameCheckByPass && !M.getName()->isResolved()) {
+    // Note: MemberExpr do not allow resolve in outside scope
+    Actions.Diag(M.getName()->getLocation().getBegin(), diag::err_undeclared_var_use) << M.getName()->getName();
+  }
 }
 
 void Sema::resolveIdentifierDecl(SourceUnit &SU) {

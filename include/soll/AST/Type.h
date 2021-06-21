@@ -521,6 +521,8 @@ public:
              std::vector<std::string> &&EN)
       : TupleType(std::move(ET)), D(D), ElementNames(std::move(EN)) {}
   Category getCategory() const override { return Category::Struct; }
+  StructDecl *getDecl() { return D; }
+  const StructDecl *getDecl() const { return D; }
   std::string getName() const override { return "struct"; }
   std::string getUniqueName() const override;
 

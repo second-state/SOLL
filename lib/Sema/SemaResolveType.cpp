@@ -435,6 +435,7 @@ public:
       ME.setLibraryAddress(Address);
       return;
     }
+    // TODO : remove this
     Actions.Diag(ME.getName()->getLocation().getBegin(), diag::err_no_member)
         << Name << ME.getBase()->getType()->getName();
   }
@@ -706,8 +707,11 @@ void TypeResolver::visit(CallExprType &CE) {
       }
     } else {
       if (auto MI = dynamic_cast<Identifier *>(Base)) {
-        if (MI && MI->getSpecialIdentifier() !=
-                      Identifier::SpecialIdentifier::this_) {
+        if (MI && MI->isSpecialIdentifier() &&
+            MI->getSpecialIdentifier() !=
+                Identifier::SpecialIdentifier::this_ &&
+            MI->getSpecialIdentifier() !=
+                Identifier::SpecialIdentifier::super_) {
           assert(false && "only support external call and "
                           "SpecialIdentifier::this member call!");
           __builtin_unreachable();

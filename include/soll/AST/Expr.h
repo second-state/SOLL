@@ -86,6 +86,7 @@ public:
     function_gas,
     function_value,
     this_,
+    super_,
     struct_constructor,
     external_call,
     library_call

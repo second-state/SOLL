@@ -32,8 +32,8 @@ public:
     SemaScope &operator=(const SemaScope &) = delete;
 
   public:
-    SemaScope(Sema *Self, unsigned ScopeFlags) : Self(Self) {
-      Self->PushScope(ScopeFlags);
+    SemaScope(Sema *Self, unsigned ScopeFlags, bool InheritCurrentScope = true) : Self(Self) {
+      Self->PushScope(ScopeFlags, InheritCurrentScope);
     }
     void Exit() {
       if (Self) {
@@ -103,8 +103,9 @@ public:
                                                  std::vector<ExprPtr> &&Args,
                                                  TypePtr ReturnTy);
 
-  void PushScope(unsigned Flags) {
-    Scopes.push_back(std::make_unique<Scope>(CurrentScope(), Flags));
+  void PushScope(unsigned Flags, bool InheritCurrentScope = true) {
+    Scopes.push_back(std::make_unique<Scope>(
+        InheritCurrentScope ? CurrentScope() : nullptr, Flags));
   }
   void PopScope() {
     resolveIdentifiers();
