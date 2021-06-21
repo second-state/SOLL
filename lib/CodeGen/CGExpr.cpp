@@ -1599,7 +1599,7 @@ llvm::Value *CodeGenFunction::emitCallBlockHash(const CallExpr *CE) {
   return Val;
 }
 
-llvm::Value *CodeGenFunction::emitCallAddressStaticcall(const CallExpr *CE,
+ExprValuePtr CodeGenFunction::emitCallAddressStaticcall(const CallExpr *CE,
                                                         const MemberExpr *ME) {
   // address_staticcall function
   auto Arguments = CE->getArguments();
@@ -1633,13 +1633,16 @@ llvm::Value *CodeGenFunction::emitCallAddressStaticcall(const CallExpr *CE,
   llvm::Value *ReturnDataSize = CGM.emitReturnDataSize();
   llvm::Value *ReturnData =
       CGM.emitReturnDataCopyBytes(Builder.getInt32(0), ReturnDataSize);
-  (void)ReturnData; // -Wunused-variable
-  // Todo:
-  // return tuple (~bool(Val), ReturnData)
-  return Builder.CreateNot(Builder.CreateTrunc(Val, BoolTy));
+
+  auto TupleTy = TupleType(std::vector<TypePtr>{std::make_shared<BooleanType>(),
+                                                std::make_shared<BytesType>()});
+  return ExprValueTuple::getRValue(
+      &TupleTy,
+      std::vector<llvm::Value *>{
+          Builder.CreateNot(Builder.CreateTrunc(Val, BoolTy)), ReturnData});
 }
 
-llvm::Value *
+ExprValuePtr
 CodeGenFunction::emitCallAddressDelegatecall(const CallExpr *CE,
                                              const MemberExpr *ME) {
   // address_staticcall function
@@ -1668,13 +1671,15 @@ CodeGenFunction::emitCallAddressDelegatecall(const CallExpr *CE,
   llvm::Value *ReturnDataSize = CGM.emitReturnDataSize();
   llvm::Value *ReturnData =
       CGM.emitReturnDataCopyBytes(Builder.getInt32(0), ReturnDataSize);
-  (void)ReturnData; // -Wunused-variable
-  // Todo:
-  // return tuple (Cond, ReturnData)
-  return Builder.CreateTrunc(Cond, BoolTy);
+
+  auto TupleTy = TupleType(std::vector<TypePtr>{std::make_shared<BooleanType>(),
+                                                std::make_shared<BytesType>()});
+  return ExprValueTuple::getRValue(
+      &TupleTy, std::vector<llvm::Value *>{Builder.CreateTrunc(Cond, BoolTy),
+                                           ReturnData});
 }
 
-llvm::Value *CodeGenFunction::emitCallAddressCall(const CallExpr *CE,
+ExprValuePtr CodeGenFunction::emitCallAddressCall(const CallExpr *CE,
                                                   const MemberExpr *ME) {
   // address_call function
   auto Arguments = CE->getArguments();
@@ -1709,10 +1714,12 @@ llvm::Value *CodeGenFunction::emitCallAddressCall(const CallExpr *CE,
   llvm::Value *ReturnDataSize = CGM.emitReturnDataSize();
   llvm::Value *ReturnData =
       CGM.emitReturnDataCopyBytes(Builder.getInt32(0), ReturnDataSize);
-  (void)ReturnData; // -Wunused-variable
-  // Todo:
-  // return tuple (Cond, ReturnData)
-  return Builder.CreateTrunc(Cond, BoolTy);
+
+  auto TupleTy = TupleType(std::vector<TypePtr>{std::make_shared<BooleanType>(),
+                                                std::make_shared<BytesType>()});
+  return ExprValueTuple::getRValue(
+      &TupleTy, std::vector<llvm::Value *>{Builder.CreateTrunc(Cond, BoolTy),
+                                           ReturnData});
 }
 
 llvm::Value *CodeGenFunction::emitCallAddressSend(const CallExpr *CE,
@@ -1808,7 +1815,7 @@ llvm::Value *CodeGenFunction::emitAbiEncode(const CallExpr *CE) {
 }
 
 ExprValuePtr CodeGenFunction::emitAbiDecode(const CallExpr *CE) {
-  // abi_encode
+  // abi_decode
   auto Arguments = CE->getArguments();
   assert(Arguments.size() == 2);
   auto Arg = Arguments.at(0);
@@ -1817,12 +1824,17 @@ ExprValuePtr CodeGenFunction::emitAbiDecode(const CallExpr *CE) {
   auto BytesExprValue = emitExpr(Arg);
   auto Bytes = BytesExprValue->load(Builder, CGM);
 
+  return emitAbiDecode(Bytes, CE->getType().get());
+}
+
+ExprValuePtr CodeGenFunction::emitAbiDecode(llvm::Value *Bytes,
+                                            const Type *TupleTy) {
   llvm::Value *Length = Builder.CreateZExtOrTrunc(
       Builder.CreateExtractValue(Bytes, {0}), CGM.Int32Ty);
   llvm::Value *SrcBytes = Builder.CreateExtractValue(Bytes, {1});
 
   AbiEmitter Emitter(*this);
-  auto ReturnValue = Emitter.getDecode(SrcBytes, CE->getType().get()).first;
+  auto ReturnValue = Emitter.getDecode(SrcBytes, TupleTy).first;
   if (auto TP = dynamic_cast<ExprValueTuple *>(ReturnValue.get())) {
     const auto &Values = TP->getValues();
     if (Values.size() == 1)
@@ -1960,13 +1972,13 @@ ExprValuePtr CodeGenFunction::emitSpecialCallExpr(const Identifier *SI,
   case Identifier::SpecialIdentifier::blockhash:
     return ExprValue::getRValue(CE, emitCallBlockHash(CE));
   case Identifier::SpecialIdentifier::address_staticcall:
-    return ExprValue::getRValue(CE, emitCallAddressStaticcall(CE, ME));
+    return emitCallAddressStaticcall(CE, ME);
   case Identifier::SpecialIdentifier::library_call:
   case Identifier::SpecialIdentifier::address_delegatecall:
-    return ExprValue::getRValue(CE, emitCallAddressDelegatecall(CE, ME));
+    return emitCallAddressDelegatecall(CE, ME);
   case Identifier::SpecialIdentifier::external_call:
   case Identifier::SpecialIdentifier::address_call:
-    return ExprValue::getRValue(CE, emitCallAddressCall(CE, ME));
+    return emitCallAddressCall(CE, ME);
   case Identifier::SpecialIdentifier::address_transfer:
     emitCallAddressSend(CE, ME, true);
     return std::make_shared<ExprValue>();

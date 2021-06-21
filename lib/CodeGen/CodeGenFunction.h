@@ -100,16 +100,17 @@ private:
   llvm::Value *emitCallRipemd160(const CallExpr *CE);
   llvm::Value *emitCallEcrecover(const CallExpr *CE);
   llvm::Value *emitCallBlockHash(const CallExpr *CE);
-  llvm::Value *emitCallAddressCall(const CallExpr *CE, const MemberExpr *ME);
-  llvm::Value *emitCallAddressStaticcall(const CallExpr *CE,
+  ExprValuePtr emitCallAddressCall(const CallExpr *CE, const MemberExpr *ME);
+  ExprValuePtr emitCallAddressStaticcall(const CallExpr *CE,
                                          const MemberExpr *ME);
-  llvm::Value *emitCallAddressDelegatecall(const CallExpr *CE,
+  ExprValuePtr emitCallAddressDelegatecall(const CallExpr *CE,
                                            const MemberExpr *ME);
   llvm::Value *emitCallAddressSend(const CallExpr *CE, const MemberExpr *ME,
                                    bool NeedRevert);
   llvm::Value *emitAbiEncodePacked(const CallExpr *CE);
   llvm::Value *emitAbiEncode(const CallExpr *CE);
   ExprValuePtr emitAbiDecode(const CallExpr *CE);
+  ExprValuePtr emitAbiDecode(llvm::Value *Bytes, const Type *TupleTy);
   llvm::Value *emitStructConstructor(const CallExpr *CE);
 
   llvm::Value *emitAsmCallDataSize(const CallExpr *CE);
