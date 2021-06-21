@@ -105,6 +105,7 @@ std::unique_ptr<Identifier> Sema::CreateIdentifier(const Token &Tok) {
       {"ripemd160", Identifier::SpecialIdentifier::ripemd160},
       {"ecrecover", Identifier::SpecialIdentifier::ecrecover},
       {"this", Identifier::SpecialIdentifier::this_},
+      {"super", Identifier::SpecialIdentifier::super_},
   };
   llvm::StringRef Name = Tok.getIdentifierInfo()->getName();
   if (auto Iter = SpecialLookup.find(Name); Iter != SpecialLookup.end()) {
@@ -189,6 +190,9 @@ std::unique_ptr<Identifier> Sema::CreateIdentifier(const Token &Tok) {
     case Identifier::SpecialIdentifier::this_:
       Ty = Context.ContractTypePtr;
       break;
+    case Identifier::SpecialIdentifier::super_:
+      Ty = std::make_shared<ContractType>();
+      break;
     default:
       assert(false && "unknown special identifier");
       __builtin_unreachable();
@@ -238,6 +242,10 @@ Sema::CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr, Token Tok) {
   if (auto *I = dynamic_cast<const Identifier *>(Base)) {
     if (I->isSpecialIdentifier()) {
       if (I->getSpecialIdentifier() == Identifier::SpecialIdentifier::this_) {
+        return std::make_unique<MemberExpr>(L, std::move(BaseExpr),
+                                            std::make_unique<Identifier>(Tok));
+      }
+      if (I->getSpecialIdentifier() == Identifier::SpecialIdentifier::super_) {
         return std::make_unique<MemberExpr>(L, std::move(BaseExpr),
                                             std::make_unique<Identifier>(Tok));
       }
@@ -319,7 +327,7 @@ Sema::CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr, Token Tok) {
   }
   // unresolvable now
   return std::make_unique<MemberExpr>(
-      L, std::move(BaseExpr), std::make_unique<Identifier>(Tok, nullptr));
+      L, std::move(BaseExpr), std::make_unique<Identifier>(Tok));
 }
 
 DiagnosticBuilder Sema::Diag(SourceLocation Loc, unsigned DiagID) {
