@@ -903,6 +903,8 @@ public:
   std::pair<ExprValuePtr, llvm::Value *> getDecode(llvm::Value *Int8Ptr,
                                                    const Type *Ty) {
     auto Int32Ty = IntegerType::getIntN(32);
+    if (!Ty)
+      return {nullptr, nullptr};
     llvm::Type *ValueTy = CGM.getLLVMType(Ty);
     switch (Ty->getCategory()) {
     case Type::Category::String:
@@ -1722,6 +1724,21 @@ ExprValuePtr CodeGenFunction::emitCallAddressCall(const CallExpr *CE,
                                            ReturnData});
 }
 
+ExprValuePtr CodeGenFunction::emitLibraryCall(const CallExpr *CE,
+                                              const MemberExpr *ME) {
+  auto VarT =
+      dynamic_cast<ExprValueTuple *>(emitCallAddressDelegatecall(CE, ME).get());
+  auto Bytes = VarT->getValues().at(1);
+  return emitAbiDecode(Bytes->load(Builder, CGM), CE->getType().get());
+}
+
+ExprValuePtr CodeGenFunction::emitExternalCall(const CallExpr *CE,
+                                               const MemberExpr *ME) {
+  auto VarT = dynamic_cast<ExprValueTuple *>(emitCallAddressCall(CE, ME).get());
+  auto Bytes = VarT->getValues().at(1);
+  return emitAbiDecode(Bytes->load(Builder, CGM), CE->getType().get());
+}
+
 llvm::Value *CodeGenFunction::emitCallAddressSend(const CallExpr *CE,
                                                   const MemberExpr *ME,
                                                   bool NeedRevert) {
@@ -1974,9 +1991,11 @@ ExprValuePtr CodeGenFunction::emitSpecialCallExpr(const Identifier *SI,
   case Identifier::SpecialIdentifier::address_staticcall:
     return emitCallAddressStaticcall(CE, ME);
   case Identifier::SpecialIdentifier::library_call:
+    return emitLibraryCall(CE, ME);
   case Identifier::SpecialIdentifier::address_delegatecall:
     return emitCallAddressDelegatecall(CE, ME);
   case Identifier::SpecialIdentifier::external_call:
+    return emitExternalCall(CE, ME);
   case Identifier::SpecialIdentifier::address_call:
     return emitCallAddressCall(CE, ME);
   case Identifier::SpecialIdentifier::address_transfer:
