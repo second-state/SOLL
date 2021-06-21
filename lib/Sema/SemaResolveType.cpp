@@ -603,6 +603,11 @@ void TypeResolver::visit(CallExprType &CE) {
             I->setType(ArgTypes.at(1));
             ME->setType(ArgTypes.at(1));
             ReturnTy = ArgTypes.at(1);
+            if (auto TP = dynamic_cast<TupleType *>(ReturnTy.get())) {
+              const auto &ElementTypes = TP->getElementTypes();
+              if (ElementTypes.size() == 1)
+                ReturnTy = ElementTypes.front();
+            }
           }
         }
         ArgTypes.at(0) = std::make_shared<BytesType>();
