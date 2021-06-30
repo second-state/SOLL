@@ -261,7 +261,8 @@ private:
                                        llvm::StringRef Name,
                                        llvm::Value *Buffer,
                                        llvm::Value *Offset);
-  void emitABIStore(const Type *Ty, llvm::StringRef Name, llvm::Value *Result);
+  void emitABIStore(std::vector<const Type *> Tys, llvm::StringRef Name,
+                    std::vector<llvm::Value *> Result);
 
 public:
   std::string getMangledName(const CallableVarDecl *CVD);
