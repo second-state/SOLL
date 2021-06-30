@@ -35,6 +35,7 @@ public:
     Function,
     Enum,
     Tuple,
+    ReturnTuple,
     Mapping,
     Unknow,
   };
@@ -528,6 +529,19 @@ public:
     }
     return Result;
   }
+};
+
+class ReturnTupleType : public TupleType {
+  llvm::StructType *Tp = nullptr;
+
+public:
+  ReturnTupleType(std::vector<TypePtr> &&ETys) : TupleType(std::move(ETys)) {}
+  Category getCategory() const override { return Category::ReturnTuple; }
+  void setLLVMType(llvm::StructType *T) {
+    if (!Tp)
+      Tp = T;
+  }
+  llvm::Type *getLLVMType() const { return Tp; }
 };
 
 class StructType : public TupleType {

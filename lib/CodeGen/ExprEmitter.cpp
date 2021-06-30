@@ -470,6 +470,7 @@ ExprValuePtr ExprEmitter::visit(const BinaryOperator *BO) {
 }
 
 ExprValuePtr ExprEmitter::visit(const CastExpr *CE) {
+  // TODO: return Tuple cast
   ExprValuePtr InVal = visit(CE->getSubExpr());
   if (CE->getCastKind() == CastKind::None) {
     return InVal;
@@ -526,6 +527,19 @@ ExprValuePtr ExprEmitter::visit(const CastExpr *CE) {
         return ExprValueTuple::getRValue(CE, Ins);
       }
       return ExprValue::getRValue(CE, In);
+    }
+    if (OrigInTy->getCategory() == Type::Category::Tuple &&
+        OrigOutTy->getCategory() == Type::Category::ReturnTuple) {
+      auto InValT = dynamic_cast<const ExprValueTuple *>(InVal.get());
+      assert(InValT);
+      auto Ins = InValT->load(Builder, CGM);
+      auto RTy = dynamic_cast<const ReturnTupleType *>(OrigOutTy);
+      llvm::Value *Out = llvm::ConstantAggregateZero::get(RTy->getLLVMType());
+      unsigned Index = 0;
+      for (auto Val : Ins) {
+        Out = Builder.CreateInsertValue(Out, Val, {Index++});
+      }
+      return ExprValue::getRValue(CE, Out);
     }
     if (dynamic_cast<const AddressType *>(OrigInTy) ||
         dynamic_cast<const ContractType *>(OrigInTy) ||

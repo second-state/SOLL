@@ -1176,7 +1176,6 @@ void CodeGenModule::initEcrecover() {
 
 void CodeGenModule::emitContractDecl(const ContractDecl *CD) {
   for (const auto *D : CD->getSubNodes()) {
-    // TODO: handle struct definition
     if (const auto *ED = dynamic_cast<const EventDecl *>(D)) {
       emitEventDecl(ED);
     } else if (const auto *FD = dynamic_cast<const FunctionDecl *>(D)) {
@@ -1405,11 +1404,16 @@ llvm::Value *CodeGenModule::emitABILoadParamDynamic(const Type *Ty,
   }
 }
 
-void CodeGenModule::emitABIStore(const Type *Ty, llvm::StringRef Name,
-                                 llvm::Value *Result) {
-  auto ResultValue =
-      std::make_shared<ExprValue>(Ty, ValueKind::VK_RValue, Result);
-  std::vector<std::pair<ExprValuePtr, bool>> Args(1, {ResultValue, false});
+void CodeGenModule::emitABIStore(std::vector<const Type *> Tys,
+                                 llvm::StringRef Name,
+                                 std::vector<llvm::Value *> Results) {
+  std::vector<std::pair<ExprValuePtr, bool>> Args;
+  unsigned ElementIndex = 0;
+  assert(Tys.size() == Results.size());
+  for (auto T : Tys)
+    Args.emplace_back(std::make_shared<ExprValue>(T, ValueKind::VK_RValue,
+                                                  Results[ElementIndex++]),
+                      false);
   CodeGenFunction CGF(*this);
   AbiEmitter Emitter(CGF);
   llvm::Value *RetSize = Emitter.getEncodeTupleSize(Args);
@@ -1504,11 +1508,24 @@ void CodeGenModule::emitABILoad(const FunctionDecl *FD,
   if (Returns.empty()) {
     Builder.CreateCall(F, ArgsVal);
     emitFinish(llvm::ConstantPointerNull::get(Int8PtrTy), Builder.getInt32(0));
-  } else if (Returns.size() == 1) {
-    llvm::Value *Result = Builder.CreateCall(F, ArgsVal, MangledName + ".ret");
-    emitABIStore(Returns.front()->getType().get(), MangledName, Result);
   } else {
-    assert(false && "unsupported tuple return!");
+    llvm::Value *Result = Builder.CreateCall(F, ArgsVal, MangledName + ".ret");
+    std::vector<const Type *> Tys;
+    std::vector<llvm::Value *> Results;
+    auto ParamsTy = FD->getReturnParams()->getParamsTy().get();
+    if (Returns.size() == 1) {
+      Tys.emplace_back(ParamsTy);
+      Results.emplace_back(Result);
+    } else {
+      auto RTy = dynamic_cast<const ReturnTupleType *>(ParamsTy);
+      unsigned ElementIndex = 0;
+      for (auto ET : RTy->getElementTypes()) {
+        Tys.emplace_back(ET.get());
+        Results.emplace_back(
+            Builder.CreateExtractValue(Result, {ElementIndex++}));
+      }
+    }
+    emitABIStore(Tys, MangledName, Results);
   }
 
   Builder.CreateRetVoid();
@@ -1660,6 +1677,8 @@ llvm::Type *CodeGenModule::getLLVMType(const Type *Ty) {
   }
   case Type::Category::Tuple:
     return nullptr;
+  case Type::Category::ReturnTuple:
+    return dynamic_cast<const ReturnTupleType *>(Ty)->getLLVMType();
   case Type::Category::Struct:
     return dynamic_cast<const StructType *>(Ty)->getLLVMType();
   case Type::Category::Mapping:
@@ -1709,19 +1728,20 @@ llvm::FunctionType *CodeGenModule::getFunctionType(const CallableVarDecl *CVD) {
     ArgTypes.push_back(getLLVMType(Ty));
   }
 
-  llvm::SmallVector<llvm::Type *, 8> RetTypes;
-  for (const auto *Param : CVD->getReturnParams()->getParams()) {
-    const Type *Ty = Param->getType().get();
-    RetTypes.push_back(getLLVMType(Ty));
-  }
-
   llvm::Type *RetType;
-  if (RetTypes.empty()) {
+  if (CVD->getReturnParams()->getParamsTy() == nullptr) {
     RetType = VoidTy;
-  } else if (RetTypes.size() == 1) {
-    RetType = RetTypes.front();
+  } else if (auto RTy = dynamic_cast<ReturnTupleType *>(
+                 CVD->getReturnParams()->getParamsTy().get())) {
+    std::vector<llvm::Type *> LLVMTy;
+    for (auto ET : RTy->getElementTypes()) {
+      LLVMTy.emplace_back(getLLVMType(ET.get()));
+    }
+    auto StructTy = llvm::StructType::create(VMContext, LLVMTy);
+    RTy->setLLVMType(StructTy);
+    RetType = StructTy;
   } else {
-    RetType = llvm::StructType::create(llvm::ArrayRef<llvm::Type *>(RetTypes));
+    RetType = getLLVMType(CVD->getReturnParams()->getParamsTy().get());
   }
 
   assert(llvm::FunctionType::isValidReturnType(RetType));

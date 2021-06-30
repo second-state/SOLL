@@ -460,6 +460,7 @@ public:
   void visit(AsmFunctionDeclStmtType &FDS) override {
     StmtVisitor::visit(FDS);
     if (auto *D = FDS.getDecl()) {
+      D->getReturnParams()->createParamsTy();
       if (auto *B = D->getBody()) {
         B->accept(*this);
       }
@@ -500,7 +501,12 @@ public:
     DeclVisitor::visit(CD);
     CurrentContract = nullptr;
   }
+  void visit(ParamListType &PL) override {
+    DeclVisitor::visit(PL);
+    PL.createParamsTy();
+  }
   void visit(FunctionDecl &FD) override {
+    DeclVisitor::visit(FD);
     if (auto *Ty = dynamic_cast<FunctionType *>(FD.getType().get())) {
       if (Ty->getReturnTypes().empty()) {
         TR.setReturnType(nullptr);
@@ -514,7 +520,6 @@ public:
         FD.getBody()->accept(TR);
       TR.setReturnType(nullptr);
     }
-    DeclVisitor::visit(FD);
   }
   void visit(VarDecl &VD) override {
     if (VD.getValue()) {
@@ -817,7 +822,8 @@ void Sema::resolveImplicitCast(ImplicitCastExpr &IC, TypePtr DstTy,
     return;
   }
   if (SrcTy->getCategory() == Type::Category::Tuple) {
-    assert(DstTy->getCategory() == Type::Category::Tuple);
+    assert(DstTy->getCategory() == Type::Category::Tuple ||
+           DstTy->getCategory() == Type::Category::ReturnTuple);
     if (auto SrcTup = dynamic_cast<TupleExpr *>(IC.getSubExpr())) {
       auto DstTupTy = dynamic_cast<const TupleType *>(DstTy.get());
       std::size_t Num = SrcTup->getComponents().size();

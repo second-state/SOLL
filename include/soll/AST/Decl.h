@@ -309,11 +309,15 @@ public:
 
 class ParamList {
   std::vector<std::unique_ptr<VarDeclBase>> Params;
+  TypePtr ParamsTy;
 
 public:
   ParamList(std::vector<std::unique_ptr<VarDeclBase>> &&params)
-      : Params(std::move(params)) {}
+      : Params(std::move(params)), ParamsTy(nullptr) {}
 
+  void createParamsTy();
+  const TypePtr &getParamsTy() const;
+  TypePtr &getParamsTy();
   std::vector<const VarDeclBase *> getParams() const;
   std::vector<VarDeclBase *> getParams();
   unsigned getABIStaticSize() const;

@@ -238,6 +238,20 @@ std::uint32_t CallableVarDecl::getSignatureHashUInt32() const {
 ///
 /// ParamList
 ///
+void ParamList::createParamsTy() {
+  if (ParamsTy || this->Params.empty())
+    return;
+  if (this->Params.size() == 1) {
+    ParamsTy = this->Params.front()->getType();
+    return;
+  }
+  std::vector<TypePtr> ET;
+  for (auto &P : this->Params)
+    ET.emplace_back(P->getType());
+  ParamsTy = std::make_shared<ReturnTupleType>(std::move(ET));
+}
+const TypePtr &ParamList::getParamsTy() const { return ParamsTy; }
+TypePtr &ParamList::getParamsTy() { return ParamsTy; }
 std::vector<const VarDeclBase *> ParamList::getParams() const {
   std::vector<const VarDeclBase *> Params;
   for (auto &P : this->Params)
@@ -278,8 +292,8 @@ FunctionDecl::FunctionDecl(
     PNames->emplace_back(VD->getName().str());
     PTys.emplace_back(std::cref(VD->getType()));
   }
-  for (auto VD : this->getReturnParams()->getParams())
-    RTys.emplace_back(std::cref(VD->getType()));
+  if (this->getReturnParams()->getParams().size())
+    RTys.emplace_back(std::cref(this->getReturnParams()->getParamsTy()));
   FuncTy =
       std::make_shared<FunctionType>(std::move(PTys), std::move(RTys), PNames);
 }
