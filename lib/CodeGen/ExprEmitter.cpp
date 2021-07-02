@@ -32,6 +32,12 @@ ExprValuePtr ExprEmitter::visit(const Expr *E) {
   if (auto TE = dynamic_cast<const TupleExpr *>(E)) {
     return visit(TE);
   }
+  if (auto DVE = dynamic_cast<const DirectValueExpr *>(E)) {
+    return visit(DVE);
+  }
+  if (auto RTE = dynamic_cast<const ReturnTupleExpr *>(E)) {
+    return visit(RTE);
+  }
   if (auto I = dynamic_cast<const Identifier *>(E)) {
     return visit(I);
   }
@@ -470,7 +476,6 @@ ExprValuePtr ExprEmitter::visit(const BinaryOperator *BO) {
 }
 
 ExprValuePtr ExprEmitter::visit(const CastExpr *CE) {
-  // TODO: return Tuple cast
   ExprValuePtr InVal = visit(CE->getSubExpr());
   if (CE->getCastKind() == CastKind::None) {
     return InVal;
@@ -605,6 +610,29 @@ ExprValuePtr ExprEmitter::visit(const TupleExpr *TE) {
     return std::make_shared<ExprValueTuple>(
         TE->getType().get(), ValueKind::VK_SValue, std::move(Values));
   }
+}
+
+ExprValuePtr ExprEmitter::visit(const DirectValueExpr *DVE) {
+  return ExprValue::getRValue(DVE, DVE->getValue());
+}
+
+ExprValuePtr ExprEmitter::visit(const ReturnTupleExpr *RTE) {
+  assert(RTE->getCalleeExpr()->getType()->getCategory() ==
+         Type::Category::ReturnTuple);
+  auto Callee = visit(RTE->getCalleeExpr());
+  auto &DirectValues = RTE->getDirectValues();
+  if (Callee->isTuple()) {
+    auto Vals =
+        dynamic_cast<ExprValueTuple *>(Callee.get())->load(Builder, CGM);
+    assert(Vals.size() == DirectValues.size());
+    for (unsigned I = 0; I < DirectValues.size(); ++I)
+      DirectValues[I]->setValue(Vals[I]);
+  } else {
+    auto CalleeValue = Callee->load(Builder, CGM);
+    for (unsigned I = 0; I < DirectValues.size(); ++I)
+      DirectValues[I]->setValue(Builder.CreateExtractValue(CalleeValue, {I}));
+  }
+  return visit(RTE->getTupleExpr());
 }
 
 ExprValuePtr ExprEmitter::visit(const ParenExpr *PE) {

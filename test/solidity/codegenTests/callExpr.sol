@@ -10,4 +10,13 @@ contract CallExpr {
         uint64 d = a + b + c;
         return d;
     }
+    function get() public pure returns(int,string memory) {
+        int a = 2;
+        return (a,"XXXXX");
+    }
+    function Jinkela() public pure{
+        int a;
+        string memory b;
+        (a, b) = get();
+    }
 }

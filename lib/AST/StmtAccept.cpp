@@ -52,6 +52,16 @@ void TypesTupleExpr::accept(ConstStmtVisitor &visitor) const {
   visitor.visit(*this);
 }
 
+void DirectValueExpr::accept(StmtVisitor &visitor) { visitor.visit(*this); }
+void DirectValueExpr::accept(ConstStmtVisitor &visitor) const {
+  visitor.visit(*this);
+}
+
+void ReturnTupleExpr::accept(StmtVisitor &visitor) { visitor.visit(*this); }
+void ReturnTupleExpr::accept(ConstStmtVisitor &visitor) const {
+  visitor.visit(*this);
+}
+
 void UnaryOperator::accept(StmtVisitor &visitor) { visitor.visit(*this); }
 void UnaryOperator::accept(ConstStmtVisitor &visitor) const {
   visitor.visit(*this);

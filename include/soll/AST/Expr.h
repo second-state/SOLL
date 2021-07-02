@@ -7,6 +7,7 @@
 #include "soll/Basic/IdentifierTable.h"
 #include "soll/Lex/Token.h"
 
+#include <llvm/IR/Value.h>
 #include <memory>
 #include <optional>
 #include <string>
@@ -340,6 +341,8 @@ protected:
 public:
   Expr *getSubExpr() { return SubExpr.get(); }
   const Expr *getSubExpr() const { return SubExpr.get(); }
+  ExprPtr moveSubExpr() { return std::move(SubExpr); }
+  void setSubExpr(ExprPtr &&E) { SubExpr = std::move(E); }
   CastKind getCastKind() const { return CastK; }
   void setCastKind(CastKind CK) { CastK = CK; }
   bool isStateVariable() const override;
@@ -545,6 +548,43 @@ class TypesTupleExpr : public Expr {
 public:
   TypesTupleExpr(SourceRange L, TypePtr TupleTy)
       : Expr(L, ValueKind::VK_Unknown, TupleTy) {}
+
+  void accept(StmtVisitor &visitor) override;
+  void accept(ConstStmtVisitor &visitor) const override;
+};
+
+class DirectValueExpr : public Expr {
+  llvm::Value *Value;
+
+public:
+  DirectValueExpr(TypePtr Ty)
+      : Expr(SourceRange(), ValueKind::VK_RValue, Ty), Value(nullptr) {}
+
+  void setValue(llvm::Value *V) { Value = V; }
+  llvm::Value *getValue() const { return Value; }
+
+  void accept(StmtVisitor &visitor) override;
+  void accept(ConstStmtVisitor &visitor) const override;
+};
+
+class ReturnTupleExpr : public Expr {
+  ExprPtr TupleE;
+  std::vector<DirectValueExpr *> DirectValues;
+  ExprPtr Callee;
+
+public:
+  ReturnTupleExpr(ExprPtr &&TE, std::vector<DirectValueExpr *> &&DVs,
+                  ExprPtr &&CE)
+      : Expr(SourceRange()), TupleE(std::move(TE)), DirectValues(DVs),
+        Callee(std::move(CE)) {}
+
+  Expr *getTupleExpr() { return TupleE.get(); }
+  const Expr *getTupleExpr() const { return TupleE.get(); }
+  Expr *getCalleeExpr() { return Callee.get(); }
+  const Expr *getCalleeExpr() const { return Callee.get(); }
+  const std::vector<DirectValueExpr *> &getDirectValues() const {
+    return DirectValues;
+  }
 
   void accept(StmtVisitor &visitor) override;
   void accept(ConstStmtVisitor &visitor) const override;
