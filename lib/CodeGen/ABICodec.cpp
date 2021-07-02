@@ -103,6 +103,7 @@ AbiEmitter::getDecode(llvm::Value *Int8Ptr, const Type *Ty) {
     assert(false && "This type is not available currently for abi.decode");
     __builtin_unreachable();
   }
+  case Type::Category::ReturnTuple:
   case Type::Category::Tuple: {
     const auto *TupleTy = dynamic_cast<const TupleType *>(Ty);
     std::vector<llvm::Value *> Vals;

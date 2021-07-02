@@ -4,8 +4,8 @@
 pragma solidity ^0.5.0;
 
 contract A {
-    function g(uint key, uint value, string str) public returns (uint) {
-        key = key + value;
+    function g(uint key, uint value, string str) public returns (uint, uint) {
+        return (key + value, key * value);
     }
 
 }
@@ -14,8 +14,9 @@ contract B {
     A contract_A;
 
     function f() public {
+        uint aaa;
         uint bbb;
-        bbb = contract_A.g({str: "strstr", value: 2, key: 3});
+        (aaa, bbb) = contract_A.g({str: "strstr", value: 2, key: 3});
     }
 
 }

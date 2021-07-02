@@ -10,6 +10,13 @@ library LA {
     {
         return self+value;
     }
+    function Multi(uint self, uint value)
+        public
+        pure
+        returns (uint, uint)
+    {
+        return (self+value,self-value);
+    }
 }
 
 library LB {
@@ -43,6 +50,8 @@ contract D {
         uint A = 123;
         A = A.ADD(2217);
         A = A.SUB(124);
+        uint32 B;
+        (A, B) = A.Multi(2217);
         return A;
     }
 }

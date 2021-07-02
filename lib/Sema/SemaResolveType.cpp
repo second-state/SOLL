@@ -799,9 +799,6 @@ void TypeResolver::visit(CallExprType &CE) {
     }
   }
 
-  // TODO: refactor this
-  // This assumes function only returns one value,
-  // because tuple type not impl. yet.
   if (auto ReturnTy = FTy->getReturnTypes(); ReturnTy.size() == 1) {
     CE.setType(ReturnTy[0]);
   }
@@ -819,6 +816,37 @@ void Sema::resolveImplicitCast(ImplicitCastExpr &IC, TypePtr DstTy,
   }
   const auto &SrcTy = IC.getSubExpr()->getType();
   if (!SrcTy) {
+    return;
+  }
+  if (SrcTy->getCategory() == Type::Category::ReturnTuple) {
+    assert(DstTy->getCategory() == Type::Category::Tuple);
+    assert(dynamic_cast<CallExpr *>(IC.getSubExpr()));
+    auto SrcTupTy = dynamic_cast<const TupleType *>(SrcTy.get());
+    std::vector<ExprPtr> Comps;
+    std::vector<DirectValueExpr *> DirectValues;
+    for (auto Ty : SrcTupTy->getElementTypes()) {
+      auto DirectValue = std::make_unique<DirectValueExpr>(Ty);
+      DirectValues.emplace_back(DirectValue.get());
+      Comps.emplace_back(CreateDummy(std::move(DirectValue)));
+    }
+    auto TupleE =
+        std::make_unique<TupleExpr>(SourceRange(), std::move(Comps), false);
+    auto ReturnTupleE = std::make_unique<ReturnTupleExpr>(
+        std::move(TupleE), std::move(DirectValues), IC.moveSubExpr());
+    std::vector<TypePtr> Types = SrcTupTy->getElementTypes();
+    ReturnTupleE->setType(std::make_shared<TupleType>(std::move(Types)));
+    if (auto SrcTup = dynamic_cast<TupleExpr *>(ReturnTupleE->getTupleExpr())) {
+      auto DstTupTy = dynamic_cast<const TupleType *>(DstTy.get());
+      std::size_t Num = SrcTup->getComponents().size();
+      for (std::size_t Idx = 0; Idx < Num; ++Idx) {
+        auto TIC =
+            dynamic_cast<ImplicitCastExpr *>(SrcTup->getComponents()[Idx]);
+        if (TIC)
+          resolveImplicitCast(*TIC, DstTupTy->getElementTypes()[Idx],
+                              PrefereLValue);
+      }
+    }
+    IC.setSubExpr(std::move(ReturnTupleE));
     return;
   }
   if (SrcTy->getCategory() == Type::Category::Tuple) {

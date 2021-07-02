@@ -36,6 +36,10 @@ private:
 
   ExprValuePtr visit(const TupleExpr *TE);
 
+  ExprValuePtr visit(const DirectValueExpr *DVE);
+
+  ExprValuePtr visit(const ReturnTupleExpr *RTE);
+
   ExprValuePtr visit(const ParenExpr *PE);
 
   ExprValuePtr visit(const Identifier *ID);
@@ -59,4 +63,4 @@ private:
   const Identifier *resolveIdentifier(const Expr *E);
 };
 
-}
+} // namespace soll::CodeGen

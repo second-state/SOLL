@@ -16,6 +16,8 @@ class ReturnStmt;
 class DeclStmt;
 class TupleExpr;
 class TypesTupleExpr;
+class DirectValueExpr;
+class ReturnTupleExpr;
 class UnaryOperator;
 class BinaryOperator;
 class CallExpr;
@@ -52,6 +54,8 @@ protected:
   using DeclStmtType = typename cond_const<Const, DeclStmt>::type;
   using TupleExprType = typename cond_const<Const, TupleExpr>::type;
   using TypesTupleExprType = typename cond_const<Const, TypesTupleExpr>::type;
+  using DirectValueExprType = typename cond_const<Const, DirectValueExpr>::type;
+  using ReturnTupleExprType = typename cond_const<Const, ReturnTupleExpr>::type;
   using UnaryOperatorType = typename cond_const<Const, UnaryOperator>::type;
   using BinaryOperatorType = typename cond_const<Const, BinaryOperator>::type;
   using CallExprType = typename cond_const<Const, CallExpr>::type;
@@ -93,6 +97,8 @@ public:
   virtual void visit(DeclStmtType &);
   virtual void visit(TupleExprType &);
   virtual void visit(TypesTupleExprType &);
+  virtual void visit(DirectValueExprType &);
+  virtual void visit(ReturnTupleExprType &);
   virtual void visit(UnaryOperatorType &);
   virtual void visit(BinaryOperatorType &);
   virtual void visit(CallExprType &);
