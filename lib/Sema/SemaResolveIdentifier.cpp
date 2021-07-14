@@ -2,7 +2,9 @@
 #include "soll/AST/Decl.h"
 #include "soll/Basic/DiagnosticSema.h"
 #include "soll/Sema/Sema.h"
-
+#include <iostream>
+using std::cerr;
+using std::endl;
 namespace soll {
 class DeclIdentifierResolver;
 class IdentifierResolver : public StmtVisitor {
@@ -139,13 +141,17 @@ public:
     DeclVisitor::visit(SU);
   }
   // void visit(PragmaDirectiveType &) override;
-  void visit(UsingForType &UF) {
+  void visit(UsingForType &UF) override {
     auto LibraryIdentifierPath = UF.getLibraryName();
     for (auto LibraryIdentifier : LibraryIdentifierPath.getPath()) {
       auto Lib = Actions.lookupContractDeclName(LibraryIdentifier);
       assert(Lib->getKind() == ContractDecl::ContractKind::Library &&
              "Not a Library!");
       UF.addLibrary(Lib);
+      for (auto FD : Lib->getFuncs()) {
+        cerr << "Find" << FD->getName().str() << endl;
+        //Actions.addDecl(FD);
+      }
     }
     if (auto *UT = dynamic_cast<UnresolveType *>(UF.getType().get())) {
       UF.setType(handleUnresolveType(UT));
@@ -254,8 +260,10 @@ void IdentifierResolver::visit(AsmFunctionDeclStmtType &FDS) {
 void IdentifierResolver::visit(MemberExprType &M) {
   // NameCheckByPass prevent raise a alert when M.name() is unsolved
   // It is usually used when M.base is special case.
+
   bool NameCheckByPass = false;
   bool BaseCheckByPass = false;
+  bool IsLibraryAccess = false;
 
   auto Base = M.getBase();
   Base->accept(*this);
@@ -346,16 +354,22 @@ void IdentifierResolver::visit(MemberExprType &M) {
       return;
     } break;
     default:
-      assert(false && "Unimplement MemberExpr case");
+      IsLibraryAccess = true;
       break;
     }
-    if (!NameCheckByPass)
+
+    if (!(IsLibraryAccess || NameCheckByPass))
       M.getName()->accept(*this);
   }
 
-  if (!NameCheckByPass && !M.getName()->isResolved()) {
+  if (IsLibraryAccess) {
+    // consider as a normal function call
+    M.getName()->accept(*this);
+  } else if (!NameCheckByPass && !M.getName()->isResolved()) {
     // Note: MemberExpr do not allow resolve in outside scope
-    Actions.Diag(M.getName()->getLocation().getBegin(), diag::err_undeclared_var_use) << M.getName()->getName();
+    Actions.Diag(M.getName()->getLocation().getBegin(),
+                 diag::err_undeclared_var_use)
+        << M.getName()->getName();
   }
 }
 

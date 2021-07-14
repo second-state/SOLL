@@ -384,7 +384,8 @@ std::unique_ptr<SourceUnit> Parser::parse() {
   }
   Actions.setLibrariesAddressMap(&LibrariesAddressMap);
   Actions.resolveInherit(*SU);
-  Actions.resolveIdentifierDecl(*SU);
+  Actions.resolveNameAndType(*SU);
+  // Actions.resolveIdentifierDecl(*SU);
   Actions.resolveType(*SU);
   Actions.resolveUniqueName(*SU);
   return SU;

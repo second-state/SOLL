@@ -4,6 +4,7 @@ add_llvm_library(sollSema
   Sema.cpp
   SemaExprAsm.cpp
   SemaResolveType.cpp
+  SemaResolveNameAndType.cpp
   SemaResolveInherit.cpp
   SemaResolveUniqueName.cpp
   SemaResolveIdentifier.cpp

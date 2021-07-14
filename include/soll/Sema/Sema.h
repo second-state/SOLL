@@ -133,6 +133,7 @@ public:
                              bool AppendChild);
 
   void resolveType(SourceUnit &SU);
+  void resolveNameAndType(SourceUnit &SU);
   void resolveInherit(SourceUnit &SU);
   void resolveUniqueName(SourceUnit &SU);
   void resolveIdentifierDecl(SourceUnit &SU);
