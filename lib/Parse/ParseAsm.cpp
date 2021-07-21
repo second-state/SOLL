@@ -184,6 +184,7 @@ std::unique_ptr<Expr> Parser::parseAsmExpression() {
 
 std::unique_ptr<Expr> Parser::parseElementaryOperation() {
   std::unique_ptr<Expr> Expression;
+  bool IsLiteral = false;
 
   switch (Tok.getKind()) {
   case tok::kw_address:
@@ -207,12 +208,14 @@ std::unique_ptr<Expr> Parser::parseElementaryOperation() {
     llvm::StringRef StrValue(Tok.getLiteralData(), Tok.getLength());
     Expression = std::make_unique<StringLiteral>(Tok, stringUnquote(StrValue));
     ConsumeStringToken(); // string literal
+    IsLiteral = true;
     break;
   }
   case tok::hex_string_literal: {
     llvm::StringRef StrValue(Tok.getLiteralData(), Tok.getLength());
     Expression = std::make_unique<StringLiteral>(Tok, hexUnquote(StrValue));
     ConsumeStringToken(); // hex string literal
+    IsLiteral = true;
     break;
   }
   case tok::numeric_constant: {
@@ -225,21 +228,38 @@ std::unique_ptr<Expr> Parser::parseElementaryOperation() {
     }
     Expression = std::make_unique<NumberLiteral>(Tok.getRange(), Signed, Value);
     ConsumeToken(); // numeric constant
+    IsLiteral = true;
     break;
   }
   case tok::kw_true: {
     Expression = std::make_unique<BooleanLiteral>(Tok, true);
     ConsumeToken(); // 'true'
+    IsLiteral = true;
     break;
   }
   case tok::kw_false: {
     Expression = std::make_unique<BooleanLiteral>(Tok, false);
     ConsumeToken(); // 'false'
+    IsLiteral = true;
     break;
   }
   default:
     Diag(diag::err_unimplemented_token) << Tok.getKind();
     ConsumeToken();
+  }
+  if (IsLiteral) {
+    if (Tok.getKind() == tok::colon) {
+      ConsumeToken(); // ':'
+      auto T = parseAsmType();
+      CastKind CK = CastKind::TypeCast;
+      if (T->getCategory() == Expression->getType()->getCategory() &&
+          T->getCategory() == Type::Category::Integer) {
+        CK = CastKind::IntegralCast;
+      }
+      auto Cast = std::make_unique<ExplicitCastExpr>(
+          SourceRange(), std::move(Expression), CK, T);
+      Expression = std::move(Cast);
+    }
   }
   return Expression;
 }
@@ -248,7 +268,13 @@ std::unique_ptr<AsmVarDecl> Parser::parseAsmVariableDeclaration() {
   const SourceLocation Begin = Tok.getLocation();
   llvm::StringRef Name = Tok.getIdentifierInfo()->getName();
   ConsumeToken();
-  TypePtr T = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+  TypePtr T = nullptr;
+  if (Tok.getKind() == tok::colon) {
+    ConsumeToken(); // ':'
+    T = parseAsmType();
+  } else {
+    T = std::make_shared<IntegerType>(IntegerType::IntKind::U256);
+  }
   std::unique_ptr<Expr> Value;
   auto VD = std::make_unique<AsmVarDecl>(SourceRange(Begin, Tok.getEndLoc()),
                                          Name, std::move(T), std::move(Value));

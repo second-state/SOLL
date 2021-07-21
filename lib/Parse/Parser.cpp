@@ -2124,4 +2124,25 @@ DiagnosticBuilder Parser::Diag(SourceLocation Loc, unsigned DiagID) {
   return Diags.Report(Loc, DiagID);
 }
 
+TypePtr Parser::parseAsmType() {
+  TypePtr T = nullptr;
+  bool HaveType = true;
+  const tok::TokenKind Kind = Tok.getKind();
+  if (Tok.isElementaryTypeName()) {
+    if (Kind == tok::kw_bool) {
+      T = std::make_shared<BooleanType>();
+      ConsumeToken(); // 'bool'
+    } else if (tok::kw_int <= Kind && Kind <= tok::kw_uint256) {
+      T = std::make_shared<IntegerType>(token2inttype(Tok));
+      ConsumeToken(); // int or uint
+    } else {
+      HaveType = false;
+    }
+  } else {
+    HaveType = false;
+  }
+  assert(HaveType && "Token is not an AsmType");
+  return T;
+}
+
 } // namespace soll
