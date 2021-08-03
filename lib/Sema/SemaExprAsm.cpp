@@ -130,6 +130,7 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
       {"keccak256", AsmIdentifier::SpecialIdentifier::keccak256},
       {"invalid", AsmIdentifier::SpecialIdentifier::invalid},
       {"pop", AsmIdentifier::SpecialIdentifier::pop},
+      {"linkersymbol", AsmIdentifier::SpecialIdentifier::linkersymbol},
       // new defined EEI in EVMC
       {"create2", AsmIdentifier::SpecialIdentifier::create2},
       {"chainid", AsmIdentifier::SpecialIdentifier::chainid}};
@@ -285,6 +286,13 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
           std::vector<std::reference_wrapper<const TypePtr>>{
               std::cref(Context.IntegerTypeU256Ptr)},
           std::vector<std::reference_wrapper<const TypePtr>>{});
+      break;
+    case AsmIdentifier::SpecialIdentifier::linkersymbol: ///< (str) -> u256
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(Context.StringTypePtr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(Context.IntegerTypeU256Ptr)});
       break;
     case AsmIdentifier::SpecialIdentifier::invalid:
     case AsmIdentifier::SpecialIdentifier::stop: ///< () -> void
@@ -605,13 +613,13 @@ Sema::CreateAsmBuiltinCallExpr(SourceRange L, const AsmIdentifier &Callee,
     return std::make_unique<AsmBinaryOperator>(
         L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_Exp);
   case AsmIdentifier::SpecialIdentifier::ltu256:
-      return std::make_unique<AsmBinaryOperator>(
+    return std::make_unique<AsmBinaryOperator>(
         L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_LT);
   case AsmIdentifier::SpecialIdentifier::lts256:
     return std::make_unique<AsmBinaryOperator>(
         L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_SLT);
   case AsmIdentifier::SpecialIdentifier::gtu256:
-      return std::make_unique<AsmBinaryOperator>(
+    return std::make_unique<AsmBinaryOperator>(
         L, std::move(Args[0]), std::move(Args[1]), std::move(ReturnTy), BO_GT);
   case AsmIdentifier::SpecialIdentifier::gts256:
     return std::make_unique<AsmBinaryOperator>(

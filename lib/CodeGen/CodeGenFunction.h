@@ -145,6 +145,7 @@ private:
   llvm::Value *emitAsmByte(const CallExpr *CE);
   void emitAsmSelfDestruct(const CallExpr *CE);
   llvm::Value *emitAsmChainId(const CallExpr *CE);
+  llvm::Value *emitAsmLinkersymbol(const CallExpr *CE);
 
   ExprValuePtr emitCallExpr(const CallExpr *CE);
   ExprValuePtr emitSpecialCallExpr(const Identifier *SI, const CallExpr *CE,
