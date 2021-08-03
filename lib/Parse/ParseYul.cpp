@@ -38,6 +38,7 @@ unique_ptr<SourceUnit> Parser::parseYul() {
       SourceRange(Nodes.front()->getLocation().getBegin(),
                   Nodes.back()->getLocation().getEnd()),
       std::move(Nodes));
+  Actions.setLibrariesAddressMap(&LibrariesAddressMap);
   Actions.resolveIdentifierDecl(*SU);
   Actions.resolveType(*SU);
   return SU;

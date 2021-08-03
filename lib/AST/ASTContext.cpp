@@ -21,12 +21,11 @@ extractLibraries(const std::vector<std::string> &LibrariesAddressInfo) {
     std::stringstream SS(Libs);
     std::string Buff;
     while (SS >> Buff) {
-      std::string LibName, Address;
-      size_t I = 0;
-      for (; Buff.at(I) != ':'; ++I)
-        LibName += Buff.at(I);
-      for (++I; I < Buff.size(); ++I)
-        Address += Buff.at(I);
+      if (Buff.empty())
+        continue;
+      size_t Pivot = Buff.find_last_of(":");
+      auto LibName = Buff.substr(0, Pivot);
+      auto Address = Buff.substr(Pivot + 1);
       Map[LibName] = addressParse(Address);
     }
   }

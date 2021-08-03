@@ -776,6 +776,23 @@ void TypeResolver::visit(CallExprType &CE) {
       return;
     }
     if (I->isSpecialIdentifier()) {
+      switch (I->getSpecialIdentifier()) {
+      case AsmIdentifier::SpecialIdentifier::linkersymbol: {
+        auto &RawArguments = CE.getRawArguments();
+        if (auto *IC =
+                dynamic_cast<ImplicitCastExpr *>(RawArguments.at(0).get())) {
+          auto Str = IC->getSubExpr();
+          if (auto SL = dynamic_cast<StringLiteral *>(Str)) {
+            auto Address =
+                Actions.getLibrariesAddressMap()->lookup(SL->getValue());
+            RawArguments.at(0) = std::make_unique<NumberLiteral>(SourceRange(), false, Address);
+          }
+        }
+        break;
+      }
+      default:
+        break;
+      }
       FTy = dynamic_cast<FunctionType *>(I->getType().get());
     } else {
       const Decl *D = I->getCorrespondDecl();

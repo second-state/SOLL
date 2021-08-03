@@ -989,6 +989,12 @@ llvm::Value *CodeGenFunction::emitAsmChainId(const CallExpr *CE) {
   return Builder.CreateLoad(ValPtr, Int128Ty);
 }
 
+llvm::Value *CodeGenFunction::emitAsmLinkersymbol(const CallExpr *CE) {
+  auto Arguments = CE->getArguments();
+  llvm::Value *AddressValue = emitExpr(Arguments[0])->load(Builder, CGM);
+  return AddressValue;
+}
+
 ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
                                                      const CallExpr *CE) {
   switch (SI->getSpecialIdentifier()) {
@@ -1182,6 +1188,9 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
         CE,
         Builder.CreateSExtOrTrunc(
             emitExpr(CE->getArguments()[0])->load(Builder, CGM), CGM.Int256Ty));
+  case AsmIdentifier::SpecialIdentifier::linkersymbol:
+    return ExprValue::getRValue(
+        CE, Builder.CreateZExtOrTrunc(emitAsmLinkersymbol(CE), CGM.Int256Ty));
   case AsmIdentifier::SpecialIdentifier::create2:
     return ExprValue::getRValue(
         CE, Builder.CreateZExtOrTrunc(emitAsmCreate2(CE), CGM.Int256Ty));
