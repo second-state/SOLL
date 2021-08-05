@@ -1,6 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 // RUN: %soll --lang=Yul %s
 
+// solidity Version 0.8.6
+/********************************** Source Code **********************************
+pragma solidity =0.8.6;
+
+contract TestBuiltIn {
+  constructor() payable {
+  }
+
+  function builtin(bytes32 digest, uint8 v, bytes32 r, bytes32 s) external pure {
+    ecrecover(digest, v, r, s);
+  }
+}
+**********************************************************************************/
+
 /*=====================================================*
  *                       WARNING                       *
  *  Solidity to Yul compilation is still EXPERIMENTAL  *
@@ -9,32 +23,32 @@
  *=====================================================*/
 
 
-object "TestBuiltIn_24" {
+object "TestBuiltIn_25" {
     code {
-        /// @src 0:103,276
+        /// @src 0:101,274
         mstore(64, 128)
 
-        constructor_TestBuiltIn_24()
+        constructor_TestBuiltIn_25()
 
         let _1 := allocate_unbounded()
-        codecopy(_1, dataoffset("TestBuiltIn_24_deployed"), datasize("TestBuiltIn_24_deployed"))
+        codecopy(_1, dataoffset("TestBuiltIn_25_deployed"), datasize("TestBuiltIn_25_deployed"))
 
-        return(_1, datasize("TestBuiltIn_24_deployed"))
+        return(_1, datasize("TestBuiltIn_25_deployed"))
 
         function allocate_unbounded() -> memPtr {
             memPtr := mload(64)
         }
 
-        function constructor_TestBuiltIn_24() {
+        function constructor_TestBuiltIn_25() {
 
-            /// @src 0:128,155
+            /// @src 0:126,153
 
         }
 
     }
-    object "TestBuiltIn_24_deployed" {
+    object "TestBuiltIn_25_deployed" {
         code {
-            /// @src 0:103,276
+            /// @src 0:101,274
             mstore(64, 128)
 
             if iszero(lt(calldatasize(), 4))
@@ -48,7 +62,7 @@ object "TestBuiltIn_24" {
 
                     if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }
                     let param_0, param_1, param_2, param_3 :=  abi_decode_tuple_t_bytes32t_uint8t_bytes32t_bytes32(4, calldatasize())
-                    fun_builtin_23(param_0, param_1, param_2, param_3)
+                    fun_builtin_24(param_0, param_1, param_2, param_3)
                     let memPos := allocate_unbounded()
                     let memEnd := abi_encode_tuple__to__fromStack(memPos  )
                     return(memPos, sub(memEnd, memPos))
@@ -140,31 +154,31 @@ object "TestBuiltIn_24" {
                 cleaned := and(value, 0xff)
             }
 
-            function fun_builtin_23(var_digest_6, var_v_8, var_r_10, var_s_12) {
-                /// @src 0:159,274
+            function fun_builtin_24(var_digest_7, var_v_9, var_r_11, var_s_13) {
+                /// @src 0:157,272
 
-                /// @src 0:253,259
-                let _1 := var_digest_6
-                let expr_16 := _1
-                /// @src 0:261,262
-                let _2 := var_v_8
-                let expr_17 := _2
-                /// @src 0:264,265
-                let _3 := var_r_10
-                let expr_18 := _3
-                /// @src 0:267,268
-                let _4 := var_s_12
-                let expr_19 := _4
-                /// @src 0:243,269
+                /// @src 0:251,257
+                let _1 := var_digest_7
+                let expr_17 := _1
+                /// @src 0:259,260
+                let _2 := var_v_9
+                let expr_18 := _2
+                /// @src 0:262,263
+                let _3 := var_r_11
+                let expr_19 := _3
+                /// @src 0:265,266
+                let _4 := var_s_13
+                let expr_20 := _4
+                /// @src 0:241,267
 
                 let _5 := allocate_unbounded()
-                let _6 := abi_encode_tuple_t_bytes32_t_uint8_t_bytes32_t_bytes32__to_t_bytes32_t_uint8_t_bytes32_t_bytes32__fromStack(_5 , expr_16, expr_17, expr_18, expr_19)
+                let _6 := abi_encode_tuple_t_bytes32_t_uint8_t_bytes32_t_bytes32__to_t_bytes32_t_uint8_t_bytes32_t_bytes32__fromStack(_5 , expr_17, expr_18, expr_19, expr_20)
 
                 mstore(0, 0)
 
                 let _7 := staticcall(gas(), 1 , _5, sub(_6, _5), 0, 32)
                 if iszero(_7) { revert_forward_1() }
-                let expr_20 := shift_left_0(mload(0))
+                let expr_21 := shift_left_0(mload(0))
 
             }
 
@@ -214,7 +228,7 @@ object "TestBuiltIn_24" {
 
         }
 
-        data ".metadata" hex"a2646970667358221220d9b9329eeafaed45c30696a8f8ab9a3705e5b359ff34ca2c5713df096303e98c64736f6c63430008060033"
+        data ".metadata" hex"a2646970667358221220e2d9d8a553c43f36f682caa774190b205e88bb0b638b6d5b2685f2cb40b85fee64736f6c63430008060033"
     }
 
 }
