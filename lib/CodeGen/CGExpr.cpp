@@ -868,7 +868,8 @@ llvm::Value *CodeGenFunction::emitAsmCallCode(const CallExpr *CE) {
       Builder.CreateZExtOrTrunc(CGM.getEndianlessValue(Value), Int128Ty);
   llvm::Value *ValuePtr = Builder.CreateAlloca(Int128Ty);
   Builder.CreateStore(TrValue, ValuePtr);
-  llvm::Value *Ptr = emitExpr(Arguments[3])->load(Builder, CGM);
+  llvm::Value *Ptr = Builder.CreateIntToPtr(
+      emitExpr(Arguments[3])->load(Builder, CGM), Int8PtrTy);
   llvm::Value *Length = emitExpr(Arguments[4])->load(Builder, CGM);
 
   llvm::Value *OutPtr = emitExpr(Arguments[5])->load(Builder, CGM);
@@ -895,7 +896,8 @@ llvm::Value *CodeGenFunction::emitAsmDelegatecall(const CallExpr *CE) {
   llvm::Value *AddressPtr = Builder.CreateAlloca(AddressTy);
   Builder.CreateStore(TrAddress, AddressPtr);
 
-  llvm::Value *Ptr = emitExpr(Arguments[2])->load(Builder, CGM);
+  llvm::Value *Ptr = Builder.CreateIntToPtr(
+      emitExpr(Arguments[2])->load(Builder, CGM), Int8PtrTy);
   llvm::Value *Length = emitExpr(Arguments[3])->load(Builder, CGM);
 
   llvm::Value *OutPtr = emitExpr(Arguments[4])->load(Builder, CGM);
@@ -922,7 +924,8 @@ llvm::Value *CodeGenFunction::emitAsmCallStaticcall(const CallExpr *CE) {
   llvm::Value *AddressPtr = Builder.CreateAlloca(AddressTy);
   Builder.CreateStore(TrAddress, AddressPtr);
 
-  llvm::Value *Ptr = emitExpr(Arguments[2])->load(Builder, CGM);
+  llvm::Value *Ptr = Builder.CreateIntToPtr(
+      emitExpr(Arguments[2])->load(Builder, CGM), Int8PtrTy);
   llvm::Value *Length = emitExpr(Arguments[3])->load(Builder, CGM);
 
   llvm::Value *OutPtr = emitExpr(Arguments[4])->load(Builder, CGM);
