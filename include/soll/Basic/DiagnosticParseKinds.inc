@@ -33,3 +33,4 @@ DIAG(err_multiple_fallbacks, CLASS_ERROR, (unsigned)diag::Severity::Error, "mult
 DIAG(warn_virtual_already_specified, CLASS_WARNING, (unsigned)diag::Severity::Warning, "Virtual already specified.", 0, false, 1)
 DIAG(warn_override_already_specified, CLASS_WARNING, (unsigned)diag::Severity::Warning, "Override already specified.", 0, false, 1)
 DIAG(err_multiinherited_unsupport, CLASS_ERROR, (unsigned)diag::Severity::Error, "Multinherited overrided is not supported!", 0, false, 1)
+DIAG(warn_yul_metadata, CLASS_WARNING, (unsigned)diag::Severity::Warning, "soll currently does not attach '.metadata' to wasm bytecode.", 0, false, 1)

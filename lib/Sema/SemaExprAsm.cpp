@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #include "soll/AST/AST.h"
+#include "soll/Basic/DiagnosticSema.h"
 #include "soll/Sema/Sema.h"
 
 namespace soll {
@@ -674,6 +675,19 @@ Sema::CreateAsmBuiltinCallExpr(SourceRange L, const AsmIdentifier &Callee,
     return std::make_unique<AsmBinaryOperator>(L, std::move(Args[1]),
                                                std::move(Args[0]),
                                                std::move(ReturnTy), BO_AShr);
+  case AsmIdentifier::SpecialIdentifier::dataoffset:
+  case AsmIdentifier::SpecialIdentifier::datasize: {
+    if (auto *ICE = dynamic_cast<const ImplicitCastExpr *>(Args[0].get())) {
+      if (auto *SL = dynamic_cast<const StringLiteral *>(ICE->getSubExpr())) {
+        std::string Name = SL->getValue();
+        if (Name.size() && Name[0] == '.') {
+          Diag(L.getBegin(), diag::err_yul_access_special_object) << Name;
+          assert(false);
+        }
+      }
+    }
+    [[fallthrough]];
+  }
   default: ///< treated as normal CallExpr
     break;
   }

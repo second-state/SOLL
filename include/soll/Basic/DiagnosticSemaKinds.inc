@@ -33,3 +33,4 @@ DIAG(err_visibility_not_match, CLASS_ERROR, (unsigned)diag::Severity::Error, "vi
 DIAG(err_private_function_can_not_be_virtual, CLASS_ERROR, (unsigned)diag::Severity::Error, "private funtcion %0 can not be virtual", 0, false, 1)
 DIAG(err_mutability_overriding_not_allow, CLASS_ERROR, (unsigned)diag::Severity::Error, "can not change function %0 mutability", 0, false, 1)
 DIAG(err_func_to_var_overrided_unsoupport, CLASS_ERROR, (unsigned)diag::Severity::Error, "function to state variables override is unsupport", 0, false, 1)
+DIAG(err_yul_access_special_object, CLASS_ERROR, (unsigned)diag::Severity::Error, "'%0' can not be access by 'datasize', 'dataoffset' or 'datacopy'.", 0, false, 1)

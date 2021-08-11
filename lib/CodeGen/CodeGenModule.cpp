@@ -1618,6 +1618,10 @@ void CodeGenModule::emitYulObject(const YulObject *YO) {
     */
   }
   assert(nullptr != YO->getCode());
+  if (YO->getName() == ".metadata") {
+    // TODO: attach '.metadata' to wasm bytecode.
+    return;
+  }
   for (const auto *O : YO->getObjectList()) {
     emitYulObject(O);
     getEntry().clear();
