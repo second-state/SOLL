@@ -133,7 +133,10 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
       {"linkersymbol", AsmIdentifier::SpecialIdentifier::linkersymbol},
       // new defined EEI in EVMC
       {"create2", AsmIdentifier::SpecialIdentifier::create2},
-      {"chainid", AsmIdentifier::SpecialIdentifier::chainid}};
+      {"chainid", AsmIdentifier::SpecialIdentifier::chainid},
+      {"loadimmutable", AsmIdentifier::SpecialIdentifier::loadimmutable},
+      {"setimmutable", AsmIdentifier::SpecialIdentifier::setimmutable}
+  };
   llvm::StringRef Name = Tok.getIdentifierInfo()->getName();
   if (auto Iter = SpecialLookup.find(Name); Iter != SpecialLookup.end()) {
     TypePtr Ty;
@@ -498,11 +501,21 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
               std::cref(Context.IntegerTypeU256Ptr)});
       break;
     case AsmIdentifier::SpecialIdentifier::dataoffset: ///< (string) -> u256
+    case AsmIdentifier::SpecialIdentifier::loadimmutable:
       Ty = std::make_shared<FunctionType>(
           std::vector<std::reference_wrapper<const TypePtr>>{
               std::cref(Context.StringTypePtr)},
           std::vector<std::reference_wrapper<const TypePtr>>{
               std::cref(Context.IntegerTypeU256Ptr)});
+      break;
+    case AsmIdentifier::SpecialIdentifier::setimmutable: ///< (u256, string,
+                                                         ///< u256) -> void
+      Ty = std::make_shared<FunctionType>(
+          std::vector<std::reference_wrapper<const TypePtr>>{
+              std::cref(Context.IntegerTypeU256Ptr),
+              std::cref(Context.StringTypePtr),
+              std::cref(Context.IntegerTypeU256Ptr)},
+          std::vector<std::reference_wrapper<const TypePtr>>{});
       break;
     case AsmIdentifier::SpecialIdentifier::datacopy:
     case AsmIdentifier::SpecialIdentifier::returndatacopy:

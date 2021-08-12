@@ -26,6 +26,7 @@ class CodeGenFunction : public CodeGenTypeCache {
   llvm::Value *ReturnValue;
 
   using DeclMapTy = llvm::DenseMap<const Decl *, llvm::Value *>;
+  llvm::StringMap<llvm::Value *> ImmutableAllocationTable;
   DeclMapTy LocalDeclMap;
   void setAddrOfLocalVar(const Decl *VD, llvm::Value *Addr) {
     assert(!LocalDeclMap.count(VD) && "Decl already exists in LocalDeclMap!");
@@ -146,6 +147,8 @@ private:
   void emitAsmSelfDestruct(const CallExpr *CE);
   llvm::Value *emitAsmChainId(const CallExpr *CE);
   llvm::Value *emitAsmLinkersymbol(const CallExpr *CE);
+  void emitAsmSetImmutable(const CallExpr *CE);
+  llvm::Value * emitAsmLoadImmutable(const CallExpr *CE);
 
   ExprValuePtr emitCallExpr(const CallExpr *CE);
   ExprValuePtr emitSpecialCallExpr(const Identifier *SI, const CallExpr *CE,

@@ -59,7 +59,6 @@ public:
       const llvm::StringMap<llvm::APInt> *LibrariesAddressMap) {
     this->LibrariesAddressMap = LibrariesAddressMap;
   }
-
   const llvm::StringMap<llvm::APInt> *getLibrariesAddressMap() const {
     return LibrariesAddressMap;
   }
@@ -138,6 +137,7 @@ public:
   void resolveInherit(SourceUnit &SU);
   void resolveUniqueName(SourceUnit &SU);
   void resolveIdentifierDecl(SourceUnit &SU);
+  void resolveImmutable(SourceUnit &SU);
   void resolveImplicitCast(ImplicitCastExpr &IC, TypePtr DstTy,
                            bool PrefereLValue);
 

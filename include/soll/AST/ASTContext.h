@@ -11,6 +11,7 @@ namespace soll {
 class ASTContext : public llvm::RefCountedBase<ASTContext> {
   InputKind Language;
   const llvm::StringMap<llvm::APInt> LibrariesAddressMap;
+  llvm::StringMap<llvm::APInt> ImmutableAddressMap;
 
 public:
   const TypePtr IntegerTypeU256Ptr;
@@ -32,6 +33,10 @@ public:
   const InputKind &getLang() const { return Language; }
   const llvm::StringMap<llvm::APInt> &getLibrariesAddressMap() const {
     return LibrariesAddressMap;
+  }
+
+  llvm::StringMap<llvm::APInt> &getImmutableAddressMap() {
+    return ImmutableAddressMap;
   }
 };
 
