@@ -41,6 +41,7 @@ unique_ptr<SourceUnit> Parser::parseYul() {
   Actions.setLibrariesAddressMap(&LibrariesAddressMap);
   Actions.resolveIdentifierDecl(*SU);
   Actions.resolveType(*SU);
+  Actions.resolveImmutable(*SU);
   return SU;
 }
 

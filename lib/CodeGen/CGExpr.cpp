@@ -5,7 +5,10 @@
 #include "ExprEmitter.h"
 #include "soll/Basic/Diagnostic.h"
 #include "soll/Basic/DiagnosticCodeGen.h"
-
+#include <llvm/ADT/StringExtras.h>
+#include <llvm/ADT/StringRef.h>
+#include <llvm/IR/Type.h>
+#include <llvm/IR/Value.h>
 namespace soll::CodeGen {
 
 ExprValuePtr CodeGenFunction::emitExpr(const Expr *E) {
@@ -998,6 +1001,47 @@ llvm::Value *CodeGenFunction::emitAsmLinkersymbol(const CallExpr *CE) {
   return AddressValue;
 }
 
+void CodeGenFunction::emitAsmSetImmutable(const CallExpr *CE) {
+  auto Arguments = CE->getArguments();
+  llvm::Value *Value = emitExpr(Arguments[2])->load(Builder, CGM);
+  if (auto *ICE = dynamic_cast<const ImplicitCastExpr *>(Arguments[1])) {
+    if (auto *SL = dynamic_cast<const StringLiteral *>(ICE->getSubExpr())) {
+      std::string Name = SL->getValue();
+      auto StringRefName = llvm::StringRef(Name);
+      auto &Ctx = CGM.getContext();
+      auto &Map = Ctx.getImmutableAddressMap();
+      if (Map.find(StringRefName) != Map.end()) {
+        llvm::Value *Offset = Builder.getInt(Map.lookup(StringRefName));
+        llvm::Value *Ptr = Builder.CreateIntToPtr(Offset, Int256PtrTy);
+        Builder.CreateStore(Value, Ptr);
+        CGM.emitUpdateMemorySize(Offset, Builder.getIntN(256, 0x20));
+        return;
+      }
+    }
+  }
+  assert(false && "setimmutable needs a string literal");
+  __builtin_unreachable();
+}
+
+llvm::Value *CodeGenFunction::emitAsmLoadImmutable(const CallExpr *CE) {
+  if (auto *ICE =
+          dynamic_cast<const ImplicitCastExpr *>(CE->getArguments()[0])) {
+    if (auto *SL = dynamic_cast<const StringLiteral *>(ICE->getSubExpr())) {
+      std::string Name = SL->getValue();
+      auto StringRefName = llvm::StringRef(Name);
+      auto &Ctx = CGM.getContext();
+      auto &Map = Ctx.getImmutableAddressMap();
+      if (Map.find(StringRefName) != Map.end()) {
+        llvm::Value *Offset = Builder.getInt(Map.lookup(StringRefName));
+        llvm::Value *Ptr = Builder.CreateIntToPtr(Offset, Int256PtrTy);
+        return CGM.getEndianlessValue(Builder.CreateLoad(Ptr, Int256Ty));
+      }
+    }
+  }
+  assert(false && "loadimmutable needs a string literal");
+  __builtin_unreachable();
+}
+
 ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
                                                      const CallExpr *CE) {
   switch (SI->getSpecialIdentifier()) {
@@ -1200,6 +1244,13 @@ ExprValuePtr CodeGenFunction::emitAsmSpecialCallExpr(const AsmIdentifier *SI,
   case AsmIdentifier::SpecialIdentifier::chainid:
     return ExprValue::getRValue(
         CE, Builder.CreateZExtOrTrunc(emitAsmChainId(CE), CGM.Int256Ty));
+  case AsmIdentifier::SpecialIdentifier::setimmutable:
+    emitAsmSetImmutable(CE);
+    return std::make_shared<ExprValue>();
+  case AsmIdentifier::SpecialIdentifier::loadimmutable:
+    return ExprValue::getRValue(
+        CE, Builder.CreateZExtOrTrunc(emitAsmLoadImmutable(CE), CGM.Int256Ty));
+
   // TODO:
   // - implement special identifiers below and
   //   move implemented ones above this TODO.

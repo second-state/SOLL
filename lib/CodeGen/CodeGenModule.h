@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #pragma once
 #include "CodeGenTypeCache.h"
+#include "soll/AST/ASTContext.h"
 #include "soll/AST/Decl.h"
 #include "soll/AST/DeclAsm.h"
 #include "soll/AST/DeclYul.h"
@@ -16,7 +17,6 @@
 
 namespace soll {
 
-class ASTContext;
 class DiagnosticsEngine;
 
 inline llvm::GlobalVariable *createGlobalString(llvm::LLVMContext &Context,
@@ -158,6 +158,7 @@ public:
   getNestedEntries() const {
     return NestedEntries;
   }
+  ASTContext &getContext() { return Context; }
   llvm::LLVMContext &getLLVMContext() const { return VMContext; }
   llvm::IRBuilder<llvm::ConstantFolder> &getBuilder() { return Builder; }
   DiagnosticsEngine &getDiags() { return Diags; }

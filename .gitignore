@@ -21,6 +21,7 @@
 .sw?
 #OS X specific files.
 .DS_store
+.cache
 
 # Nested build directory
 /build
