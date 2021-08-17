@@ -53,9 +53,6 @@ unique_ptr<YulObject> Parser::parseYulObject() {
   ConsumeToken();
 
   auto Name = stringUnquote(std::string(Tok.getLiteralData(), Tok.getLength()));
-  if (Name == ".metadata") {
-    Diag(diag::warn_yul_metadata);
-  }
 
   ConsumeStringToken();
   ExpectAndConsume(tok::l_brace);

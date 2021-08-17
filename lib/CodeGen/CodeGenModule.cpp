@@ -1619,7 +1619,10 @@ void CodeGenModule::emitYulObject(const YulObject *YO) {
   }
   assert(nullptr != YO->getCode());
   if (YO->getName() == ".metadata") {
-    // TODO: attach '.metadata' to wasm bytecode.
+    // ignore sub-object and code
+    for (const auto *D : YO->getDataList()) {
+      emitYulDataInMetadata(D);
+    }
     return;
   }
   for (const auto *O : YO->getObjectList()) {
@@ -1659,9 +1662,29 @@ void CodeGenModule::emitYulCode(const YulCode *YC, llvm::StringRef Name) {
 void CodeGenModule::emitYulData(const YulData *YD) {
   llvm::StringRef Name = YD->getUniqueName();
   std::string Data = YD->getBody()->getValue();
+  if (YD->getName() == ".metadata") {
+    llvm::SmallVector<llvm::Metadata *, 8> Ops;
+    llvm::StringRef Name = YD->getName();
+    std::string Data = YD->getBody()->getValue();
+    Ops.push_back(llvm::MDString::get(VMContext, Name));
+    Ops.push_back(llvm::MDString::get(VMContext, Data));
+    auto MD = getModule().getOrInsertNamedMetadata("wasm.custom_sections");
+    MD->addOperand(llvm::MDTuple::get(VMContext, Ops));
+    return;
+  }
   llvm::GlobalVariable *Variable =
       createGlobalString(VMContext, getModule(), Data, Name);
   YulDataMap.try_emplace(YD, Variable);
+}
+
+void CodeGenModule::emitYulDataInMetadata(const YulData *YD) {
+  llvm::SmallVector<llvm::Metadata *, 8> Ops;
+  std::string Name = ".metadata." + YD->getName().str();
+  std::string Data = YD->getBody()->getValue();
+  Ops.push_back(llvm::MDString::get(VMContext, Name));
+  Ops.push_back(llvm::MDString::get(VMContext, Data));
+  auto MD = getModule().getOrInsertNamedMetadata("wasm.custom_sections");
+  MD->addOperand(llvm::MDTuple::get(VMContext, Ops));
 }
 
 std::string CodeGenModule::getMangledName(const CallableVarDecl *CVD) {
