@@ -23,34 +23,37 @@ public:
   // void visit(ContinueStmtType &) override;
   // void visit(BreakStmtType &) override;
   // void visit(ReturnStmtType &) override;
-  void visit(DeclStmtType &DS) override;
+  // void visit(DeclStmtType &DS) override;
   // void visit(TupleExprType &) override;
-  void visit(TypesTupleExprType &TE) override { StmtVisitor::visit(TE); }
+  // void visit(TypesTupleExprType &TE) override;
   // void visit(UnaryOperatorType &) override;
   // void visit(BinaryOperatorType &) override;
   void visit(CallExprType &CE) override {
     StmtVisitor::visit(CE);
-    auto *I = dynamic_cast<AsmIdentifier *>(CE.getCalleeExpr());
-    auto Arguments = CE.getArguments();
-    if (I->getSpecialIdentifier() ==
-        AsmIdentifier::SpecialIdentifier::setimmutable) {
-      auto *ICE0 = dynamic_cast<const ImplicitCastExpr *>(Arguments[0]);
-      auto *ICE1 = dynamic_cast<const ImplicitCastExpr *>(Arguments[1]);
-      if (ICE0 && ICE1) {
-        auto *NL = dynamic_cast<const NumberLiteral *>(ICE0->getSubExpr());
-        auto *SL = dynamic_cast<const StringLiteral *>(ICE1->getSubExpr());
-        if (SL && NL) {
-          std::string Name = SL->getValue();
-          auto &ImmutableMap = Actions.getContext().getImmutableAddressMap();
-          ImmutableMap.try_emplace(llvm::StringRef(Name), NL->getValue());
+    if (auto *I = dynamic_cast<AsmIdentifier *>(CE.getCalleeExpr())) {
+      auto Arguments = CE.getArguments();
+      if (I->isSpecialIdentifier() &&
+          I->getSpecialIdentifier() ==
+              AsmIdentifier::SpecialIdentifier::setimmutable) {
+        auto *ICE0 = dynamic_cast<const ImplicitCastExpr *>(Arguments[0]);
+        auto *ICE1 = dynamic_cast<const ImplicitCastExpr *>(Arguments[1]);
+        if (ICE0 && ICE1) {
+          auto *NL = dynamic_cast<const NumberLiteral *>(ICE0->getSubExpr());
+          auto *SL = dynamic_cast<const StringLiteral *>(ICE1->getSubExpr());
+          if (SL && NL) {
+            std::string Name = SL->getValue();
+            auto &ImmutableMap = Actions.getContext().getImmutableAddressMap();
+            ImmutableMap.try_emplace(llvm::StringRef(Name), NL->getValue());
+          }
         }
       }
     }
   }
-  // void visit(ImplicitCastExprType &ICE) override { StmtVisitor::visit(ICE);
-  // } void visit(ExplicitCastExprType &ECE) override {
-  // StmtVisitor::visit(ECE); } void visit(ParenExprType &) override; void
-  // visit(MemberExprType &) override; void visit(IndexAccessType &) override;
+  // void visit(ImplicitCastExprType &ICE) override ;
+  // void visit(ExplicitCastExprType &ECE) override;
+  // void visit(ParenExprType &) override;
+  // void visit(MemberExprType &) override;
+  // void visit(IndexAccessType &) override;
   // void visit(IdentifierType &I) override;
   // void visit(BooleanLiteralType &) override;
   // void visit(StringLiteralType &) override;
@@ -58,11 +61,11 @@ public:
   // void visit(AsmForStmtType &S) override;
   // void visit(AsmCaseStmtType &) override;
   // void visit(AsmDefaultStmtType &) override;
-  void visit(AsmSwitchStmtType &AS) override { StmtVisitor::visit(AS); }
+  // void visit(AsmSwitchStmtType &AS) override;
   // void visit(AsmAssignmentStmtType &) override;
-  void visit(AsmFunctionDeclStmtType &FDS) override;
+  // void visit(AsmFunctionDeclStmtType &FDS) override;
   // void visit(AsmLeaveStmtType &) override;
-  void visit(AsmIdentifierType &AI) override { StmtVisitor::visit(AI); }
+  // void visit(AsmIdentifierType &AI) override;
   // void visit(AsmIdentifierListType &) override;
 };
 
@@ -80,8 +83,8 @@ public:
     DeclVisitor::visit(SU);
   }
   // void visit(PragmaDirectiveType &) override;
-  // void visit(UsingForType &UF)
-  void visit(ContractDeclType &CD) override { DeclVisitor::visit(CD); }
+  // void visit(UsingForType &UF) ;
+  // void visit(ContractDeclType &CD) override;
   void visit(FunctionDeclType &FD) override {
     DeclVisitor::visit(FD);
     {
@@ -89,11 +92,11 @@ public:
         FD.getBody()->accept(IR);
     }
   }
-  void visit(EventDeclType &ED) override { DeclVisitor::visit(ED); }
+  // void visit(EventDeclType &ED) override;
   // void visit(ParamListType &) override;
   // void visit(CallableVarDeclType &) override;
-  void visit(VarDeclType &VD) override { DeclVisitor::visit(VD); }
-  void visit(StructDeclType &SD) override { DeclVisitor::visit(SD); }
+  // void visit(VarDeclType &VD) override ;
+  // void visit(StructDeclType &SD) override ;
   // void visit(ModifierInvocationType &) override;
 
   void visit(YulCodeType &YC) override {
@@ -113,22 +116,6 @@ public:
     }
   }
 };
-
-void ImmutableResolver::visit(DeclStmtType &DS) {
-  StmtVisitor::visit(DS);
-  auto VarDecls = DS.getVarDecls();
-  for (auto VD : VarDecls) {
-    VD->accept(DIR);
-  }
-  if (DS.getValue()) {
-    DS.getValue()->accept(*this);
-  }
-}
-
-void ImmutableResolver::visit(AsmFunctionDeclStmtType &FDS) {
-  StmtVisitor::visit(FDS);
-  FDS.getDecl()->accept(DIR);
-}
 
 void Sema::resolveImmutable(SourceUnit &SU) {
   DeclImmutableResolver DIR(*this);
