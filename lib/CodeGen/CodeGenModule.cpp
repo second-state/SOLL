@@ -1605,7 +1605,7 @@ void CodeGenModule::emitStructDecl(const StructDecl *SD) {
 
 void CodeGenModule::emitYulObject(const YulObject *YO) {
   {
-    const std::string Name = YO->getUniqueName();
+    const std::string Name = YO->getUniqueName().str();
     emitNestedObjectGetter(Name + ".object");
     NestedEntries.emplace_back(Name + ".main", Name + ".object", nullptr);
     /*
@@ -1627,6 +1627,21 @@ void CodeGenModule::emitYulObject(const YulObject *YO) {
   }
   for (const auto *O : YO->getObjectList()) {
     emitYulObject(O);
+    // FIXME
+    {
+      const std::string Name = O->getName().str();
+      emitNestedObjectGetter(Name + ".object");
+      NestedEntries.emplace_back(Name + ".main", Name + ".object", nullptr);
+      /*
+      llvm::Function *DataSize = llvm::Function::Create(
+          llvm::FunctionType::get(Int256Ty, false),
+          llvm::Function::InternalLinkage, ".datasize", TheModule);
+      llvm::Function *DataOffset = llvm::Function::Create(
+          llvm::FunctionType::get(Int8PtrTy, false),
+          llvm::Function::InternalLinkage, ".dataoffset", TheModule);
+      */
+      // LookupYulDataOrYulObject.try_emplace(Name, O);
+    }
     getEntry().clear();
     getEntry().resize(1);
   }

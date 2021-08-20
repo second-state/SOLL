@@ -3,6 +3,7 @@
 #include "soll/Basic/TokenKinds.h"
 #include <llvm/ADT/StringMap.h>
 #include <llvm/ADT/StringRef.h>
+#include <llvm/Support/Allocator.h>
 
 namespace soll {
 

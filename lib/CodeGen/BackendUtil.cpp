@@ -6,6 +6,7 @@
 #include "soll/Basic/TargetOptions.h"
 #include "soll/CodeGen/LoweringInteger.h"
 #include <llvm/ADT/Triple.h>
+#include <llvm/Analysis/AliasAnalysis.h>
 #include <llvm/Analysis/TargetLibraryInfo.h>
 #include <llvm/Analysis/TargetTransformInfo.h>
 #include <llvm/Bitcode/BitcodeWriterPass.h>
@@ -142,7 +143,10 @@ void EmitAssemblyHelper::EmitAssembly(
     TheModule->setDataLayout(TM->createDataLayout());
   }
 
-#if LLVM_VERSION_MAJOR >= 9
+#if LLVM_VERSION_MAJOR >= 12
+  llvm::PassBuilder PB(false, TM.get(), llvm::PipelineTuningOptions(),
+                       llvm::None);
+#elif LLVM_VERSION_MAJOR >= 9
   llvm::PassBuilder PB(TM.get(), llvm::PipelineTuningOptions(), llvm::None);
 #else
   llvm::PassBuilder PB(TM.get(), llvm::None);
@@ -183,19 +187,24 @@ void EmitAssemblyHelper::EmitAssembly(
   default:
     break;
   case O1:
-    MPM.addPass(PB.buildPerModuleDefaultPipeline(llvm::PassBuilder::O1));
+    MPM.addPass(PB.buildPerModuleDefaultPipeline(
+        llvm::PassBuilder::OptimizationLevel::O1));
     break;
   case O2:
-    MPM.addPass(PB.buildPerModuleDefaultPipeline(llvm::PassBuilder::O2));
+    MPM.addPass(PB.buildPerModuleDefaultPipeline(
+        llvm::PassBuilder::OptimizationLevel::O2));
     break;
   case O3:
-    MPM.addPass(PB.buildPerModuleDefaultPipeline(llvm::PassBuilder::O3));
+    MPM.addPass(PB.buildPerModuleDefaultPipeline(
+        llvm::PassBuilder::OptimizationLevel::O3));
     break;
   case Os:
-    MPM.addPass(PB.buildPerModuleDefaultPipeline(llvm::PassBuilder::Os));
+    MPM.addPass(PB.buildPerModuleDefaultPipeline(
+        llvm::PassBuilder::OptimizationLevel::Os));
     break;
   case Oz:
-    MPM.addPass(PB.buildPerModuleDefaultPipeline(llvm::PassBuilder::Oz));
+    MPM.addPass(PB.buildPerModuleDefaultPipeline(
+        llvm::PassBuilder::OptimizationLevel::Oz));
     break;
   }
   MPM.addPass(llvm::AlwaysInlinerPass());

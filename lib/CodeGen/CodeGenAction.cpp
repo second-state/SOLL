@@ -7,6 +7,7 @@
 #include "llvm/Support/Alignment.h"
 #include <lld/Common/Driver.h>
 #include <llvm/IR/ConstantFolder.h>
+#include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/DiagnosticInfo.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/Support/ToolOutputFile.h>
@@ -131,7 +132,13 @@ private:
     llvm::BasicBlock *Entry =
         llvm::BasicBlock::Create(VMContext, "entry", Func);
     Builder.SetInsertPoint(Entry);
-    llvm::Value *Result = llvm::UndefValue::get(Module.getTypeByName("bytes"));
+    llvm::Value *Result =
+#if LLVM_VERSION_MAJOR >= 12
+        llvm::UndefValue::get(
+            llvm::StructType::getTypeByName(VMContext, "bytes"));
+#else
+        llvm::UndefValue::get(Module.getTypeByName("bytes"));
+#endif
     Result = Builder.CreateInsertValue(Result, Builder.getIntN(256, Length), 0);
     Result = Builder.CreateInsertValue(
         Result, Builder.CreateBitCast(GV, Builder.getInt8PtrTy()), 1);
@@ -181,7 +188,7 @@ private:
     if (auto Error = removeExports(Wasm->TmpName)) {
       llvm::consumeError(Wasm->discard());
       llvm::consumeError(Object->discard());
-      return Error;
+      return std::move(Error);
     }
 
     auto Binary = llvm::MemoryBuffer::getFile(Wasm->TmpName);
@@ -289,7 +296,7 @@ std::unique_ptr<ASTConsumer>
 CodeGenAction::CreateASTConsumer(CompilerInstance &CI, llvm::StringRef InFile) {
   return std::make_unique<BackendConsumer>(
       Action, CI.getDiagnostics(), CI.getCodeGenOpts(), CI.getTargetOpts(),
-      InFile, *VMContext, CI.GetOutputStreamFunc());
+      InFile.str(), *VMContext, CI.GetOutputStreamFunc());
 }
 
 EmitAssemblyAction::EmitAssemblyAction(llvm::LLVMContext *VMContext)
