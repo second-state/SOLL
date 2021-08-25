@@ -54,6 +54,17 @@ public:
     SD.setUniqueName(Stk.back()->getUniqueName().str() + "." +
                      SD.getName().str());
   }
+  void visit(YulDataType &YD) override {
+    YD.setUniqueName(Stk.back()->getUniqueName().str() + "." +
+                     YD.getName().str());
+  }
+  void visit(YulObjectType &YO) override {
+    YO.setUniqueName(Stk.back()->getUniqueName().str() + "." +
+                     YO.getName().str());
+    Stk.emplace_back(&YO);
+    DeclVisitor::visit(YO);
+    Stk.pop_back();
+  }
 };
 void Sema::resolveUniqueName(SourceUnit &SU) {
   DeclUniqueNameResolver DUR;

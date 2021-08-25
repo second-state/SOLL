@@ -33,5 +33,18 @@ std::vector<const YulData *> YulObject::getDataList() const {
     DataList.emplace_back(D.get());
   return DataList;
 }
+std::variant<std::monostate, const YulData *, const YulObject *>
+YulObject::lookupYulDataOrYulObject(llvm::StringRef Name) const {
+  auto Iterator = LookupYulDataOrYulObject.find(Name);
+  if (Iterator == LookupYulDataOrYulObject.end()) {
+    return std::monostate();
+  }
+  return std::visit(
+      [](const auto *Ptr) {
+        return std::variant<std::monostate, const YulData *, const YulObject *>(
+            Ptr);
+      },
+      Iterator->second);
+}
 
 } // namespace soll

@@ -49,6 +49,7 @@ namespace CodeGen {
 class CodeGenModule : public CodeGenTypeCache {
   ASTContext &Context;
   llvm::Module &TheModule;
+  const YulObject *CurrentYulObject;
   std::vector<std::pair<std::string, const Decl *>> &Entry;
   std::vector<std::tuple<std::string, std::string, const Decl *>>
       &NestedEntries;
@@ -61,8 +62,6 @@ class CodeGenModule : public CodeGenTypeCache {
   llvm::GlobalVariable *HeapBase;
   llvm::DenseMap<const VarDecl *, llvm::GlobalVariable *> StateVarDeclMap;
   llvm::DenseMap<const YulData *, llvm::GlobalVariable *> YulDataMap;
-  llvm::StringMap<std::variant<const YulData *, const YulObject *>>
-      LookupYulDataOrYulObject;
   std::size_t StateVarAddrCursor;
 
   llvm::Function *Func_create = nullptr;
@@ -151,6 +150,7 @@ public:
   llvm::Function *getIntrinsic(unsigned IID,
                                llvm::ArrayRef<llvm::Type *> Typs = llvm::None);
   llvm::Module &getModule() const { return TheModule; }
+  const YulObject *getCurrentYulObject() const { return CurrentYulObject; }
   std::vector<std::pair<std::string, const Decl *>> &getEntry() const {
     return Entry;
   }
@@ -280,18 +280,7 @@ public:
     return YulDataMap.lookup(YD);
   }
   std::variant<std::monostate, const YulData *, const YulObject *>
-  lookupYulDataOrYulObject(llvm::StringRef Name) const {
-    auto Iterator = LookupYulDataOrYulObject.find(Name);
-    if (Iterator == LookupYulDataOrYulObject.end()) {
-      return std::monostate();
-    }
-    return std::visit(
-        [](const auto *Ptr) {
-          return std::variant<std::monostate, const YulData *,
-                              const YulObject *>(Ptr);
-        },
-        Iterator->second);
-  }
+  lookupYulDataOrYulObject(llvm::StringRef Name) const;
 };
 
 } // namespace CodeGen

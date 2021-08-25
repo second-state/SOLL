@@ -42,6 +42,7 @@ unique_ptr<SourceUnit> Parser::parseYul() {
   Actions.resolveIdentifierDecl(*SU);
   Actions.resolveType(*SU);
   Actions.resolveImmutable(*SU);
+  Actions.resolveUniqueName(*SU);
   return SU;
 }
 

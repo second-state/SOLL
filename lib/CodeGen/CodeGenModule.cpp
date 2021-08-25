@@ -45,9 +45,10 @@ CodeGenModule::CodeGenModule(
     std::vector<std::tuple<std::string, std::string, const Decl *>> &NE,
     DiagnosticsEngine &Diags, const CodeGenOptions &CodeGenOpts,
     const TargetOptions &TargetOpts)
-    : Context(C), TheModule(M), Entry(E), NestedEntries(NE), Diags(Diags),
-      CodeGenOpts(CodeGenOpts), TargetOpts(TargetOpts),
-      VMContext(M.getContext()), Builder(VMContext), StateVarAddrCursor(0) {
+    : Context(C), TheModule(M), CurrentYulObject(nullptr), Entry(E),
+      NestedEntries(NE), Diags(Diags), CodeGenOpts(CodeGenOpts),
+      TargetOpts(TargetOpts), VMContext(M.getContext()), Builder(VMContext),
+      StateVarAddrCursor(0) {
   initTypes();
   if (isEVM()) {
     initEVMOpcodeDeclaration();
@@ -1589,7 +1590,7 @@ void CodeGenModule::emitYulObject(const YulObject *YO) {
   for (const auto *O : YO->getObjectList()) {
     emitYulObject(O);
     {
-      const std::string Name = O->getName();
+      const std::string Name = O->getUniqueName();
       emitNestedObjectGetter(Name + ".object");
       NestedEntries.emplace_back(Name + ".main", Name + ".object", nullptr);
       /*
@@ -1600,7 +1601,6 @@ void CodeGenModule::emitYulObject(const YulObject *YO) {
           llvm::FunctionType::get(Int8PtrTy, false),
           llvm::Function::InternalLinkage, ".dataoffset", TheModule);
       */
-      LookupYulDataOrYulObject.try_emplace(Name, O);
     }
     getEntry().clear();
     getEntry().resize(1);
@@ -1608,7 +1608,9 @@ void CodeGenModule::emitYulObject(const YulObject *YO) {
   for (const auto *D : YO->getDataList()) {
     emitYulData(D);
   }
-  emitYulCode(YO->getCode(), YO->getName());
+  CurrentYulObject = YO;
+  emitYulCode(YO->getCode(), YO->getUniqueName());
+  CurrentYulObject = nullptr;
 }
 
 void CodeGenModule::emitYulCode(const YulCode *YC, llvm::StringRef Name) {
@@ -1625,12 +1627,11 @@ void CodeGenModule::emitYulCode(const YulCode *YC, llvm::StringRef Name) {
 }
 
 void CodeGenModule::emitYulData(const YulData *YD) {
-  llvm::StringRef Name = YD->getName();
+  llvm::StringRef Name = YD->getUniqueName();
   std::string Data = YD->getBody()->getValue();
   llvm::GlobalVariable *Variable =
       createGlobalString(VMContext, getModule(), Data, Name);
   YulDataMap.try_emplace(YD, Variable);
-  LookupYulDataOrYulObject.try_emplace(Name, YD);
 }
 
 std::string CodeGenModule::getMangledName(const CallableVarDecl *CVD) {
@@ -2515,6 +2516,46 @@ void CodeGenModule::emitGetChainId(llvm::Value *Result) {
   } else {
     __builtin_unreachable();
   }
+}
+
+std::variant<std::monostate, const YulData *, const YulObject *>
+CodeGenModule::lookupYulDataOrYulObject(llvm::StringRef Name) const {
+  if (Name == CurrentYulObject->getName())
+    return CurrentYulObject;
+  std::string QualifiedName = Name.str();
+  if (QualifiedName.find(CurrentYulObject->getName().str() + ".") == 0) {
+    QualifiedName =
+        QualifiedName.substr(CurrentYulObject->getName().size() + 1);
+  }
+  auto StrSplite = [](std::string Str, std::string Delim) {
+    auto Start = 0U;
+    auto End = Str.find(Delim);
+    std::vector<std::string> NamePath;
+    while (End != std::string::npos) {
+      NamePath.emplace_back(Str.substr(Start, End - Start));
+      Start = End + Delim.length();
+      End = Str.find(Delim, Start);
+    }
+    NamePath.emplace_back(Str.substr(Start, End));
+    return NamePath;
+  };
+  auto NamePath = StrSplite(QualifiedName, ".");
+  std::variant<std::monostate, const YulData *, const YulObject *> ObjectOrData(
+      CurrentYulObject);
+  for (const auto &SubName : NamePath) {
+    ObjectOrData = std::visit(
+        [&](auto Ptr) -> std::variant<std::monostate, const YulData *,
+                                      const YulObject *> {
+          if constexpr (std::is_same_v<decltype(Ptr), const YulObject *>) {
+            const YulObject *Base = Ptr;
+            return Base->lookupYulDataOrYulObject(SubName);
+          } else {
+            assert(false && "cannot find YulData or YulObject!");
+          }
+        },
+        ObjectOrData);
+  }
+  return ObjectOrData;
 }
 
 } // namespace soll::CodeGen
