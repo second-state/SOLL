@@ -572,8 +572,8 @@ llvm::Value *CodeGenFunction::emitAsmCallDataSize(const CallExpr *CE) {
               return Builder.getIntN(256, Size);
             } else if constexpr (std::is_same_v<decltype(Ptr),
                                                 const YulObject *>) {
-              llvm::Function *Object =
-                  CGM.getModule().getFunction(Name + ".object");
+              llvm::Function *Object = CGM.getModule().getFunction(
+                  Ptr->getUniqueName().str() + ".object");
               auto *ObjectBytes = Builder.CreateCall(Object);
               return Builder.CreateExtractValue(ObjectBytes, {0});
             } else {
@@ -601,8 +601,8 @@ llvm::Value *CodeGenFunction::emitAsmCallDataOffset(const CallExpr *CE) {
               return Builder.CreatePtrToInt(Data, Int256Ty);
             } else if constexpr (std::is_same_v<decltype(Ptr),
                                                 const YulObject *>) {
-              llvm::Function *Object =
-                  CGM.getModule().getFunction(Name + ".object");
+              llvm::Function *Object = CGM.getModule().getFunction(
+                  Ptr->getUniqueName().str() + ".object");
               auto *ObjectBytes = Builder.CreateCall(Object);
               auto *Data = Builder.CreateExtractValue(ObjectBytes, {1});
               return Builder.CreatePtrToInt(Data, Int256Ty);
