@@ -1586,22 +1586,22 @@ void CodeGenModule::emitStructDecl(const StructDecl *SD) {
 }
 
 void CodeGenModule::emitYulObject(const YulObject *YO) {
+  {
+    const std::string Name = YO->getUniqueName();
+    emitNestedObjectGetter(Name + ".object");
+    NestedEntries.emplace_back(Name + ".main", Name + ".object", nullptr);
+    /*
+    llvm::Function *DataSize = llvm::Function::Create(
+        llvm::FunctionType::get(Int256Ty, false),
+        llvm::Function::InternalLinkage, ".datasize", TheModule);
+    llvm::Function *DataOffset = llvm::Function::Create(
+        llvm::FunctionType::get(Int8PtrTy, false),
+        llvm::Function::InternalLinkage, ".dataoffset", TheModule);
+    */
+  }
   assert(nullptr != YO->getCode());
   for (const auto *O : YO->getObjectList()) {
     emitYulObject(O);
-    {
-      const std::string Name = O->getUniqueName();
-      emitNestedObjectGetter(Name + ".object");
-      NestedEntries.emplace_back(Name + ".main", Name + ".object", nullptr);
-      /*
-      llvm::Function *DataSize = llvm::Function::Create(
-          llvm::FunctionType::get(Int256Ty, false),
-          llvm::Function::InternalLinkage, ".datasize", TheModule);
-      llvm::Function *DataOffset = llvm::Function::Create(
-          llvm::FunctionType::get(Int8PtrTy, false),
-          llvm::Function::InternalLinkage, ".dataoffset", TheModule);
-      */
-    }
     getEntry().clear();
     getEntry().resize(1);
   }
