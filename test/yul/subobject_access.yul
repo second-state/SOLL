@@ -7,7 +7,7 @@ object "Contract1" {
         let C := datasize("Contract2.runtime")
         let D := datasize("Contract2.runtime.Table2")
         let E := datasize("Contract1.Contract2.runtime.Table2")
-        // let F := datasize("Contract1")
+        let F := datasize("Contract1")
     }
     object "Contract2" {
         code {
