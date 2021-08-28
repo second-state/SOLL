@@ -9,6 +9,7 @@
 #include <llvm/ADT/StringRef.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Value.h>
+#include <llvm/Support/raw_ostream.h>
 namespace soll::CodeGen {
 
 ExprValuePtr CodeGenFunction::emitExpr(const Expr *E) {
@@ -1011,9 +1012,18 @@ void CodeGenFunction::emitAsmSetImmutable(const CallExpr *CE) {
       auto &Ctx = CGM.getContext();
       auto &Map = Ctx.getImmutableAddressMap();
       if (Map.find(StringRefName) != Map.end()) {
-        llvm::Value *Offset = Builder.getInt(Map.lookup(StringRefName));
-        llvm::Value *Ptr = Builder.CreateIntToPtr(Offset, Int256PtrTy);
-        Builder.CreateStore(Value, Ptr);
+        llvm::Value *Offset = emitExpr(Arguments[0])->load(Builder, CGM);
+        llvm::Value *TableOffset = Builder.getInt(Map.lookup(StringRefName));
+        llvm::Value *ImmutableCPtr = Builder.CreateInBoundsGEP(
+            CGM.getImmutableBase(), {TableOffset}, "immutable.cptr");
+        Builder.CreateStore(
+            Offset,
+            Builder.CreateBitCast(ImmutableCPtr, Int256PtrTy, "immutable.ptr"));
+
+        llvm::Value *HeapCPtr =
+            Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Offset}, "heap.cptr");
+        Builder.CreateStore(
+            Value, Builder.CreateBitCast(HeapCPtr, Int256PtrTy, "heap.ptr"));
         CGM.emitUpdateMemorySize(Offset, Builder.getIntN(256, 0x20));
         return;
       }
@@ -1032,9 +1042,16 @@ llvm::Value *CodeGenFunction::emitAsmLoadImmutable(const CallExpr *CE) {
       auto &Ctx = CGM.getContext();
       auto &Map = Ctx.getImmutableAddressMap();
       if (Map.find(StringRefName) != Map.end()) {
-        llvm::Value *Offset = Builder.getInt(Map.lookup(StringRefName));
-        llvm::Value *Ptr = Builder.CreateIntToPtr(Offset, Int256PtrTy);
-        return CGM.getEndianlessValue(Builder.CreateLoad(Ptr, Int256Ty));
+        llvm::Value *TableOffset = Builder.getInt(Map.lookup(StringRefName));
+        llvm::Value *ImmutableCPtr = Builder.CreateInBoundsGEP(
+            CGM.getImmutableBase(), {TableOffset}, "immutable.cptr");
+        llvm::Value *Offset = Builder.CreateLoad(
+            Builder.CreateBitCast(ImmutableCPtr, Int256PtrTy, "immutable.ptr"));
+
+        llvm::Value *HeapCPtr =
+            Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Offset}, "heap.cptr");
+        return Builder.CreateLoad(
+            Builder.CreateBitCast(HeapCPtr, Int256PtrTy, "heap.ptr"));
       }
     }
   }
