@@ -669,8 +669,11 @@ Sema::CreateAsmBuiltinCallExpr(SourceRange L, const AsmIdentifier &Callee,
   case AsmIdentifier::SpecialIdentifier::shr:
     return std::make_unique<AsmBinaryOperator>(
         L, std::move(Args[1]), std::move(Args[0]), std::move(ReturnTy), BO_Shr);
-  // TODO: case AsmIdentifier::SpecialIdentifier::sars256:
-  // TODO: case AsmIdentifier::SpecialIdentifier::sar:
+  case AsmIdentifier::SpecialIdentifier::sars256:
+  case AsmIdentifier::SpecialIdentifier::sar:
+    return std::make_unique<AsmBinaryOperator>(L, std::move(Args[1]),
+                                               std::move(Args[0]),
+                                               std::move(ReturnTy), BO_AShr);
   default: ///< treated as normal CallExpr
     break;
   }
