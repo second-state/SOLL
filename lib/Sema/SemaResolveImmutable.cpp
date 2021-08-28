@@ -38,12 +38,13 @@ public:
         auto *ICE0 = dynamic_cast<const ImplicitCastExpr *>(Arguments[0]);
         auto *ICE1 = dynamic_cast<const ImplicitCastExpr *>(Arguments[1]);
         if (ICE0 && ICE1) {
-          auto *NL = dynamic_cast<const NumberLiteral *>(ICE0->getSubExpr());
           auto *SL = dynamic_cast<const StringLiteral *>(ICE1->getSubExpr());
-          if (SL && NL) {
+          if (SL) {
             std::string Name = SL->getValue();
             auto &ImmutableMap = Actions.getContext().getImmutableAddressMap();
-            ImmutableMap.try_emplace(llvm::StringRef(Name), NL->getValue());
+            const size_t ImmutableIndex = ImmutableMap.size();
+            ImmutableMap.try_emplace(llvm::StringRef(Name),
+                                     llvm::APInt(256, ImmutableIndex));
           }
         }
       }

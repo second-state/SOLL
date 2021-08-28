@@ -63,6 +63,8 @@ class CodeGenModule : public CodeGenTypeCache {
   llvm::DenseMap<const VarDecl *, llvm::GlobalVariable *> StateVarDeclMap;
   llvm::DenseMap<const YulData *, llvm::GlobalVariable *> YulDataMap;
   std::size_t StateVarAddrCursor;
+  llvm::GlobalVariable *ImmtableTable = nullptr;
+  llvm::ArrayType *ImmtableArrayType = nullptr;
 
   llvm::Function *Func_create = nullptr;
   llvm::Function *Func_call = nullptr;
@@ -122,6 +124,7 @@ class CodeGenModule : public CodeGenTypeCache {
   void initTypes();
   void initMemorySection();
   void initUpdateMemorySize();
+  void initImmutableTable();
 
   void initEVMOpcodeDeclaration();
   void initEEIDeclaration();
@@ -279,6 +282,8 @@ public:
   llvm::GlobalVariable *getYulDataAddr(const YulData *YD) const {
     return YulDataMap.lookup(YD);
   }
+  llvm::GlobalVariable *getImmutableBase() { return ImmtableTable; }
+
   std::variant<std::monostate, const YulData *, const YulObject *>
   lookupYulDataOrYulObject(llvm::StringRef Name) const;
 };

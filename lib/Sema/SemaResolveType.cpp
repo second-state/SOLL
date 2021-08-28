@@ -4,7 +4,6 @@
 #include "soll/Sema/Sema.h"
 #include <unordered_set>
 #include <vector>
-
 namespace soll {
 namespace {
 
@@ -29,6 +28,9 @@ bool isAllowedTypeForBinary(BinaryOperatorKind BOK, const Type::Category TyC) {
   case Type::Category::Bool:
     return BinaryOperator::isEqualityOp(BOK) || BOK == BO_LAnd ||
            BOK == BO_LOr || BOK == BO_Assign ||
+           BinaryOperator::isShiftOp(BOK) ||
+           BinaryOperator::isAdditiveOp(BOK) ||
+           BinaryOperator::isMultiplicativeOp(BOK) ||
            BinaryOperator::isAsmBitwiseOp(BOK);
   case Type::Category::Integer:
     return BinaryOperator::isComparisonOp(BOK) ||

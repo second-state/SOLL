@@ -2,8 +2,10 @@
 #include "CodeGenModule.h"
 #include "ABICodec.h"
 #include "CodeGenFunction.h"
+#include <llvm/ADT/APInt.h>
 #include <llvm/IR/Attributes.h>
 #include <llvm/IR/Constants.h>
+#include <llvm/IR/DerivedTypes.h>
 
 /*
 // for testing purpose
@@ -123,6 +125,22 @@ void CodeGenModule::initMemorySection() {
       llvm::Function::InternalLinkage, "solidity.updateMemorySize", TheModule);
   Func_updateMemorySize->addFnAttr(llvm::Attribute::NoUnwind);
   initUpdateMemorySize();
+}
+
+void CodeGenModule::initImmutableTable() {
+  size_t ImmutableSize = Context.getImmutableAddressMap().size();
+  if (ImmutableSize && !ImmtableTable) {
+    // Immutable array is a array of offsets of memory
+    llvm::ArrayType *ImmtableArrayType =
+        llvm::ArrayType::get(Int256Ty, ImmutableSize);
+    ImmtableTable =
+        new llvm::GlobalVariable(TheModule, ImmtableArrayType, false,
+                                 llvm::GlobalVariable::PrivateLinkage, nullptr,
+                                 "__immutable_table_base");
+    ImmtableTable->setInitializer(
+        llvm::Constant::getNullValue(ImmtableArrayType));
+    ImmtableTable->setAlignment(llvm::MaybeAlign(256));
+  }
 }
 
 void CodeGenModule::initUpdateMemorySize() {
@@ -1622,6 +1640,14 @@ void CodeGenModule::emitYulCode(const YulCode *YC, llvm::StringRef Name) {
       FT, llvm::Function::ExternalLinkage, FunctionName, TheModule);
   llvm::BasicBlock *Entry = llvm::BasicBlock::Create(VMContext, "entry", Main);
   Builder.SetInsertPoint(Entry);
+
+  // Global variable Immutable table should be generated here.
+  // Immutable table should not be generated with other global variables
+  // (e.g. heap_base), since the parsing stage have not finished, so the number
+  // of the immutable variable is not decided. The table should be generated
+  // as early as possible, so the immutable variable could be set at any time.
+  initImmutableTable();
+
   CodeGenFunction(*this).generateYulCode(YC);
   Builder.CreateRetVoid();
 }

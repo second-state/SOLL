@@ -9,6 +9,7 @@
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/ConstantFolder.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Value.h>
 
 namespace soll::CodeGen {
 
@@ -26,7 +27,6 @@ class CodeGenFunction : public CodeGenTypeCache {
   llvm::Value *ReturnValue;
 
   using DeclMapTy = llvm::DenseMap<const Decl *, llvm::Value *>;
-  llvm::StringMap<llvm::Value *> ImmutableAllocationTable;
   DeclMapTy LocalDeclMap;
   void setAddrOfLocalVar(const Decl *VD, llvm::Value *Addr) {
     assert(!LocalDeclMap.count(VD) && "Decl already exists in LocalDeclMap!");
