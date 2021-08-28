@@ -34,6 +34,7 @@ enum BinaryOperatorKind {
   // Bitwise shift operators.
   BO_Shl,
   BO_Shr,
+  BO_AShr,
   // Bitwise AND operator.
   BO_And,
   // Bitwise XOR operator.

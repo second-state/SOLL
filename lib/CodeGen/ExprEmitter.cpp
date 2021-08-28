@@ -407,6 +407,18 @@ ExprValuePtr ExprEmitter::visit(const BinaryOperator *BO) {
       }
       break;
     }
+    case BinaryOperatorKind::BO_AShr: {
+      auto LHSType = LHS->getType();
+      auto RHSType = RHS->getType();
+      auto returnType =
+          LHSType->getIntegerBitWidth() > RHSType->getIntegerBitWidth()
+              ? LHSType
+              : RHSType;
+      V = Builder.CreateAShr(Builder.CreateZExtOrTrunc(LHS, returnType),
+                             Builder.CreateZExtOrTrunc(RHS, returnType),
+                             "BO_AShr");
+      break;
+    }
     case BinaryOperatorKind::BO_And:
     case BinaryOperatorKind::BO_AsmAnd:
       V = Builder.CreateAnd(LHS, RHS, "BO_And");

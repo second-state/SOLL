@@ -241,7 +241,7 @@ public:
     return Opc == BO_Add || Opc == BO_Sub;
   }
   static inline constexpr bool isShiftOp(Opcode Opc) {
-    return Opc == BO_Shl || Opc == BO_Shr;
+    return Opc == BO_Shl || Opc == BO_Shr || Opc == BO_AShr;
   }
   static inline constexpr bool isBitwiseOp(Opcode Opc) {
     return Opc >= BO_And && Opc <= BO_Or;
