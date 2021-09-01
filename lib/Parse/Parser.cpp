@@ -801,26 +801,15 @@ std::unique_ptr<StructDecl> Parser::parseStructDeclaration() {
     return nullptr;
   }
   SourceLocation End = Tok.getEndLoc();
-  std::vector<TypePtr> ElementTypes;
-  std::vector<std::string> ElementNames;
-  while (Tok.isNot(tok::eof)) {
-    if (Tok.is(tok::r_brace)) {
-      End = Tok.getEndLoc();
-      ConsumeBrace();
-      break;
-    }
-    TypePtr T = parseTypeName(false);
-    std::string ElementName = Tok.getIdentifierInfo()->getName().str();
-    ConsumeToken();
-    if (ExpectAndConsumeSemi()) {
-      return nullptr;
-    }
-    ElementTypes.emplace_back(T);
-    ElementNames.emplace_back(ElementName);
+  std::vector<VarDeclBasePtr> Members;
+
+  while (Tok.is(tok::r_brace)) {
+    Members.push_back(parseVariableDeclaration());
+    ExpectAndConsumeSemi();
   }
+
   auto SD = std::make_unique<StructDecl>(NameTok, SourceRange(Begin, End), Name,
-                                         std::move(ElementTypes),
-                                         std::move(ElementNames));
+                                         std::move(Members));
   return SD;
 }
 

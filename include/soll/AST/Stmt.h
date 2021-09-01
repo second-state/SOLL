@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #pragma once
 
+#include "soll/AST/ASTBase.h"
 #include "soll/AST/ASTForward.h"
 #include "soll/AST/StmtVisitor.h"
 #include "soll/Basic/SourceLocation.h"
@@ -9,12 +10,15 @@
 
 namespace soll {
 
-class Stmt {
+class Stmt : public ASTNode {
+
   SourceRange Location;
 
 public:
   explicit Stmt(SourceRange L) : Location(L) {}
   virtual ~Stmt() noexcept {}
+
+  ASTNodeType getASTType() override { return ASTNode::ASTNodeType::DECL; }
 
   virtual void accept(StmtVisitor &visitor) = 0;
   virtual void accept(ConstStmtVisitor &visitor) const = 0;

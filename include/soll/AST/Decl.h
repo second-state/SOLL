@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 #pragma once
 
+#include "soll/AST/ASTBase.h"
 #include "soll/AST/ASTForward.h"
 #include "soll/AST/DeclVisitor.h"
 #include "soll/AST/Expr.h"
@@ -14,10 +15,12 @@ namespace soll {
 
 class ASTContext;
 
-class Decl {
+class Decl : public ASTNode {
 public:
   enum class Visibility { Default, Private, Internal, Public, External };
   virtual ~Decl() noexcept {}
+
+  ASTNodeType getASTType() override { return ASTNode::ASTNodeType::DECL; }
 
 private:
   SourceRange Location;
@@ -31,8 +34,11 @@ protected:
 protected:
   Decl(SourceRange L,
        llvm::StringRef Name = llvm::StringRef::withNullAsEmpty(nullptr),
-       Visibility vis = Visibility::Default)
-      : Location(L), Name(Name.str()), Vis(vis), UniqueName(Name.str()) {}
+       Visibility Vis = Visibility::Default)
+      : Location(L), Name(Name.str()), Vis(Vis), UniqueName(Name.str()) {}
+
+  Decl(SourceRange L, std::string Name, Visibility Vis = Visibility::Default)
+      : Location(L), Name(Name), Vis(Vis), UniqueName(Name) {}
 
 public:
   virtual void accept(DeclVisitor &visitor) = 0;
@@ -42,6 +48,29 @@ public:
   llvm::StringRef getUniqueName() const { return UniqueName; }
   void setUniqueName(llvm::StringRef NewName) { UniqueName = NewName.str(); }
   Visibility getVisibility() const { return Vis; }
+};
+
+/**
+ * Pseudo AST node that is used as declaration for "this", "msg", "tx", "block"
+ * and the global functions when such an identifier is encountered. Will never
+ * have a valid location in the source code
+ */
+class MagicVariableDecl : public Decl {
+public:
+  MagicVariableDecl(int Id, std::string MagicName, TypePtr Type)
+      : Decl(SourceRange(), MagicName), Type(Type) {}
+
+  virtual void accept(DeclVisitor &visitor) override {
+    assert(false && "MagicVariable should used inside real AST");
+  };
+  virtual void accept(ConstDeclVisitor &visitor) const override {
+    assert(false && "MagicVariable should used inside real AST");
+  };
+
+  TypePtr getType() { return Type; }
+
+private:
+  TypePtr Type;
 };
 
 class SourceUnit : public Decl {
@@ -373,10 +402,11 @@ private:
   Token Tok;
   TypePtr Ty;
   TypePtr ConstructorTy;
+  std::vector<VarDeclBasePtr> Members;
 
 public:
   StructDecl(Token NameTok, SourceRange L, llvm::StringRef Name,
-             std::vector<TypePtr> &&ET, std::vector<std::string> &&EN);
+             std::vector<VarDeclBasePtr> &&Members);
 
   void accept(DeclVisitor &Visitor) override;
   void accept(ConstDeclVisitor &Visitor) const override;

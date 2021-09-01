@@ -10,9 +10,3 @@
 #include "soll/AST/StmtAsm.h"
 #include "soll/AST/StmtVisitor.h"
 #include "soll/AST/Type.h"
-
-namespace soll {
-
-class AST {};
-
-} // namespace soll

@@ -287,9 +287,9 @@ FunctionDecl::FunctionDecl(
 
   std::vector<std::reference_wrapper<const TypePtr>> PTys;
   std::vector<std::reference_wrapper<const TypePtr>> RTys;
-  auto PNames = std::make_shared<std::vector<std::string>>();
+  auto PNames = std::make_shared<std::vector<llvm::StringRef>>();
   for (auto VD : this->getParams()->getParams()) {
-    PNames->emplace_back(VD->getName().str());
+    PNames->emplace_back(VD->getName());
     PTys.emplace_back(std::cref(VD->getType()));
   }
   if (this->getReturnParams()->getParams().size())
@@ -332,18 +332,30 @@ EventDecl::EventDecl(SourceRange L, llvm::StringRef Name,
 }
 
 StructDecl::StructDecl(Token NameTok, SourceRange L, llvm::StringRef Name,
-                       std::vector<TypePtr> &&ET, std::vector<std::string> &&EN)
-    : Decl(L, Name, Visibility::Default), Tok(NameTok),
-      Ty(std::make_shared<StructType>(this, std::move(ET), std::move(EN))) {
-  auto STy = dynamic_cast<const StructType *>(Ty.get());
-  std::vector<std::reference_wrapper<const TypePtr>> ElementTypes;
-  for (const auto &ETy : STy->getElementTypes()) {
-    ElementTypes.emplace_back(std::cref(ETy));
+                       std::vector<VarDeclBasePtr> &&Members)
+    : Decl(L, Name, Visibility::Default), Tok(NameTok) {
+
+  std::vector<TypePtr> ElementTypes;
+  std::vector<llvm::StringRef> ElementNames;
+  for (auto &E : Members) {
+    ElementTypes.emplace_back(E->getType());
+    ElementNames.emplace_back(E->getName());
   }
+
+  Ty = std::make_shared<StructType>(this, std::move(ElementTypes),
+                                    std::move(ElementNames));
+
+  std::vector<std::reference_wrapper<const TypePtr>> CElementTypes;
+  auto STy = dynamic_cast<const StructType *>(Ty.get());
+
+  for (const auto &ETy : STy->getElementTypes()) {
+    CElementTypes.emplace_back(std::cref(ETy));
+  }
+
   ConstructorTy = std::make_shared<FunctionType>(
-      std::move(ElementTypes),
+      std::move(CElementTypes),
       std::vector<std::reference_wrapper<const TypePtr>>{std::cref(Ty)},
-      std::make_shared<std::vector<std::string>>(STy->getElementNames()));
+      std::make_shared<std::vector<llvm::StringRef>>(STy->getElementNames()));
 }
 
 } // namespace soll
