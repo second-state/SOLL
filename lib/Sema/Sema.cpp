@@ -326,8 +326,8 @@ Sema::CreateMemberExpr(std::unique_ptr<Expr> &&BaseExpr, Token Tok) {
     }
   }
   // unresolvable now
-  return std::make_unique<MemberExpr>(
-      L, std::move(BaseExpr), std::make_unique<Identifier>(Tok));
+  return std::make_unique<MemberExpr>(L, std::move(BaseExpr),
+                                      std::make_unique<Identifier>(Tok));
 }
 
 DiagnosticBuilder Sema::Diag(SourceLocation Loc, unsigned DiagID) {

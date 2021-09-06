@@ -373,9 +373,11 @@ llvm::Function *LoweringInteger::GetURemFunction(const unsigned int BitWidth) {
   llvm::Argument *Divisor = Dividend + 1;
   Divisor->setName("divisor");
 
-  llvm::BasicBlock *Special = llvm::BasicBlock::Create(Context, "special", Result);
+  llvm::BasicBlock *Special =
+      llvm::BasicBlock::Create(Context, "special", Result);
   llvm::BasicBlock *Entry = llvm::BasicBlock::Create(Context, "entry", Result);
-  llvm::BasicBlock *Return = llvm::BasicBlock::Create(Context, "return-div", Result);
+  llvm::BasicBlock *Return =
+      llvm::BasicBlock::Create(Context, "return-div", Result);
 
   Builder.SetInsertPoint(Special);
   llvm::ConstantInt *Zero = Builder.getIntN(BitWidth, 0);

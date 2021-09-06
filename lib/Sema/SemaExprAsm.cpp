@@ -135,8 +135,7 @@ std::unique_ptr<AsmIdentifier> Sema::CreateAsmIdentifier(const Token &Tok,
       {"create2", AsmIdentifier::SpecialIdentifier::create2},
       {"chainid", AsmIdentifier::SpecialIdentifier::chainid},
       {"loadimmutable", AsmIdentifier::SpecialIdentifier::loadimmutable},
-      {"setimmutable", AsmIdentifier::SpecialIdentifier::setimmutable}
-  };
+      {"setimmutable", AsmIdentifier::SpecialIdentifier::setimmutable}};
   llvm::StringRef Name = Tok.getIdentifierInfo()->getName();
   if (auto Iter = SpecialLookup.find(Name); Iter != SpecialLookup.end()) {
     TypePtr Ty;

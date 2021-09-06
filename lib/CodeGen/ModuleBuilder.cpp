@@ -70,11 +70,11 @@ public:
     } else if (auto *CD = dynamic_cast<ContractDecl *>(D)) {
       if (CD->getKind() == ContractDecl::ContractKind::Interface) {
         Diags.Report(diag::err_can_not_emit_interface);
-        return ;
+        return;
       }
       if (!CD->isImplemented()) {
         Diags.Report(diag::err_can_not_emit_contract_with_implemented_part);
-        return ;
+        return;
       }
       Builder->emitContractDecl(CD);
     } else if (auto *YO = dynamic_cast<YulObject *>(D)) {
