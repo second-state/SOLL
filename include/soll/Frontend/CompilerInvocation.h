@@ -24,7 +24,7 @@ class CompilerInvocation {
   TargetOptions TargetOpts;
 
 public:
-  explicit CompilerInvocation(): DiagnosticOpts(new DiagnosticOptions) {}
+  explicit CompilerInvocation() : DiagnosticOpts(new DiagnosticOptions) {}
   bool ParseCommandLineOptions(llvm::ArrayRef<const char *> Arg,
                                DiagnosticsEngine &Diags);
   DiagnosticOptions &GetDiagnosticOptions();

@@ -785,7 +785,8 @@ void TypeResolver::visit(CallExprType &CE) {
           if (auto SL = dynamic_cast<StringLiteral *>(Str)) {
             auto Address =
                 Actions.getLibrariesAddressMap()->lookup(SL->getValue());
-            RawArguments.at(0) = std::make_unique<NumberLiteral>(SourceRange(), false, Address);
+            RawArguments.at(0) =
+                std::make_unique<NumberLiteral>(SourceRange(), false, Address);
           }
         }
         break;
