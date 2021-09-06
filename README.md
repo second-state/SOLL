@@ -7,15 +7,15 @@ To support developers as many as possible, we design projects to not only suppor
 
 For application users, please refer to this document. You will know how to use SOLL to generate Ewasm bytecode from your Solidity smart contract or Yul language, and then deploy the Ewasm bytecode to Ethereum Ewasm TestNet.
 
-For developers, we provide another document for explaining the design of SOLL and how to develop and test the functionality of SOLL, please refer to the [Developer Guide](doc/guides/DevGuide.md) for more details.
+For developers, we provide another document for explaining the design of SOLL and how to develop and test the functionality of SOLL, please refer to the [Developer Guide](docs/guides/DevGuide.md) for more details.
 
 # 2. Current Status and Limitations
 
 SOLL is still in an early stage, and we’ve not fully supported Solidity and Yul. Please check the features we’ve done and limitations in the following documents.
 
-* [Feature Guide for Solidity](doc/guides/FeatureGuideForSolidity.md)
-* [Feature Guide for Yul](doc/guides/FeatureGuideForYul.md)
-* [Known Issues](doc/KnownIssues.md)
+* [Feature Guide for Solidity](docs/guides/FeatureGuideForSolidity.md)
+* [Feature Guide for Yul](docs/guides/FeatureGuideForYul.md)
+* [Known Issues](docs/KnownIssues.md)
 
 And SOLL integrates Solidity and Yul test contracts from [ethereum/solidity](https://github.com/ethereum/solidity/tree/develop/test).
 
@@ -95,7 +95,7 @@ Build SOLL(we use cmake with llvm library)
 
 Our original tutorial will deploy Ewasm bytecode on the official TestNet.
 Unfortunately, the **Ewasm TestNet is unavailable now**.
-We’ve moved the original tutorial into [Deploy an ERC20 smart contract to Ewasm official TestNet](doc/guides/EwasmTestNetDeprecated.md).
+We’ve moved the original tutorial into [Deploy an ERC20 smart contract to Ewasm official TestNet](docs/guides/EwasmTestNetDeprecated.md).
 
 For demonstration propose, we provide another Ewasm TestNet which is launched by our DevChain.
 
@@ -113,7 +113,7 @@ And execute SOLL to generate Ewasm bytecode(.wasm) and contract ABI.
 
 ```bash
 (docker) $ cd ~
-(docker) $ cp ~/soll/doc/examples/0-0-3.sol ~/0-0-3.sol
+(docker) $ cp ~/soll/docs/examples/0-0-3.sol ~/0-0-3.sol
 (docker) $ ~/soll/build/tools/soll/soll 0-0-3.sol
 # The output bytecode is loacted at ~/0-0-3.wasm
 
@@ -131,7 +131,7 @@ And execute SOLL to generate Ewasm bytecode(.wasm) and contract ABI.
 
 ```bash
 (docker) $ cd ~
-(docker) $ cp ~/soll/doc/examples/0-0-6.yul ~/0-0-6.yul
+(docker) $ cp ~/soll/docs/examples/0-0-6.yul ~/0-0-6.yul
 (docker) $ ~/soll/build/tools/soll/soll -lang=Yul 0-0-6.yul
 # The output bytecode is loacted at ~/0-0-6.wasm
 
@@ -147,7 +147,7 @@ We will use "0-0-6.wasm" in the next section to deploy it to Ewasm TestNet.
 #### 3.4.2-1 Solidity Part: 0-0-3.sol
 
 ```bash
-(soll docker) $ xxd -p ~/soll/doc/examples/0-0-3.wasm | tr -d $'\n'
+(soll docker) $ xxd -p ~/soll/docs/examples/0-0-3.wasm | tr -d $'\n'
 ```
 The result should be the same as the following content. (**This will be used later**)
 
@@ -158,7 +158,7 @@ The result should be the same as the following content. (**This will be used lat
 #### 3.4.2-2 Yul Part: 0-0-6.yul
 
 ```bash
-(soll docker) $ xxd -p ~/soll/doc/examples/0-0-6.wasm | tr -d $'\n'
+(soll docker) $ xxd -p ~/soll/docs/examples/0-0-6.wasm | tr -d $'\n'
 ```
 The result should be the same as the following content. (**This will be used later**)
 ```

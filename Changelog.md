@@ -135,7 +135,7 @@ Bugfixes:
 
 Language Features:
 
-* Support limited Yul language. [See details here.](doc/guides/FeatureGuideForYul.md)
+* Support limited Yul language. [See details here.](docs/guides/FeatureGuideForYul.md)
     - Basic arithmetical, compare, sstore and sload built-in functions.
     - For loop, If, Var declare and Assignment statements.
 
