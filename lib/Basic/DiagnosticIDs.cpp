@@ -51,19 +51,21 @@ struct StaticDiagInfoRec {
   }
 };
 
+// clang-format off
 static const StaticDiagInfoRec StaticDiagInfo[] = {
 #define DIAG(ENUM, CLASS, DEFAULT_SEVERITY, DESC, GROUP, NOWERROR, CATEGORY)   \
   {diag::ENUM, DEFAULT_SEVERITY,         CLASS, NOWERROR, CATEGORY,            \
    GROUP,      STR_SIZE(DESC, uint16_t), DESC},
-#include "soll/Basic/DiagnosticCodeGenKinds.inc"
 #include "soll/Basic/DiagnosticCommonKinds.inc"
 #include "soll/Basic/DiagnosticDriverKinds.inc"
 #include "soll/Basic/DiagnosticFrontendKinds.inc"
 #include "soll/Basic/DiagnosticLexKinds.inc"
 #include "soll/Basic/DiagnosticParseKinds.inc"
 #include "soll/Basic/DiagnosticSemaKinds.inc"
+#include "soll/Basic/DiagnosticCodeGenKinds.inc"
 #undef DIAG
 };
+// clang-format on
 
 static const unsigned StaticDiagInfoSize = llvm::array_lengthof(StaticDiagInfo);
 
