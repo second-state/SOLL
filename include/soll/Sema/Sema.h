@@ -32,7 +32,8 @@ public:
     SemaScope &operator=(const SemaScope &) = delete;
 
   public:
-    SemaScope(Sema *Self, unsigned ScopeFlags, bool InheritCurrentScope = true) : Self(Self) {
+    SemaScope(Sema *Self, unsigned ScopeFlags, bool InheritCurrentScope = true)
+        : Self(Self) {
       Self->PushScope(ScopeFlags, InheritCurrentScope);
     }
     void Exit() {

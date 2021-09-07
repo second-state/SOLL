@@ -10,17 +10,17 @@ In the following sections, we provide four parts to show how to compile and exec
 1. Prepare the required environment.
 2. Build the SOLL compiler from source code.
 3. Generate Ewasm bytecodes from our demo contracts and execute them.
-    - [0-0-1.sol](../../doc/examples/0-0-1.sol) - A basic smart contract example (SaftMath)
-    - [0-0-2.sol](../../doc/examples/0-0-2.sol) - A partial function example of [ERC20](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md) contract.
+    - [0-0-1.sol](../../docs/examples/0-0-1.sol) - A basic smart contract example (SaftMath)
+    - [0-0-2.sol](../../docs/examples/0-0-2.sol) - A partial function example of [ERC20](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md) contract.
 4. Generate Ewasm bytecodes from our Yul demo code and execute them.
-    - [0-0-4.yul](../../doc/examples/0-0-4.yul) - A Fibonacci sequence example written in Yul.
+    - [0-0-4.yul](../../docs/examples/0-0-4.yul) - A Fibonacci sequence example written in Yul.
 
 [Appendix](#appendix)
 
 1. Deploy and execute Ewasm on DevChain.
 
-    - [0-0-3.sol](../../doc/examples/0-0-3.sol) - A full function example of [ERC20](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md) contract.
-    - [0-0-6.yul](../../doc/examples/0-0-6.yul) - A Yul file generated from solc with version 0.6.1.
+    - [0-0-3.sol](../../docs/examples/0-0-3.sol) - A full function example of [ERC20](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md) contract.
+    - [0-0-6.yul](../../docs/examples/0-0-6.yul) - A Yul file generated from solc with version 0.6.1.
 
 2. SOLL regression tests and our Solidity and Yul test coverage.
 
@@ -29,7 +29,7 @@ In the following sections, we provide four parts to show how to compile and exec
 soll
 ├── (...)
 ├── build                 // Build code path, manually create it
-├── doc
+├── docs
 │   ├── (...)
 │   └── example           // Examples of every release
 │       ├── 0-0-1.sol     // A basic smart contract example (SafeMath)
@@ -88,12 +88,12 @@ To show how to use SOLL to compile and execute smart contracts, we provide a ver
 Execute SOLL to generate a runtime wasm for the next step.
 
 ```bash
-(docker) $ ~/soll/build/tools/soll/soll -runtime ~/soll/doc/examples/0-0-1.sol
+(docker) $ ~/soll/build/tools/soll/soll -runtime ~/soll/docs/examples/0-0-1.sol
 ```
 
 Preprocessing before test
 ```bash
-(docker) $ mv ~/soll/doc/examples/0-0-1.wasm ~/soll/utils/ewasm-testbench/safeMath.wasm
+(docker) $ mv ~/soll/docs/examples/0-0-1.wasm ~/soll/utils/ewasm-testbench/safeMath.wasm
 (docker) $ cd ~/soll/utils/ewasm-testbench
 ```
 
@@ -131,12 +131,12 @@ We provide an example 0-0-2.sol, to demonstrate how to use SOLL to compile and e
 Execute SOLL to generate a runtime wasm for the next step.
 
 ```bash
-(docker) $ ~/soll/build/tools/soll/soll -runtime ~/soll/doc/examples/0-0-2.sol
+(docker) $ ~/soll/build/tools/soll/soll -runtime ~/soll/docs/examples/0-0-2.sol
 ```
 
 Preprocessing before test
 ```bash
-(docker) $ mv ~/soll/doc/examples/0-0-2.wasm ~/soll/utils/ewasm-testbench/erc20.wasm
+(docker) $ mv ~/soll/docs/examples/0-0-2.wasm ~/soll/utils/ewasm-testbench/erc20.wasm
 (docker) $ cd ~/soll/utils/ewasm-testbench
 ```
 
@@ -213,7 +213,7 @@ To show how to use SOLL to compile and execute Yul code, we also provide a very 
 Execute SOLL to generate wasm for the next step.
 
 ```bash
-(docker) $ ~/soll/build/tools/soll/soll -lang=Yul ~/soll/doc/examples/0-0-4.yul
+(docker) $ ~/soll/build/tools/soll/soll -lang=Yul ~/soll/docs/examples/0-0-4.yul
 ```
 
 #### **Step 2. Run in Test Env**
@@ -221,7 +221,7 @@ Execute SOLL to generate wasm for the next step.
 The Yul code section will run immediately after wasm load by index.js.
 
 ```bash
-(docker) $ cp ~/soll/doc/examples/0-0-4.wasm ~/soll/utils/ewasm-testbench/fib.wasm
+(docker) $ cp ~/soll/docs/examples/0-0-4.wasm ~/soll/utils/ewasm-testbench/fib.wasm
 (docker) $ cd ~/soll/utils/ewasm-testbench
 (docker) $ ./index.js fib.wasm '' '{}'
 ```
@@ -245,8 +245,8 @@ The result should be the same as the following content.
 Following command inside SOLL docker container.
 
 ```bash
-(soll docker) $ ~/soll/build/tools/soll/soll ~/soll/doc/examples/0-0-3.sol
-(soll docker) $ ~/soll/build/tools/soll/soll -lang=Yul ~/soll/doc/examples/0-0-6.yul
+(soll docker) $ ~/soll/build/tools/soll/soll ~/soll/docs/examples/0-0-3.sol
+(soll docker) $ ~/soll/build/tools/soll/soll -lang=Yul ~/soll/docs/examples/0-0-6.yul
 ```
 
 Dump bytecode from two Ewasm files.
@@ -255,7 +255,7 @@ Dump bytecode from two Ewasm files.
 - 0-0-3.sol
 
 ```bash
-(soll docker) $ xxd -p ~/soll/doc/examples/0-0-3.wasm | tr -d $'\n'
+(soll docker) $ xxd -p ~/soll/docs/examples/0-0-3.wasm | tr -d $'\n'
 ```
 The result should be the same as the following content. (**This will be used later**)
 
@@ -266,7 +266,7 @@ The result should be the same as the following content. (**This will be used lat
 - 0-0-6.yul
 
 ```bash
-(soll docker) $ xxd -p ~/soll/doc/examples/0-0-6.wasm | tr -d $'\n'
+(soll docker) $ xxd -p ~/soll/docs/examples/0-0-6.wasm | tr -d $'\n'
 ```
 The result should be the same as the following content. (**This will be used later**)
 ```

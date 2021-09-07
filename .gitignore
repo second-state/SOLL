@@ -51,7 +51,7 @@ autoconf/autom4te.cache
 *.ll
 *.wasm
 *.so
-!doc/examples/features/*.wasm
+!docs/examples/features/*.wasm
 
 #==============================================================================#
 # Directories to ignore (do not add trailing '/'s, they skip symlinks).

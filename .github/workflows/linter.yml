@@ -1,0 +1,38 @@
+name: Clang-Format
+
+concurrency:
+  group: clang-format-${{ github.head_ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+  pull_request:
+    branches:
+      - master
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    container:
+      image: secondstate/soll:latest
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: Install clang-format-10
+      run: |
+        apt update
+        apt install clang-format-10
+    - name: Run clang-format
+      run: |
+        bash ./.github/scripts/clang-format.sh `which clang-format-10`
+

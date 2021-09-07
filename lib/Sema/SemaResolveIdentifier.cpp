@@ -371,7 +371,9 @@ void IdentifierResolver::visit(MemberExprType &M) {
 
   if (!NameCheckByPass && !M.getName()->isResolved()) {
     // Note: MemberExpr do not allow resolve in outside scope
-    Actions.Diag(M.getName()->getLocation().getBegin(), diag::err_undeclared_var_use) << M.getName()->getName();
+    Actions.Diag(M.getName()->getLocation().getBegin(),
+                 diag::err_undeclared_var_use)
+        << M.getName()->getName();
   }
 }
 
