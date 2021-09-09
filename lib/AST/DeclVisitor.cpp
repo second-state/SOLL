@@ -65,8 +65,9 @@ template <bool Const> void DeclVisitorBase<Const>::visit(VarDeclType &) {
   // leaf, do nothing
 }
 
-template <bool Const> void DeclVisitorBase<Const>::visit(StructDeclType &) {
-  // leaf, do nothing
+template <bool Const> void DeclVisitorBase<Const>::visit(StructDeclType &SD) {
+  for (auto E : SD.getMembers())
+    E->accept(*this);
 }
 
 template <bool Const>

@@ -33,3 +33,6 @@ DIAG(err_visibility_not_match, CLASS_ERROR, (unsigned)diag::Severity::Error, "vi
 DIAG(err_private_function_can_not_be_virtual, CLASS_ERROR, (unsigned)diag::Severity::Error, "private funtcion %0 can not be virtual", 0, false, 1)
 DIAG(err_mutability_overriding_not_allow, CLASS_ERROR, (unsigned)diag::Severity::Error, "can not change function %0 mutability", 0, false, 1)
 DIAG(err_func_to_var_overrided_unsoupport, CLASS_ERROR, (unsigned)diag::Severity::Error, "function to state variables override is unsupport", 0, false, 1)
+DIAG(err_use_illegalnames, CLASS_WARNING, (unsigned)diag::Severity::Warning, "Use of illegal identifier name: '%0'", 0, false, 0)
+DIAG(err_already_declared, CLASS_WARNING, (unsigned)diag::Severity::Warning, "identifier '%0' already declared", 0, false, 0)
+DIAG(err_declaration_not_found, CLASS_ERROR, (unsigned)diag::Severity::Error, "identifier '%0' not found", 0, false, 0)

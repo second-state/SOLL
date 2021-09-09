@@ -27,6 +27,7 @@ private:
   std::string Name;
   Visibility Vis;
   std::string UniqueName;
+  const ASTNode *Parent;
 
 protected:
   friend class ASTReader;
@@ -35,10 +36,11 @@ protected:
   Decl(SourceRange L,
        llvm::StringRef Name = llvm::StringRef::withNullAsEmpty(nullptr),
        Visibility Vis = Visibility::Default)
-      : Location(L), Name(Name.str()), Vis(Vis), UniqueName(Name.str()) {}
+      : Location(L), Name(Name.str()), Vis(Vis), UniqueName(Name.str()),
+        Parent(nullptr) {}
 
   Decl(SourceRange L, std::string Name, Visibility Vis = Visibility::Default)
-      : Location(L), Name(Name), Vis(Vis), UniqueName(Name) {}
+      : Location(L), Name(Name), Vis(Vis), UniqueName(Name), Parent(nullptr) {}
 
 public:
   virtual void accept(DeclVisitor &visitor) = 0;
@@ -48,6 +50,15 @@ public:
   llvm::StringRef getUniqueName() const { return UniqueName; }
   void setUniqueName(llvm::StringRef NewName) { UniqueName = NewName.str(); }
   Visibility getVisibility() const { return Vis; }
+
+  void setScope(const ASTNode *D) { Parent = D; }
+  /// @returns the scope this declaration resides in. Can be nullptr if it is
+  /// the global scope. Available only after name and type resolution step.
+  const ASTNode *scope() const { return Parent; }
+
+  bool isStructMember() const;
+
+  bool isVisibleAsUnqualifiedName() const;
 };
 
 /**
@@ -414,6 +425,18 @@ public:
   Token getToken() const { return Tok; }
   TypePtr getType() const { return Ty; }
   TypePtr getConstructorType() const { return ConstructorTy; }
+  std::vector<Decl *> getMembers() {
+    std::vector<Decl *> Res;
+    for (auto &M : Members)
+      Res.push_back(M.get());
+    return Res;
+  }
+  std::vector<const Decl *> getMembers() const {
+    std::vector<const Decl *> Res;
+    for (auto &M : Members)
+      Res.push_back(M.get());
+    return Res;
+  }
 };
 
 class ModifierInvocation {

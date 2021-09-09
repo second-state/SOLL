@@ -7,6 +7,7 @@ class ASTNode {
 public:
   enum class ASTNodeType { DECL, STMT };
   ASTNode() = default;
+  virtual ~ASTNode() = default;
   virtual ASTNodeType getASTType() = 0;
 };
 

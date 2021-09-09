@@ -5,6 +5,25 @@
 
 namespace soll {
 
+bool Decl::isStructMember() const {
+  if (auto D = dynamic_cast<const Decl *>(scope())) {
+    return dynamic_cast<const StructDecl *>(D);
+  }
+  return false;
+}
+
+bool Decl::isVisibleAsUnqualifiedName() const {
+  if (!scope())
+    return true;
+  if (isStructMember())
+    return false;
+  if (auto D = dynamic_cast<const Decl *>(scope()))
+    if (auto F = dynamic_cast<const FunctionDecl *>(D))
+      if (!F->getBody())
+        return false; // parameter of a function without body
+  return true;
+}
+
 ///
 /// Source Unit
 ///

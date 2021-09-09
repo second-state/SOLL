@@ -383,8 +383,11 @@ std::unique_ptr<SourceUnit> Parser::parse() {
                                       std::move(Nodes));
   }
   Actions.setLibrariesAddressMap(&LibrariesAddressMap);
+  Actions.resolveScope(*SU);
+  Actions.registerDeclarations(*SU);
   Actions.resolveInherit(*SU);
   Actions.resolveIdentifierDecl(*SU);
+  Actions.resolveNameAndType(*SU);
   Actions.resolveType(*SU);
   Actions.resolveUniqueName(*SU);
   return SU;

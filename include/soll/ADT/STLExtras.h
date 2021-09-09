@@ -10,10 +10,10 @@
 namespace soll {
 
 template <typename T, typename... Args>
-std::vector<std::unique_ptr<T>> make_unique_vector(Args &&...args) {
+std::vector<std::unique_ptr<T>> make_unique_vector(Args &&... As) {
   std::vector<std::unique_ptr<T>> result;
-  result.reserve(sizeof...(args));
-  (result.emplace_back(std::forward<Args>(args)), ...);
+  result.reserve(sizeof...(As));
+  (result.emplace_back(std::forward<Args>(As)), ...);
   return result;
 }
 
@@ -29,8 +29,9 @@ template <class Type> struct cond_const<false, Type> { typedef Type type; };
 /// Concatenate the contents of a container onto a vector
 template <class T, class U>
 std::vector<T> &operator+=(std::vector<T> &A, U &B) {
-  for (auto const &I : B)
+  for (auto const &I : B) {
     A.push_back(T(I));
+  }
   return A;
 }
 /// Concatenate the contents of a container onto a vector, move variant.
