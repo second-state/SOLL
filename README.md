@@ -178,7 +178,7 @@ Then exit SOLL container goto next step.
 - Attach to testnet
 
 ```bash
-> docker run -it secondstate/devchain:devchain attach http://devchain-ewasm.secondstate.io:8545
+> docker run -it secondstate/devchain:devchain attach https://rpc.parastate.io:8545
 
 Welcome to the Travis JavaScript console!
 
@@ -193,6 +193,14 @@ at block: 1115129 (Tue, 07 Apr 2020 06:51:46 UTC)
 ```javascript
 > personal.unlockAccount(cmt.accounts[0], '1234', 9999999)
 ```
+
+---
+
+***Please note:*** You can obtain network tokens (STATE tokens) for the aforementioned ParaState Testnet by visiting the testnet's faucet at [https://testnet.faucet.parastate.io:8001/faucet](https://testnet.faucet.parastate.io:8001/faucet).
+
+There is also [a YouTube Video which demonstrates how to use the faucet](https://youtu.be/_xrHCE0qlrM).
+
+---
 
 ### 3.4.4 Deploy and execute Ewasm
 
