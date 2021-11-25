@@ -2,6 +2,7 @@ import ctypes
 from binascii import unhexlify
 from evmc import *
 from utils import *
+import argparse
 import os
 import signal
 import glob
@@ -59,9 +60,7 @@ def evmc_get_storage(address: int, key: int):
     return bytes(result.raw)
 
 
-wasm = open(f'UniswapV2ERC20.wasm', 'rb').read()
-
-def tester(name, calldata, sender, ret_is_byte=False ,wasm=wasm):
+def tester(name, calldata, sender, ret_is_byte, wasm):
     status, result = evmc_vm_execute(
             unhexlify(calldata),
             sender,
@@ -172,8 +171,21 @@ erc20_tests = [
     ),     
 ]
 
-for test, hexstr, sender, ret_is_byte in erc20_tests:
-    tester(test, hexstr, sender, ret_is_byte)
-    print("=====================================")
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(prog="test")
+    parser.add_argument("--input", type=str, required=True, help="Wasm file input")
+    parser.add_argument("--dump_storage", action='store_true', help="Enable obfuscater")
+    config = parser.parse_args()
+    
+    with open(config.input, 'rb') as f:
+      wasm = f.read()
 
+    for test, hexstr, sender, ret_is_byte in erc20_tests:
+        tester(test, hexstr, sender, ret_is_byte, wasm)
+        print("=====================================")
 
+    if config.dump_storage:
+      print("Dump Storage:")
+      for i in range(10):
+          value = (bytes_to_long(evmc_get_storage(0, i)))
+          print(i, hex(value)) 
