@@ -60,6 +60,12 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     )
 endif()
 
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  add_compile_options(
+    -Wno-redundant-move
+  )
+endif()
+
 option(SOLL_INCLUDE_TESTS
   "Generate build targets for the Soll unit tests."
   ${LLVM_INCLUDE_TESTS})

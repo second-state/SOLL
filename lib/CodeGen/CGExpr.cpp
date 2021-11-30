@@ -10,6 +10,7 @@
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Value.h>
 #include <llvm/Support/raw_ostream.h>
+
 namespace soll::CodeGen {
 
 ExprValuePtr CodeGenFunction::emitExpr(const Expr *E) {
@@ -381,7 +382,7 @@ ExprValuePtr CodeGenFunction::emitAbiDecode(const CallExpr *CE) {
 
 ExprValuePtr CodeGenFunction::emitAbiDecode(llvm::Value *Bytes,
                                             const Type *TupleTy) {
-  llvm::Value *Length = Builder.CreateZExtOrTrunc(
+  [[maybe_unused]] llvm::Value *Length = Builder.CreateZExtOrTrunc(
       Builder.CreateExtractValue(Bytes, {0}), CGM.Int32Ty);
   llvm::Value *SrcBytes = Builder.CreateExtractValue(Bytes, {1});
 
@@ -634,10 +635,11 @@ llvm::Value *CodeGenFunction::emitAsmGetBalance(const CallExpr *CE,
 llvm::Value *CodeGenFunction::emitAsmCallMLoad(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
   llvm::Value *Pos = emitExpr(Arguments[0])->load(Builder, CGM);
-  llvm::Value *CPtr =
-      Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.cptr");
+  llvm::Value *CPtr = Builder.CreateInBoundsGEP(CGM.Int8Ty, CGM.getHeapBase(),
+                                                {Pos}, "heap.cptr");
   llvm::Value *Ptr = Builder.CreateBitCast(CPtr, Int256PtrTy, "heap.ptr");
-  llvm::Value *Value = CGM.getEndianlessValue(Builder.CreateLoad(Ptr));
+  llvm::Value *Value =
+      CGM.getEndianlessValue(Builder.CreateLoad(CGM.Int256Ty, Ptr));
   CGM.emitUpdateMemorySize(Pos, Builder.getIntN(256, 32));
   return Value;
 }
@@ -645,8 +647,8 @@ llvm::Value *CodeGenFunction::emitAsmCallMLoad(const CallExpr *CE) {
 void CodeGenFunction::emitAsmCallMStore(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
   llvm::Value *Pos = emitExpr(Arguments[0])->load(Builder, CGM);
-  llvm::Value *CPtr =
-      Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.cptr");
+  llvm::Value *CPtr = Builder.CreateInBoundsGEP(CGM.Int8Ty, CGM.getHeapBase(),
+                                                {Pos}, "heap.cptr");
   llvm::Value *Ptr = Builder.CreateBitCast(CPtr, Int256PtrTy, "heap.ptr");
   Builder.CreateStore(
       CGM.getEndianlessValue(emitExpr(Arguments[1])->load(Builder, CGM)), Ptr);
@@ -656,8 +658,8 @@ void CodeGenFunction::emitAsmCallMStore(const CallExpr *CE) {
 void CodeGenFunction::emitAsmCallMStore8(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
   llvm::Value *Pos = emitExpr(Arguments[0])->load(Builder, CGM);
-  llvm::Value *Ptr =
-      Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.ptr");
+  llvm::Value *Ptr = Builder.CreateInBoundsGEP(CGM.Int8Ty, CGM.getHeapBase(),
+                                               {Pos}, "heap.ptr");
   llvm::Value *Value = Builder.CreateZExtOrTrunc(
       emitExpr(Arguments[1])->load(Builder, CGM), CGM.Int8Ty);
   Builder.CreateStore(Value, Ptr);
@@ -665,7 +667,7 @@ void CodeGenFunction::emitAsmCallMStore8(const CallExpr *CE) {
 }
 
 llvm::Value *CodeGenFunction::emitAsmCallMSize(const CallExpr *CE) {
-  return Builder.CreateLoad(CGM.getMemorySize());
+  return Builder.CreateLoad(CGM.Int256Ty, CGM.getMemorySize());
 }
 
 llvm::Value *CodeGenFunction::emitAsmCallSLoad(const CallExpr *CE) {
@@ -688,8 +690,8 @@ void CodeGenFunction::emitAsmCallSStore(const CallExpr *CE) {
 void CodeGenFunction::emitAsmCallReturn(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
   llvm::Value *Pos = emitExpr(Arguments[0])->load(Builder, CGM);
-  llvm::Value *Ptr =
-      Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.cptr");
+  llvm::Value *Ptr = Builder.CreateInBoundsGEP(CGM.Int8Ty, CGM.getHeapBase(),
+                                               {Pos}, "heap.cptr");
   llvm::Value *Length = emitExpr(Arguments[1])->load(Builder, CGM);
   CGM.emitUpdateMemorySize(Pos, Length);
   CGM.emitFinish(Ptr, Builder.CreateZExtOrTrunc(Length, CGM.Int32Ty));
@@ -698,8 +700,8 @@ void CodeGenFunction::emitAsmCallReturn(const CallExpr *CE) {
 void CodeGenFunction::emitAsmCallRevert(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
   llvm::Value *Pos = emitExpr(Arguments[0])->load(Builder, CGM);
-  llvm::Value *Ptr =
-      Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.cptr");
+  llvm::Value *Ptr = Builder.CreateInBoundsGEP(CGM.Int8Ty, CGM.getHeapBase(),
+                                               {Pos}, "heap.cptr");
   llvm::Value *Length = emitExpr(Arguments[1])->load(Builder, CGM);
   CGM.emitUpdateMemorySize(Pos, Length);
   CGM.emitRevert(Ptr, Builder.CreateZExtOrTrunc(Length, CGM.Int32Ty));
@@ -714,8 +716,8 @@ void CodeGenFunction::emitAsmSelfDestruct(const CallExpr *CE) {
 void CodeGenFunction::emitAsmCallLog(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
   llvm::Value *Pos = emitExpr(Arguments[0])->load(Builder, CGM);
-  llvm::Value *Data =
-      Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.cptr");
+  llvm::Value *Data = Builder.CreateInBoundsGEP(CGM.Int8Ty, CGM.getHeapBase(),
+                                                {Pos}, "heap.cptr");
   llvm::Value *DataLength = emitExpr(Arguments[1])->load(Builder, CGM);
   std::vector<llvm::Value *> Topics;
   for (size_t I = 2; I < Arguments.size(); I++) {
@@ -739,8 +741,8 @@ llvm::Value *CodeGenFunction::emitAsmCallCallDataLoad(const CallExpr *CE) {
 void CodeGenFunction::emitAsmCallCodeCopy(const CallExpr *CE) {
   auto Arguments = CE->getArguments();
   llvm::Value *Pos = emitExpr(Arguments[0])->load(Builder, CGM);
-  llvm::Value *Ptr =
-      Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.ptr");
+  llvm::Value *Ptr = Builder.CreateInBoundsGEP(CGM.Int8Ty, CGM.getHeapBase(),
+                                               {Pos}, "heap.ptr");
   llvm::Value *Code = Builder.CreateIntToPtr(
       emitExpr(Arguments[1])->load(Builder, CGM), Int8PtrTy);
   llvm::Value *Length = emitExpr(Arguments[2])->load(Builder, CGM);
@@ -802,8 +804,8 @@ llvm::Value *CodeGenFunction::emitAsmCallkeccak256(const CallExpr *CE) {
   // keccak256 function
   auto Arguments = CE->getArguments();
   llvm::Value *Pos = emitExpr(Arguments[0])->load(Builder, CGM);
-  llvm::Value *Ptr =
-      Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Pos}, "heap.cptr");
+  llvm::Value *Ptr = Builder.CreateInBoundsGEP(CGM.Int8Ty, CGM.getHeapBase(),
+                                               {Pos}, "heap.cptr");
   llvm::Value *Length = emitExpr(Arguments[1])->load(Builder, CGM);
   CGM.emitUpdateMemorySize(Pos, Length);
   return CGM.emitKeccak256(Ptr, Length);
@@ -960,7 +962,7 @@ llvm::Value *CodeGenFunction::emitAsmCreate(const CallExpr *CE) {
   llvm::Value *AddressPtr = Builder.CreateAlloca(AddressTy);
 
   CGM.emitCreate(ValuePtr, Ptr, Length, AddressPtr);
-  return Builder.CreateLoad(AddressPtr, AddressTy);
+  return Builder.CreateLoad(AddressTy, AddressPtr);
 }
 
 llvm::Value *CodeGenFunction::emitAsmCreate2(const CallExpr *CE) {
@@ -977,7 +979,7 @@ llvm::Value *CodeGenFunction::emitAsmCreate2(const CallExpr *CE) {
   llvm::Value *AddressPtr = Builder.CreateAlloca(AddressTy);
 
   CGM.emitCreate2(ValuePtr, Ptr, Length, Salt, AddressPtr);
-  return Builder.CreateLoad(AddressPtr, AddressTy);
+  return Builder.CreateLoad(AddressTy, AddressPtr);
 }
 
 llvm::Value *CodeGenFunction::emitAsmByte(const CallExpr *CE) {
@@ -993,7 +995,7 @@ llvm::Value *CodeGenFunction::emitAsmByte(const CallExpr *CE) {
 llvm::Value *CodeGenFunction::emitAsmChainId(const CallExpr *CE) {
   llvm::Value *ValPtr = Builder.CreateAlloca(Int128Ty, nullptr);
   CGM.emitGetChainId(ValPtr);
-  return Builder.CreateLoad(ValPtr, Int128Ty);
+  return Builder.CreateLoad(Int128Ty, ValPtr);
 }
 
 llvm::Value *CodeGenFunction::emitAsmLinkersymbol(const CallExpr *CE) {
@@ -1014,14 +1016,15 @@ void CodeGenFunction::emitAsmSetImmutable(const CallExpr *CE) {
       if (Map.find(StringRefName) != Map.end()) {
         llvm::Value *Offset = emitExpr(Arguments[0])->load(Builder, CGM);
         llvm::Value *TableOffset = Builder.getInt(Map.lookup(StringRefName));
-        llvm::Value *ImmutableCPtr = Builder.CreateInBoundsGEP(
-            CGM.getImmutableBase(), {TableOffset}, "immutable.cptr");
+        llvm::Value *ImmutableCPtr =
+            Builder.CreateInBoundsGEP(CGM.Int256Ty, CGM.getImmutableBase(),
+                                      {TableOffset}, "immutable.cptr");
         Builder.CreateStore(
             Offset,
             Builder.CreateBitCast(ImmutableCPtr, Int256PtrTy, "immutable.ptr"));
 
-        llvm::Value *HeapCPtr =
-            Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Offset}, "heap.cptr");
+        llvm::Value *HeapCPtr = Builder.CreateInBoundsGEP(
+            CGM.Int8Ty, CGM.getHeapBase(), {Offset}, "heap.cptr");
         Builder.CreateStore(
             Value, Builder.CreateBitCast(HeapCPtr, Int256PtrTy, "heap.ptr"));
         CGM.emitUpdateMemorySize(Offset, Builder.getIntN(256, 0x20));
@@ -1043,14 +1046,17 @@ llvm::Value *CodeGenFunction::emitAsmLoadImmutable(const CallExpr *CE) {
       auto &Map = Ctx.getImmutableAddressMap();
       if (Map.find(StringRefName) != Map.end()) {
         llvm::Value *TableOffset = Builder.getInt(Map.lookup(StringRefName));
-        llvm::Value *ImmutableCPtr = Builder.CreateInBoundsGEP(
-            CGM.getImmutableBase(), {TableOffset}, "immutable.cptr");
+        llvm::Value *ImmutableCPtr =
+            Builder.CreateInBoundsGEP(CGM.Int256Ty, CGM.getImmutableBase(),
+                                      {TableOffset}, "immutable.cptr");
         llvm::Value *Offset = Builder.CreateLoad(
+            CGM.Int256Ty,
             Builder.CreateBitCast(ImmutableCPtr, Int256PtrTy, "immutable.ptr"));
 
-        llvm::Value *HeapCPtr =
-            Builder.CreateInBoundsGEP(CGM.getHeapBase(), {Offset}, "heap.cptr");
+        llvm::Value *HeapCPtr = Builder.CreateInBoundsGEP(
+            CGM.Int8Ty, CGM.getHeapBase(), {Offset}, "heap.cptr");
         return Builder.CreateLoad(
+            CGM.Int256Ty,
             Builder.CreateBitCast(HeapCPtr, Int256PtrTy, "heap.ptr"));
       }
     }
