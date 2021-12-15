@@ -127,22 +127,43 @@ Some interfaces inherented from ERC20 and some basic function could still be tes
 python uniswap-test.py --input UniswapV2Pair.wasm
 ```
 
-The listed IERC20 interface below could be tested after the testing environment support deployment. 
+### Uniswap V2 Factory
 
-```solidity
-    function factory() external view returns (address);
-    function token0() external view returns (address);
-    function token1() external view returns (address);
-    function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast);
-    function price0CumulativeLast() external view returns (uint);
-    function price1CumulativeLast() external view returns (uint);
-    function kLast() external view returns (uint);
+After ERC20 tokens are deployed at some address, say `tokenA` is deployed at `addressA` and `tokenB` is deployed at `addressB` , we could create pair with Uniswap V2 Factory.  We could call `createPair` API to create a pair of tokens.
 
-    function mint(address to) external returns (uint liquidity);
-    function burn(address to) external returns (uint amount0, uint amount1);
-    function swap(uint amount0Out, uint amount1Out, address to, bytes calldata data) external;
-    function skim(address to) external;
-    function sync() external;
-
-    function initialize(address, address) external;
 ```
+function createPair(address tokenA, address tokenB) external returns (address pair);
+```
+
+Further, after we create a pair of tokens, we could then validate the factory by checking its read-only functions.
+
+```
+function getPair(address tokenA, address tokenB) external view returns (address pair);
+function allPairs(uint) external view returns (address pair);
+```
+
+With the above process with could test the correctness of Uniswap V2 Factory.
+
+For more testing process, please checkout [UniswapV2Factory test script](https://github.com/Uniswap/v2-core/blob/master/test/UniswapV2Factory.spec.ts)
+
+
+
+### Uniswap V2 Pair
+
+After we validate Uniswap V2 Factory, we could then validate Uniswap V2 Pair, which is the main interface of Uniswap. Pairs serve as automated market makers and keep track of pool token balances. List 5 test below,
+
+1. Mint  `function mint(address to) external returns (uint liquidity);`
+    + Creates pool tokens to some address
+2. Swap token `function swap(uint amount0Out, uint amount1Out, address to, bytes calldata data) external;`
+    + Two direction of swapping
+    + pay for the withdrawn ERC20 tokens with the corresponding pair tokens
+    + return the withdrawn ERC20 tokens along with a small fee
+3. burn `function burn(address to) external returns (uint amount0, uint amount1);`
+    + Destroys pool tokens of some address
+4. price Cumulative `function price{0,1}CumulativeLast() external view returns (uint);`
+    + The  `price{0,1}CumulativeLast` is used by oracle to fetch the current accumulated price value
+      + price0CumulativeLast = Token_1 / Token_0
+      + price1CumulativeLast = Token_0 / Token_1
+    + To calculate the correct price, please check [utilities.ts:encodePrice](https://github.com/Uniswap/v2-core/blob/master/test/shared/utilities.ts#L97), it divide the liquidity of 2 toekns 
+
+For more testing process, please checkout [UniswapV2Pair test script](https://github.com/Uniswap/v2-core/blob/master/test/UniswapV2Pair.spec.ts)
