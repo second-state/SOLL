@@ -44,6 +44,9 @@ include_directories(BEFORE
 include_directories("${LLVM_BINARY_DIR}/include" "${LLVM_INCLUDE_DIR}")
 link_directories("${LLVM_LIBRARY_DIR}")
 
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
@@ -55,6 +58,12 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     -Wno-unused-parameter
     -Wno-unused-private-field
     )
+endif()
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  add_compile_options(
+    -Wno-redundant-move
+  )
 endif()
 
 option(SOLL_INCLUDE_TESTS

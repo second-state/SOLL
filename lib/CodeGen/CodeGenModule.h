@@ -254,6 +254,7 @@ private:
 
   void emitYulCode(const YulCode *YC, llvm::StringRef Name);
   void emitYulData(const YulData *YD);
+  void emitYulDataInMetadata(const YulData *YD);
   void emitAsmVarDecl(const AsmVarDecl *VD);
 
   void emitABILoad(const FunctionDecl *FD, llvm::BasicBlock *Loader,

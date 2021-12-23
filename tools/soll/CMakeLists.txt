@@ -18,4 +18,5 @@ target_link_libraries(soll
   sollBasic
   sollFrontend
   sollFrontendTool
+  Threads::Threads
   )

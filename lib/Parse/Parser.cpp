@@ -717,7 +717,7 @@ Parser::parseFunctionHeader(bool ForceEmptyName, bool AllowModifiers) {
     if (AllowModifiers && Tok.is(tok::identifier)) {
       Diag(diag::err_unimplemented_token) << tok::identifier;
 
-      std::string ModifierName = Tok.getIdentifierInfo()->getName();
+      std::string ModifierName = Tok.getIdentifierInfo()->getName().str();
       ConsumeToken(); // identifier
 
       std::vector<ExprPtr> Arguments;
@@ -963,7 +963,7 @@ Parser::parseVariableDeclaration(VarDeclParserOptions const &Options,
 
 std::unique_ptr<EventDecl> Parser::parseEventDefinition() {
   const SourceLocation Begin = Tok.getLocation();
-  const std::string Name = Tok.getIdentifierInfo()->getName();
+  const std::string Name = Tok.getIdentifierInfo()->getName().str();
   ConsumeToken(); // identifier
   VarDeclParserOptions Options;
   Options.AllowIndexed = true;
@@ -989,7 +989,7 @@ void Parser::parseUserDefinedTypeName() {
 std::unique_ptr<IdentifierPath>
 Parser::parseIdentifierPath(tok::TokenKind SplitTok) {
   assert(Tok.isAnyIdentifier());
-  std::vector<std::string> path{Tok.getIdentifierInfo()->getName()};
+  std::vector<std::string> path{Tok.getIdentifierInfo()->getName().str()};
   ConsumeToken(); // identifier
 
   while (Tok.is(SplitTok)) {

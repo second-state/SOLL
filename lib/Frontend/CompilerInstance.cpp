@@ -278,7 +278,12 @@ std::unique_ptr<llvm::raw_pwrite_stream> CompilerInstance::createOutputFile(
     OSFile = OutFile;
     OS.reset(new llvm::raw_fd_ostream(
         OSFile, Error,
-        (Binary ? llvm::sys::fs::F_None : llvm::sys::fs::F_Text)));
+#if LLVM_VERSION_MAJOR >= 13
+        (Binary ? llvm::sys::fs::OF_None : llvm::sys::fs::OF_Text)
+#else
+        (Binary ? llvm::sys::fs::F_None : llvm::sys::fs::F_Text)
+#endif
+            ));
     if (Error)
       return nullptr;
   }

@@ -49,7 +49,8 @@ llvm::Value *AbiEmitter::emitEncodeTuple(
     std::tie(Value, IsStateVariable) = Values[I];
     if (Value->getType()->isDynamic()) {
       DynamicPos.emplace_back(Int8Ptr, I);
-      Int8Ptr = Builder.CreateInBoundsGEP(Int8Ptr, {Builder.getIntN(32, 32)});
+      Int8Ptr = Builder.CreateInBoundsGEP(CGM.Int8Ty, Int8Ptr,
+                                          {Builder.getIntN(32, 32)});
     } else {
       Int8Ptr = emitEncode(Int8Ptr, Value, IsStateVariable);
     }
@@ -96,7 +97,7 @@ AbiEmitter::getDecode(llvm::Value *Int8Ptr, const Type *Ty) {
                            Builder.getIntN(32, 32)),
         Builder.getIntN(32, 32));
     llvm::Value *NextInt8Ptr =
-        Builder.CreateInBoundsGEP(Int8Ptr, {EncodeLength});
+        Builder.CreateInBoundsGEP(CGM.Int8Ty, Int8Ptr, {EncodeLength});
     return {ExprValue::getRValue(Ty, Val), NextInt8Ptr};
   }
   case Type::Category::Array: {
@@ -133,19 +134,20 @@ AbiEmitter::getDecode(llvm::Value *Int8Ptr, const Type *Ty) {
   case Type::Category::FixedBytes: {
     llvm::Value *ValPtr = Builder.CreatePointerCast(
         Int8Ptr, llvm::PointerType::getUnqual(ValueTy));
-    llvm::Value *Val = Builder.CreateLoad(ValPtr, ValueTy);
+    llvm::Value *Val = Builder.CreateLoad(ValueTy, ValPtr);
     llvm::Value *NextInt8Ptr =
-        Builder.CreateInBoundsGEP(Int8Ptr, {Builder.getInt32(32)});
+        Builder.CreateInBoundsGEP(CGM.Int8Ty, Int8Ptr, {Builder.getInt32(32)});
     return {ExprValue::getRValue(Ty, Val), NextInt8Ptr};
   }
   default: {
     llvm::Value *ValPtr = Builder.CreatePointerCast(
         Int8Ptr, llvm::PointerType::getUnqual(CGM.Int256Ty));
-    llvm::Value *Val = Builder.CreateLoad(ValPtr, CGM.Int256Ty);
+    llvm::Value *Val = Builder.CreateLoad(CGM.Int256Ty, ValPtr);
     Val = CGM.getEndianlessValue(Val);
     Val = Builder.CreateZExtOrTrunc(Val, ValueTy);
     llvm::Value *NextInt8Ptr = Builder.CreateInBoundsGEP(
-        Int8Ptr, {Builder.getInt32(ValueTy->getIntegerBitWidth() / 8)});
+        CGM.Int8Ty, Int8Ptr,
+        {Builder.getInt32(ValueTy->getIntegerBitWidth() / 8)});
     return {ExprValue::getRValue(Ty, Val), NextInt8Ptr};
   }
   }
@@ -162,7 +164,8 @@ AbiEmitter::getDecodeTuple(llvm::Value *Int8Ptr, const TupleType *Ty) {
       ExprValuePtr PosExprValue;
       std::tie(PosExprValue, NextInt8Ptr) = getDecode(NextInt8Ptr, &Int32Ty);
       llvm::Value *Pos = PosExprValue->load(Builder, CGM);
-      DynamicPos.emplace_back(Builder.CreateInBoundsGEP(Int8Ptr, {Pos}), I);
+      DynamicPos.emplace_back(
+          Builder.CreateInBoundsGEP(CGM.Int8Ty, Int8Ptr, {Pos}), I);
     } else {
       ExprValuePtr ValExprValue;
       std::tie(ValExprValue, NextInt8Ptr) =
@@ -464,7 +467,7 @@ llvm::Value *AbiEmitter::emitEncodePacked(llvm::Value *Int8Ptr,
       unsigned PadRightLength = 32 - FixedBytesTy->getBitNum() / 8;
       if (PadRightLength % 32)
         Int8Ptr = Builder.CreateInBoundsGEP(
-            Int8Ptr, {Builder.getIntN(32, PadRightLength)});
+            CGM.Int8Ty, Int8Ptr, {Builder.getIntN(32, PadRightLength)});
     }
     return Int8Ptr;
   }
@@ -502,7 +505,7 @@ llvm::Value *AbiEmitter::emitEncode(llvm::Value *Int8Ptr,
     Int8Ptr = copyToInt8Ptr(
         Int8Ptr, Builder.CreateZExtOrTrunc(Length, CGF.Int256Ty), true);
     Int8Ptr = copyToInt8Ptr(Int8Ptr, Bytes, true);
-    return Builder.CreateInBoundsGEP(Int8Ptr, {PadRightLength});
+    return Builder.CreateInBoundsGEP(CGM.Int8Ty, Int8Ptr, {PadRightLength});
   }
   case Type::Category::Array: {
     llvm::Function *ThisFunc = Builder.GetInsertBlock()->getParent();
@@ -530,7 +533,8 @@ llvm::Value *AbiEmitter::emitEncode(llvm::Value *Int8Ptr,
     if (ArrTy->getElementType()->isDynamic()) {
       Head = Int8Ptr;
       Tail = Builder.CreateInBoundsGEP(
-          Head, {Builder.CreateMul(ArrayLength, ABIStaticSizeValue)});
+          CGM.Int8Ty, Head,
+          {Builder.CreateMul(ArrayLength, ABIStaticSizeValue)});
     } else {
       Tail = Int8Ptr;
     }
@@ -606,7 +610,7 @@ llvm::Value *AbiEmitter::emitEncode(llvm::Value *Int8Ptr,
     unsigned PadRightLength = 32 - FixedBytesTy->getBitNum() / 8;
     if (PadRightLength % 32)
       Int8Ptr = Builder.CreateInBoundsGEP(
-          Int8Ptr, {Builder.getIntN(32, PadRightLength)});
+          CGM.Int8Ty, Int8Ptr, {Builder.getIntN(32, PadRightLength)});
     return Int8Ptr;
   }
   default: {
@@ -627,7 +631,7 @@ llvm::Value *AbiEmitter::copyToInt8Ptr(llvm::Value *Int8Ptr, llvm::Value *Value,
     Builder.CreateCall(Memcpy, {Builder.CreateBitCast(Int8Ptr, CGM.Int8PtrTy),
                                 SrcBytes, Length});
     if (IncreasePtr)
-      return Builder.CreateInBoundsGEP(Int8Ptr, {Length});
+      return Builder.CreateInBoundsGEP(CGM.Int8Ty, Int8Ptr, {Length});
   } else {
     Value = CGM.getEndianlessValue(Value);
     llvm::Value *CPtr =
@@ -635,7 +639,8 @@ llvm::Value *AbiEmitter::copyToInt8Ptr(llvm::Value *Int8Ptr, llvm::Value *Value,
     Builder.CreateStore(Value, CPtr);
     if (IncreasePtr)
       return Builder.CreateInBoundsGEP(
-          Int8Ptr, {Builder.getInt32(Ty->getIntegerBitWidth() / 8)});
+          CGM.Int8Ty, Int8Ptr,
+          {Builder.getInt32(Ty->getIntegerBitWidth() / 8)});
   }
   return nullptr;
 }

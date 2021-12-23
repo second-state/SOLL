@@ -6,6 +6,7 @@
 #include "soll/Basic/TargetOptions.h"
 #include "soll/CodeGen/LoweringInteger.h"
 #include <llvm/ADT/Triple.h>
+#include <llvm/Analysis/AliasAnalysis.h>
 #include <llvm/Analysis/TargetLibraryInfo.h>
 #include <llvm/Analysis/TargetTransformInfo.h>
 #include <llvm/Bitcode/BitcodeWriterPass.h>
@@ -142,16 +143,16 @@ void EmitAssemblyHelper::EmitAssembly(
     TheModule->setDataLayout(TM->createDataLayout());
   }
 
-#if LLVM_VERSION_MAJOR >= 9
-  llvm::PassBuilder PB(TM.get(), llvm::PipelineTuningOptions(), llvm::None);
+#if LLVM_VERSION_MAJOR == 12
+  llvm::PassBuilder PB(false, TM.get());
 #else
-  llvm::PassBuilder PB(TM.get(), llvm::None);
+  llvm::PassBuilder PB(TM.get());
 #endif
 
-  llvm::LoopAnalysisManager LAM(false);
-  llvm::FunctionAnalysisManager FAM(false);
-  llvm::CGSCCAnalysisManager CGAM(false);
-  llvm::ModuleAnalysisManager MAM(false);
+  llvm::LoopAnalysisManager LAM;
+  llvm::FunctionAnalysisManager FAM;
+  llvm::CGSCCAnalysisManager CGAM;
+  llvm::ModuleAnalysisManager MAM;
 
   // Register the AA manager first so that our version is the one used.
   FAM.registerPass([&] { return PB.buildDefaultAAPipeline(); });
@@ -173,7 +174,7 @@ void EmitAssemblyHelper::EmitAssembly(
   PB.registerLoopAnalyses(LAM);
   PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
 
-  llvm::ModulePassManager MPM(false);
+  llvm::ModulePassManager MPM;
 
   if (TargetOpts.BackendTarget == EWASM) {
     MPM.addPass(LoweringInteger());
@@ -183,19 +184,24 @@ void EmitAssemblyHelper::EmitAssembly(
   default:
     break;
   case O1:
-    MPM.addPass(PB.buildPerModuleDefaultPipeline(llvm::PassBuilder::O1));
+    MPM.addPass(PB.buildPerModuleDefaultPipeline(
+        llvm::PassBuilder::OptimizationLevel::O1));
     break;
   case O2:
-    MPM.addPass(PB.buildPerModuleDefaultPipeline(llvm::PassBuilder::O2));
+    MPM.addPass(PB.buildPerModuleDefaultPipeline(
+        llvm::PassBuilder::OptimizationLevel::O2));
     break;
   case O3:
-    MPM.addPass(PB.buildPerModuleDefaultPipeline(llvm::PassBuilder::O3));
+    MPM.addPass(PB.buildPerModuleDefaultPipeline(
+        llvm::PassBuilder::OptimizationLevel::O3));
     break;
   case Os:
-    MPM.addPass(PB.buildPerModuleDefaultPipeline(llvm::PassBuilder::Os));
+    MPM.addPass(PB.buildPerModuleDefaultPipeline(
+        llvm::PassBuilder::OptimizationLevel::Os));
     break;
   case Oz:
-    MPM.addPass(PB.buildPerModuleDefaultPipeline(llvm::PassBuilder::Oz));
+    MPM.addPass(PB.buildPerModuleDefaultPipeline(
+        llvm::PassBuilder::OptimizationLevel::Oz));
     break;
   }
   MPM.addPass(llvm::AlwaysInlinerPass());

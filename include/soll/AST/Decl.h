@@ -29,8 +29,7 @@ protected:
   friend class ASTReader;
 
 protected:
-  Decl(SourceRange L,
-       llvm::StringRef Name = llvm::StringRef::withNullAsEmpty(nullptr),
+  Decl(SourceRange L, llvm::StringRef Name = {},
        Visibility vis = Visibility::Default)
       : Location(L), Name(Name.str()), Vis(vis), UniqueName(Name.str()) {}
 
