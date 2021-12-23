@@ -54,7 +54,7 @@ void CallExpr::resolveNamedCall() {
     std::unordered_map<std::string, size_t> ParamNamesIndex;
     size_t ParamSize = 0;
     for (const auto &ParamName : *FnTy->getParamNames()) {
-      ParamNamesIndex[ParamName] = ParamSize++;
+      ParamNamesIndex[ParamName.str()] = ParamSize++;
     }
     Args.resize(ParamSize);
     for (size_t I = 0; I < ParamSize; ++I) {
@@ -72,7 +72,7 @@ std::vector<Expr *> CallExpr::getArguments() {
     std::unordered_map<std::string, size_t> ParamNamesIndex;
     size_t ParamSize = 0;
     for (const auto &ParamName : *FnTy->getParamNames()) {
-      ParamNamesIndex[ParamName] = ParamSize++;
+      ParamNamesIndex[ParamName.str()] = ParamSize++;
     }
     Args.resize(ParamSize);
     for (size_t I = 0; I < ParamSize; ++I) {
@@ -92,7 +92,7 @@ std::vector<const Expr *> CallExpr::getArguments() const {
     std::unordered_map<std::string, size_t> ParamNamesIndex;
     size_t ParamSize = 0;
     for (const auto &ParamName : *FnTy->getParamNames()) {
-      ParamNamesIndex[ParamName] = ParamSize++;
+      ParamNamesIndex[ParamName.str()] = ParamSize++;
     }
     Args.resize(ParamSize);
     for (size_t I = 0; I < ParamSize; ++I) {

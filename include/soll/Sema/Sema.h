@@ -3,6 +3,7 @@
 
 #include "soll/AST/ASTContext.h"
 #include "soll/AST/ExprAsm.h"
+#include "soll/Sema/GlobalContent.h"
 #include "soll/Sema/Scope.h"
 #include <memory>
 #include <vector>
@@ -17,6 +18,7 @@ class Lexer;
 class Sema;
 class SourceManager;
 class Token;
+class NameAndTypeResolver;
 
 class Sema {
   Sema(const Sema &) = delete;
@@ -51,6 +53,8 @@ public:
   DiagnosticsEngine &Diags;
   SourceManager &SourceMgr;
   const llvm::StringMap<llvm::APInt> *LibrariesAddressMap;
+  std::shared_ptr<NameAndTypeResolver> NTR;
+  GlobalContext GC;
 
   Sema(Lexer &lexer, ASTContext &ctxt, ASTConsumer &consumer);
 
@@ -135,6 +139,9 @@ public:
                              bool AppendChild);
 
   void resolveType(SourceUnit &SU);
+  void resolveScope(SourceUnit &SU);
+  void registerDeclarations(SourceUnit &SU);
+  void resolveNameAndType(SourceUnit &SU);
   void resolveInherit(SourceUnit &SU);
   void resolveUniqueName(SourceUnit &SU);
   void resolveIdentifierDecl(SourceUnit &SU);

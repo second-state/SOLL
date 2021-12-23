@@ -5,6 +5,7 @@
 
 namespace soll {
 
+class AST;
 class Decl;
 class InheritanceSpecifier;
 class FunctionDecl;

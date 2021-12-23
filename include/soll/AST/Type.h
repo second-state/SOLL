@@ -374,12 +374,12 @@ public:
 class FunctionType : public Type {
   std::vector<std::reference_wrapper<const TypePtr>> ParamTypes;
   std::vector<std::reference_wrapper<const TypePtr>> ReturnTypes;
-  std::shared_ptr<const std::vector<std::string>> ParamNames;
+  std::shared_ptr<const std::vector<llvm::StringRef>> ParamNames;
 
 public:
   FunctionType(std::vector<std::reference_wrapper<const TypePtr>> &&PTys,
                std::vector<std::reference_wrapper<const TypePtr>> &&RTys,
-               std::shared_ptr<std::vector<std::string>> PNames = nullptr)
+               std::shared_ptr<std::vector<llvm::StringRef>> PNames = nullptr)
       : ParamTypes(std::move(PTys)), ReturnTypes(std::move(RTys)),
         ParamNames(PNames) {}
 
@@ -391,7 +391,7 @@ public:
   getReturnTypes() const {
     return ReturnTypes;
   }
-  std::shared_ptr<const std::vector<std::string>> getParamNames() const {
+  std::shared_ptr<const std::vector<llvm::StringRef>> getParamNames() const {
     return ParamNames;
   }
 
@@ -546,12 +546,12 @@ public:
 
 class StructType : public TupleType {
   StructDecl *D;
-  std::vector<std::string> ElementNames;
+  std::vector<llvm::StringRef> ElementNames;
   llvm::StructType *Tp = nullptr;
 
 public:
   StructType(StructDecl *D, std::vector<TypePtr> &&ET,
-             std::vector<std::string> &&EN)
+             std::vector<llvm::StringRef> &&EN)
       : TupleType(std::move(ET)), D(D), ElementNames(std::move(EN)) {}
   Category getCategory() const override { return Category::Struct; }
   StructDecl *getDecl() { return D; }
@@ -576,7 +576,7 @@ public:
   bool hasElement(std::string Name) const {
     return getElementIndex(Name) < ElementNames.size();
   }
-  const std::vector<std::string> &getElementNames() const {
+  const std::vector<llvm::StringRef> &getElementNames() const {
     return ElementNames;
   }
 };

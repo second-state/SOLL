@@ -3,7 +3,10 @@ add_llvm_library(sollSema
   Scope.cpp
   Sema.cpp
   SemaExprAsm.cpp
+  ReferenceResolver.cpp
   SemaResolveType.cpp
+  SemaResolveScope.cpp
+  SemaNameAndTypeResolver.cpp
   SemaResolveInherit.cpp
   SemaResolveUniqueName.cpp
   SemaResolveImmutable.cpp
